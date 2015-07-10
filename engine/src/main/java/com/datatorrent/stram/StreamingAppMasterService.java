@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -243,6 +243,48 @@ public class StreamingAppMasterService extends CompositeService
 
     @AppDataPushAgent.Metric
     @Override
+    public long getMemoryRequired()
+    {
+      long result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        if (c.getExternalId() == null || c.getState() == PTContainer.State.KILLED) {
+          result += c.getRequiredMemoryMB();
+        }
+      }
+      return result;
+    }
+
+    @AppDataPushAgent.Metric
+    @Override
+    public int getTotalVCoresAllocated()
+    {
+      int result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        result += c.getAllocatedVCores();
+      }
+      return result;
+    }
+
+    @AppDataPushAgent.Metric
+    @Override
+    public int getVCoresRequired()
+    {
+      int result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        if (c.getExternalId() == null || c.getState() == PTContainer.State.KILLED) {
+          if (c.getRequiredVCores() == 0) {
+            result++;
+          }
+          else {
+            result += c.getRequiredVCores();
+          }
+        }
+      }
+      return result;
+    }
+
+    @AppDataPushAgent.Metric
+    @Override
     public long getTotalBufferServerReadBytesPSMA()
     {
       long result = 0;
@@ -280,6 +322,13 @@ public class StreamingAppMasterService extends CompositeService
     {
       StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
       return (criticalPathInfo == null) ? 0 : criticalPathInfo.latency;
+    }
+
+    @AppDataPushAgent.Metric
+    @Override
+    public long getWindowStartMillis()
+    {
+      return dnmgr.getWindowStartMillis();
     }
 
   }
@@ -594,7 +643,9 @@ public class StreamingAppMasterService extends CompositeService
     // Dump out information about cluster capability as seen by the resource manager
     int maxMem = response.getMaximumResourceCapability().getMemory();
     int maxVcores = response.getMaximumResourceCapability().getVirtualCores();
-    LOG.info("Max mem {}m and vcores {} capabililty of resources in this cluster ", maxMem, maxVcores);
+    int minMem = conf.getInt("yarn.scheduler.minimum-allocation-mb", 0);
+    int minVcores = conf.getInt("yarn.scheduler.minimum-allocation-vcores", 0);
+    LOG.info("Max mem {}m, Min mem {}m, Max vcores {} and Min vcores {} capabililty of resources in this cluster ", maxMem, minMem, maxVcores, minVcores);
 
     // for locality relaxation fall back
     Map<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> requestedResources = Maps.newHashMap();
@@ -694,9 +745,15 @@ public class StreamingAppMasterService extends CompositeService
             LOG.warn("Container memory {}m above max threshold of cluster. Using max value {}m.", csr.container.getRequiredMemoryMB(), maxMem);
             csr.container.setRequiredMemoryMB(maxMem);
           }
+          if(csr.container.getRequiredMemoryMB() < minMem){
+            csr.container.setRequiredMemoryMB(minMem);
+          }
           if (csr.container.getRequiredVCores() > maxVcores) {
             LOG.warn("Container vcores {} above max threshold of cluster. Using max value {}.", csr.container.getRequiredVCores(), maxVcores);
             csr.container.setRequiredVCores(maxVcores);
+          }
+          if(csr.container.getRequiredVCores() < minVcores){
+            csr.container.setRequiredVCores(minVcores);
           }
           csr.container.setResourceRequestPriority(nextRequestPriority++);
           ContainerRequest cr = resourceRequestor.createContainerRequest(csr, true);
@@ -928,7 +985,7 @@ public class StreamingAppMasterService extends CompositeService
   /**
    * Ask RM to allocate given no. of containers to this Application Master
    *
-   * @param containerRequests  Containers to ask for from RM
+   * @param containerRequests        Containers to ask for from RM
    * @param removedContainerRequests Container requests to be removed
    * @param releasedContainers
    * @return Response from RM to AM with allocated containers

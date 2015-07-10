@@ -1920,6 +1920,11 @@ public class StreamingContainerManager implements PlanContext
     return WindowGenerator.getWindowMillis(windowId, this.vars.windowStartMillis, widthMillis);
   }
 
+  public long getWindowStartMillis()
+  {
+    return this.vars.windowStartMillis;
+  }
+
   /**
    * Visit all operators to update current checkpoint based on updated downstream state.
    * Purge older checkpoints that are no longer needed.

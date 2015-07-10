@@ -103,6 +103,13 @@ public class AppInfo {
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
+    public long getWindowStartMillis()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
     public List<Integer> getCriticalPath() {
       return null;
     }
@@ -150,6 +157,27 @@ public class AppInfo {
     @javax.xml.bind.annotation.XmlElement
     @AppDataPushAgent.Metric
     public long getTotalMemoryAllocated()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
+    public long getMemoryRequired()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
+    public int getTotalVCoresAllocated()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
+    public int getVCoresRequired()
     {
       return 0;
     }
