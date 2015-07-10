@@ -72,7 +72,7 @@ public class AppPackageTest
   {
     Assert.assertEquals("mydtapp", json.getString("appPackageName"));
     Assert.assertEquals("1.0-SNAPSHOT", json.getString("appPackageVersion"));
-    Assert.assertEquals("2.2.0-SNAPSHOT", json.getString("dtEngineVersion"));
+    Assert.assertEquals("3.0.0-SNAPSHOT", json.getString("dtEngineVersion"));
     Assert.assertEquals("lib/*.jar", json.getJSONArray("classPath").getString(0));
 
     JSONObject application = json.getJSONArray("applications").getJSONObject(0);
