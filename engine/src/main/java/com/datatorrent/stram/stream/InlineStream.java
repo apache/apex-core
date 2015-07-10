@@ -62,7 +62,6 @@ public class InlineStream extends DefaultReservoir implements Stream, SweepableR
   @Override
   public void deactivate()
   {
-    clear();
   }
 
   /**
@@ -71,7 +70,6 @@ public class InlineStream extends DefaultReservoir implements Stream, SweepableR
   @Override
   public void teardown()
   {
-    clear();
   }
 
   @Override
