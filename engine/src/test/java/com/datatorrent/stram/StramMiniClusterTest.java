@@ -55,6 +55,7 @@ import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.webapp.StramWebServices;
 
 import static java.lang.Thread.sleep;
@@ -70,6 +71,9 @@ public class StramMiniClusterTest
   private static final Logger LOG = LoggerFactory.getLogger(StramMiniClusterTest.class);
   protected static MiniYARNCluster yarnCluster = null;
   protected static Configuration conf = new Configuration();
+
+  @Rule
+  public StramTestSupport.TestMeta testMeta = new StramTestSupport.TestMeta();
 
   @Before
   public void setupEachTime() throws IOException
@@ -220,6 +224,7 @@ public class StramMiniClusterTest
   private LogicalPlan createDAG(LogicalPlanConfiguration lpc) throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, "file:" + System.getProperty("user.dir") + "/" + testMeta.dir);
     lpc.prepareDAG(dag,null,"testApp");
     dag.validate();
     Assert.assertEquals("", Integer.valueOf(128), dag.getValue(DAG.MASTER_MEMORY_MB));
@@ -352,7 +357,7 @@ public class StramMiniClusterTest
   {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, "target/" + this.getClass().getName());
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, "file:" + System.getProperty("user.dir") + "/" + testMeta.dir);
     FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);
     dag.getContextAttributes(badOperator).put(OperatorContext.RECOVERY_ATTEMPTS, 1);
 
