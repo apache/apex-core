@@ -26,6 +26,7 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +47,9 @@ import com.datatorrent.stram.support.StramTestSupport;
 public class StramLocalClusterTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
+
+  @Rule
+  public StramTestSupport.TestMeta testMeta = new StramTestSupport.TestMeta();
 
   @Before
   public void setup() throws IOException
@@ -70,6 +74,7 @@ public class StramLocalClusterTest
   public void testLocalClusterInitShutdown() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
 
     TestGeneratorInputOperator genNode = dag.addOperator("genNode", TestGeneratorInputOperator.class);
     genNode.setMaxTuples(2);
@@ -108,6 +113,7 @@ public class StramLocalClusterTest
   public void testRecovery() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
 
     TestGeneratorInputOperator node1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     // data will be added externally from test
