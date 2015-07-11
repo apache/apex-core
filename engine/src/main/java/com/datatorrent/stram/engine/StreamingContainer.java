@@ -768,17 +768,17 @@ public class StreamingContainer extends YarnContainerMain
       }
     }
 
+    if (rsp.undeployRequest != null) {
+      logger.info("Undeploy request: {}", rsp.undeployRequest);
+      processNodeRequests(false);
+      undeploy(rsp.undeployRequest);
+    }
+
     if (rsp.shutdown) {
       logger.info("Received shutdown request");
       processNodeRequests(false);
       this.exitHeartbeatLoop = true;
       return;
-    }
-
-    if (rsp.undeployRequest != null) {
-      logger.info("Undeploy request: {}", rsp.undeployRequest);
-      processNodeRequests(false);
-      undeploy(rsp.undeployRequest);
     }
 
     if (rsp.deployRequest != null) {

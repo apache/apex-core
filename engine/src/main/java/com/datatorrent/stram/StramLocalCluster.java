@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -223,7 +224,7 @@ public class StramLocalCluster implements Runnable, Controller
 
     Map<Integer, Node<?>> getNodes()
     {
-      return nodes;
+      return Collections.unmodifiableMap(nodes);
     }
 
   }
