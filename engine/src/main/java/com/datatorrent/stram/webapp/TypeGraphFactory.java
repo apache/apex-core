@@ -19,8 +19,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -51,7 +51,7 @@ public class TypeGraphFactory
 
   static {
     LOG.debug("Pre compute the type graph out of classes in jdk and jars in current classpath");
-    final List<String> pathsToScan = new ArrayList<String>();
+    final Set<String> pathsToScan = new HashSet<>();
 
     String classpath = System.getProperty("java.class.path");
     String[] paths = classpath.split(":");

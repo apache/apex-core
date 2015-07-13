@@ -31,9 +31,9 @@ import org.codehaus.jackson.map.deser.std.FromStringDeserializer;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.ClassNode;
+import org.apache.xbean.asm5.ClassReader;
+import org.apache.xbean.asm5.Opcodes;
+import org.apache.xbean.asm5.tree.ClassNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

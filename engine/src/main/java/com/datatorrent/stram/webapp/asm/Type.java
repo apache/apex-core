@@ -17,7 +17,7 @@ package com.datatorrent.stram.webapp.asm;
 
 import java.util.ArrayList;
 
-import org.objectweb.asm.signature.SignatureVisitor;
+import org.apache.xbean.asm5.signature.SignatureVisitor;
 
 /**
  * Data structure for java type
@@ -29,14 +29,14 @@ public interface Type
 
   public static class TypeNode implements Type{
     
-    private transient org.objectweb.asm.Type typeObj;
+    private transient org.apache.xbean.asm5.Type typeObj;
     
     private String objByteCode;
     
-    public org.objectweb.asm.Type getTypeObj()
+    public org.apache.xbean.asm5.Type getTypeObj()
     {
       if(typeObj == null){
-        typeObj = org.objectweb.asm.Type.getType(objByteCode);
+        typeObj = org.apache.xbean.asm5.Type.getType(objByteCode);
       }
       return typeObj;
     }
@@ -45,10 +45,10 @@ public interface Type
     public String toString()
     {
       if(typeObj == null){
-        typeObj = org.objectweb.asm.Type.getType(objByteCode);
+        typeObj = org.apache.xbean.asm5.Type.getType(objByteCode);
       }
       
-      if(typeObj.getSort()==org.objectweb.asm.Type.OBJECT){
+      if(typeObj.getSort()==org.apache.xbean.asm5.Type.OBJECT){
         return "class " + typeObj.getClassName();
       } else {
         return typeObj.getClassName();
@@ -59,9 +59,9 @@ public interface Type
     public String getByteString()
     {
       if(typeObj == null){
-        typeObj = org.objectweb.asm.Type.getType(objByteCode);
+        typeObj = org.apache.xbean.asm5.Type.getType(objByteCode);
       }
-      if (typeObj.getSort() == org.objectweb.asm.Type.OBJECT) {
+      if (typeObj.getSort() == org.apache.xbean.asm5.Type.OBJECT) {
         return "L" + typeObj.getClassName() + ";";
       } else {
         return typeObj.toString();

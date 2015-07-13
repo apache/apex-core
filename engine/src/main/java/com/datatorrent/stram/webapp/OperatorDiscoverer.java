@@ -44,7 +44,7 @@ import javax.xml.parsers.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.codehaus.jettison.json.*;
-import org.objectweb.asm.tree.AnnotationNode;
+import org.apache.xbean.asm5.tree.AnnotationNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
