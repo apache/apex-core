@@ -18,8 +18,8 @@ package com.datatorrent.stram.webapp.asm;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.objectweb.asm.tree.AnnotationNode;
-import org.objectweb.asm.tree.FieldNode;
+import org.apache.xbean.asm5.tree.AnnotationNode;
+import org.apache.xbean.asm5.tree.FieldNode;
 
 public class CompactFieldNode {
   private String name;

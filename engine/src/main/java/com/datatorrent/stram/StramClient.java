@@ -130,7 +130,7 @@ public class StramClient
       org.apache.http.client.utils.URLEncodedUtils.class,
       org.apache.http.message.BasicHeaderValueParser.class,
       com.esotericsoftware.minlog.Log.class,
-      org.objectweb.asm.tree.ClassNode.class,
+      org.apache.xbean.asm5.tree.ClassNode.class,
       org.mozilla.javascript.Scriptable.class
     };
 

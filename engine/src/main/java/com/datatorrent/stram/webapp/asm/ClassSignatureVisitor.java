@@ -18,7 +18,7 @@ package com.datatorrent.stram.webapp.asm;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.objectweb.asm.signature.SignatureVisitor;
+import org.apache.xbean.asm5.signature.SignatureVisitor;
 
 /**
  * Follow the visiting path of ASM

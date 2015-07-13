@@ -18,11 +18,11 @@ package com.datatorrent.stram.webapp.asm;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldNode;
-import org.objectweb.asm.tree.MethodNode;
+import org.apache.xbean.asm5.Opcodes;
+import org.apache.xbean.asm5.Type;
+import org.apache.xbean.asm5.tree.ClassNode;
+import org.apache.xbean.asm5.tree.FieldNode;
+import org.apache.xbean.asm5.tree.MethodNode;
 
 /**
  * Provide util function to deal with java bytecode

@@ -20,11 +20,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.objectweb.asm.tree.AnnotationNode;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldNode;
-import org.objectweb.asm.tree.InnerClassNode;
-import org.objectweb.asm.tree.MethodNode;
+import org.apache.xbean.asm5.tree.AnnotationNode;
+import org.apache.xbean.asm5.tree.ClassNode;
+import org.apache.xbean.asm5.tree.FieldNode;
+import org.apache.xbean.asm5.tree.InnerClassNode;
+import org.apache.xbean.asm5.tree.MethodNode;
 
 
 /**
@@ -120,7 +120,7 @@ public class CompactUtil
     CompactFieldNode cfn = new CompactFieldNode();
     cfn.setName(fn.name);
 
-    String className = org.objectweb.asm.Type.getObjectType(fn.desc).getClassName();
+    String className = org.apache.xbean.asm5.Type.getObjectType(fn.desc).getClassName();
     if(className.charAt(0) == 'L')
     {
       className = className.substring(1);
