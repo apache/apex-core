@@ -15,28 +15,26 @@
  */
 package com.datatorrent.stram.webapp.asm;
 
-import org.objectweb.asm.signature.SignatureReader;
+import org.apache.xbean.asm5.Opcodes;
+import org.apache.xbean.asm5.signature.SignatureReader;
 
 
 /**
- * A {@link org.objectweb.asm.tree.MethodNode} implementation to parse method signature as well
+ * A {@link org.apache.xbean.asm5.tree.MethodNode} implementation to parse method signature as well
  *
  * @since 2.1
  */
-public class MethodNode extends org.objectweb.asm.tree.MethodNode
+public class MethodNode extends org.apache.xbean.asm5.tree.MethodNode
 {
+
   public ClassSignatureVisitor typeVariableSignatureNode;
  
   public MethodSignatureVisitor signatureNode;
 
-  public MethodNode()
-  {
-    super();
-  }
 
   public MethodNode(int access, String name, String desc, String signature, String[] exceptions)
   {
-    super(access, name, desc, signature, exceptions);
+    super(Opcodes.ASM5, access, name, desc, signature, exceptions);
   }
   
   @Override

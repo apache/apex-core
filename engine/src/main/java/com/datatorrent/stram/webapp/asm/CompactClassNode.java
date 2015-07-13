@@ -17,7 +17,7 @@ package com.datatorrent.stram.webapp.asm;
 
 import java.util.List;
 
-import org.objectweb.asm.Opcodes;
+import org.apache.xbean.asm5.Opcodes;
 
 /**
  * Store class information only needed by app builder

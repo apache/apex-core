@@ -16,20 +16,25 @@
 package com.datatorrent.stram.webapp.asm;
 
 
-import org.objectweb.asm.FieldVisitor;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.signature.SignatureReader;
-import org.objectweb.asm.tree.ClassNode;
+import org.apache.xbean.asm5.FieldVisitor;
+import org.apache.xbean.asm5.MethodVisitor;
+import org.apache.xbean.asm5.Opcodes;
+import org.apache.xbean.asm5.signature.SignatureReader;
+import org.apache.xbean.asm5.tree.ClassNode;
 
 /**
- * A special org.objectweb.asm.tree.ClassNode implementation which parse the type signature as well
+ * A special org.apache.xbean.asm5.tree.ClassNode implementation which parse the type signature as well
  *
  * @see ClassNode
  * @since 2.1
  */
 public class ClassNodeType extends ClassNode
 {
-  
+
+  public ClassNodeType() {
+    super(Opcodes.ASM5);
+  }
+
   ClassSignatureVisitor csv = new ClassSignatureVisitor();
   private boolean visitFields = false;
   

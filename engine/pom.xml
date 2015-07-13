@@ -258,11 +258,6 @@
       <version>1.10</version>
     </dependency>
     <dependency>
-      <groupId>asm</groupId>
-      <artifactId>asm-tree</artifactId>
-      <version>3.2</version>
-    </dependency>
-    <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-servlet</artifactId>
       <version>${jetty.version}</version>
@@ -273,6 +268,12 @@
       <artifactId>jetty-websocket</artifactId>
       <version>${jetty.version}</version>
       <scope>test</scope>
+    </dependency>
+    <!-- use shaded asm library to avoid conflict -->
+    <dependency>
+      <groupId>org.apache.xbean</groupId>
+      <artifactId>xbean-asm5-shaded</artifactId>
+      <version>4.3</version>
     </dependency>
   </dependencies>
   <profiles>

@@ -15,15 +15,16 @@
  */
 package com.datatorrent.stram.webapp.asm;
 
-import org.objectweb.asm.signature.SignatureReader;
+import org.apache.xbean.asm5.Opcodes;
+import org.apache.xbean.asm5.signature.SignatureReader;
 
 
 /**
- * A {@link org.objectweb.asm.tree.MethodNode} implementation to parse method signature as well
+ * A {@link org.apache.xbean.asm5.tree.MethodNode} implementation to parse method signature as well
  *
  * @since 2.1
  */
-public class FieldNode extends org.objectweb.asm.tree.FieldNode
+public class FieldNode extends org.apache.xbean.asm5.tree.FieldNode
 {
   public ClassSignatureVisitor typeVariableSignatureNode;
  
@@ -31,7 +32,7 @@ public class FieldNode extends org.objectweb.asm.tree.FieldNode
 
   public FieldNode(int access, String name, String desc, String signature, Object value)
   {
-    super(access, name, desc, signature, value);
+    super(Opcodes.ASM5, access, name, desc, signature, value);
   }
   
   @Override
