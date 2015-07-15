@@ -831,14 +831,14 @@ public class StreamingContainerManager implements PlanContext
         }
         LOG.debug("Adding to logical customMetrics for {}", operatorMeta.getName());
         windowMetrics.add(new Pair<Long, Map<String, Object>>(windowId, lm));
-        if (!latestLogicalMetrics.containsKey(operatorMeta.getName())) {
+        Map<String, Object> oldValue = latestLogicalMetrics.put(operatorMeta.getName(), lm);
+        if (oldValue == null) {
           try {
             saveMetaInfo();
           } catch (IOException ex) {
             LOG.error("Cannot save application meta info to DFS. App data sources will not be available.", ex);
           }
         }
-        latestLogicalMetrics.put(operatorMeta.getName(), lm);
       }
     }
   }
