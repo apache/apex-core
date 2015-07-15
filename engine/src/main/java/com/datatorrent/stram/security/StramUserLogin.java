@@ -23,19 +23,17 @@ import java.util.Iterator;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
-import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.StreamingApplication;
 
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.util.FSUtil;
 
 /**
@@ -113,9 +111,7 @@ public class StramUserLogin
           try {
             fs1.addDelegationTokens(tokenRenewer, creds);
             if (renewRMToken) {
-              org.apache.hadoop.yarn.api.records.Token rmDelToken = yarnClient.getRMDelegationToken(new Text(tokenRenewer));
-              Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
-              creds.addToken(rmToken.getService(), rmToken);
+              new StramClientUtils.ClientRMHelper(yarnClient, conf).addRMDelegationToken(tokenRenewer, creds);
             }
           }
           finally {
@@ -125,6 +121,7 @@ public class StramUserLogin
             }
           }
           credentials.addAll(creds);
+
           return null;
         }
       });
