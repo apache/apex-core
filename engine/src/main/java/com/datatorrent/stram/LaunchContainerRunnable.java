@@ -319,12 +319,12 @@ public class LaunchContainerRunnable implements Runnable
   public static ByteBuffer getTokens(UserGroupInformation ugi, Token<StramDelegationTokenIdentifier> delegationToken)
   {
     try {
-      Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
+      Collection<Token<? extends TokenIdentifier>> tokens = ugi.getCredentials().getAllTokens();
       Credentials credentials = new Credentials();
       for (Token<? extends TokenIdentifier> token : tokens) {
         if (!token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
           credentials.addToken(token.getService(), token);
-          LOG.info("Passing container token {}", token);
+          LOG.debug("Passing container token {}", token);
         }
       }
       credentials.addToken(delegationToken.getService(), delegationToken);
