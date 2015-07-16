@@ -146,7 +146,6 @@ public class StreamingContainerManager implements PlanContext
   private long lastResourceRequest = 0;
   private final Map<String, StreamingContainerAgent> containers = new ConcurrentHashMap<String, StreamingContainerAgent>();
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
-  private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
   private final ConcurrentMap<PTOperator, PTOperator> reportStats = Maps.newConcurrentMap();
   private final AtomicBoolean deployChangeInProgress = new AtomicBoolean();
@@ -2759,11 +2758,6 @@ public class StreamingContainerManager implements PlanContext
   public CriticalPathInfo getCriticalPathInfo()
   {
     return criticalPathInfo;
-  }
-
-  public AlertsManager getAlertsManager()
-  {
-    return alertsManager;
   }
 
   private void checkpoint() throws IOException
