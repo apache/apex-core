@@ -816,63 +816,6 @@ public class StramWebServices
     return response;
   }
 
-  @PUT
-  @Path(PATH_ALERTS + "/{name}")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Deprecated
-  public Object createAlert(String content, @PathParam("name") String name) throws JSONException, IOException
-  {
-    return dagManager.getAlertsManager().createAlert(name, content);
-  }
-
-  @DELETE
-  @Path(PATH_ALERTS + "/{name}")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Deprecated
-  public Object deleteAlert(@PathParam("name") String name) throws JSONException, IOException
-  {
-    return dagManager.getAlertsManager().deleteAlert(name);
-  }
-
-  @GET
-  @Path(PATH_ALERTS + "/{name}")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Deprecated
-  public Object getAlert(@PathParam("name") String name) throws JSONException, IOException
-  {
-    JSONObject alert = dagManager.getAlertsManager().getAlert(name);
-    if (alert == null) {
-      throw new NotFoundException();
-    }
-    return alert;
-  }
-
-  @GET
-  @Path(PATH_ALERTS)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Object listAlerts() throws JSONException, IOException
-  {
-    return dagManager.getAlertsManager().listAlerts();
-  }
-
-  /*
-   @GET
-   @Path(PATH_ACTION_OPERATOR_CLASSES)
-   @Produces(MediaType.APPLICATION_JSON)
-   public Object listActionOperatorClasses(@PathParam("appId") String appId) throws JSONException
-   {
-   JSONObject response = new JSONObject();
-   JSONArray jsonArray = new JSONArray();
-   List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getActionOperatorClasses();
-
-   for (Class<? extends Operator> clazz : operatorClasses) {
-   jsonArray.put(clazz.getName());
-   }
-   response.put("operatorClasses", jsonArray);
-   return response;
-   }
-   */
-
   @POST
   @Path(PATH_LOGGERS)
   @Consumes(MediaType.APPLICATION_JSON)
