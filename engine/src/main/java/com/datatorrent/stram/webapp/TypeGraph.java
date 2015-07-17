@@ -24,7 +24,6 @@ import java.util.Map.Entry;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
-
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.codehaus.jackson.map.deser.std.FromStringDeserializer;
@@ -869,6 +868,13 @@ public class TypeGraph
 
   private void setTypes(JSONObject propJ, Type rawType, Map<Type, Type> typeReplacement) throws JSONException
   {
+    setTypes(propJ, rawType, typeReplacement, new HashSet<Type>());
+  }
+
+  private void setTypes(JSONObject propJ, Type rawType, Map<Type, Type> typeReplacement, Set<Type> visitedType) throws JSONException
+  {
+    boolean stopRecursive = visitedType.contains(rawType);
+    visitedType.add(rawType);
     // type could be replaced
     Type t = resolveType(rawType, typeReplacement);
     
@@ -889,7 +895,9 @@ public class TypeGraph
           JSONArray jArray = new JSONArray();
           for (Type ttn : ((ParameterizedTypeNode) t).getActualTypeArguments()) {
             JSONObject objJ = new JSONObject();
-            setTypes(objJ, ttn, typeReplacement);
+            if (!stopRecursive) {
+              setTypes(objJ, ttn, typeReplacement, visitedType);
+            }
             jArray.put(objJ);
           }
           propJ.put("typeArgs", jArray);
@@ -926,20 +934,65 @@ public class TypeGraph
         propJ.put("uiType", UI_TYPE.LIST.getName());
         
         JSONObject jObj = new JSONObject();
-        setTypes(jObj, ((ArrayTypeNode)t).getActualArrayType(), typeReplacement);
+        if (!stopRecursive) {
+          setTypes(jObj, ((ArrayTypeNode) t).getActualArrayType(), typeReplacement, visitedType);
+        }
         propJ.put("itemType", jObj);
       }
       
       if(t instanceof TypeVariableNode){
         propJ.put("typeLiteral", ((TypeVariableNode)t).getTypeLiteral());
-        setTypes(propJ, ((TypeVariableNode)t).getRawTypeBound(), typeReplacement);
+        if (!stopRecursive) {
+          setTypes(propJ, ((TypeVariableNode) t).getRawTypeBound(), typeReplacement, visitedType);
+        }
       }
 
 
     }
   }
 
-  
+  /*
+    Trim the fake nodes (because of dependencies not in the classpath)
+   */
+  public void trim()
+  {
+    List<TypeGraphVertex> invalidVertexes = new LinkedList<>();
+    for (TypeGraphVertex tgv : typeGraph.values()) {
+      if (tgv.getClassNode() == null) {
+        invalidVertexes.add(tgv);
+      }
+    }
+
+    for (TypeGraphVertex removeV : invalidVertexes) {
+      removeNodeUnsafe(removeV);
+    }
+  }
+
+  private void removeNodeUnsafe(TypeGraphVertex v)
+  {
+    TypeGraphVertex removedT = typeGraph.remove(v.typeName);
+    if (removedT == null) {
+      return;
+    }
+    removedT.allInitialiazableDescendants.clear();
+    removedT.ancestors.clear();
+    for (TypeGraphVertex child : v.descendants) {
+      removeNodeUnsafe(child);
+    }
+    removedT.descendants.clear();
+    if (v.isInitializable()) {
+      removeFromInitializableDescendants(v, v);
+    }
+  }
+
+  private void removeFromInitializableDescendants(TypeGraphVertex parentT, TypeGraphVertex childT)
+  {
+    parentT.allInitialiazableDescendants.remove(parentT);
+    for (TypeGraphVertex pt : parentT.ancestors) {
+      removeFromInitializableDescendants(pt, childT);
+    }
+  }
+
   
   private Type resolveType(Type t, Map<Type, Type> typeReplacement)
   {
