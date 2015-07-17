@@ -16,23 +16,19 @@
 package com.datatorrent.common.codec;
 
 import java.io.*;
+import java.util.Map;
 
 import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.module.SimpleModule;
-import org.codehaus.jackson.map.ser.std.RawSerializer;
-
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.api.StringCodec;
-import com.datatorrent.common.util.ObjectMapperString;
-import com.datatorrent.netlet.util.Slice;
-import java.util.Map;
-import org.codehaus.jackson.map.SerializationConfig;
 import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.map.ser.std.SerializerBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.StringCodec;
+import com.datatorrent.common.util.JacksonObjectMapperProvider;
+import com.datatorrent.netlet.util.Slice;
 
 /**
  *
@@ -44,26 +40,18 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
 
   public JsonStreamCodec()
   {
-    mapper = new ObjectMapper();
-    mapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
-    SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
-    module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
-    mapper.registerModule(module);
+    mapper = new JacksonObjectMapperProvider().getContext(null);
   }
 
   public JsonStreamCodec(Map<Class<?>, Class<? extends StringCodec<?>>> codecs)
   {
-    mapper = new ObjectMapper();
-    mapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
-    mapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
-    SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
-    module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
+    JacksonObjectMapperProvider jomp = new JacksonObjectMapperProvider();
     if (codecs != null) {
       for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry: codecs.entrySet()) {
         try {
           @SuppressWarnings("unchecked")
           final StringCodec<Object> codec = (StringCodec<Object>)entry.getValue().newInstance();
-          module.addSerializer(new SerializerBase(entry.getKey())
+          jomp.addSerializer(new SerializerBase(entry.getKey())
           {
             @Override
             public void serialize(Object value, JsonGenerator jgen, SerializerProvider provider) throws IOException
@@ -78,7 +66,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
         }
       }
     }
-    mapper.registerModule(module);
+    mapper = jomp.getContext(null);
   }
 
   @Override

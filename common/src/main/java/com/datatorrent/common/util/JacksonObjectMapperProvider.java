@@ -69,6 +69,11 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
     module.addSerializer(clazz, serializer);
   }
 
+  public <T> void addSerializer(JsonSerializer<T> serializer)
+  {
+    module.addSerializer(serializer);
+  }
+
   public JSONObject toJSONObject(Object o)
   {
     try {
