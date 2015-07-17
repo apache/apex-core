@@ -131,6 +131,32 @@ public class OperatorDiscoveryTest
 
   }
 
+  public static class CircleType<E extends Comparator<E>>
+  {
+    private E circleType;
+
+    public E getCircleType()
+    {
+      return circleType;
+    }
+
+    public void setCircleType(E circleType)
+    {
+      this.circleType = circleType;
+    }
+  }
+
+  @Test
+  public void bruteForceTest() throws Exception
+  {
+    String[] classFilePath = getClassFileInClasspath();
+    OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(classFilePath);
+    operatorDiscoverer.buildTypeGraph();
+    for (String arbitraryClass : operatorDiscoverer.getTypeGraph().getInitializableDescendants("java.lang.Object")) {
+      operatorDiscoverer.describeClass(arbitraryClass);
+    }
+  }
+
   @Test
   public void testOperatorDiscoverer() throws Exception
   {
@@ -138,7 +164,6 @@ public class OperatorDiscoveryTest
     OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(classFilePath);
     operatorDiscoverer.buildTypeGraph();
     JSONObject oper = operatorDiscoverer.describeOperator(SubSubClassGeneric.class);
-    System.out.println(oper);
     String debug = "\n(ASM)type info for " + TestOperator.class + ":\n" + oper.toString(2) + "\n";
 
     JSONArray props = oper.getJSONArray("properties");
@@ -207,6 +232,13 @@ public class OperatorDiscoveryTest
     Assert.assertEquals(outPort.get("name"), "output1");
     Assert.assertEquals(outPort.get("optional"), true);
     Assert.assertEquals(outPort.get("error"), false);
+
+    JSONObject circleType = operatorDiscoverer.describeClass(CircleType.class.getName())
+      .getJSONArray("properties").getJSONObject(0);
+    Assert.assertEquals(circleType.toString(2), circleType.getString("typeLiteral"), "E");
+    Assert.assertEquals(circleType.toString(2), circleType.getString("type"), "java.util.Comparator");
+    Assert.assertEquals(circleType.toString(2),
+      circleType.getJSONArray("typeArgs").getJSONObject(0).getString("typeLiteral"), "E");
   }
 
   @Test
