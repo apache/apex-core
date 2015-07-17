@@ -22,6 +22,14 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
+
+import org.mozilla.javascript.Scriptable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
@@ -49,18 +57,12 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.log4j.DTLoggerFactory;
-import org.mozilla.javascript.Scriptable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.base.Joiner;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Sets;
 
 import com.datatorrent.api.StreamingApplication;
 
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.security.StramUserLogin;
+import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.util.ConfigValidator;
 
 /**
@@ -159,11 +161,6 @@ public class StramClientUtils
   {
     private static final Logger LOG = LoggerFactory.getLogger(ClientRMHelper.class);
 
-    // TODO: HADOOP UPGRADE - replace with YarnConfiguration constants
-    private static final String RM_HA_PREFIX = YarnConfiguration.RM_PREFIX + "ha.";
-    private static final String RM_HA_IDS = RM_HA_PREFIX + "rm-ids";
-    private static final String RM_HA_ENABLED = RM_HA_PREFIX + "enabled";
-    private static final boolean DEFAULT_RM_HA_ENABLED = false;
     private static final String RM_HOSTNAME_PREFIX = YarnConfiguration.RM_PREFIX + "hostname.";
 
     private final YarnClient clientRM;
@@ -244,7 +241,7 @@ public class StramClientUtils
     private Token<RMDelegationTokenIdentifier> getRMHAToken(org.apache.hadoop.yarn.api.records.Token rmDelegationToken) {
       // Build a list of service addresses to form the service name
       ArrayList<String> services = new ArrayList<String>();
-      for (String rmId : conf.getStringCollection(RM_HA_IDS)) {
+      for (String rmId : ConfigUtils.getRMHAIds(conf)) {
         LOG.info("Yarn Resource Manager id: {}", rmId);
         // Set RM_ID to get the corresponding RM_ADDRESS
         services.add(SecurityUtil.buildTokenService(NetUtils.createSocketAddr(
@@ -268,7 +265,7 @@ public class StramClientUtils
       Token<RMDelegationTokenIdentifier> token;
       // TODO: Use the utility method getRMDelegationTokenService in ClientRMProxy to remove the separate handling of
       // TODO: HA and non-HA cases when hadoop dependency is changed to hadoop 2.4 or above
-      if (conf.getBoolean(RM_HA_ENABLED, DEFAULT_RM_HA_ENABLED)) {
+      if (ConfigUtils.isRMHAEnabled(conf)) {
         LOG.info("Yarn Resource Manager HA is enabled");
         token = getRMHAToken(rmDelegationToken);
       } else {

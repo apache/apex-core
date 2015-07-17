@@ -18,7 +18,7 @@ package com.datatorrent.stram.security;
 import java.security.Principal;
 
 /**
- * Borrowed from org.apache.hadoop.yarn.server.webproxy.amfilter.AmIPPrincipal
+ * Based on org.apache.hadoop.yarn.server.webproxy.amfilter.AmIPPrincipal
  * See https://issues.apache.org/jira/browse/YARN-1516
  *
  * @since 0.9.2
