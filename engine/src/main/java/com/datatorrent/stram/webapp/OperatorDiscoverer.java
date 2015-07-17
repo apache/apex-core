@@ -270,6 +270,8 @@ public class OperatorDiscoverer
         }
       }
 
+      typeGraph.trim();
+
       typeGraph.updatePortTypeInfoInTypeGraph(openJarFiles, openClassFiles);
     }
    finally {
