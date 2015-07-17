@@ -104,6 +104,7 @@ public class StramClient
       com.datatorrent.bufferserver.server.Server.class,
       com.datatorrent.stram.StreamingAppMaster.class,
       com.datatorrent.api.StreamCodec.class,
+      com.datatorrent.common.util.FSStorageAgent.class,
       javax.validation.ConstraintViolationException.class,
       com.ning.http.client.websocket.WebSocketUpgradeHandler.class,
       com.esotericsoftware.kryo.Kryo.class,
