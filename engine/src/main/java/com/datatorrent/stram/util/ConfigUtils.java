@@ -17,12 +17,15 @@ package com.datatorrent.stram.util;
 
 import java.io.File;
 import java.net.InetSocketAddress;
+import java.util.Collection;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.http.HttpConfig;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * <p>
@@ -32,6 +35,12 @@ import org.slf4j.LoggerFactory;
  */
 public class ConfigUtils
 {
+  // TODO: HADOOP UPGRADE - replace with YarnConfiguration constants
+  private static final String RM_HA_PREFIX = YarnConfiguration.RM_PREFIX + "ha.";
+  public static final String RM_HA_ENABLED = RM_HA_PREFIX + "enabled";
+  public static final String RM_HA_IDS = RM_HA_PREFIX + "rm-ids";
+  public static final boolean DEFAULT_RM_HA_ENABLED = false;
+
   private static String yarnLogDir;
   private static final Logger LOG = LoggerFactory.getLogger(ConfigUtils.class);
 
@@ -137,6 +146,16 @@ public class ConfigUtils
       }
     }
     return null;
+  }
+
+  public static boolean isRMHAEnabled(Configuration conf)
+  {
+    return conf.getBoolean(RM_HA_ENABLED, DEFAULT_RM_HA_ENABLED);
+  }
+
+  public static Collection<String> getRMHAIds(Configuration conf)
+  {
+    return conf.getStringCollection(RM_HA_IDS);
   }
 
   private static String getDefineValue(String optString, String name)
