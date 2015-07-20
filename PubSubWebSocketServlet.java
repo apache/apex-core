@@ -194,7 +194,7 @@ public class PubSubWebSocketServlet extends WebSocketServlet
       return;
     }
     else {
-      LOG.info("Subscribe is allowed for topic {}, user {}", topic, webSocket.getPrincipal());
+      LOG.debug("Subscribe is allowed for topic {}, user {}", topic, webSocket.getPrincipal());
     }
 
     HashSet<PubSubWebSocket> wsSet;
