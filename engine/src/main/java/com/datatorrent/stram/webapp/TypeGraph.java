@@ -952,7 +952,8 @@ public class TypeGraph
   }
 
   /*
-    Trim the fake nodes (because of dependencies not in the classpath)
+   * Trim the node(s) that depends on external dependencies.
+   * The classes that (in)directly implements/extends external classes can't be initialized anyways
    */
   public void trim()
   {
@@ -964,30 +965,51 @@ public class TypeGraph
     }
 
     for (TypeGraphVertex removeV : invalidVertexes) {
-      removeNodeUnsafe(removeV);
+      // Removing node and all it's (in)direct descendants
+      removeSubGraph(removeV);
     }
   }
 
-  private void removeNodeUnsafe(TypeGraphVertex v)
+  private void removeSubGraph(TypeGraphVertex v)
   {
-    TypeGraphVertex removedT = typeGraph.remove(v.typeName);
-    if (removedT == null) {
-      return;
-    }
-    removedT.allInitialiazableDescendants.clear();
-    removedT.ancestors.clear();
-    for (TypeGraphVertex child : v.descendants) {
-      removeNodeUnsafe(child);
-    }
-    removedT.descendants.clear();
-    if (v.isInitializable()) {
-      removeFromInitializableDescendants(v, v);
+
+    // Can't recursively remove because it will get into concurrent modification
+    // Use queue to delete all nodes
+    Queue<TypeGraphVertex> removingQueue = new LinkedList<>();
+    removingQueue.add(v);
+    while (!removingQueue.isEmpty()) {
+      TypeGraphVertex tgv = removingQueue.poll();
+      if (typeGraph.get(tgv.typeName) == null) {
+        // skip node that's been removed already.
+        // It comes from common descendants
+        continue;
+      }
+      // put all the descendants to waiting queue
+      for (TypeGraphVertex child : tgv.descendants) {
+        removingQueue.offer(child);
+      }
+      // remove from global hashmap
+      typeGraph.remove(tgv.typeName);
+      // remove from initializable descendants list of all the (in)direct ancestors
+      if (!tgv.allInitialiazableDescendants.isEmpty() && !tgv.ancestors.isEmpty()) {
+        for (TypeGraphVertex p : tgv.ancestors) {
+          removeFromInitializableDescendants(p, tgv.allInitialiazableDescendants);
+        }
+      }
+      // cut links from parent to child
+      for (TypeGraphVertex parent : tgv.ancestors) {
+        parent.descendants.remove(tgv);
+      }
+      // cut links form child to parent
+      tgv.ancestors.clear();
     }
   }
 
-  private void removeFromInitializableDescendants(TypeGraphVertex parentT, TypeGraphVertex childT)
+  private void removeFromInitializableDescendants(TypeGraphVertex parentT, Set<TypeGraphVertex> childT)
   {
-    parentT.allInitialiazableDescendants.remove(parentT);
+    for (TypeGraphVertex vertex : childT) {
+      parentT.allInitialiazableDescendants.remove(vertex);
+    }
     for (TypeGraphVertex pt : parentT.ancestors) {
       removeFromInitializableDescendants(pt, childT);
     }

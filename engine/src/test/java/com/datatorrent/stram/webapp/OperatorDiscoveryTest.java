@@ -15,6 +15,8 @@
  */
 package com.datatorrent.stram.webapp;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.net.URI;
 import java.util.*;
@@ -44,6 +46,10 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.util.ObjectMapperFactory;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
+
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.Lists;
 
 public class OperatorDiscoveryTest
@@ -155,6 +161,25 @@ public class OperatorDiscoveryTest
     for (String arbitraryClass : operatorDiscoverer.getTypeGraph().getInitializableDescendants("java.lang.Object")) {
       operatorDiscoverer.describeClass(arbitraryClass);
     }
+  }
+
+  @Test
+  public void testTypeGraphSerializer() throws Exception
+  {
+    String[] classFilePath = getClassFileInClasspath();
+    OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(classFilePath);
+    operatorDiscoverer.buildTypeGraph();
+
+    // make sure (de)serialization of type graph works withtout problem
+    Kryo kryo = new Kryo();
+    TypeGraph.TypeGraphSerializer tgs = new TypeGraph.TypeGraphSerializer();
+    kryo.register(TypeGraph.class, tgs);
+    ByteArrayOutputStream baos = new ByteArrayOutputStream(1024 * 1024 * 20);
+    Output output = new Output(baos);
+    kryo.writeObject(output, operatorDiscoverer.getTypeGraph());
+    output.close();
+    Input input = new Input(new ByteArrayInputStream(baos.toByteArray()));
+    TypeGraph tg = kryo.readObject(input, TypeGraph.class);
   }
 
   @Test
