@@ -37,7 +37,7 @@ public class CompactClassNode
   
   private List<CompactMethodNode> setterMethods;
   
-  private CompactMethodNode initializableConstructor;
+  private CompactMethodNode defaultConstructor;
   
   private List<CompactClassNode> innerClasses;
   
@@ -65,14 +65,14 @@ public class CompactClassNode
     this.name = name;
   }
 
-  public CompactMethodNode getInitializableConstructor()
+  public CompactMethodNode getDefaultConstructor()
   {
-    return initializableConstructor;
+    return defaultConstructor;
   }
 
-  public void setInitializableConstructor(CompactMethodNode initializableConstructor)
+  public void setDefaultConstructor(CompactMethodNode defaultConstructor)
   {
-    this.initializableConstructor = initializableConstructor;
+    this.defaultConstructor = defaultConstructor;
   }
 
   public List<CompactClassNode> getInnerClasses()

@@ -158,7 +158,7 @@ public class OperatorDiscoveryTest
     String[] classFilePath = getClassFileInClasspath();
     OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(classFilePath);
     operatorDiscoverer.buildTypeGraph();
-    for (String arbitraryClass : operatorDiscoverer.getTypeGraph().getInitializableDescendants("java.lang.Object")) {
+    for (String arbitraryClass : operatorDiscoverer.getTypeGraph().getInstantiableDescendants("java.lang.Object")) {
       operatorDiscoverer.describeClass(arbitraryClass);
     }
   }
@@ -411,19 +411,18 @@ public class OperatorDiscoveryTest
     OperatorDiscoverer od = new OperatorDiscoverer();
 
 
-    List<String> dList = od.getTypeGraph().getInitializableDescendants("java.util.Map");
-    Assert.assertTrue("The initializable descendants list of type java.util.Map: \n" + dList, dList.contains("java.util.HashMap"));
+    List<String> dList = od.getTypeGraph().getInstantiableDescendants("java.util.Map");
+    Assert.assertTrue("The instantiable descendants list of type java.util.Map: \n" + dList, dList.contains("java.util.HashMap"));
+    Assert.assertTrue("The instantiable descendants list of type java.util.Map: \n" + dList, !dList.contains(AbstractMap.class.getName()));
 
-    dList = od.getTypeGraph().getInitializableDescendants("java.util.List");
-    Assert.assertTrue("The initializable descendants list of type java.util.List: \n" + dList, dList.contains("java.util.ArrayList"));
-
-    dList = od.getTypeGraph().getInitializableDescendants("java.util.HashMap");
-    Assert.assertTrue("The initializable descendants list of type java.util.HashMap: \n" + dList, dList.contains("java.util.HashMap"));
+    dList = od.getTypeGraph().getInstantiableDescendants("java.util.List");
+    Assert.assertTrue("The instantiable descendants list of type java.util.List: \n" + dList, dList.contains("java.util.ArrayList"));
+    Assert.assertTrue("The instantiable descendants list of type java.util.List: \n" + dList, !dList.contains(AbstractList.class.getName()));
 
 
     String[] jdkQueue = new String[] {DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(),
         LinkedBlockingQueue.class.getName(), PriorityBlockingQueue.class.getName(), SynchronousQueue.class.getName()};
-    List<String> actualQueueClass = od.getTypeGraph().getInitializableDescendants("java.util.concurrent.BlockingQueue");
+    List<String> actualQueueClass = od.getTypeGraph().getInstantiableDescendants("java.util.concurrent.BlockingQueue");
 
 
     for (String expectedClass : jdkQueue) {
@@ -432,7 +431,7 @@ public class OperatorDiscoveryTest
 
     List<String> expectedNumberClasses = Lists.newArrayList(Byte.class.getName(), Short.class.getName(), Long.class.getName(), Integer.class.getName(), Double.class.getName(), Float.class.getName());
 
-    List<String> actualNumberClasses = od.getTypeGraph().getInitializableDescendants(Number.class.getName());
+    List<String> actualNumberClasses = od.getTypeGraph().getInstantiableDescendants(Number.class.getName());
 
     Assert.assertTrue("Actual Number types: " + actualNumberClasses.toString() + "\n Expected contained types: " + expectedNumberClasses, actualNumberClasses.containsAll(expectedNumberClasses));
 
