@@ -352,15 +352,9 @@ public class Server implements ServerListener
 
   class AuthClient extends com.datatorrent.bufferserver.client.AuthClient
   {
-    boolean ignore;
-
     @Override
     public void onMessage(byte[] buffer, int offset, int size)
     {
-      if (ignore) {
-        return;
-      }
-
       authenticateMessage(buffer, offset, size);
 
       unregistered(key);
@@ -374,21 +368,18 @@ public class Server implements ServerListener
         client.transferBuffer(buffer, readOffset + size, len);
       }
 
-      ignore = true;
+      // Remaining data has been transferred to next client in the chain and is going to be processed there so we would
+      // not be processing it here, hence discarding it
+      discardReadBuffer();
     }
   }
 
   class UnidentifiedClient extends SeedDataClient
   {
-    boolean ignore;
 
     @Override
     public void onMessage(byte[] buffer, int offset, int size)
     {
-      if (ignore) {
-        return;
-      }
-
       Tuple request = Tuple.getTuple(buffer, offset, size);
       switch (request.getType()) {
         case PUBLISHER_REQUEST:
@@ -432,7 +423,10 @@ public class Server implements ServerListener
           if (len > 0) {
             publisher.transferBuffer(this.buffer, readOffset + size, len);
           }
-          ignore = true;
+
+          // Remaining data transferred to next client and being processed there, not processed here anymore hence
+          // discarding it
+          discardReadBuffer();
 
           break;
 
@@ -441,7 +435,9 @@ public class Server implements ServerListener
            * unregister the unidentified client since its job is done!
            */
           unregistered(key);
-          ignore = true;
+          // Control is being transferred to next client in the chain so no more processing in this client after this
+          // message
+          discardReadBuffer();
           logger.info("Received subscriber request: {}", request);
 
           SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
