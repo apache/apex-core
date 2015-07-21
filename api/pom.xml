@@ -13,10 +13,6 @@
   <name>DataTorrent API</name>
   <packaging>jar</packaging>
 
-  <properties>
-    <maven.deploy.skip>false</maven.deploy.skip>
-  </properties>
-
   <repositories>
     <repository>
       <id>ossrh</id>
