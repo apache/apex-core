@@ -56,6 +56,8 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.primitives.Primitives;
 
 /**
  * A graph data structure holds all type information and their relationship needed in app builder
@@ -73,6 +75,21 @@ public class TypeGraph
     Operator.class.getName().replace('.', '/'),
     Component.class.getName().replace('.', '/')};
 
+  public static final ImmutableSet<String> JACKSON_INSTANTIABLE_CLASSES;
+
+  static {
+    ImmutableSet.Builder<String> b = ImmutableSet.builder();
+
+    for (Class pc : Primitives.allWrapperTypes()) {
+      b.add(pc.getName());
+    }
+    Iterator<FromStringDeserializer<?>> iter = FromStringDeserializer.all().iterator();
+    while (iter.hasNext()) {
+      FromStringDeserializer fsd =  iter.next();
+      b.add(fsd.getValueClass().getName());
+    }
+    JACKSON_INSTANTIABLE_CLASSES = b.build();
+  }
 
   private static boolean isAncestor(TypeGraphVertex typeTgv, TypeGraphVertex tgv)
   {
@@ -239,7 +256,7 @@ public class TypeGraph
         }
       }
 
-      updateInitializableDescendants(tgv);
+      updateInstantiableDescendants(tgv);
     } finally {
       if (input != null) {
         input.close();
@@ -323,24 +340,24 @@ public class TypeGraph
     }
   }
 
-  private void updateInitializableDescendants(TypeGraphVertex tgv)
+  private void updateInstantiableDescendants(TypeGraphVertex tgv)
   {
-    if(tgv.isInitializable()){
-      tgv.allInitialiazableDescendants.add(tgv);
+    if(tgv.isInstantiable()){
+      tgv.allInstantiableDescendants.add(tgv);
     }
     for (TypeGraphVertex parent : tgv.ancestors) {
-      updateInitializableDescendants(parent, tgv.allInitialiazableDescendants);
+      updateInstantiableDescendants(parent, tgv.allInstantiableDescendants);
     }
   }
 
-  private void updateInitializableDescendants(TypeGraphVertex tgv, Set<TypeGraphVertex> allChildren)
+  private void updateInstantiableDescendants(TypeGraphVertex tgv, Set<TypeGraphVertex> allChildren)
   {
 
-    tgv.allInitialiazableDescendants.addAll(allChildren);
+    tgv.allInstantiableDescendants.addAll(allChildren);
 
 
     for (TypeGraphVertex parent : tgv.ancestors) {
-      updateInitializableDescendants(parent, allChildren);
+      updateInstantiableDescendants(parent, allChildren);
     }
   }
 
@@ -359,28 +376,28 @@ public class TypeGraph
     return result;
   }
 
-  public List<String> getInitializableDescendants(String fullClassName)
+  public List<String> getInstantiableDescendants(String fullClassName)
   {
-    return getInitializableDescendants(fullClassName, null, null, null);
+    return getInstantiableDescendants(fullClassName, null, null, null);
   }
 
-  private void tranverse(TypeGraphVertex tgv, boolean onlyInitializable, Set<String> result, int limit)
+  private void tranverse(TypeGraphVertex tgv, boolean onlyInstantiable, Set<String> result, int limit)
   {
-    if (!onlyInitializable) {
+    if (!onlyInstantiable) {
       result.add(tgv.typeName);
     }
 
-    if (onlyInitializable && tgv.numberOfInitializableDescendants() > limit) {
+    if (onlyInstantiable && tgv.numberOfInstantiableDescendants() > limit) {
       throw new RuntimeException("Too many public concrete sub types!");
     }
 
-    if (onlyInitializable && tgv.isInitializable()) {
+    if (onlyInstantiable && tgv.isInstantiable()) {
       result.add(tgv.typeName);
     }
 
     if (tgv.descendants.size() > 0) {
       for (TypeGraphVertex child : tgv.descendants) {
-        tranverse(child, onlyInitializable, result, limit);
+        tranverse(child, onlyInstantiable, result, limit);
       }
     }
   }
@@ -396,9 +413,9 @@ public class TypeGraph
     private CompactClassNode classNode = null;
 
     /**
-     * All initializable(public type with a public non-arg constructor) implementations including direct and indirect descendants
+     * All instantiable(public type with a public non-arg constructor) implementations including direct and indirect descendants
      */
-    private final transient SortedSet<TypeGraphVertex> allInitialiazableDescendants = new TreeSet<TypeGraphVertex>(new Comparator<TypeGraphVertex>() {
+    private final transient SortedSet<TypeGraphVertex> allInstantiableDescendants = new TreeSet<TypeGraphVertex>(new Comparator<TypeGraphVertex>() {
 
       @Override
       public int compare(TypeGraphVertex o1, TypeGraphVertex o2)
@@ -437,9 +454,9 @@ public class TypeGraph
       this.classNode = classNode;
     }
 
-    public int numberOfInitializableDescendants()
+    public int numberOfInstantiableDescendants()
     {
-      return allInitialiazableDescendants.size() + (isInitializable() ? 1 : 0);
+      return allInstantiableDescendants.size() + (isInstantiable() ? 1 : 0);
     }
 
     public TypeGraphVertex(String typeName, String jarName)
@@ -448,9 +465,9 @@ public class TypeGraph
       this.jarName = jarName;
     }
 
-    private boolean isInitializable()
+    private boolean isInstantiable()
     {
-      return (isPublicConcrete() && classNode.getInitializableConstructor() != null) || UI_TYPE.getEnumFor(this) != null;
+      return JACKSON_INSTANTIABLE_CLASSES.contains(this.typeName) || (isPublicConcrete() && classNode.getDefaultConstructor() != null);
     }
 
     private boolean isPublicConcrete()
@@ -537,9 +554,9 @@ public class TypeGraph
    * @param filter
    * @param packagePrefix 
    * @param startsWith  case insensitive
-   * @return all initializable descendants of class clazz which comfort to filter expression, packagePrefix and start with $startsWith
+   * @return all instantiable descendants of class clazz which comfort to filter expression, packagePrefix and start with $startsWith
    */
-  public List<String> getInitializableDescendants(String clazz, String filter, String packagePrefix, String startsWith)
+  public List<String> getInstantiableDescendants(String clazz, String filter, String packagePrefix, String startsWith)
   {
     TypeGraphVertex tgv = typeGraph.get(clazz);
     if(tgv == null) {
@@ -549,7 +566,7 @@ public class TypeGraph
     List<String> result = new LinkedList<String>();
     if (tgv != null) {
       
-      for (TypeGraphVertex node : tgv.allInitialiazableDescendants) {
+      for (TypeGraphVertex node : tgv.allInstantiableDescendants) {
         String typeName = node.typeName;
         if (filter != null && !Pattern.matches(filter, node.typeName)) {
           continue;
@@ -990,10 +1007,10 @@ public class TypeGraph
       }
       // remove from global hashmap
       typeGraph.remove(tgv.typeName);
-      // remove from initializable descendants list of all the (in)direct ancestors
-      if (!tgv.allInitialiazableDescendants.isEmpty() && !tgv.ancestors.isEmpty()) {
+      // remove from instantiable descendants list of all the (in)direct ancestors
+      if (!tgv.allInstantiableDescendants.isEmpty() && !tgv.ancestors.isEmpty()) {
         for (TypeGraphVertex p : tgv.ancestors) {
-          removeFromInitializableDescendants(p, tgv.allInitialiazableDescendants);
+          removeFromInstantiableDescendants(p, tgv.allInstantiableDescendants);
         }
       }
       // cut links from parent to child
@@ -1005,13 +1022,13 @@ public class TypeGraph
     }
   }
 
-  private void removeFromInitializableDescendants(TypeGraphVertex parentT, Set<TypeGraphVertex> childT)
+  private void removeFromInstantiableDescendants(TypeGraphVertex parentT, Set<TypeGraphVertex> childT)
   {
     for (TypeGraphVertex vertex : childT) {
-      parentT.allInitialiazableDescendants.remove(vertex);
+      parentT.allInstantiableDescendants.remove(vertex);
     }
     for (TypeGraphVertex pt : parentT.ancestors) {
-      removeFromInitializableDescendants(pt, childT);
+      removeFromInstantiableDescendants(pt, childT);
     }
   }
 
@@ -1047,11 +1064,11 @@ public class TypeGraph
         kryo.writeObject(output, e.getValue());
       }
       
-      // Sequentially store the descendants and initializable descendants relationships in index in vertex array
+      // Sequentially store the descendants and instantiable descendants relationships in index in vertex array
       for (Entry<String, TypeGraphVertex> e : tg.typeGraph.entrySet()) {
         int[] refs = fromSet(e.getValue().descendants, indexes);
         kryo.writeObject(output, refs);
-        refs = fromSet(e.getValue().allInitialiazableDescendants, indexes);
+        refs = fromSet(e.getValue().allInstantiableDescendants, indexes);
         kryo.writeObject(output, refs);
       }
       
@@ -1088,7 +1105,7 @@ public class TypeGraph
         
         ref = kryo.readObject(input, int[].class);
         for (int j = 0; j < ref.length; j++) {
-          tgv[i].allInitialiazableDescendants.add(tgv[ref[j]]);
+          tgv[i].allInstantiableDescendants.add(tgv[ref[j]]);
         }
         
       }

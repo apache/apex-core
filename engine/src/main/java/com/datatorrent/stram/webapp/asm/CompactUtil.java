@@ -42,7 +42,7 @@ public class CompactUtil
     }
     CompactClassNode ccn = new CompactClassNode();
     ccn.setAccess(cn.access);
-    ccn.setInitializableConstructor(compactMethodNode(ASMUtil.getPublicDefaultConstructor(cn)));
+    ccn.setDefaultConstructor(compactMethodNode(ASMUtil.getPublicDefaultConstructor(cn)));
     
     List<CompactMethodNode> cmns = new LinkedList<CompactMethodNode>();
     for (MethodNode mn : ASMUtil.getPublicGetter(cn)) {
