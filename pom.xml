@@ -220,7 +220,7 @@
       <properties>
         <maven.compiler.debug>false</maven.compiler.debug>
         <maven.compiler.optimize>true</maven.compiler.optimize>
-        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.deploy.skip>false</maven.deploy.skip>
         <!-- always generate on release build -->
         <generate-revision-info-phase>generate-resources</generate-revision-info-phase>
         <distMgmtDevUrl>internal.repo::default::file://${project.build.directory}/mvn-repo</distMgmtDevUrl>

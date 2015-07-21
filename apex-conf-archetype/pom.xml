@@ -13,10 +13,6 @@
 
   <name>Apex App Configuration Maven archetype</name>
 
-  <properties>
-    <maven.deploy.skip>false</maven.deploy.skip>
-  </properties>
-
   <build>
     <extensions>
       <extension>
