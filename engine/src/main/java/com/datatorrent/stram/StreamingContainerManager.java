@@ -53,8 +53,10 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -849,32 +851,25 @@ public class StreamingContainerManager implements PlanContext
   private void saveMetaInfo() throws IOException
   {
     Path path = new Path(this.vars.appPath, APP_META_FILENAME + "." + System.nanoTime());
-    FileSystem fs = FileSystem.newInstance(path.toUri(), new Configuration());
-    try {
-      FSDataOutputStream os = fs.create(path);
-      try {
-        JSONObject top = new JSONObject();
-        JSONObject attributes = new JSONObject();
-        for (Map.Entry<Attribute<?>, Object> entry : this.plan.getLogicalPlan().getAttributes().entrySet()) {
-          attributes.put(entry.getKey().getSimpleName(), entry.getValue());
-        }
-        JSONObject customMetrics = new JSONObject();
-        for (Map.Entry<String, Map<String, Object>> entry : latestLogicalMetrics.entrySet()) {
-          customMetrics.put(entry.getKey(), new JSONArray(entry.getValue().keySet()));
-        }
-        top.put(APP_META_KEY_ATTRIBUTES, attributes);
-        top.put(APP_META_KEY_CUSTOM_METRICS, customMetrics);
-        os.write(top.toString().getBytes());
-      } catch (JSONException ex) {
-        throw new RuntimeException(ex);
-      } finally {
-        os.close();
+    FileContext fc = FileContext.getFileContext(path.toUri());
+    try (FSDataOutputStream os = fc.create(path, EnumSet.of(CreateFlag.CREATE, CreateFlag.OVERWRITE))) {
+      JSONObject top = new JSONObject();
+      JSONObject attributes = new JSONObject();
+      for (Map.Entry<Attribute<?>, Object> entry : this.plan.getLogicalPlan().getAttributes().entrySet()) {
+        attributes.put(entry.getKey().getSimpleName(), entry.getValue());
       }
-      Path origPath = new Path(this.vars.appPath, APP_META_FILENAME);
-      fs.rename(path, origPath);
-    } finally {
-      fs.close();
+      JSONObject customMetrics = new JSONObject();
+      for (Map.Entry<String, Map<String, Object>> entry : latestLogicalMetrics.entrySet()) {
+        customMetrics.put(entry.getKey(), new JSONArray(entry.getValue().keySet()));
+      }
+      top.put(APP_META_KEY_ATTRIBUTES, attributes);
+      top.put(APP_META_KEY_CUSTOM_METRICS, customMetrics);
+      os.write(top.toString().getBytes());
+    } catch (JSONException ex) {
+      throw new RuntimeException(ex);
     }
+    Path origPath = new Path(this.vars.appPath, APP_META_FILENAME);
+    fc.rename(path, origPath, Options.Rename.OVERWRITE);
   }
 
   public Queue<Pair<Long, Map<String, Object>>> getWindowMetrics(String operatorName)
