@@ -33,5 +33,7 @@ public class OperatorAggregationInfo
   public LongAggregate failureCount = new LongAggregate();
   public LongAggregate recoveryWindowId = new LongAggregate(true, true);
   public LongAggregate currentWindowId = new LongAggregate(true, true);
+  public LongAggregate checkpointTime = new LongAggregate();
+
   public Object counters;
 }

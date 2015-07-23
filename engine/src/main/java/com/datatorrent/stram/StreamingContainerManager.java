@@ -77,6 +77,7 @@ import com.datatorrent.bufferserver.auth.AuthManager;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.experimental.AppData;
 import com.datatorrent.common.util.FSStorageAgent;
+import com.datatorrent.common.util.NumberAggregate;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
@@ -1503,6 +1504,10 @@ public class StreamingContainerManager implements PlanContext
           if (stats.checkpoint instanceof Checkpoint) {
             if (oper.getRecentCheckpoint() == null || oper.getRecentCheckpoint().windowId < stats.checkpoint.getWindowId()) {
               addCheckpoint(oper, (Checkpoint) stats.checkpoint);
+              if (stats.checkpointStats != null) {
+                status.checkpointStats = stats.checkpointStats;
+                status.checkpointTimeMA.add(stats.checkpointStats.checkpointTime);
+              }
               oper.failureCount = 0;
             }
           }
@@ -2227,7 +2232,12 @@ public class StreamingContainerManager implements PlanContext
     oi.currentWindowId = toWsWindowId(os.currentWindowId.get());
     if (os.lastHeartbeat != null) {
       oi.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
+    }    
+    if (os.checkpointStats != null) {
+      oi.checkpointTime = os.checkpointStats.checkpointTime;
+      oi.checkpointStartTime = os.checkpointStats.checkpointStartTime;
     }
+    oi.checkpointTimeMA = os.checkpointTimeMA.getAvg();
     for (PortStatus ps : os.inputPortStatusList.values()) {
       PortInfo pinfo = new PortInfo();
       pinfo.name = ps.portName;
@@ -2271,6 +2281,7 @@ public class StreamingContainerManager implements PlanContext
     loi.containerIds = new TreeSet<String>();
     loi.hosts = new TreeSet<String>();
     Collection<PTOperator> physicalOperators = getPhysicalPlan().getAllOperators(operator);
+    NumberAggregate.LongAggregate checkpointTimeAggregate = new NumberAggregate.LongAggregate();
     for (PTOperator physicalOperator : physicalOperators) {
       OperatorStatus os = physicalOperator.stats;
       if (physicalOperator.isUnifier()) {
@@ -2288,6 +2299,7 @@ public class StreamingContainerManager implements PlanContext
         if (latency > loi.latencyMA) {
           loi.latencyMA = latency;
         }
+        checkpointTimeAggregate.addNumber(os.checkpointTimeMA.getAvg());
       }
       loi.cpuPercentageMA += os.cpuNanosPMSMA.getAvg() / 10000;
       if (os.lastHeartbeat != null && (loi.lastHeartbeat == 0 || loi.lastHeartbeat > os.lastHeartbeat.getGeneratedTms())) {
@@ -2318,6 +2330,7 @@ public class StreamingContainerManager implements PlanContext
         }
       }
     }
+    loi.checkpointTimeMA = checkpointTimeAggregate.getAvg().longValue();
     loi.counters = latestLogicalCounters.get(operator.getName());
     loi.customMetrics = latestLogicalMetrics.get(operator.getName());
     return loi;
@@ -2345,6 +2358,7 @@ public class StreamingContainerManager implements PlanContext
         if (os.lastHeartbeat != null) {
           oai.lastHeartbeat.addNumber(os.lastHeartbeat.getGeneratedTms());
         }
+        oai.checkpointTime.addNumber(os.checkpointTimeMA.getAvg());
       }
     }
     return oai;

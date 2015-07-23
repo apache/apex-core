@@ -83,7 +83,12 @@ public class OperatorInfo
   public Object counters;
   @RecordField(type = "stats")
   public Map<String, Object> customMetrics;
-
+  @RecordField(type="stats")
+  public long checkpointStartTime;
+  @RecordField(type="stats")
+  public long checkpointTime;
+  @RecordField(type="stats")
+  public long checkpointTimeMA;
   /**
    *
    * @param info
