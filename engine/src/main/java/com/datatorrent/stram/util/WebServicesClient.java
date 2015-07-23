@@ -23,6 +23,8 @@ import com.sun.jersey.api.client.AsyncWebResource;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.async.ITypeListener;
+import com.sun.jersey.api.client.config.ClientConfig;
+import com.sun.jersey.api.client.config.DefaultClientConfig;
 import com.sun.jersey.client.apache4.ApacheHttpClient4Handler;
 
 import org.slf4j.Logger;
@@ -54,6 +56,8 @@ public class WebServicesClient
 
   private static final PoolingHttpClientConnectionManager connectionManager;
   private static final CredentialsProvider credentialsProvider;
+  private static final int DEFAULT_CONNECT_TIMEOUT = 10000;
+  private static final int DEFAULT_READ_TIMEOUT = 10000;
 
   private final Client client;
 
@@ -79,7 +83,16 @@ public class WebServicesClient
     });
   }
 
-  public WebServicesClient() {
+  public WebServicesClient()
+  {
+    this(new DefaultClientConfig());
+    client.getProperties().put(ClientConfig.PROPERTY_FOLLOW_REDIRECTS, true);
+    client.getProperties().put(ClientConfig.PROPERTY_CONNECT_TIMEOUT, DEFAULT_CONNECT_TIMEOUT);
+    client.getProperties().put(ClientConfig.PROPERTY_READ_TIMEOUT, DEFAULT_READ_TIMEOUT);
+  }
+
+  public WebServicesClient(ClientConfig config)
+  {
     if (UserGroupInformation.isSecurityEnabled()) {
       HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
       httpClientBuilder.setConnectionManager(connectionManager);
@@ -89,9 +102,9 @@ public class WebServicesClient
               .build();
       httpClientBuilder.setDefaultAuthSchemeRegistry(authProviders);
       ApacheHttpClient4Handler httpClientHandler = new ApacheHttpClient4Handler(httpClientBuilder.build(), new BasicCookieStore(), false);
-      client = new Client(httpClientHandler);
+      client = new Client(httpClientHandler, config);
     } else {
-      client = Client.create();
+      client = Client.create(config);
     }
   }
 
