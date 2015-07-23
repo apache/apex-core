@@ -324,7 +324,6 @@ public class StreamingAppMasterService extends CompositeService
       return (criticalPathInfo == null) ? 0 : criticalPathInfo.latency;
     }
 
-    @AppDataPushAgent.Metric
     @Override
     public long getWindowStartMillis()
     {
