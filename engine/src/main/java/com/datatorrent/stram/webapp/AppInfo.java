@@ -103,7 +103,6 @@ public class AppInfo {
     }
 
     @javax.xml.bind.annotation.XmlElement
-    @AppDataPushAgent.Metric
     public long getWindowStartMillis()
     {
       return 0;
