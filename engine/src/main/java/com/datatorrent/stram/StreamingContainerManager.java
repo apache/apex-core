@@ -168,6 +168,7 @@ public class StreamingContainerManager implements PlanContext
   private List<AppDataSource> appDataSources = null;
   private final Cache<Long, Object> commandResponse = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
   private long lastLatencyWarningTime;
+  private transient ExecutorService poolExecutor;
 
   //logic operator name to a queue of logical customMetrics. this gets cleared periodically
   private final Map<String, Queue<Pair<Long, Map<String, Object>>>> logicalMetrics = Maps.newConcurrentMap();
@@ -318,6 +319,7 @@ public class StreamingContainerManager implements PlanContext
   {
     this.clock = clock;
     this.vars = new FinalVars(dag, clock.getTime());
+    poolExecutor = Executors.newFixedThreadPool(4);
     // setup prior to plan creation for event recording
     if (enableEventRecording) {
       this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
@@ -345,6 +347,7 @@ public class StreamingContainerManager implements PlanContext
   {
     this.vars = checkpointedState.finals;
     this.clock = new SystemClock();
+    poolExecutor = Executors.newFixedThreadPool(4);
     this.plan = checkpointedState.physicalPlan;
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     setupWsClient();
@@ -490,6 +493,9 @@ public class StreamingContainerManager implements PlanContext
     IOUtils.closeQuietly(containerFile);
     for (FSJsonLineFile operatorFile : operatorFiles.values()) {
       IOUtils.closeQuietly(operatorFile);
+    }
+    if(poolExecutor != null) {
+      poolExecutor.shutdown();
     }
   }
 
@@ -1965,15 +1971,23 @@ public class StreamingContainerManager implements PlanContext
   private void purgeCheckpoints()
   {
     for (Pair<PTOperator, Long> p : purgeCheckpoints) {
-      PTOperator operator = p.getFirst();
+      final PTOperator operator = p.getFirst();
       if (!operator.isOperatorStateLess()) {
-        try {
-          operator.getOperatorMeta().getValue(OperatorContext.STORAGE_AGENT).delete(operator.getId(), p.getSecond());
-          //LOG.debug("Purged checkpoint {} {}", operator.getId(), p.getSecond());
-        }
-        catch (Exception e) {
-          LOG.error("Failed to purge checkpoint {}", p, e);
-        }
+        final long windowId = p.getSecond();
+        Runnable r = new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            try {
+              operator.getOperatorMeta().getValue(OperatorContext.STORAGE_AGENT).delete(operator.getId(), windowId);
+            }
+            catch (IOException ex) {
+              LOG.error("Failed to purge checkpoint for operator {} for windowId {}", operator, windowId, ex);
+            }
+          }
+        };
+        poolExecutor.submit(r);
       }
       // delete stream state when using buffer server
       for (PTOperator.PTOutput out : operator.getOutputs()) {
