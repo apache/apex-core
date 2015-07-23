@@ -368,8 +368,10 @@ public class Server implements ServerListener
         client.transferBuffer(buffer, readOffset + size, len);
       }
 
-      // Remaining data has been transferred to next client in the chain and is going to be processed there so we would
-      // not be processing it here, hence discarding it
+      /*
+       * Remaining data has been transferred to next client in the chain and is going to be processed there so we would
+       * not be processing it here, hence discarding it.
+       */
       discardReadBuffer();
     }
   }
@@ -424,8 +426,10 @@ public class Server implements ServerListener
             publisher.transferBuffer(this.buffer, readOffset + size, len);
           }
 
-          // Remaining data transferred to next client and being processed there, not processed here anymore hence
-          // discarding it
+          /*
+           * Remaining data transferred to next client and being processed there, not processed here anymore hence
+           * discarding it.
+           */
           discardReadBuffer();
 
           break;
@@ -435,8 +439,10 @@ public class Server implements ServerListener
            * unregister the unidentified client since its job is done!
            */
           unregistered(key);
-          // Control is being transferred to next client in the chain so no more processing in this client after this
-          // message
+          /*
+           * Control is being transferred to next client in the chain so no more processing in this client after this
+           * message.
+           */
           discardReadBuffer();
           logger.info("Received subscriber request: {}", request);
 
