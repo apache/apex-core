@@ -126,7 +126,7 @@ public class Server implements ServerListener
 
   public void setAuthToken(byte[] authToken)
   {
-    this.authToken = authToken;
+    this.authToken = authToken == null? null: Arrays.copyOf(authToken, authToken.length);
   }
 
   /**
@@ -767,24 +767,24 @@ public class Server implements ServerListener
 
   }
 
-  abstract class SeedDataClient extends AbstractLengthPrependerClient
+  static abstract class SeedDataClient extends AbstractLengthPrependerClient
   {
 
-    public SeedDataClient()
+    SeedDataClient()
     {
     }
 
-    public SeedDataClient(int readBufferSize, int sendBufferSize)
+    SeedDataClient(int readBufferSize, int sendBufferSize)
     {
       super(readBufferSize, sendBufferSize);
     }
 
-    public SeedDataClient(byte[] readbuffer, int position, int sendBufferSize)
+    SeedDataClient(byte[] readbuffer, int position, int sendBufferSize)
     {
       super(readbuffer, position, sendBufferSize);
     }
 
-    public void transferBuffer(byte[] array, int offset, int len)
+    void transferBuffer(byte[] array, int offset, int len)
     {
       int remainingCapacity;
       do {
