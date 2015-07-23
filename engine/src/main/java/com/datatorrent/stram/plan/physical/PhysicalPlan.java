@@ -18,6 +18,7 @@ package com.datatorrent.stram.plan.physical;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,6 +43,7 @@ import com.datatorrent.api.StatsListener.OperatorRequest;
 import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
@@ -51,6 +53,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
 import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
@@ -304,6 +307,9 @@ public class PhysicalPlan implements Serializable
 
     Stack<OperatorMeta> pendingNodes = new Stack<OperatorMeta>();
 
+    // Add logging operators for streams if not added already
+    updatePersistOperatorStreamCodec(dag);
+
     for (OperatorMeta n : dag.getAllOperators()) {
       pendingNodes.push(n);
     }
@@ -331,6 +337,8 @@ public class PhysicalPlan implements Serializable
         addLogicalOperator(n);
       }
     }
+
+    updatePartitionsInfoForPersistOperator(dag);
 
     // assign operators to containers
     int groupCount = 0;
@@ -369,6 +377,106 @@ public class PhysicalPlan implements Serializable
     this.newOpers.clear();
     this.deployOpers.clear();
     this.undeployOpers.clear();
+  }
+
+  private void updatePartitionsInfoForPersistOperator(LogicalPlan dag)
+  {
+    // Add Partition mask and partition keys of Sinks to persist to Wrapper
+    // StreamCodec for persist operator
+    try {
+      for (OperatorMeta n : dag.getAllOperators()) {
+        for (StreamMeta s : n.getOutputStreams().values()) {
+          if (s.getPersistOperator() != null) {
+            InputPortMeta persistInputPort = s.getPersistOperatorInputPort();
+            StreamCodecWrapperForPersistance persistCodec = (StreamCodecWrapperForPersistance) persistInputPort.getAttributes().get(PortContext.STREAM_CODEC);
+            if (persistCodec == null)
+              continue;
+            // Logging is enabled for the stream
+            for (InputPortMeta portMeta : s.getSinksToPersist()) {
+              updatePersistOperatorWithSinkPartitions(persistInputPort, s.getPersistOperator(), persistCodec, portMeta);
+            }
+          }
+
+          // Check partitioning for persist operators per sink too
+          for (Entry<InputPortMeta, InputPortMeta> entry : s.sinkSpecificPersistInputPortMap.entrySet()) {
+            InputPortMeta persistInputPort = entry.getValue();
+            StreamCodec codec = persistInputPort.getAttributes().get(PortContext.STREAM_CODEC);
+            if (codec != null) {
+              if (codec instanceof StreamCodecWrapperForPersistance) {
+                StreamCodecWrapperForPersistance persistCodec = (StreamCodecWrapperForPersistance) codec;
+                updatePersistOperatorWithSinkPartitions(persistInputPort, s.sinkSpecificPersistOperatorMap.get(entry.getKey()), persistCodec, entry.getKey());
+              }
+            }
+          }
+        }
+      }
+    } catch (Exception e) {
+      DTThrowable.wrapIfChecked(e);
+    }
+  }
+
+  private void updatePersistOperatorWithSinkPartitions(InputPortMeta persistInputPort, OperatorMeta persistOperatorMeta, StreamCodecWrapperForPersistance persistCodec, InputPortMeta sinkPortMeta)
+  {
+    Collection<PTOperator> ptOperators = getOperators(sinkPortMeta.getOperatorWrapper());
+    Collection<PartitionKeys> partitionKeysList = new ArrayList<PartitionKeys>();
+    for (PTOperator p : ptOperators) {
+      PartitionKeys keys = (PartitionKeys) p.getPartitionKeys().get(sinkPortMeta.getPortObject());
+      partitionKeysList.add(keys);
+    }
+
+    persistCodec.inputPortToPartitionMap.put(sinkPortMeta, partitionKeysList);
+  }
+
+  private void updatePersistOperatorStreamCodec(LogicalPlan dag)
+  {
+    HashMap<StreamMeta, StreamCodec<?>> streamMetaToCodecMap = new HashMap<StreamMeta, StreamCodec<?>>();
+    try {
+      for (OperatorMeta n : dag.getAllOperators()) {
+        for (StreamMeta s : n.getOutputStreams().values()) {
+          if (s.getPersistOperator() != null) {
+            Map<InputPortMeta, StreamCodec<Object>> inputStreamCodecs = new HashMap<InputPortMeta, StreamCodec<Object>>();
+            // Logging is enabled for the stream
+            for (InputPortMeta portMeta : s.getSinksToPersist()) {
+              InputPort<?> port = portMeta.getPortObject();
+              StreamCodec<?> inputStreamCodec = (portMeta.getValue(PortContext.STREAM_CODEC) != null) ? portMeta.getValue(PortContext.STREAM_CODEC) : port.getStreamCodec();
+              if (inputStreamCodec != null) {
+                boolean alreadyAdded = false;
+
+                for (StreamCodec<?> codec : inputStreamCodecs.values()) {
+                  if (inputStreamCodec.equals(codec)) {
+                    alreadyAdded = true;
+                    break;
+                  }
+                }
+                if (!alreadyAdded) {
+                  inputStreamCodecs.put(portMeta, (StreamCodec<Object>) inputStreamCodec);
+                }
+              }
+            }
+
+            if (inputStreamCodecs.isEmpty()) {
+              // Stream codec not specified
+              // So everything out of Source should be captured without any
+              // StreamCodec
+              // Do nothing
+            } else {
+              // Create Wrapper codec for Stream persistence using all unique
+              // stream codecs
+              // Logger should write merged or union of all input stream codecs
+              StreamCodec<Object> specifiedCodecForLogger = (s.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC) != null) ? (StreamCodec<Object>) s.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC) : (StreamCodec<Object>) s.getPersistOperatorInputPort().getPortObject().getStreamCodec();
+              StreamCodecWrapperForPersistance<Object> codec = new StreamCodecWrapperForPersistance<Object>(inputStreamCodecs, specifiedCodecForLogger);
+              streamMetaToCodecMap.put(s, codec);
+            }
+          }
+        }
+      }
+
+      for (java.util.Map.Entry<StreamMeta, StreamCodec<?>> entry : streamMetaToCodecMap.entrySet()) {
+        dag.setInputPortAttribute(entry.getKey().getPersistOperatorInputPort().getPortObject(), PortContext.STREAM_CODEC, entry.getValue());
+      }
+    } catch (Exception e) {
+      DTThrowable.wrapIfChecked(e);
+    }
   }
 
   private void setContainer(PTOperator pOperator, PTContainer container) {
@@ -856,7 +964,7 @@ public class PhysicalPlan implements Serializable
     Set<PTContainer> newContainers = Sets.newHashSet();
     Set<PTContainer> releaseContainers = Sets.newHashSet();
     assignContainers(newContainers, releaseContainers);
-
+    updatePartitionsInfoForPersistOperator(this.dag);
     this.undeployOpers.removeAll(newOpers.keySet());
     //make sure all the new operators are included in deploy operator list
     this.deployOpers.addAll(this.newOpers.keySet());

@@ -106,6 +106,38 @@ public interface DAG extends DAGContext, Serializable
 
     public StreamMeta addSink(Operator.InputPort<?> port);
 
+    /**
+     * Persist entire stream using operator passed.
+     *
+     * @param Persist Operator name
+     * @param Operator to use for persisting
+     * @param Input port to use for persisting
+     * @return Object that describes the meta for the stream.
+     */
+    public StreamMeta persistUsing(String name, Operator persistOperator, Operator.InputPort<?> persistOperatorInputPort);
+
+    /**
+     * Set locality for the stream. The setting is best-effort, engine can
+     * override due to other settings or constraints.
+     *
+     * @param Persist Operator name
+     * @param Operator to use for persisting
+     * @return Object that describes the meta for the stream.
+     */
+    public StreamMeta persistUsing(String name, Operator persistOperator);
+
+    /**
+     * Set locality for the stream. The setting is best-effort, engine can
+     * override due to other settings or constraints.
+     *
+     * @param Persist Operator name
+     * @param Operator to use for persisting
+     * @param Input port to use for persisting
+     * @param Sink to persist
+     * @return Object that describes the meta for the stream.
+     */
+    public StreamMeta persistUsing(String name, Operator persistOperator, Operator.InputPort<?> persistOperatorInputPort, Operator.InputPort<?> sinkToPersist);
+
   }
 
   /**
