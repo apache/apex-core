@@ -92,6 +92,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public final OperatorContext context;
   public final BlockingQueue<StatsListener.OperatorResponse> commandResponse;
   private final List<Field> metricFields;
+  protected Stats.CheckpointStats checkpointStats;
 
   public Node(OPERATOR operator, OperatorContext context)
   {
@@ -371,6 +372,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     if (checkpoint != null) {
       stats.checkpoint = checkpoint;
+      stats.checkpointStats = checkpointStats;
+      checkpointStats = null;
       checkpoint = null;
     }
 
@@ -405,7 +408,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       StorageAgent ba = context.getValue(OperatorContext.STORAGE_AGENT);
       if (ba != null) {
         try {
+          checkpointStats = new Stats.CheckpointStats();
+          checkpointStats.checkpointStartTime = System.currentTimeMillis();
           ba.save(operator, id, windowId);
+          checkpointStats.checkpointTime = System.currentTimeMillis() - checkpointStats.checkpointStartTime;
         }
         catch (IOException ie) {
           try {

@@ -149,6 +149,7 @@ public class CheckpointTest
     Assert.assertEquals("checkpoints " + o2p1, Sets.newHashSet(Stateless.WINDOW_ID), checkpoints);
 
     Assert.assertEquals("checkpoints " + o1p1 + " " + o1p1.checkpoints, 2, o1p1.checkpoints.size());
+    Assert.assertNotNull("checkpoint not null for statefull operator " + o1p1, o1p1.stats.checkpointStats);
 
     for (Checkpoint cp : o1p1.checkpoints) {
       Object load = fssa.load(o1p1.getId(), cp.windowId);
@@ -234,6 +235,7 @@ public class CheckpointTest
     Assert.assertEquals("checkpoint " + o1p1, cp3, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + o2p1, cp3, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + o3SLp1, cp5, o3SLp1.getRecoveryCheckpoint());
+    Assert.assertNull("checkpoint null for stateless operator " + o3SLp1, o3SLp1.stats.checkpointStats);
 
     o2p1.checkpoints.add(cp4);
     dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));

@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
@@ -30,6 +31,7 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHea
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.StatsRevisions.VersionedLong;
+import com.datatorrent.stram.util.MovingAverage;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
 
@@ -68,6 +70,8 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public final VersionedLong tuplesProcessedPSMA = statsRevs.newVersionedLong();
   public final VersionedLong tuplesEmittedPSMA = statsRevs.newVersionedLong();
   public String recordingId;
+  public Stats.CheckpointStats checkpointStats;
+  public final MovingAverageLong checkpointTimeMA;
   public final TimedMovingAverageLong cpuNanosPMSMA;
   public final MovingAverageLong latencyMA;
   public final Map<String, PortStatus> inputPortStatusList = new ConcurrentHashMap<String, PortStatus>();
@@ -94,6 +98,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
 
     cpuNanosPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
     latencyMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
+    checkpointTimeMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
     this.windowProcessingTimeoutMillis = dag.getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS)
       * om.getValue(OperatorContext.TIMEOUT_WINDOW_COUNT);
   }
