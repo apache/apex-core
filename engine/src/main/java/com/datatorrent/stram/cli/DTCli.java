@@ -2425,7 +2425,7 @@ public class DTCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       try {
-        printJson(getResource(StramWebServices.PATH_SHUTDOWN, currentApp));
+        printJson(getResource(StramWebServices.PATH_PHYSICAL_PLAN, currentApp));
       } catch (Exception e) {
         throw new CliException("Failed web service request for appid " + currentApp.getApplicationId().toString(), e);
       }
