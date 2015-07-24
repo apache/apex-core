@@ -55,4 +55,6 @@ public class LogicalOperatorInfo
   public Set<String> hosts;
   public Object counters;
   public Object customMetrics;
+  @AppDataPushAgent.Metric
+  public long checkpointTimeMA;
 }
