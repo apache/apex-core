@@ -359,7 +359,7 @@ public final class StatsAgent extends FSPartFileAgent
       os.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
       cursor = cursor2 + 1;
       os.stats = new ObjectMapperString(partLine.substring(cursor));
-      if ((startTime != null || os.timestamp >= startTime) && (endTime != null || os.timestamp <= endTime)) {
+      if ((startTime == null || os.timestamp >= startTime) && (endTime == null || os.timestamp <= endTime)) {
         result.add(os);
       }
     }
