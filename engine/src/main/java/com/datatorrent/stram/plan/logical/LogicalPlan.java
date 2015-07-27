@@ -15,7 +15,9 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import com.datatorrent.common.experimental.AppData;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
@@ -24,14 +26,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.validation.*;
 import javax.validation.constraints.NotNull;
 
-import com.google.common.collect.Sets;
-
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import com.google.common.collect.Sets;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
@@ -42,6 +44,7 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
+import com.datatorrent.common.experimental.AppData;
 import com.datatorrent.common.metric.MetricsAggregator;
 import com.datatorrent.common.metric.SingleMetricAggregator;
 import com.datatorrent.common.metric.sum.DoubleSumAggregator;
@@ -169,7 +172,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public void sendCustomMetrics(Collection<String> metricNames)
+  public void sendMetrics(Collection<String> metricNames)
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
@@ -243,7 +246,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public void sendCustomMetrics(Collection<String> metricNames)
+    public void sendMetrics(Collection<String> metricNames)
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
@@ -368,7 +371,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public void sendCustomMetrics(Collection<String> metricNames)
+    public void sendMetrics(Collection<String> metricNames)
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
@@ -530,7 +533,7 @@ public class LogicalPlan implements Serializable, DAG
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
     private transient Operator operator;
-    private CustomMetricAggregatorMeta customMetricAggregatorMeta;
+    private MetricAggregatorMeta metricAggregatorMeta;
 
     /*
      * Used for  OIO validation,
@@ -607,23 +610,28 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public void sendCustomMetrics(Collection<String> metricNames)
+    public void sendMetrics(Collection<String> metricNames)
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    public CustomMetricAggregatorMeta getCustomMetricAggregatorMeta()
+    public MetricAggregatorMeta getMetricAggregatorMeta()
     {
-      return customMetricAggregatorMeta;
+      return metricAggregatorMeta;
     }
 
     protected void populateAggregatorMeta()
     {
-      CustomMetric.Aggregator aggregator = getValue(OperatorContext.CUSTOM_METRIC_AGGREGATOR);
+      AutoMetric.Aggregator aggregator = getValue(OperatorContext.METRICS_AGGREGATOR);
       if (aggregator == null) {
         MetricsAggregator defAggregator = null;
-        for (Field field : operator.getClass().getDeclaredFields()) {
-          if (field.isAnnotationPresent(CustomMetric.class)) {
+        Set<String> metricNames = Sets.newHashSet();
+
+        for (Field field : ReflectionUtils.getDeclaredFieldsIncludingInherited(operator.getClass())) {
+
+          if (field.isAnnotationPresent(AutoMetric.class)) {
+            metricNames.add(field.getName());
+
             if (field.getType() == int.class || field.getType() == Integer.class ||
               field.getType() == long.class || field.getType() == Long.class) {
               if (defAggregator == null) {
@@ -640,12 +648,47 @@ public class LogicalPlan implements Serializable, DAG
             }
           }
         }
+
+        try {
+          for (PropertyDescriptor pd : Introspector.getBeanInfo(operator.getClass()).getPropertyDescriptors()) {
+            Method readMethod = pd.getReadMethod();
+            if (readMethod != null) {
+              AutoMetric rfa = readMethod.getAnnotation(AutoMetric.class);
+              if (rfa != null) {
+                String propName = pd.getName();
+                if (metricNames.contains(propName)) {
+                  continue;
+                }
+
+                if (readMethod.getReturnType() == int.class || readMethod.getReturnType() == Integer.class ||
+                  readMethod.getReturnType() == long.class || readMethod.getReturnType() == Long.class) {
+
+                  if (defAggregator == null) {
+                    defAggregator = new MetricsAggregator();
+                  }
+                  defAggregator.addAggregators(propName, new SingleMetricAggregator[]{new LongSumAggregator()});
+
+                } else if (readMethod.getReturnType() == float.class || readMethod.getReturnType() == Float.class ||
+                  readMethod.getReturnType() == double.class || readMethod.getReturnType() == Double.class) {
+
+                  if (defAggregator == null) {
+                    defAggregator = new MetricsAggregator();
+                  }
+                  defAggregator.addAggregators(propName, new SingleMetricAggregator[]{new DoubleSumAggregator()});
+                }
+              }
+            }
+          }
+        } catch (IntrospectionException e) {
+          throw new RuntimeException("finding methods", e);
+        }
+
         if (defAggregator != null) {
           aggregator = defAggregator;
         }
       }
-      this.customMetricAggregatorMeta = new CustomMetricAggregatorMeta(aggregator,
-        getValue(OperatorContext.CUSTOM_METRIC_DIMENSIONS_SCHEME));
+      this.metricAggregatorMeta = new MetricAggregatorMeta(aggregator,
+        getValue(OperatorContext.METRICS_DIMENSIONS_SCHEME));
     }
 
     private class PortMapping implements Operators.OperatorDescriptor
@@ -1436,19 +1479,19 @@ public class LogicalPlan implements Serializable, DAG
     return result;
   }
 
-  public final class CustomMetricAggregatorMeta implements Serializable
+  public final class MetricAggregatorMeta implements Serializable
   {
-    private final CustomMetric.Aggregator aggregator;
-    private final CustomMetric.DimensionsScheme dimensionsScheme;
+    private final AutoMetric.Aggregator aggregator;
+    private final AutoMetric.DimensionsScheme dimensionsScheme;
 
-    protected CustomMetricAggregatorMeta(CustomMetric.Aggregator aggregator,
-                                         CustomMetric.DimensionsScheme dimensionsScheme)
+    protected MetricAggregatorMeta(AutoMetric.Aggregator aggregator,
+                                   AutoMetric.DimensionsScheme dimensionsScheme)
     {
       this.aggregator = aggregator;
       this.dimensionsScheme = dimensionsScheme;
     }
 
-    public CustomMetric.Aggregator getAggregator()
+    public AutoMetric.Aggregator getAggregator()
     {
       return this.aggregator;
     }

@@ -126,7 +126,7 @@ public class StreamingContainerManager implements PlanContext
   public final static String BUILTIN_APPDATA_URL = "builtin";
   public final static String APP_META_FILENAME = "meta.json";
   public final static String APP_META_KEY_ATTRIBUTES = "attributes";
-  public final static String APP_META_KEY_CUSTOM_METRICS = "customMetrics";
+  public final static String APP_META_KEY_METRICS = "metrics";
 
   public final static long LATENCY_WARNING_THRESHOLD_MILLIS = 10 * 60 * 1000; // 10 minutes
   public final static Recoverable SET_OPERATOR_PROPERTY = new SetOperatorProperty();
@@ -173,9 +173,9 @@ public class StreamingContainerManager implements PlanContext
   private long lastLatencyWarningTime;
   private transient ExecutorService poolExecutor;
 
-  //logic operator name to a queue of logical customMetrics. this gets cleared periodically
+  //logic operator name to a queue of logical metrics. this gets cleared periodically
   private final Map<String, Queue<Pair<Long, Map<String, Object>>>> logicalMetrics = Maps.newConcurrentMap();
-  //logical operator name to latest logical customMetrics.
+  //logical operator name to latest logical metrics.
   private final Map<String, Map<String, Object>> latestLogicalMetrics = Maps.newHashMap();
 
   //logical operator name to latest counters. exists for backward compatibility.
@@ -210,7 +210,7 @@ public class StreamingContainerManager implements PlanContext
     long emitTimestamp = -1;
     HashMap<String, Long> dequeueTimestamps = new HashMap<String, Long>(); // input port name to end window dequeue time
     Object counters;
-    Map<String, Object> customMetrics;
+    Map<String, Object> metrics;
   }
 
   public static class CriticalPathInfo
@@ -636,7 +636,7 @@ public class StreamingContainerManager implements PlanContext
     return appDataSources;
   }
 
-  public Map<String, Map<String, Object>> getCustomMetrics()
+  public Map<String, Map<String, Object>> getLatestLogicalMetrics()
   {
     return latestLogicalMetrics;
   }
@@ -804,18 +804,18 @@ public class StreamingContainerManager implements PlanContext
     }
 
     for (OperatorMeta operatorMeta : logicalOperators) {
-      CustomMetric.Aggregator aggregator = operatorMeta.getCustomMetricAggregatorMeta() != null ?
-        operatorMeta.getCustomMetricAggregatorMeta().getAggregator() : null;
+      AutoMetric.Aggregator aggregator = operatorMeta.getMetricAggregatorMeta() != null ?
+        operatorMeta.getMetricAggregatorMeta().getAggregator() : null;
       if (aggregator == null) {
         continue;
       }
       Collection<PTOperator> physicalOperators = plan.getAllOperators(operatorMeta);
-      List<CustomMetric.PhysicalMetricsContext> metricPool = Lists.newArrayList();
+      List<AutoMetric.PhysicalMetricsContext> metricPool = Lists.newArrayList();
 
       for (PTOperator operator : physicalOperators) {
         EndWindowStats stats = endWindowStatsMap.get(operator.getId());
-        if (stats != null && stats.customMetrics != null) {
-          PhysicalMetricsContextImpl physicalMetrics = new PhysicalMetricsContextImpl(operator.getId(), stats.customMetrics);
+        if (stats != null && stats.metrics != null) {
+          PhysicalMetricsContextImpl physicalMetrics = new PhysicalMetricsContextImpl(operator.getId(), stats.metrics);
           metricPool.add(physicalMetrics);
         }
       }
@@ -837,7 +837,7 @@ public class StreamingContainerManager implements PlanContext
           };
           logicalMetrics.put(operatorMeta.getName(), windowMetrics);
         }
-        LOG.debug("Adding to logical customMetrics for {}", operatorMeta.getName());
+        LOG.debug("Adding to logical metrics for {}", operatorMeta.getName());
         windowMetrics.add(new Pair<Long, Map<String, Object>>(windowId, lm));
         Map<String, Object> oldValue = latestLogicalMetrics.put(operatorMeta.getName(), lm);
         if (oldValue == null) {
@@ -865,12 +865,12 @@ public class StreamingContainerManager implements PlanContext
       for (Map.Entry<Attribute<?>, Object> entry : this.plan.getLogicalPlan().getAttributes().entrySet()) {
         attributes.put(entry.getKey().getSimpleName(), entry.getValue());
       }
-      JSONObject customMetrics = new JSONObject();
+      JSONObject autoMetrics = new JSONObject();
       for (Map.Entry<String, Map<String, Object>> entry : latestLogicalMetrics.entrySet()) {
-        customMetrics.put(entry.getKey(), new JSONArray(entry.getValue().keySet()));
+        autoMetrics.put(entry.getKey(), new JSONArray(entry.getValue().keySet()));
       }
       top.put(APP_META_KEY_ATTRIBUTES, attributes);
-      top.put(APP_META_KEY_CUSTOM_METRICS, customMetrics);
+      top.put(APP_META_KEY_METRICS, autoMetrics);
       os.write(top.toString().getBytes());
     } catch (JSONException ex) {
       throw new RuntimeException(ex);
@@ -1623,9 +1623,9 @@ public class StreamingContainerManager implements PlanContext
           if (oper.getOperatorMeta().getValue(OperatorContext.COUNTERS_AGGREGATOR) != null) {
             endWindowStats.counters = stats.counters;
           }
-          if (oper.getOperatorMeta().getCustomMetricAggregatorMeta() != null &&
-            oper.getOperatorMeta().getCustomMetricAggregatorMeta().getAggregator() != null) {
-            endWindowStats.customMetrics = stats.customMetrics;
+          if (oper.getOperatorMeta().getMetricAggregatorMeta() != null &&
+            oper.getOperatorMeta().getMetricAggregatorMeta().getAggregator() != null) {
+            endWindowStats.metrics = stats.metrics;
           }
 
           if (stats.windowId > currentEndWindowStatsWindowId) {
@@ -2276,8 +2276,8 @@ public class StreamingContainerManager implements PlanContext
     oi.counters = os.getLastWindowedStats().size() > 0 ?
       os.getLastWindowedStats().get(os.getLastWindowedStats().size() - 1).counters : null;
 
-    oi.customMetrics = os.getLastWindowedStats().size() > 0 ?
-      os.getLastWindowedStats().get(os.getLastWindowedStats().size() - 1).customMetrics : null;
+    oi.metrics = os.getLastWindowedStats().size() > 0 ?
+      os.getLastWindowedStats().get(os.getLastWindowedStats().size() - 1).metrics : null;
     return oi;
   }
 
@@ -2346,7 +2346,7 @@ public class StreamingContainerManager implements PlanContext
     }
     loi.checkpointTimeMA = checkpointTimeAggregate.getAvg().longValue();
     loi.counters = latestLogicalCounters.get(operator.getName());
-    loi.customMetrics = latestLogicalMetrics.get(operator.getName());
+    loi.autoMetrics = latestLogicalMetrics.get(operator.getName());
     return loi;
   }
 

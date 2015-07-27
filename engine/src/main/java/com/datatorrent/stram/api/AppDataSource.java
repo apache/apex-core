@@ -41,7 +41,7 @@ public class AppDataSource
 
   public enum Type
   {
-    DAG("dag"), APP_STATS("appStats"), OPERATOR_STATS("operatorStats"), CUSTOM_METRICS("customMetrics");
+    DAG("dag"), APP_STATS("appStats"), OPERATOR_STATS("operatorStats"), CUSTOM_METRICS("metrics");
 
     private final String name;
 

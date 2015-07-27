@@ -25,9 +25,9 @@ import java.util.Map;
  * name will be used as the metric key.
  */
 @Documented
-@Target(ElementType.FIELD)
+@Target({ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface CustomMetric
+public @interface AutoMetric
 {
   /**
    * Represents collection of physical metrics.
@@ -37,7 +37,7 @@ public @interface CustomMetric
     /**
      * @return map of metric name to value
      */
-     Map<String, Object> getCustomMetrics();
+     Map<String, Object> getMetrics();
 
     /**
      *
@@ -47,9 +47,9 @@ public @interface CustomMetric
   }
 
   /**
-   * It aggregates custom metrics from multiple physical partitions of an operator to a logical one.<br/>
+   * It aggregates metrics from multiple physical partitions of an operator to a logical one.<br/>
    * An aggregator is provided as operator attribute. By default when there isn't any aggregator set the engine does
-   * summation of a number custom metric.
+   * summation of a number metric.
    */
   public static interface Aggregator
   {

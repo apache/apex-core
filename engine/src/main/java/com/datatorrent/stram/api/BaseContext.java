@@ -70,7 +70,7 @@ public class BaseContext extends AbstractWritableAdapter implements Context
   }
 
   @Override
-  public void sendCustomMetrics(Collection<String> metricNames)
+  public void sendMetrics(Collection<String> metricNames)
   {
     metricsListed = true;
     metricsToSend = metricNames;

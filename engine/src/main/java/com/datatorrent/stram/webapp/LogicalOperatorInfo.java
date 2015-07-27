@@ -20,6 +20,8 @@ import java.util.*;
 import javax.xml.bind.annotation.*;
 import org.apache.commons.lang3.mutable.MutableInt;
 
+import com.datatorrent.api.AutoMetric;
+
 /**
  * <p>LogicalOperatorInfo class.</p>
  *
@@ -31,21 +33,21 @@ public class LogicalOperatorInfo
 {
   public String name;
   public String className;
-  @AppDataPushAgent.Metric
+  @AutoMetric
   public long totalTuplesProcessed = 0;
-  @AppDataPushAgent.Metric
+  @AutoMetric
   public long totalTuplesEmitted = 0;
-  @AppDataPushAgent.Metric
+  @AutoMetric
   public long tuplesProcessedPSMA;
-  @AppDataPushAgent.Metric
+  @AutoMetric
   public long tuplesEmittedPSMA;
-  @AppDataPushAgent.Metric
+  @AutoMetric
   public double cpuPercentageMA;
-  @AppDataPushAgent.Metric
+  @AutoMetric
   public long latencyMA;
   public Map<String, MutableInt> status;
   public long lastHeartbeat;
-  @AppDataPushAgent.Metric
+  @AutoMetric
   public long failureCount;
   public long recoveryWindowId;
   public long currentWindowId;
@@ -54,7 +56,7 @@ public class LogicalOperatorInfo
   public Set<Integer> unifiers;
   public Set<String> hosts;
   public Object counters;
-  public Object customMetrics;
-  @AppDataPushAgent.Metric
+  public Object autoMetrics;
+  @AutoMetric
   public long checkpointTimeMA;
 }

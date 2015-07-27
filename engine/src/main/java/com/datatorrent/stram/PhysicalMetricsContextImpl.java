@@ -17,29 +17,27 @@ package com.datatorrent.stram;
 
 import java.util.Map;
 
-import com.google.common.collect.ImmutableMap;
-
-import com.datatorrent.api.CustomMetric;
+import com.datatorrent.api.AutoMetric;
 
 /**
- * Holds physical customMetrics of an operators.
+ * Holds physical metrics of an operators.
  *
  */
-public class PhysicalMetricsContextImpl implements CustomMetric.PhysicalMetricsContext
+public class PhysicalMetricsContextImpl implements AutoMetric.PhysicalMetricsContext
 {
   private final int operatorId;
-  private final Map<String, Object> customMetrics;
+  private final Map<String, Object> metrics;
 
-  PhysicalMetricsContextImpl(int operatorId, Map<String, Object> customMetrics)
+  PhysicalMetricsContextImpl(int operatorId, Map<String, Object> metrics)
   {
     this.operatorId = operatorId;
-    this.customMetrics = customMetrics;
+    this.metrics = metrics;
   }
 
   @Override
-  public Map<String, Object> getCustomMetrics()
+  public Map<String, Object> getMetrics()
   {
-    return customMetrics;
+    return metrics;
   }
 
   @Override

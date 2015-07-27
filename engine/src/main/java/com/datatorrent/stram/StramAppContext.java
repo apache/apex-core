@@ -73,5 +73,5 @@ public interface StramAppContext extends Context
 
   List<AppDataSource> getAppDataSources();
 
-  Map<String, Object> getCustomMetrics();
+  Map<String, Object> getMetrics();
 }

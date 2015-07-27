@@ -61,6 +61,7 @@ import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
 
 import com.datatorrent.api.Attribute;
+import com.datatorrent.api.AutoMetric;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StringCodec;
@@ -138,21 +139,21 @@ public class StreamingAppMasterService extends CompositeService
   protected class ClusterAppStats extends AppInfo.AppStats
   {
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public int getAllocatedContainers()
     {
       return allocatedContainers.size();
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public int getPlannedContainers()
     {
       return dnmgr.getPhysicalPlan().getContainers().size();
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     @XmlElement
     public int getFailedContainers()
@@ -160,7 +161,7 @@ public class StreamingAppMasterService extends CompositeService
       return numFailedContainers.get();
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public int getNumOperators()
     {
@@ -186,7 +187,7 @@ public class StreamingAppMasterService extends CompositeService
       return StreamingContainerManager.toWsWindowId(dnmgr.getCommittedWindowId());
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public long getTuplesProcessedPSMA()
     {
@@ -197,7 +198,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public long getTotalTuplesProcessed()
     {
@@ -208,7 +209,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public long getTuplesEmittedPSMA()
     {
@@ -219,7 +220,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public long getTotalTuplesEmitted()
     {
@@ -230,7 +231,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public long getTotalMemoryAllocated()
     {
@@ -241,7 +242,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public long getMemoryRequired()
     {
@@ -254,7 +255,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public int getTotalVCoresAllocated()
     {
@@ -265,7 +266,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public int getVCoresRequired()
     {
@@ -283,7 +284,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public long getTotalBufferServerReadBytesPSMA()
     {
@@ -296,7 +297,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public long getTotalBufferServerWriteBytesPSMA()
     {
@@ -316,7 +317,7 @@ public class StreamingAppMasterService extends CompositeService
       return (criticalPathInfo == null) ? null : criticalPathInfo.path;
     }
 
-    @AppDataPushAgent.Metric
+    @AutoMetric
     @Override
     public long getLatency()
     {
@@ -429,10 +430,10 @@ public class StreamingAppMasterService extends CompositeService
     }
 
     @Override
-    public Map<String, Object> getCustomMetrics()
+    public Map<String, Object> getMetrics()
     {
       if (StreamingAppMasterService.this.dnmgr != null) {
-        return (Map)StreamingAppMasterService.this.dnmgr.getCustomMetrics();
+        return (Map)StreamingAppMasterService.this.dnmgr.getLatestLogicalMetrics();
       }
       return null;
     }

@@ -524,7 +524,7 @@ abstract public class StramTestSupport
     }
 
     @Override
-    public Map<String, Object> getCustomMetrics()
+    public Map<String, Object> getMetrics()
     {
       return null;
     }
