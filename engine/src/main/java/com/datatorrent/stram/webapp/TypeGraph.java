@@ -125,7 +125,9 @@ public class TypeGraph
     SHORT("short", Short.class.getName()),
     LONG("long", Long.class.getName()),
     DOUBLE("double", Double.class.getName()),
-    FLOAT("float", Float.class.getName());
+    FLOAT("float", Float.class.getName()),
+    CHARACTER("char", Character.class.getName()),
+    BOOLEAN("boolean", Boolean.class.getName());
 
     private static String[] GetStringTypes()
     {
@@ -906,7 +908,21 @@ public class TypeGraph
         propJ.put("type", typeS);
         UI_TYPE uiType = UI_TYPE.getEnumFor(typeS, typeGraph);
         if (uiType != null) {
-          propJ.put("uiType", uiType.getName());
+          switch (uiType) {
+            case FLOAT:
+            case LONG:
+            case INT:
+            case DOUBLE:
+            case BYTE:
+            case SHORT:
+            case STRING:
+              propJ.put("type",  uiType.getName());
+              break;
+            default:
+              propJ.put("uiType", uiType.getName());
+
+          }
+
         }
         if (t instanceof ParameterizedTypeNode) {
           JSONArray jArray = new JSONArray();

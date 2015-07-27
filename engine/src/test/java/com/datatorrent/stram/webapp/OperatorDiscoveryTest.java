@@ -212,7 +212,7 @@ public class OperatorDiscoveryTest
     JSONObject portType = (JSONObject)portTypes.get(0);
     Assert.assertEquals(portType.get("name"), "input");
     Assert.assertEquals(portType.get("typeLiteral"), "T");
-    Assert.assertEquals(portType.get("type"), "java.lang.Long");
+    Assert.assertEquals(portType.get("type"), "long");
 
     portType = (JSONObject) portTypes.get(2);
     Assert.assertEquals(portType.get("name"), "input2");
@@ -296,6 +296,12 @@ public class OperatorDiscoveryTest
     Assert.assertEquals(debug + "The first typeArg of map", String.class.getName(), typeArgs.getJSONObject(0).get("type"));
     Assert.assertEquals(debug + "The second typeArg of map", Structured.class.getName(), typeArgs.getJSONObject(1).get("type"));
 
+    JSONObject integerProperty = getJSONProperty(props, "integerProp");
+    Assert.assertEquals(debug + "type " + integerProperty, "int", integerProperty.get("type"));
+
+    JSONObject uriProperty = getJSONProperty(props, "uri");
+    Assert.assertEquals(debug + "type " + uriProperty, String.class.getName(), uriProperty.get("type"));
+
     JSONObject structuredProperty = getJSONProperty(props, "nested");
     Assert.assertEquals(debug + "type " + structuredProperty, Structured.class.getName(), structuredProperty.get("type"));
 
@@ -343,8 +349,7 @@ public class OperatorDiscoveryTest
     JSONObject aObj = getJSONProperty(props, "a");
     Assert.assertEquals("type " + aObj, Number.class.getName(), aObj.get("type"));
     JSONObject bObj = getJSONProperty(props, "b");
-    Assert.assertEquals("type " + bObj, "java.lang.Long", bObj.get("type"));
-    Assert.assertEquals("type " + bObj, "long", bObj.get("uiType"));
+    Assert.assertEquals("type " + bObj, "long", bObj.get("type"));
     JSONObject cObj = getJSONProperty(props, "c");
     Assert.assertEquals("type " + cObj, List.class.getName(), cObj.get("type"));
     JSONObject dObj = getJSONProperty(props, "d");
