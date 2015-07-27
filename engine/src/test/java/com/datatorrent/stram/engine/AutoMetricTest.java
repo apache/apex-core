@@ -42,14 +42,14 @@ import com.datatorrent.api.Stats.OperatorStats;
 
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.engine.CustomMetricTest.TestOperator.TestStatsListener;
+import com.datatorrent.stram.engine.AutoMetricTest.TestOperator.TestStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.support.StramTestSupport;
 
-public class CustomMetricTest
+public class AutoMetricTest
 {
-  private static final Logger LOG = LoggerFactory.getLogger(CustomMetricTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AutoMetricTest.class);
 
   public static class TestOperator extends TestGeneratorInputOperator implements Partitioner<TestOperator>, StatsListener
   {
@@ -70,8 +70,8 @@ public class CustomMetricTest
       public Response processStats(BatchedOperatorStats stats)
       {
         for (OperatorStats os : stats.getLastWindowedStats()) {
-          Assert.assertNotNull("custom metrics", os.customMetrics.get("operatorMetric"));
-          TestOperatorStats loperatorStats = (TestOperatorStats) os.customMetrics.get("operatorMetric");
+          Assert.assertNotNull("metrics", os.metrics.get("operatorMetric"));
+          TestOperatorStats loperatorStats = (TestOperatorStats) os.metrics.get("operatorMetric");
           loperatorStats.attributeListenerCalled = true;
           lastPropVal = loperatorStats.currentPropVal;
         }
@@ -117,12 +117,12 @@ public class CustomMetricTest
       }
     }
 
-    private static TestOperatorStats lastCustomMetric = null;
+    private static TestOperatorStats lastMetric = null;
     private static Thread processStatsThread = null;
     private static Thread definePartitionsThread = null;
     private transient boolean propVal;
 
-    @CustomMetric
+    @AutoMetric
     private TestOperatorStats operatorMetric;
 
     @Override
@@ -141,8 +141,8 @@ public class CustomMetricTest
         if (stats != null) {
           definePartitionsThread = Thread.currentThread();
           for (OperatorStats os : stats.getLastWindowedStats()) {
-            if (os.customMetrics.get("operatorMetric") != null) {
-              lastCustomMetric = (TestOperatorStats) os.customMetrics.get("operatorMetric");
+            if (os.metrics.get("operatorMetric") != null) {
+              lastMetric = (TestOperatorStats) os.metrics.get("operatorMetric");
             }
           }
         }
@@ -164,7 +164,7 @@ public class CustomMetricTest
     {
       processStatsThread = Thread.currentThread();
       for (OperatorStats os : stats.getLastWindowedStats()) {
-        Assert.assertNotNull("custom metric in listener", os.customMetrics.get("operatorMetric"));
+        Assert.assertNotNull("metric in listener", os.metrics.get("operatorMetric"));
       }
       Response rsp = new Response();
       rsp.repartitionRequired = true; // trigger definePartitions
@@ -180,7 +180,7 @@ public class CustomMetricTest
    */
   @Test
   @SuppressWarnings("SleepWhileInLoop")
-  public void testCustomMetricPropagation() throws Exception
+  public void testMetricPropagation() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
@@ -198,7 +198,7 @@ public class CustomMetricTest
     lc.runAsync();
 
     long startTms = System.currentTimeMillis();
-    while (TestOperator.lastCustomMetric == null && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
+    while (TestOperator.lastMetric == null && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
       Thread.sleep(300);
       LOG.debug("Waiting for stats");
     }
@@ -214,9 +214,9 @@ public class CustomMetricTest
 
     lc.shutdown();
 
-    Assert.assertNotNull("custom metric received", TestOperator.lastCustomMetric);
-    Assert.assertEquals("custom metric message", "interesting", TestOperator.lastCustomMetric.message);
-    Assert.assertTrue("attribute defined stats listener called", TestOperator.lastCustomMetric.attributeListenerCalled);
+    Assert.assertNotNull("metric received", TestOperator.lastMetric);
+    Assert.assertEquals("metric message", "interesting", TestOperator.lastMetric.message);
+    Assert.assertTrue("attribute defined stats listener called", TestOperator.lastMetric.attributeListenerCalled);
     Assert.assertSame("single thread", TestOperator.definePartitionsThread, TestOperator.processStatsThread);
     Assert.assertTrue("property set", sl.lastPropVal);
   }
@@ -239,13 +239,13 @@ public class CustomMetricTest
 
     OperatorWithMetrics o1 = dag.addOperator("o1", OperatorWithMetrics.class);
     MockAggregator aggregator = new MockAggregator(latch);
-    dag.setAttribute(o1, Context.OperatorContext.CUSTOM_METRIC_AGGREGATOR, aggregator);
+    dag.setAttribute(o1, Context.OperatorContext.METRICS_AGGREGATOR, aggregator);
 
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
 
     dag.addStream("TestTuples", inputOperator.outport, o1.inport1);
 
-    lpc.prepareDAG(dag, null, "CustomMetricsTest");
+    lpc.prepareDAG(dag, null, "AutoMetricTest");
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.runAsync();
@@ -269,14 +269,14 @@ public class CustomMetricTest
 
     OperatorWithMetrics o1 = dag.addOperator("o1", OperatorWithMetrics.class);
     MockAggregator aggregator = new MockAggregator(latch);
-    dag.setAttribute(o1, Context.OperatorContext.CUSTOM_METRIC_AGGREGATOR, aggregator);
+    dag.setAttribute(o1, Context.OperatorContext.METRICS_AGGREGATOR, aggregator);
 
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
     dag.setAttribute(o1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<TestGeneratorInputOperator>(2));
 
     dag.addStream("TestTuples", inputOperator.outport, o1.inport1);
 
-    lpc.prepareDAG(dag, null, "CustomMetricsTest");
+    lpc.prepareDAG(dag, null, "AutoMetricTest");
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.runAsync();
     latch.await();
@@ -294,19 +294,19 @@ public class CustomMetricTest
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
     TestGeneratorInputOperator inputOperator = dag.addOperator("input", TestGeneratorInputOperator.class);
 
-    OperatorWithMetrics o1 = dag.addOperator("o1", OperatorWithMetrics.class);
+    OperatorWithMetricMethod o1 = dag.addOperator("o1", OperatorWithMetricMethod.class);
 
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
 
     dag.addStream("TestTuples", inputOperator.outport, o1.inport1);
 
-    lpc.prepareDAG(dag, null, "CustomMetricsTest");
+    lpc.prepareDAG(dag, null, "AutoMetricTest");
 
     LogicalPlan.OperatorMeta o1meta = dag.getOperatorMeta("o1");
-    Assert.assertNotNull("default aggregator injected", o1meta.getCustomMetricAggregatorMeta().getAggregator());
+    Assert.assertNotNull("default aggregator injected", o1meta.getMetricAggregatorMeta().getAggregator());
   }
 
-  private static class MockAggregator implements CustomMetric.Aggregator, Serializable
+  private static class MockAggregator implements AutoMetric.Aggregator, Serializable
   {
     long cachedSum = -1;
     Map<String, Object> result = Maps.newHashMap();
@@ -318,14 +318,19 @@ public class CustomMetricTest
     }
 
     @Override
-    public Map<String, Object> aggregate(long windowId, Collection<CustomMetric.PhysicalMetricsContext> physicalMetrics)
+    public Map<String, Object> aggregate(long windowId, Collection<AutoMetric.PhysicalMetricsContext> physicalMetrics)
     {
       long sum = 0;
-      for (CustomMetric.PhysicalMetricsContext physicalMetricsContext : physicalMetrics) {
-        sum += (Integer) physicalMetricsContext.getCustomMetrics().get("progress");
+      int myMetricSum = 0;
+      for (AutoMetric.PhysicalMetricsContext physicalMetricsContext : physicalMetrics) {
+        sum += (Integer) physicalMetricsContext.getMetrics().get("progress");
+        if (physicalMetricsContext.getMetrics().containsKey("myMetric")) {
+          myMetricSum += (Integer) physicalMetricsContext.getMetrics().get("myMetric");
+        }
       }
       cachedSum = sum;
       result.put("progress", cachedSum);
+      result.put("myMetric", myMetricSum);
       latch.countDown();
       return result;
     }
@@ -335,8 +340,8 @@ public class CustomMetricTest
 
   public static class OperatorWithMetrics extends GenericTestOperator
   {
-    @CustomMetric
-    private int progress;
+    @AutoMetric
+    protected int progress;
 
     @Override
     public void endWindow()
@@ -346,4 +351,43 @@ public class CustomMetricTest
     }
   }
 
+  public static class OperatorWithMetricMethod extends OperatorWithMetrics
+  {
+    @AutoMetric
+    public int getMyMetric()
+    {
+      return 3;
+    }
+  }
+
+  @Test
+  public void testMetricsAnnotatedMethod() throws Exception
+  {
+    CountDownLatch latch = new CountDownLatch(1);
+
+    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
+
+    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(new Configuration());
+    LogicalPlan dag = new LogicalPlan();
+
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    TestGeneratorInputOperator inputOperator = dag.addOperator("input", TestGeneratorInputOperator.class);
+
+    OperatorWithMetricMethod o1 = dag.addOperator("o1", OperatorWithMetricMethod.class);
+    MockAggregator aggregator = new MockAggregator(latch);
+    dag.setAttribute(o1, Context.OperatorContext.METRICS_AGGREGATOR, aggregator);
+
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    dag.addStream("TestTuples", inputOperator.outport, o1.inport1);
+
+    lpc.prepareDAG(dag, null, "AutoMetricTest");
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.runAsync();
+    latch.await();
+
+    Assert.assertEquals("myMetric", 3, ((Integer) aggregator.result.get("myMetric")).intValue());
+    lc.shutdown();
+  }
 }

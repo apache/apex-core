@@ -83,7 +83,7 @@ public class StreamContext extends DefaultAttributeMap implements Context
   }
 
   @Override
-  public void sendCustomMetrics(Collection<String> metricNames)
+  public void sendMetrics(Collection<String> metricNames)
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }

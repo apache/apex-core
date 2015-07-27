@@ -21,10 +21,7 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import com.datatorrent.api.Stats;
 import com.datatorrent.api.annotation.RecordField;
-
-import com.datatorrent.stram.plan.physical.OperatorStatus;
 
 /**
  *
@@ -82,7 +79,7 @@ public class OperatorInfo
   @RecordField(type = "stats")
   public Object counters;
   @RecordField(type = "stats")
-  public Map<String, Object> customMetrics;
+  public Map<String, Object> metrics;
   @RecordField(type="stats")
   public long checkpointStartTime;
   @RecordField(type="stats")

@@ -53,11 +53,11 @@ public interface Stats extends Serializable
     public long cpuTimeUsed;
     public CheckpointStats checkpointStats;
     /**
-     * @deprecated use {@link #customMetrics}
+     * @deprecated use {@link #metrics}
      */
     @Deprecated
     public Object counters;
-    public Map<String, Object> customMetrics;
+    public Map<String, Object> metrics;
 
     /**
      * If there is a recording on the operator, this contains the recording id, otherwise null

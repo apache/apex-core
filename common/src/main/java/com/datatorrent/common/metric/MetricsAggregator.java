@@ -28,12 +28,12 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 
-import com.datatorrent.api.CustomMetric;
+import com.datatorrent.api.AutoMetric;
 import com.datatorrent.api.annotation.Name;
 
 /**
- * An easy to use {@link CustomMetric.Aggregator} that can be configured to perform multiple aggregations on each
- * {@link CustomMetric} in an operator.
+ * An easy to use {@link AutoMetric.Aggregator} that can be configured to perform multiple aggregations on each
+ * {@link AutoMetric} in an operator.
  * <p/>
  * The user needs to add an array of {@link SingleMetricAggregator}s for each metric. All the aggregators on each
  * metric will be executed during aggregation.
@@ -41,7 +41,7 @@ import com.datatorrent.api.annotation.Name;
  * There are examples of {@link SingleMetricAggregator} provided in the library for common number
  * aggregations- sum, min, max, avg.
  */
-public class MetricsAggregator implements CustomMetric.Aggregator, Serializable
+public class MetricsAggregator implements AutoMetric.Aggregator, Serializable
 {
   protected static final String DEFAULT_SEPARATOR = "-";
 
@@ -56,12 +56,12 @@ public class MetricsAggregator implements CustomMetric.Aggregator, Serializable
   }
 
   @Override
-  public Map<String, Object> aggregate(long windowId, Collection<CustomMetric.PhysicalMetricsContext> physicalMetrics)
+  public Map<String, Object> aggregate(long windowId, Collection<AutoMetric.PhysicalMetricsContext> physicalMetrics)
   {
     Multimap<String, Object> metricValues = ArrayListMultimap.create();
 
-    for (CustomMetric.PhysicalMetricsContext pmCtx : physicalMetrics) {
-      for (Map.Entry<String, Object> entry : pmCtx.getCustomMetrics().entrySet()) {
+    for (AutoMetric.PhysicalMetricsContext pmCtx : physicalMetrics) {
+      for (Map.Entry<String, Object> entry : pmCtx.getMetrics().entrySet()) {
         metricValues.put(entry.getKey(), entry.getValue());
       }
     }
