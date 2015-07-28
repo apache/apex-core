@@ -56,23 +56,23 @@ public interface Context
    * current window, reset at window boundary.
    *
    * @param counters
-   * @deprecated use {@link CustomMetric}
+   * @deprecated use {@link AutoMetric}
    */
   @Deprecated
   void setCounters(Object counters);
 
   /**
-   * This can be used to report only a subset of custom metrics in the context of the current application window. It
+   * This can be used to report only a subset of metrics in the context of the current application window. It
    * will reset at the application window boundary.
    *
    * @param metricNames the name of all the metrics that will be reported to application master.
    */
-  void sendCustomMetrics(Collection<String> metricNames);
+  void sendMetrics(Collection<String> metricNames);
 
   /**
    * Aggregates counters of physical instances.
    *
-   * @deprecated use {@link CustomMetric.Aggregator}
+   * @deprecated use {@link AutoMetric.Aggregator}
    */
   @Deprecated
   interface CountersAggregator
@@ -266,24 +266,23 @@ public interface Context
 
     /**
      * Aggregates physical counters to a logical counter.
-     * @deprecated  use {@link #CUSTOM_METRIC_AGGREGATOR}
+     * @deprecated  use {@link #METRICS_AGGREGATOR}
      */
     @Deprecated
     Attribute<CountersAggregator> COUNTERS_AGGREGATOR = new Attribute<CountersAggregator>(new Object2String<CountersAggregator>());
 
     /**
-     * Aggregates custom metrics of physical instances of an operator. This handler is called with the metrics data of a
+     * Aggregates metrics of physical instances of an operator. This handler is called with the metrics data of a
      * particular window from all the physical instances so that it can be aggregated into a logical view.
      */
-    Attribute<CustomMetric.Aggregator> CUSTOM_METRIC_AGGREGATOR = new Attribute<CustomMetric.Aggregator>(new
-      Object2String<CustomMetric.Aggregator>());
+    Attribute<AutoMetric.Aggregator> METRICS_AGGREGATOR = new Attribute<AutoMetric.Aggregator>(new Object2String<AutoMetric.Aggregator>());
 
     /**
-     * Provides dimension aggregations and time buckets information for logical custom metric. The information provided
+     * Provides dimension aggregations and time buckets information for logical metrics. The information provided
      * by this construct is conveyed to tracker application and influences the aggregations done on it by the tracker.
      */
-    Attribute<CustomMetric.DimensionsScheme> CUSTOM_METRIC_DIMENSIONS_SCHEME = new Attribute<CustomMetric.DimensionsScheme>(new
-      Object2String<CustomMetric.DimensionsScheme>());
+    Attribute<AutoMetric.DimensionsScheme> METRICS_DIMENSIONS_SCHEME = new Attribute<AutoMetric.DimensionsScheme>(new
+      Object2String<AutoMetric.DimensionsScheme>());
 
     /**
      * Return the operator runtime id.
@@ -325,7 +324,7 @@ public interface Context
      */
     Attribute<String> APPLICATION_DATA_LINK = new Attribute<String>(new String2String());
     /**
-     * Transport to push the stats and the custom metrics, "builtin:{topic}" if STRAM should push the data directly
+     * Transport to push the stats and the metrics, "builtin:{topic}" if STRAM should push the data directly
      * using websocket with the given topic
      */
     Attribute<String> METRICS_TRANSPORT = new Attribute<String>(new String2String());

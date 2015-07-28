@@ -68,7 +68,7 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
   }
 
   @Override
-  public void sendCustomMetrics(Collection<String> metricNames)
+  public void sendMetrics(Collection<String> metricNames)
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
@@ -183,7 +183,7 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
     }
 
     @Override
-    public void sendCustomMetrics(Collection<String> metricNames)
+    public void sendMetrics(Collection<String> metricNames)
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
@@ -254,7 +254,7 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
     }
 
     @Override
-    public void sendCustomMetrics(Collection<String> metricNames)
+    public void sendMetrics(Collection<String> metricNames)
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }

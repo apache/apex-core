@@ -163,7 +163,7 @@ public class GenericNode extends Node<Operator>
     ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
     reportStats(stats, currentWindowId);
     if (!insideWindow) {
-      stats.customMetrics = collectMetrics();
+      stats.metrics = collectMetrics();
     }
     handleRequests(currentWindowId);
   }
@@ -567,7 +567,7 @@ public class GenericNode extends Node<Operator>
       ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
       fixEndWindowDequeueTimesBeforeDeactivate();
       reportStats(stats, currentWindowId);
-      stats.customMetrics = collectMetrics();
+      stats.metrics = collectMetrics();
       handleRequests(currentWindowId);
     }
 

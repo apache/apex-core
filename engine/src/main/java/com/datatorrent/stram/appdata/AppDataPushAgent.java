@@ -20,10 +20,6 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.IOException;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -39,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 
+import com.datatorrent.api.AutoMetric;
 import com.datatorrent.api.Context.DAGContext;
 
 import com.datatorrent.common.util.Pair;
@@ -54,18 +51,8 @@ import com.datatorrent.stram.webapp.LogicalOperatorInfo;
  */
 public class AppDataPushAgent extends AbstractService
 {
-  /**
-   * The annotation to denote fields included for metric push. They are for now only valid on the fields of AppInfo and
-   * OperatorInfo.
-   */
-  @Target({ElementType.FIELD, ElementType.METHOD})
-  @Retention(RetentionPolicy.RUNTIME)
-  public @interface Metric
-  {
-  }
-
-  private static final String CUSTOM_METRICS_SCHEMA = "customMetricsSchema";
-  private static final String CUSTOM_METRICS_SCHEMA_VERSION = "1.0";
+  private static final String METRICS_SCHEMA = "metricsSchema";
+  private static final String METRICS_SCHEMA_VERSION = "1.0";
   private static final String DATA = "data";
   private static final Logger LOG = LoggerFactory.getLogger(AppDataPushAgent.class);
   private static final String APP_DATA_PUSH_TRANSPORT_BUILTIN_VALUE = "builtin";
@@ -143,7 +130,7 @@ public class AppDataPushAgent extends AbstractService
       long resendSchemaInterval = appDataPusher.getResendSchemaInterval();
       for (LogicalOperatorInfo logicalOperator : logicalOperatorInfoList) {
         JSONObject logicalOperatorJson = extractFields(logicalOperator);
-        JSONArray customMetricsList = new JSONArray();
+        JSONArray metricsList = new JSONArray();
         Queue<Pair<Long, Map<String, Object>>> windowMetrics = dnmgr.getWindowMetrics(logicalOperator.name);
         if (windowMetrics != null) {
           while (!windowMetrics.isEmpty()) {
@@ -155,26 +142,26 @@ public class AppDataPushAgent extends AbstractService
             if (!operatorsSchemaLastSentTime.containsKey(logicalOperator.name)
                     || operatorsSchemaLastSentTime.get(logicalOperator.name) < now - resendSchemaInterval) {
               try {
-                pushCustomMetricSchema(dnmgr.getLogicalPlan().getOperatorMeta(logicalOperator.name), aggregates);
+                pushMetricsSchema(dnmgr.getLogicalPlan().getOperatorMeta(logicalOperator.name), aggregates);
                 operatorsSchemaLastSentTime.put(logicalOperator.name, now);
               } catch (IOException ex) {
-                LOG.error("Cannot push custom metric schema", ex);
+                LOG.error("Cannot push metrics schema", ex);
               }
             }
-            JSONObject customMetricsItem = new JSONObject();
-            customMetricsItem.put("_windowId", windowId);
+            JSONObject metricsItem = new JSONObject();
+            metricsItem.put("_windowId", windowId);
             long windowToMillis = dnmgr.windowIdToMillis(windowId);
             LOG.debug("metric window {} time {}", windowId, windowToMillis);
-            customMetricsItem.put("_time", windowToMillis);
+            metricsItem.put("_time", windowToMillis);
             for (Map.Entry<String, Object> entry : aggregates.entrySet()) {
               String metricName = entry.getKey();
               Object aggregateValue = entry.getValue();
-              customMetricsItem.put(metricName, aggregateValue);
+              metricsItem.put(metricName, aggregateValue);
             }
-            customMetricsList.put(customMetricsItem);
+            metricsList.put(metricsItem);
           }
         }
-        logicalOperatorJson.put("customMetrics", customMetricsList);
+        logicalOperatorJson.put("metrics", metricsList);
         logicalOperators.put(logicalOperator.name, logicalOperatorJson);
       }
       json.put("time", System.currentTimeMillis());
@@ -200,7 +187,7 @@ public class AppDataPushAgent extends AbstractService
         Field[] declaredFields = c.getDeclaredFields();
         for (Field field : declaredFields) {
           field.setAccessible(true);
-          Metric rfa = field.getAnnotation(Metric.class);
+          AutoMetric rfa = field.getAnnotation(AutoMetric.class);
           if (rfa != null) {
             field.setAccessible(true);
             try {
@@ -230,7 +217,7 @@ public class AppDataPushAgent extends AbstractService
         for (PropertyDescriptor pd : info.getPropertyDescriptors()) {
           Method method = pd.getReadMethod();
           if (pd.getReadMethod() != null) {
-            Metric rfa = method.getAnnotation(Metric.class);
+            AutoMetric rfa = method.getAnnotation(AutoMetric.class);
             if (rfa != null) {
               methods.put(pd.getName(), method);
             }
@@ -251,17 +238,17 @@ public class AppDataPushAgent extends AbstractService
     return result;
   }
 
-  private JSONObject getCustomMetricsSchemaData(LogicalPlan.OperatorMeta operatorMeta, Map<String, Object> aggregates)
+  private JSONObject getMetricsSchemaData(LogicalPlan.OperatorMeta operatorMeta, Map<String, Object> aggregates)
   {
     JSONObject result = new JSONObject();
     try {
-      result.put("type", CUSTOM_METRICS_SCHEMA);
-      result.put("version", CUSTOM_METRICS_SCHEMA_VERSION);
+      result.put("type", METRICS_SCHEMA);
+      result.put("version", METRICS_SCHEMA_VERSION);
       result.put("appUser", appContext.getUser());
       result.put("appName", dnmgr.getApplicationAttributes().get(DAGContext.APPLICATION_NAME));
       result.put("logicalOperatorName", operatorMeta.getName());
 
-      LogicalPlan.CustomMetricAggregatorMeta customMetricAggregatorMeta = operatorMeta.getCustomMetricAggregatorMeta();
+      LogicalPlan.MetricAggregatorMeta metricAggregatorMeta = operatorMeta.getMetricAggregatorMeta();
       JSONArray valueSchemas = new JSONArray();
       for (Map.Entry<String, Object> entry : aggregates.entrySet()) {
         String metricName = entry.getKey();
@@ -270,14 +257,14 @@ public class AppDataPushAgent extends AbstractService
         valueSchema.put("name", metricName);
         Class<?> type = ClassUtils.wrapperToPrimitive(metricValue.getClass());
         valueSchema.put("type", type == null ? metricValue.getClass().getCanonicalName() : type);
-        String[] dimensionAggregators = customMetricAggregatorMeta.getDimensionAggregatorsFor(metricName);
+        String[] dimensionAggregators = metricAggregatorMeta.getDimensionAggregatorsFor(metricName);
         if (dimensionAggregators != null) {
           valueSchema.put("dimensionAggregators", dimensionAggregators);
         }
         valueSchemas.put(valueSchema);
       }
       result.put("values", valueSchemas);
-      String[] timeBuckets = customMetricAggregatorMeta.getTimeBuckets();
+      String[] timeBuckets = metricAggregatorMeta.getTimeBuckets();
       if (timeBuckets != null) {
         result.put("timeBuckets", timeBuckets);
       }
@@ -288,11 +275,11 @@ public class AppDataPushAgent extends AbstractService
     return result;
   }
 
-  public void pushCustomMetricSchema(LogicalPlan.OperatorMeta operatorMeta, Map<String, Object> aggregates) throws IOException
+  public void pushMetricsSchema(LogicalPlan.OperatorMeta operatorMeta, Map<String, Object> aggregates) throws IOException
   {
     JSONObject schema = operatorSchemas.get(operatorMeta.getName());
     if (schema == null) {
-      schema = getCustomMetricsSchemaData(operatorMeta, aggregates);
+      schema = getMetricsSchemaData(operatorMeta, aggregates);
       operatorSchemas.put(operatorMeta.getName(), schema);
     }
     appDataPusher.push(schema);
