@@ -1445,8 +1445,7 @@ public class DTCli
               try {
                 command.execute(args, reader);
                 lastCommandError = false;
-              }
-              catch (Exception e) {
+              } catch (Throwable e) {
                 handleException(e);
               }
             }
@@ -1463,13 +1462,12 @@ public class DTCli
           commandThread = null;
         }
       }
-    }
-    catch (Exception e) {
+    } catch (Throwable e) {
       handleException(e);
     }
   }
 
-  private void handleException(Exception e)
+  private void handleException(Throwable e)
   {
     StringBuilder sb = new StringBuilder();
     String msg = e.getMessage();
