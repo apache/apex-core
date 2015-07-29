@@ -48,14 +48,13 @@
         <executions>
           <execution>
             <id>create-git-version-info</id>
-            <phase>${generate-revision-info-phase}</phase>
+            <phase>generate-resources</phase>
             <goals>
               <goal>revision</goal>
             </goals>
           </execution>
         </executions>
         <configuration>
-          <runOnlyOnce>true</runOnlyOnce>
           <verbose>false</verbose>
           <prefix>git</prefix>
           <generateGitPropertiesFile>true</generateGitPropertiesFile>
@@ -287,24 +286,6 @@
         <test.excludedGroups></test.excludedGroups>
       </properties>
     </profile>
-
-    <profile>
-      <!--  version info profile to generate exactly once after clean -->
-      <id>generate-version-info</id>
-      <activation>
-        <file>
-          <!--
-            ${project.artifactId} does not work - see https://jira.codehaus.org/browse/MNG-5418
-            (required to use this for all modules from parent project)
-          -->
-          <missing>target/classes/dt-git.properties</missing>
-        </file>
-      </activation>
-      <properties>
-        <generate-revision-info-phase>generate-resources</generate-revision-info-phase>
-      </properties>
-    </profile>
-
   </profiles>
 
 </project>
