@@ -16,6 +16,7 @@
 package com.datatorrent.stram.cli;
 
 import java.io.*;
+import java.lang.NoClassDefFoundError;
 import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -1448,7 +1449,8 @@ public class DTCli
               } catch (Exception e) {
                 handleException(e);
               } catch (Error e) {
-                LOG.error("FATAL ERROR: ", e);
+                handleException(e);
+                System.err.println("Fatal error encountered");
                 System.exit(1);
               }
             }
@@ -1458,8 +1460,7 @@ public class DTCli
           commandThread.start();
           try {
             commandThread.join();
-          }
-          catch (InterruptedException ex) {
+          } catch (InterruptedException ex) {
             System.err.println("Interrupted");
           }
           commandThread = null;
@@ -1470,20 +1471,9 @@ public class DTCli
     }
   }
 
-  private void handleException(Exception e)
+  private void handleException(Throwable e)
   {
-    StringBuilder sb = new StringBuilder();
-    String msg = e.getMessage();
-    if (null != msg) {
-      sb.append(msg);
-    }
-    Throwable cause = e.getCause();
-    if (cause != null && cause.getMessage() != null) {
-      sb.append(": ");
-      sb.append(cause.getMessage());
-    }
-    sb.append(Arrays.toString(e.getStackTrace()));
-    System.err.println(sb.toString());
+    System.err.println(ExceptionUtils.getFullStackTrace(e));
     LOG.error("Exception caught: ", e);
     lastCommandError = true;
   }
@@ -1952,7 +1942,7 @@ public class DTCli
                 appFactory = new StramAppLauncher.JsonFileAppFactory(file);
               }
             }
-          } catch (Exception ex) {
+          } catch (Exception | NoClassDefFoundError ex) {
             // ignore
           }
         }
@@ -3035,7 +3025,7 @@ public class DTCli
             operatorDiscoverer.buildPortClassHier(oper, portClassHier);
 
             arr.put(oper);
-          } catch (Exception ex) {
+          } catch (Exception | NoClassDefFoundError ex) {
             // ignore this class
             final String cls = clazz.getName();
             failed.put(cls, ex.toString());
