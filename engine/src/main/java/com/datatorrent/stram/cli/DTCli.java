@@ -1445,9 +1445,11 @@ public class DTCli
               try {
                 command.execute(args, reader);
                 lastCommandError = false;
-              }
-              catch (Exception e) {
+              } catch (Exception e) {
                 handleException(e);
+              } catch (Error e) {
+                LOG.error("FATAL ERROR: ", e);
+                System.exit(1);
               }
             }
 
@@ -1463,8 +1465,7 @@ public class DTCli
           commandThread = null;
         }
       }
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       handleException(e);
     }
   }
@@ -1863,8 +1864,8 @@ public class DTCli
             config.set(StramAppLauncher.ORIGINAL_APP_ID, commandLineInfo.origAppId);
           }
           config.set(StramAppLauncher.QUEUE_NAME, commandLineInfo.queue != null ? commandLineInfo.queue : "default");
-        } catch (Throwable t) {
-          throw new CliException("Error opening the config XML file: " + configFile, t);
+        } catch (Exception ex) {
+          throw new CliException("Error opening the config XML file: " + configFile, ex);
         }
         String fileName = expandFileName(commandLineInfo.args[0], true);
         StramAppLauncher submitApp;
@@ -1951,7 +1952,7 @@ public class DTCli
                 appFactory = new StramAppLauncher.JsonFileAppFactory(file);
               }
             }
-          } catch (Throwable t) {
+          } catch (Exception ex) {
             // ignore
           }
         }
@@ -3034,10 +3035,10 @@ public class DTCli
             operatorDiscoverer.buildPortClassHier(oper, portClassHier);
 
             arr.put(oper);
-          } catch (Throwable t) {
+          } catch (Exception ex) {
             // ignore this class
-            final String cls = clazz.getName(), ex = t.toString();
-            failed.put(cls, ex);
+            final String cls = clazz.getName();
+            failed.put(cls, ex.toString());
           }
         }
         json.put("operatorClasses", arr);
