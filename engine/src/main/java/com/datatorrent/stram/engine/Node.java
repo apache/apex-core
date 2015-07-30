@@ -27,8 +27,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 
 import org.apache.hadoop.util.ReflectionUtils;
 import org.slf4j.Logger;
@@ -46,6 +45,9 @@ import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.StatsListener.OperatorRequest;
 
 import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.common.util.Pair;
+import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -99,12 +101,16 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public final BlockingQueue<StatsListener.OperatorResponse> commandResponse;
   private final List<Field> metricFields;
   private final Map<String, Method> metricMethods;
+  private ExecutorService executorService;
+  private Queue<Pair<FutureTask<Stats.CheckpointStats>, Long>> taskQueue;
   protected Stats.CheckpointStats checkpointStats;
 
   public Node(OPERATOR operator, OperatorContext context)
   {
     this.operator = operator;
     this.context = context;
+    executorService = Executors.newSingleThreadExecutor();
+    taskQueue = new LinkedList<Pair<FutureTask<Stats.CheckpointStats>, Long>>();
 
     outputs = new HashMap<String, Sink<Object>>();
 
@@ -173,6 +179,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       pcpair.component.teardown();
     }
 
+    if (executorService != null) {
+      executorService.shutdownNow();
+    }
     operator.teardown();
   }
 
@@ -405,6 +414,21 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       checkpointStats = null;
       checkpoint = null;
     }
+    else {
+      Pair<FutureTask<Stats.CheckpointStats>, Long> pair = taskQueue.peek();
+      if (pair != null && pair.getFirst().isDone()) {
+        taskQueue.poll();
+        try {
+          stats.checkpointStats = pair.getFirst().get();
+          stats.checkpoint = new Checkpoint(pair.getSecond(), applicationWindowCount, checkpointWindowCount);
+          if (operator instanceof Operator.CheckpointListener) {
+            ((Operator.CheckpointListener) operator).checkpointed(pair.getSecond());
+          }
+        } catch (Exception ex) {
+          throw DTThrowable.wrapIfChecked(ex);
+        }
+      }
+    }
 
     context.report(stats, windowId);
   }
@@ -440,6 +464,25 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
           checkpointStats = new Stats.CheckpointStats();
           checkpointStats.checkpointStartTime = System.currentTimeMillis();
           ba.save(operator, id, windowId);
+          if (ba instanceof AsyncFSStorageAgent) {
+            AsyncFSStorageAgent asyncFSStorageAgent = (AsyncFSStorageAgent) ba;
+            if (!asyncFSStorageAgent.isSyncCheckpoint() && PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
+              CheckpointHandler checkpointHandler = new CheckpointHandler();
+              checkpointHandler.agent = asyncFSStorageAgent;
+              checkpointHandler.operatorId = id;
+              checkpointHandler.windowId = windowId;
+              checkpointHandler.stats = checkpointStats;
+              FutureTask<Stats.CheckpointStats> futureTask = new FutureTask<Stats.CheckpointStats>(checkpointHandler);
+              taskQueue.add(new Pair<FutureTask<Stats.CheckpointStats>, Long>(futureTask, windowId));
+              executorService.submit(futureTask);
+              checkpoint = null;
+              checkpointStats = null;
+              return;
+            }
+            else {
+              asyncFSStorageAgent.copyToHDFS(id, windowId);
+            }
+          }
           checkpointStats.checkpointTime = System.currentTimeMillis() - checkpointStats.checkpointStartTime;
         }
         catch (IOException ie) {
@@ -568,6 +611,23 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
 
     deactivateSinks();
+  }
+
+  private class CheckpointHandler implements Callable<Stats.CheckpointStats>
+  {
+
+    public AsyncFSStorageAgent agent;
+    public int operatorId;
+    public long windowId;
+    public Stats.CheckpointStats stats;
+
+    @Override
+    public Stats.CheckpointStats call() throws Exception
+    {
+      agent.copyToHDFS(id, windowId);
+      stats.checkpointTime = System.currentTimeMillis() - stats.checkpointStartTime;
+      return stats;
+    }
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Node.class);

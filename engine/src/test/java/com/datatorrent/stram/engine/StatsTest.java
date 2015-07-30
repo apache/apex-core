@@ -15,6 +15,7 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.*;
 
@@ -23,12 +24,14 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.common.util.BaseOperator;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 
+import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.StatsTest.TestCollector.TestCollectorStatsListener;
@@ -170,7 +173,8 @@ public class StatsTest
   {
     int tupleCount = 10;
     LogicalPlan dag = new LogicalPlan();
-
+    String workingDir = new File("target").getAbsolutePath();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     TestInputStatsListener testInputStatsListener = new TestInputStatsListener();
     dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{testInputStatsListener}));
@@ -225,6 +229,8 @@ public class StatsTest
   private void baseTestForQueueSize(int maxTuples, TestCollectorStatsListener statsListener, DAG.Locality locality) throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    String workingDir = new File("target/baseTestForQueueSize").getAbsolutePath();
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 200);
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     testOper.setMaxTuples(maxTuples);

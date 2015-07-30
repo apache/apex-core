@@ -27,13 +27,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.google.common.collect.Sets;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
-import com.datatorrent.common.util.FSStorageAgent;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.engine.Node;
@@ -150,6 +150,8 @@ public class PartitioningTest
   public void testDefaultPartitioning() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    File checkpointDir = new File(TEST_OUTPUT_DIR, "testDefaultPartitioning");
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointDir.getPath() + "/localPath", checkpointDir.getPath(), null));
 
     Integer[][] testData = {
       {4, 5}
@@ -249,6 +251,9 @@ public class PartitioningTest
   {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 5);
+    File checkpointDir = new File(TEST_OUTPUT_DIR, "testDynamicDefaultPartitioning");
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointDir.getPath() + "/localPath", checkpointDir.getPath(), null));
+
     CollectorOperator.receivedTuples.clear();
 
     TestInputOperator<Integer> input = dag.addOperator("input", new TestInputOperator<Integer>());
@@ -391,12 +396,12 @@ public class PartitioningTest
      *
      * @throws Exception
      */
-    @Test
-    public void testInputOperatorPartitioning() throws Exception
+
+    private void testInputOperatorPartitioning(LogicalPlan dag) throws Exception
     {
       File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
-      LogicalPlan dag = new LogicalPlan();
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, checkpointDir.getPath());
+      dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointDir.getPath() + "/localPath", checkpointDir.getPath(), null));
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
       dag.setAttribute(input, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitionLoadWatch()}));
@@ -418,7 +423,10 @@ public class PartitioningTest
         Checkpoint checkpoint = new Checkpoint(10L, 0, 0);
         p.checkpoints.add(checkpoint);
         p.setRecoveryCheckpoint(checkpoint);
-        new FSStorageAgent(checkpointDir.getPath(), null).save(inputDeployed, p.getId(), 10L);
+        AsyncFSStorageAgent agent = new AsyncFSStorageAgent(checkpointDir.getPath() + "/localPath", checkpointDir.getPath(), null);
+        agent.save(inputDeployed, p.getId(), 10L);
+        agent.copyToHDFS(p.getId(), 10l);
+
       }
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);
@@ -447,6 +455,12 @@ public class PartitioningTest
 
     }
 
+    @Test
+    public void testInputOperatorPartitioningWithAsyncStorageAgent() throws Exception
+    {
+      LogicalPlan dag = new LogicalPlan();
+      testInputOperatorPartitioning(dag);
+    }
   }
 
 }

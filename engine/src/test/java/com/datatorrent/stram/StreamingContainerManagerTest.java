@@ -32,6 +32,7 @@ import org.junit.Test;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -41,6 +42,7 @@ import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.common.partitioner.StatelessPartitioner;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
@@ -56,12 +58,7 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerSt
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.appdata.AppDataPushAgent;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
-import com.datatorrent.stram.engine.DefaultUnifier;
-import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.TestAppDataQueryOperator;
-import com.datatorrent.stram.engine.TestAppDataResultOperator;
-import com.datatorrent.stram.engine.TestAppDataSourceOperator;
-import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.engine.*;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -471,6 +468,37 @@ public class StreamingContainerManagerTest {
   }
 
   @Test
+  public void testAsyncCheckpointWindowIds() throws Exception
+  {
+    File path = new File(testMeta.dir);
+    FileUtils.deleteDirectory(path.getAbsoluteFile());
+    FileUtils.forceMkdir(new File(path.getAbsoluteFile(), "/localPath"));
+
+    AsyncFSStorageAgent sa = new AsyncFSStorageAgent(path.getPath() + "/localPath", path.getPath(), null);
+
+    long[] windowIds = new long[]{123L, 345L, 234L};
+    for (long windowId : windowIds) {
+      sa.save(windowId, 1, windowId);
+      sa.copyToHDFS(1, windowId);
+    }
+
+    Arrays.sort(windowIds);
+    long[] windowsIds = sa.getWindowIds(1);
+    Arrays.sort(windowsIds);
+    Assert.assertArrayEquals("Saved windowIds", windowIds, windowsIds);
+
+    for (long windowId : windowIds) {
+      sa.delete(1, windowId);
+    }
+    try {
+      sa.getWindowIds(1);
+      Assert.fail("There should not be any most recently saved windowId!");
+    } catch (IOException io) {
+      Assert.assertTrue("No State Saved", true);
+    }
+  }
+
+  @Test
   public void testProcessHeartbeat() throws Exception
   {
     FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
@@ -712,6 +740,8 @@ public class StreamingContainerManagerTest {
   @Test
   public void testPhysicalPropertyUpdate() throws Exception{
     LogicalPlan dag = new LogicalPlan();
+    String workingDir = new File("target/testPhysicalPropertyUpdate").getAbsolutePath();
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     dag.addStream("o1.outport", o1.outport, o2.inport1);
@@ -735,7 +765,6 @@ public class StreamingContainerManagerTest {
           Class<? extends TestAppDataSourceOperator> dsClass, Class<? extends TestAppDataResultOperator> rClass)
   {
     LogicalPlan dag = new LogicalPlan();
-
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     TestAppDataQueryOperator q = dag.addOperator("q", qClass);
     TestAppDataResultOperator r = dag.addOperator("r", rClass);
@@ -755,6 +784,8 @@ public class StreamingContainerManagerTest {
 
   private void testAppDataSources(LogicalPlan dag, boolean appendQIDToTopic) throws Exception
   {
+    String workingDir = new File("target/testAppDataSources").getAbsolutePath();
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.runAsync();
     StreamingContainerManager dnmgr = lc.dnmgr;

@@ -52,8 +52,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
     kryo = new Kryo();
   }
 
-  @SuppressWarnings("unused")
-  private FSStorageAgent()
+  protected FSStorageAgent()
   {
     path = null;
     fileContext = null;
