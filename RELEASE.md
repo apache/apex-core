@@ -1,6 +1,29 @@
 DataTorrent RTS Release Notes
 ========================================================================================================================
 
+Version 3.0.0
+------------------------------------------------------------------------------------------------------------------------
+
+### Platform Enhancements
+
+* Add jersey client jar for app execution
+* Must catch NoClassDefFoundError when processing operator classes in jar, previously catching Throwable was changed to catching Exception
+* Depend on published netlet version
+* Catch throwable when executing command because launching an app can throw java.lang.VerifyError: bad type on operand stack
+* Deploy all artifacts by default.
+* HA support for stram webservice filter.
+* Removed dependencies in filter to hadoop classes with private audience as their interface has changed from Hadoop 2.2 to 2.6
+* Use tokens from Credentials as UserGroupInformation.getTokens() returns HDFS Namenode hidden tokens that should not be passed to containers.
+* Support for RM delegation token renewal in secure HA environments
+* Token authentication support for buffer server
+* Adding default aggregator for primitive customMetrics
+* Ability to extract javadocs as xml
+* Switch to Java7 and update compiler plugin.
+* Separated out HA token creation from non-HA case as it involves special handling that is subject to change if Hadoop's internals change.
+* Changed the license header to Apache 2.0 license.
+
+
+
 Version 2.0.0
 ------------------------------------------------------------------------------------------------------------------------
 

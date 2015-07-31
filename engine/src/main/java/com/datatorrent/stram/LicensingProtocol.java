@@ -18,6 +18,7 @@ package com.datatorrent.stram;
 import org.apache.hadoop.ipc.VersionedProtocol;
 
 /**
+ * <p>LicensingProtocol interface.</p>
  *
  * @since 0.9.4
  */

@@ -19,6 +19,8 @@ import java.security.SecureRandom;
 
 /**
  * <p>Auth Manager class.</p>
+ *
+ * @since 3.0.0
  */
 public class AuthManager
 {

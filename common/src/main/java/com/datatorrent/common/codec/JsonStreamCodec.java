@@ -31,8 +31,10 @@ import com.datatorrent.common.util.JacksonObjectMapperProvider;
 import com.datatorrent.netlet.util.Slice;
 
 /**
+ * <p>JsonStreamCodec class.</p>
  *
  * @param <T> tuple type
+ * @since 3.0.0
  */
 public class JsonStreamCodec<T> implements StreamCodec<T>
 {

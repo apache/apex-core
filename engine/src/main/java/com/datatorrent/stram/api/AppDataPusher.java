@@ -19,7 +19,9 @@ import java.io.IOException;
 import org.codehaus.jettison.json.JSONObject;
 
 /**
+ * <p>AppDataPusher interface.</p>
  *
+ * @since 3.0.0
  */
 public interface AppDataPusher
 {

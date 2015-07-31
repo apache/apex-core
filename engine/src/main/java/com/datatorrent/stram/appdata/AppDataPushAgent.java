@@ -47,7 +47,9 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.webapp.LogicalOperatorInfo;
 
 /**
+ * <p>AppDataPushAgent class.</p>
  *
+ * @since 3.0.0
  */
 public class AppDataPushAgent extends AbstractService
 {

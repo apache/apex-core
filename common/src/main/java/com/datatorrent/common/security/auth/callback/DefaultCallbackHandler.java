@@ -33,7 +33,7 @@ import com.datatorrent.common.security.SecurityContext;
  * needed. When developing a custom handler in this fashion most of time you would need to
  * just override the processCallback method, handle the custom callback and delegate to the
  * base class for the common callbacks.
- * 
+ *
  * This handler implements Component to interface to receive the login information via the
  * SecurityContext. Custom handlers being implemented from scratch without extending this
  * handler can also extend Component to receive security information.

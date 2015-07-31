@@ -23,6 +23,8 @@ import java.util.Map;
  * A field which tracks an aspect of operator's progress is considered a metric. The value
  * of the field is communicated from the execution environment to application master. The declared field
  * name will be used as the metric key.
+ *
+ * @since 3.0.0
  */
 @Documented
 @Target({ElementType.FIELD, ElementType.METHOD})
