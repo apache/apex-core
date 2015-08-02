@@ -58,8 +58,8 @@ public class ServerTest
   public static void setupServerAndClients() throws Exception
   {
     try {
-      eventloopServer = new DefaultEventLoop("server");
-      eventloopClient = new DefaultEventLoop("client");
+      eventloopServer = DefaultEventLoop.createEventLoop("server");
+      eventloopClient = DefaultEventLoop.createEventLoop("client");
     }
     catch (IOException ioe) {
       throw new RuntimeException(ioe);

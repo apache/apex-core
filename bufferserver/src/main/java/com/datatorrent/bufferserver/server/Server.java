@@ -144,7 +144,7 @@ public class Server implements ServerListener
       port = 0;
     }
 
-    DefaultEventLoop eventloop = new DefaultEventLoop("alone");
+    DefaultEventLoop eventloop = DefaultEventLoop.createEventLoop("alone");
     eventloop.start(null, port, new Server(port));
     new Thread(eventloop).start();
   }

@@ -125,7 +125,7 @@ public class StreamingContainer extends YarnContainerMain
 
   static {
     try {
-      eventloop = new DefaultEventLoop("ProcessWideEventLoop");
+      eventloop = DefaultEventLoop.createEventLoop("ProcessWideEventLoop");
     }
     catch (IOException io) {
       throw new RuntimeException(io);

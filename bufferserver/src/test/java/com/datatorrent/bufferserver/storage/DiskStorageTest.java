@@ -16,12 +16,10 @@
 package com.datatorrent.bufferserver.storage;
 
 import java.net.InetSocketAddress;
-import static java.lang.Thread.sleep;
 
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import static org.testng.Assert.assertEquals;
 
 import com.datatorrent.bufferserver.packet.BeginWindowTuple;
 import com.datatorrent.bufferserver.packet.EndWindowTuple;
@@ -31,6 +29,9 @@ import com.datatorrent.bufferserver.support.Controller;
 import com.datatorrent.bufferserver.support.Publisher;
 import com.datatorrent.bufferserver.support.Subscriber;
 import com.datatorrent.netlet.DefaultEventLoop;
+
+import static java.lang.Thread.sleep;
+import static org.testng.Assert.assertEquals;
 
 /**
  *
@@ -49,10 +50,10 @@ public class DiskStorageTest
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
-    eventloopServer = new DefaultEventLoop("server");
+    eventloopServer = DefaultEventLoop.createEventLoop("server");
     eventloopServer.start();
 
-    eventloopClient = new DefaultEventLoop("client");
+    eventloopClient = DefaultEventLoop.createEventLoop("client");
     eventloopClient.start();
 
     instance = new Server(0, 1024,8);
