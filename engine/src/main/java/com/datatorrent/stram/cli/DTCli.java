@@ -3012,6 +3012,8 @@ public class DTCli
         JSONObject portClassHier = new JSONObject();
 
         JSONObject failed = new JSONObject();
+        JSONObject portTypesWithSchemaClasses = new JSONObject();
+
         for (Class<? extends Operator> clazz : operatorClasses) {
           try {
             JSONObject oper = operatorDiscoverer.describeOperator(clazz);
@@ -3021,8 +3023,15 @@ public class DTCli
             String s = defaultValueMapper.writeValueAsString(operIns);
             oper.put("defaultValue", new JSONObject(s).get(clazz.getName()));
             
-            // add class hier info to portClassHier
-            operatorDiscoverer.buildPortClassHier(oper, portClassHier);
+            // add class hierarchy info to portClassHier and fetch port types with schema classes
+            operatorDiscoverer.buildAdditionalPortInfo(oper, portClassHier, portTypesWithSchemaClasses);
+
+            Iterator portTypesIter = portTypesWithSchemaClasses.keys();
+            while (portTypesIter.hasNext()) {
+              if (!portTypesWithSchemaClasses.getBoolean((String) portTypesIter.next())) {
+                portTypesIter.remove();
+              }
+            }
 
             arr.put(oper);
           } catch (Exception | NoClassDefFoundError ex) {
@@ -3031,8 +3040,10 @@ public class DTCli
             failed.put(cls, ex.toString());
           }
         }
+
         json.put("operatorClasses", arr);
         json.put("portClassHier", portClassHier);
+        json.put("portTypesWithSchemaClasses", portTypesWithSchemaClasses);
         if (failed.length() > 0) {
           json.put("failedOperators", failed);
         }

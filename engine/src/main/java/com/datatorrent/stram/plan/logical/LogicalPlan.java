@@ -1170,6 +1170,13 @@ public class LogicalPlan implements Serializable, DAG
               validateThreadLocal(n);
             }
           }
+
+          if (pm.portAnnotation != null && pm.portAnnotation.schemaRequired()) {
+            //since schema is required, the port attribute TUPLE_CLASS should be present
+            if (pm.attributes.get(PortContext.TUPLE_CLASS) == null) {
+              throw new ValidationException("Attribute " + PortContext.TUPLE_CLASS.getName() + " missing on port : " + n.name + "." + pm.getPortName());
+            }
+          }
         }
       }
 
@@ -1178,6 +1185,14 @@ public class LogicalPlan implements Serializable, DAG
         if (!n.outputStreams.containsKey(pm)) {
           if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
             throw new ValidationException("Output port connection required: " + n.name + "." + pm.getPortName());
+          }
+        } else {
+          //port is connected
+          if (pm.portAnnotation != null && pm.portAnnotation.schemaRequired()) {
+            //since schema is required, the port attribute TUPLE_CLASS should be present
+            if (pm.attributes.get(PortContext.TUPLE_CLASS) == null) {
+              throw new ValidationException("Attribute " + PortContext.TUPLE_CLASS.getName() + " missing on port : " + n.name + "." + pm.getPortName());
+            }
           }
         }
         allPortsOptional &= (pm.portAnnotation != null && pm.portAnnotation.optional());

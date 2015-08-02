@@ -21,6 +21,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.datatorrent.api.Context;
 
 /**
  *
@@ -40,4 +41,13 @@ public @interface OutputPortFieldAnnotation {
    * <p>error.</p>
    */
   public boolean error() default false;
+
+  /**
+   * Whether this port needs to know the tuple class. When true, application will have to set
+   * the port attribute- TUPLE_CLASS of the port otherwise dag validation will fail.
+   *
+   * @return  true if schema is required; false otherwise.
+   */
+  public boolean schemaRequired() default false;
 }
+
