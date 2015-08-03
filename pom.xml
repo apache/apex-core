@@ -31,8 +31,8 @@
     <github.global.server>github</github.global.server>
     <jackson.version>1.9.2</jackson.version>
     <jersey.version>1.9</jersey.version>
-    <!-- do not change jetty version as later versions have problems with DefaultServlet -->
-    <jetty.version>8.1.10.v20130312</jetty.version>
+    <!-- do not change jetty version to 9.3 or later as it requires JDK 8 -->
+    <jetty.version>9.2.11.v20150529</jetty.version>
     <maven.deploy.repo.classifier></maven.deploy.repo.classifier>
     <license.skip>true</license.skip>
   </properties>
