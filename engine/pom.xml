@@ -272,7 +272,6 @@
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-websocket</artifactId>
       <version>${jetty.version}</version>
-      <scope>test</scope>
     </dependency>
     <!-- use shaded asm library to avoid conflict -->
     <dependency>
