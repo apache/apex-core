@@ -854,10 +854,6 @@ public class LogicalPlan implements Serializable, DAG
   @Override
   public <T extends Operator> T addOperator(String name, T operator)
   {
-    // TODO: optional interface to provide contextual information to instance
-    if (operator instanceof BaseOperator) {
-      ((BaseOperator)operator).setName(name);
-    }
     if (operators.containsKey(name)) {
       if (operators.get(name) == (Object)operator) {
         return operator;
@@ -1219,7 +1215,7 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
 
-    // Validate root operators are input operators 
+    // Validate root operators are input operators
     for (OperatorMeta om : this.rootOperators) {
       if (!(om.getOperator() instanceof InputOperator)) {
         throw new ValidationException(String.format("Root operator: %s is not a Input operator",

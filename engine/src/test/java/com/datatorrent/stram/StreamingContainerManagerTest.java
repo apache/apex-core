@@ -188,8 +188,8 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("number operators assigned to container", 3, c2.size());
     OperatorDeployInfo o2DI = getNodeDeployInfo(c2, dag.getMeta(o2));
     OperatorDeployInfo o3DI = getNodeDeployInfo(c2, dag.getMeta(o3));
-    Assert.assertNotNull(o2.getName() + " assigned to " + sca2.container.getExternalId(), o2DI);
-    Assert.assertNotNull(o3.getName() + " assigned to " + sca2.container.getExternalId(), o3DI);
+    Assert.assertNotNull(dag.getMeta(o2) + " assigned to " + sca2.container.getExternalId(), o2DI);
+    Assert.assertNotNull(dag.getMeta(o3) + " assigned to " + sca2.container.getExternalId(), o3DI);
 
     Assert.assertTrue("The buffer server memory for container 1", 256 == sca1.getInitContext().getValue(ContainerContext.BUFFER_SERVER_MB));
     Assert.assertTrue("The buffer server memory for container 2", 0 == sca2.getInitContext().getValue(ContainerContext.BUFFER_SERVER_MB));
@@ -218,7 +218,7 @@ public class StreamingContainerManagerTest {
 
     // THREAD_LOCAL o4.inport1
     OperatorDeployInfo o4DI = getNodeDeployInfo(c2, dag.getMeta(o4));
-    Assert.assertNotNull(o4.getName() + " assigned to " + sca2.container.getExternalId(), o4DI);
+    Assert.assertNotNull(dag.getMeta(o4) + " assigned to " + sca2.container.getExternalId(), o4DI);
     InputDeployInfo c2o4i1 = getInputDeployInfo(o4DI, "o3.outport1");
     Assert.assertNotNull("input from o3.outport1", c2o4i1);
     Assert.assertEquals("portName " + c2o4i1, GenericTestOperator.IPORT1, c2o4i1.portName);
@@ -271,7 +271,7 @@ public class StreamingContainerManagerTest {
     StreamingContainerAgent sca1 = dnm.getContainerAgent(c.getExternalId());
     List<OperatorDeployInfo> c1 = getDeployInfo(sca1);
     Assert.assertEquals("number operators assigned to container", 1, c1.size());
-    Assert.assertTrue(node2.getName() + " assigned to " + sca1.container.getExternalId(), containsNodeContext(c1, dag.getMeta(node1)));
+    Assert.assertTrue(dag.getMeta(node2) + " assigned to " + sca1.container.getExternalId(), containsNodeContext(c1, dag.getMeta(node1)));
 
     List<PTOperator> o2Partitions = plan.getOperators(dag.getMeta(node2));
     Assert.assertEquals("number partitions", TestStaticPartitioningSerDe.partitions.length, o2Partitions.size());
@@ -280,7 +280,7 @@ public class StreamingContainerManagerTest {
       String containerId = o2Partitions.get(i).getContainer().getExternalId();
       List<OperatorDeployInfo> cc = getDeployInfo(dnm.getContainerAgent(containerId));
       Assert.assertEquals("number operators assigned to container", 1, cc.size());
-      Assert.assertTrue(node2.getName() + " assigned to " + containerId, containsNodeContext(cc, dag.getMeta(node2)));
+      Assert.assertTrue(dag.getMeta(node2) + " assigned to " + containerId, containsNodeContext(cc, dag.getMeta(node2)));
 
       // n1n2 in, mergeStream out
       OperatorDeployInfo ndi = cc.get(0);
@@ -338,7 +338,7 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("number operators " + cmerge, 1, cmerge.size());
 
     OperatorDeployInfo node3DI = getNodeDeployInfo(cmerge,  dag.getMeta(node3));
-    Assert.assertNotNull(node3.getName() + " assigned", node3DI);
+    Assert.assertNotNull(dag.getMeta(node3) + " assigned", node3DI);
     Assert.assertEquals("inputs " + node3DI, 1, node3DI.inputs.size());
     InputDeployInfo node3In = node3DI.inputs.get(0);
     Assert.assertEquals("streamName " + node3In, n2n3.getName(), node3In.declaredStreamId);

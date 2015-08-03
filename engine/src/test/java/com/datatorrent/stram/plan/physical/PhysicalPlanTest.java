@@ -180,7 +180,6 @@ public class PhysicalPlanTest
         p.getPartitionKeys().put(this.inport1, lpks);
         p.getPartitionKeys().put(this.inportWithCodec, lpks);
         p.getPartitionedInstance().pks = p.getPartitionKeys().values().toString();
-        p.getPartitionedInstance().setName(p.getPartitionKeys().values().toString());
         newPartitions.add(p);
       }
 
@@ -252,7 +251,7 @@ public class PhysicalPlanTest
     dag.addStream("node1.outport1", node1.outport1, node2.inport2, node2.inport1);
 
     int initialPartitionCount = 5;
-    OperatorMeta node2Decl = dag.getOperatorMeta(node2.getName());
+    OperatorMeta node2Decl = dag.getMeta(node2);
     node2Decl.getAttributes().put(OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(initialPartitionCount));
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
@@ -350,7 +349,7 @@ public class PhysicalPlanTest
 
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
-    OperatorMeta o2Meta = dag.getOperatorMeta(o2.getName());
+    OperatorMeta o2Meta = dag.getMeta(o2);
     o2Meta.getAttributes().put(OperatorContext.STATS_LISTENERS,
                                Lists.newArrayList((StatsListener) new PartitionLoadWatch(0, 5)));
     o2Meta.getAttributes().put(OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(1));
@@ -441,7 +440,7 @@ public class PhysicalPlanTest
   public void testInputOperatorPartitioning() {
     LogicalPlan dag = new LogicalPlan();
     TestInputOperator<Object> o1 = dag.addOperator("o1", new TestInputOperator<Object>());
-    OperatorMeta o1Meta = dag.getOperatorMeta(o1.getName());
+    OperatorMeta o1Meta = dag.getMeta(o1);
     dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
     dag.setAttribute(o1, OperatorContext.PARTITIONER, new StatelessPartitioner<TestInputOperator<Object>>(2));
 
@@ -509,7 +508,7 @@ public class PhysicalPlanTest
 
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
-    OperatorMeta node2Meta = dag.getOperatorMeta(o2.getName());
+    OperatorMeta node2Meta = dag.getMeta(o2);
     node2Meta.getAttributes().put(OperatorContext.STATS_LISTENERS,
                                   Lists.newArrayList((StatsListener) new PartitionLoadWatch(3, 5)));
     node2Meta.getAttributes().put(OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(8));
