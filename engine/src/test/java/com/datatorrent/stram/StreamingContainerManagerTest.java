@@ -78,7 +78,7 @@ import com.datatorrent.stram.tuple.Tuple;
 import org.apache.commons.lang.StringUtils;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-import org.eclipse.jetty.websocket.api.WebSocketAdapter;
+import org.eclipse.jetty.websocket.WebSocket;
 
 public class StreamingContainerManagerTest {
   @Rule public TestMeta testMeta = new TestMeta();
@@ -795,29 +795,36 @@ public class StreamingContainerManagerTest {
     testAppDataSources(dag, false);
   }
 
-  public static class TestWebSocketAdapter extends WebSocketAdapter
-  {
-
-    public static List<JSONObject> messages = new ArrayList<JSONObject>();
-
-    @Override
-    public void onWebSocketText(String data)
-    {
-      try {
-        messages.add(new JSONObject(data));
-      } catch (JSONException ex) {
-        throw new RuntimeException(ex);
-      }
-    }
-  }
-
   @Test
   public void testAppDataPush() throws Exception
   {
     int port = 12345;
     final String topic = "xyz";
+    final List<JSONObject> messages = new ArrayList<JSONObject>();
     EmbeddedWebSocketServer server = new EmbeddedWebSocketServer(port);
-    server.setWebSocketAdapterClass(TestWebSocketAdapter.class);
+    server.setWebSocket(new WebSocket.OnTextMessage()
+    {
+
+      @Override
+      public void onMessage(String data)
+      {
+        try {
+          messages.add(new JSONObject(data));
+        } catch (JSONException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+
+      @Override
+      public void onOpen(WebSocket.Connection connection)
+      {
+      }
+
+      @Override
+      public void onClose(int closeCode, String message)
+      {
+      }
+    });
     try {
       server.start();
       LogicalPlan dag = new LogicalPlan();
@@ -835,8 +842,8 @@ public class StreamingContainerManagerTest {
       pushAgent.init();
       pushAgent.pushData();
       Thread.sleep(1000);
-      Assert.assertTrue(TestWebSocketAdapter.messages.size() > 0);
-      JSONObject message = TestWebSocketAdapter.messages.get(0);
+      Assert.assertTrue(messages.size() > 0);
+      JSONObject message = messages.get(0);
       System.out.println("Got this message: " + message.toString(2));
       Assert.assertEquals(topic, message.getString("topic"));
       Assert.assertEquals("publish", message.getString("type"));

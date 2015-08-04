@@ -31,6 +31,8 @@ import org.slf4j.LoggerFactory;
  * this class provides boilerplate code to play with the very uncommon serialization API and provides a
  * way to easily and correctly serialize and deserialize such objects. The only condition is that the
  * class of such object should provide either a copy constructor or a default constructor. *
+ *
+ * @since 3.0.0
  */
 public class SerializableObject implements Serializable
 {

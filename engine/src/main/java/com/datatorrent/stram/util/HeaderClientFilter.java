@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * <p>HeaderClientFilter class.</p>
  *
  * @since 0.9.2
  */

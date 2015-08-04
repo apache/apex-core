@@ -1,6 +1,105 @@
-DataTorrent RTS Changelog
+Apex Changelog
 ========================================================================================================================
 
+Version 3.0.0
+------------------------------------------------------------------------------------------------------------------------
+
+* Add jersey client jar for app execution
+* Must catch NoClassDefFoundError when processing operator classes in jar, previously catching Throwable was changed to catching Exception
+* Do not catch throwable in DTCli and exit immediately when worker thread throws an error
+* Depend on published netlet version
+* Catch throwable when executing command because launching an app can throw java.lang.VerifyError: bad type on operand stack
+* Removed runOnlyOnce when generating dt-git.properties and generate even when not using release profile
+* Undeploy heartbeat requests are not processes if container is idle
+* Fix potential NPE
+* Comment hide the actually type for string types(URI, URL, Class etc) and add 2 missing wrapper types
+* Fixed typo in webservice url for get-physical-plan command
+* Resolve deleting checkpoint in different thread
+* Removed duplicate code and added unit test for json stream codec
+* APEX-11 #resolve added checkpoint metric
+* Have default connect and read timeouts because the jersey defaults are infinity and that blocks threads and those threads can't be interrupted either
+* Removed invalid app data push annotation
+* Use FileContext instead of FileSystem to write the meta json file
+* Comment added required memory and required vcores in the appinfo
+* Comment filter abstract types from getAssignableClasses call and rename initializable to instantiable
+* Deploy all artifacts by default.
+* Comment fix the bug in trimming the graph
+* HA support for stram webservice filter.
+* Removed dependencies in filter to hadoop classes with private audience as their interface has changed from Hadoop 2.2 to 2.6
+* Related doc updates
+* Comment Prune the external dependencies from type graph and break the type circle
+* Fixing class not found issue due to missing dt-common jar.
+* Resolve removed old alert support in stram
+* Use tokens from Credentials as UserGroupInformation.getTokens() returns HDFS Namenode hidden tokens that should not be passed to containers.
+* Support for RM delegation token renewal in secure HA environments
+* Resolve fixed bug when custom metric keys are not stored correctly in meta file
+* Comment Use apache xbean shaded asm to resolve jdk 8 class and avoid conflict with old asm version that hadoop depends on
+* APEX-5 #resolve Set APPLICATION_PATH for unit tests that launch an app
+* Resolve Added dependency on dt-engine in test scope of archetype
+* Corrected the place to get pom.properties for version info
+* Token authentication support for buffer server
+* Adding default aggregator for primitive customMetrics
+* Netlet has a few fixed related to non firing OP_CONNECT call, so test against those.
+* Print stack trace when exception occurs
+* Commented out app master mb in properties.xml
+* Ability to extract javadocs as xml
+* Moved PAYLOAD_VALUE out of default case. Count number of skipped payload tuples.
+* Resolve fixing ASM signature visitor to add upper bound to Object for unbounded wild card entries
+* Removing unused imports
+* Addressing review comments
+* Reverting code format change
+* Resolve Added END_STREAM to be distributed to physical nodes. Introduced debug message for default case.
+* Comment removed the coding convention
+* Resolve Changed reading of portTypeInfo, port annotations in operator discoverer to read from ASM
+* Added test case for operator discoverer
+* Updated Type Discovery tests to getPortInfo via ASM instead of reflection API
+* Addressing review comments
+* Removed condition for public, final, transient ports when generating typeGraph using ASM
+* Added a class for storing input, output port annotations
+* Added port type info handling for ports other than DefaultInputPort and DefaultOutputPort types
+* Updated a test case for the same
+* Adding annotations to list.. Missed in previous commit
+* Added rescan of typegraph to capture operator ports
+* Changing ASMUtil utility methods to public
+* Addressing review comments.
+* Correcting jar entry name
+* Updated a test after merge
+* Removed system.out print from test cases and added debug print on failure
+* Removing temp file
+* Reversed the order of setting jvm_options for app master
+* Resolve Added validation for root operator should be input operator in logical plan validation
+* Fixing formatting and added lincense header
+* Removed extra line spaces
+* Correcting output port in dt-site.xml stream connection
+* Resolve Added validation for root operator should be input operator in logical plan validation
+* Fixing formatting and added lincense header
+* Removed extra line spaces
+* Correcting output port in dt-site.xml stream connection
+* Removing white spaces
+* Renaming the properties to reflect the code change
+* Comment add the missing open tag <p>
+* Removed unnecessary depedency
+* Resolve Remove unnecessary unpack in app package archetype
+* Resolve support java.lang.Class and resolve uiType to special types
+* Resolve update dependency to dt-common in archetype
+* Resolve added the container jvm options for app master
+* Resolve attach apa file as an artifact
+* Resolve test app package should depend on dt-common instead of dt-engine
+* Removed additional license header
+* Removed incorrectly left in license headers due to incorrect formatting
+* Put back revision info.
+* Added a TODO note for handling of stram delegation tokens for future
+* Comment Add dag attributes to LogicalPlanSerializer
+* Using resolveType method in OperatorDiscoverer to describe an attribute completely
+* Switch to Java7 and update compiler plugin.
+* Remove invalid module references.
+* Separated out HA token creation from non-HA case as it involves special handling that is subject to change if Hadoop's internals change.
+* Resolve - Add all resource managers to RM delegation token service.
+* Fix CLI script.
+* Stram directory is moved to engine
+* Fix depenency plugin version (2.3 shipped with maven 3.2.5 pulls dependencies from test scope)
+* Setup the pom files for OS with optimized dependencies
+* Changed the license header to Apache 2.0 license.
 
 
 Version 2.1.0

@@ -26,6 +26,8 @@ import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * Interface for App Data support. Experimental only. This interface will likely change in the near future.
+ *
+ * @since 3.0.0
  */
 @InterfaceStability.Evolving
 public interface AppData

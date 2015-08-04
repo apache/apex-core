@@ -126,7 +126,7 @@ public class Server implements ServerListener
 
   public void setAuthToken(byte[] authToken)
   {
-    this.authToken = authToken == null? null: Arrays.copyOf(authToken, authToken.length);
+    this.authToken = authToken;
   }
 
   /**
@@ -352,9 +352,15 @@ public class Server implements ServerListener
 
   class AuthClient extends com.datatorrent.bufferserver.client.AuthClient
   {
+    boolean ignore;
+
     @Override
     public void onMessage(byte[] buffer, int offset, int size)
     {
+      if (ignore) {
+        return;
+      }
+
       authenticateMessage(buffer, offset, size);
 
       unregistered(key);
@@ -368,20 +374,21 @@ public class Server implements ServerListener
         client.transferBuffer(buffer, readOffset + size, len);
       }
 
-      /*
-       * Remaining data has been transferred to next client in the chain and is going to be processed there so we would
-       * not be processing it here, hence discarding it.
-       */
-      discardReadBuffer();
+      ignore = true;
     }
   }
 
   class UnidentifiedClient extends SeedDataClient
   {
+    boolean ignore;
 
     @Override
     public void onMessage(byte[] buffer, int offset, int size)
     {
+      if (ignore) {
+        return;
+      }
+
       Tuple request = Tuple.getTuple(buffer, offset, size);
       switch (request.getType()) {
         case PUBLISHER_REQUEST:
@@ -425,12 +432,7 @@ public class Server implements ServerListener
           if (len > 0) {
             publisher.transferBuffer(this.buffer, readOffset + size, len);
           }
-
-          /*
-           * Remaining data transferred to next client and being processed there, not processed here anymore hence
-           * discarding it.
-           */
-          discardReadBuffer();
+          ignore = true;
 
           break;
 
@@ -439,11 +441,7 @@ public class Server implements ServerListener
            * unregister the unidentified client since its job is done!
            */
           unregistered(key);
-          /*
-           * Control is being transferred to next client in the chain so no more processing in this client after this
-           * message.
-           */
-          discardReadBuffer();
+          ignore = true;
           logger.info("Received subscriber request: {}", request);
 
           SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
@@ -767,24 +765,24 @@ public class Server implements ServerListener
 
   }
 
-  static abstract class SeedDataClient extends AbstractLengthPrependerClient
+  abstract class SeedDataClient extends AbstractLengthPrependerClient
   {
 
-    SeedDataClient()
+    public SeedDataClient()
     {
     }
 
-    SeedDataClient(int readBufferSize, int sendBufferSize)
+    public SeedDataClient(int readBufferSize, int sendBufferSize)
     {
       super(readBufferSize, sendBufferSize);
     }
 
-    SeedDataClient(byte[] readbuffer, int position, int sendBufferSize)
+    public SeedDataClient(byte[] readbuffer, int position, int sendBufferSize)
     {
       super(readbuffer, position, sendBufferSize);
     }
 
-    void transferBuffer(byte[] array, int offset, int len)
+    public void transferBuffer(byte[] array, int offset, int len)
     {
       int remainingCapacity;
       do {

@@ -16,12 +16,15 @@
 package com.datatorrent.api;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.StringUtils;
 
 import com.datatorrent.netlet.util.DTThrowable;
+import java.util.*;
 
 /**
  * This interface is essentially serializer/deserializer interface which works with String as
@@ -136,12 +139,14 @@ public interface StringCodec<T>
 
     public Object2String()
     {
-      this(":", "=");
+      separator = ":";
+      propertySeparator = "=";
     }
 
     public Object2String(String separator)
     {
-      this(separator, "=");
+      this.separator = separator;
+      this.propertySeparator = "=";
     }
 
     public Object2String(String separator, String propertySeparator)

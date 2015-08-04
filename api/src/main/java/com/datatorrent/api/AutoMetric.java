@@ -23,6 +23,8 @@ import java.util.Map;
  * A field which tracks an aspect of operator's progress is considered a metric. The value
  * of the field is communicated from the execution environment to application master. The declared field
  * name will be used as the metric key.
+ *
+ * @since 3.0.0
  */
 @Documented
 @Target({ElementType.FIELD, ElementType.METHOD})
@@ -37,18 +39,19 @@ public @interface AutoMetric
     /**
      * @return map of metric name to value
      */
-    Map<String, Object> getMetrics();
+     Map<String, Object> getMetrics();
 
     /**
+     *
      * @return operator id
      */
-    int operatorId();
+     int operatorId();
   }
 
   /**
    * It aggregates metrics from multiple physical partitions of an operator to a logical one.<br/>
-   * An aggregator is provided as operator attribute. By default, when there isn't any aggregator set explicitly,
-   * the application master sums up all the number metrics.
+   * An aggregator is provided as operator attribute. By default when there isn't any aggregator set the engine does
+   * summation of a number metric.
    */
   public static interface Aggregator
   {
@@ -95,7 +98,7 @@ public @interface AutoMetric
      * to aggregations. Stram will invoke this method for each logical metric and check if the aggregations are overwritten
      * and will inform that to app data tracker.
      *
-     * @param logicalMetricName logical metric name.
+     * @param logicalMetricName  logical metric name.
      * @return aggregations eg. SUM, MIN, MAX, etc. that will be performed by app data tracker on a logical metric.
      */
     String[] getDimensionAggregationsFor(String logicalMetricName);

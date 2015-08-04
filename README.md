@@ -45,7 +45,7 @@ Thanks for contributing!
  
 ##Building Apex
 
-Apex uses Apache Maven for the project management. To build and test the project:
+The project uses Maven for the build. Run 
 ```
 mvn install
 ``` 

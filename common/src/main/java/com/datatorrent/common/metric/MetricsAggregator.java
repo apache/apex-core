@@ -40,6 +40,8 @@ import com.datatorrent.api.annotation.Name;
  * <p/>
  * There are examples of {@link SingleMetricAggregator} provided in the library for common number
  * aggregations- sum, min, max, avg.
+ *
+ * @since 3.0.0
  */
 public class MetricsAggregator implements AutoMetric.Aggregator, Serializable
 {

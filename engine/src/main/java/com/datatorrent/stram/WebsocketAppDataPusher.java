@@ -23,7 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>WebsocketAppDataPusher class.</p>
  *
+ * @since 3.0.0
  */
 public class WebsocketAppDataPusher implements AppDataPusher
 {

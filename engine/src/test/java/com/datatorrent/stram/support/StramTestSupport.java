@@ -56,13 +56,13 @@ import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.util.Clock;
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.websocket.api.WebSocketAdapter;
-import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
-import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
+import org.eclipse.jetty.websocket.WebSocket;
+import org.eclipse.jetty.websocket.WebSocketServlet;
 
 /**
  * Bunch of utilities shared between tests.
@@ -122,7 +122,9 @@ abstract public class StramTestSupport
   /**
    * Create an appPackage zip using the sample appPackage located in
    * src/test/resources/testAppPackage/testAppPackageSrc.
+   * @param file  The file whose path will be used to create the appPackage zip
    * @return      The File object that can be used in the AppPackage constructor.
+   * @throws net.lingala.zip4j.exception.ZipException
    */
   public static File createAppPackageFile()
   {
@@ -538,22 +540,22 @@ abstract public class StramTestSupport
 
     private final int port;
     private Server server;
-    private Class<? extends WebSocketAdapter> wsAdapterClass;
+    private WebSocket websocket;
 
     public EmbeddedWebSocketServer(int port)
     {
       this.port = port;
     }
 
-    public void setWebSocketAdapterClass(Class<? extends WebSocketAdapter> wsAdapterClass)
+    public void setWebSocket(WebSocket websocket)
     {
-      this.wsAdapterClass = wsAdapterClass;
+      this.websocket = websocket;
     }
 
     public void start() throws Exception
     {
       server = new Server();
-      ServerConnector connector = new ServerConnector(server);
+      Connector connector = new SelectChannelConnector();
       connector.setPort(port);
       server.addConnector(connector);
 
@@ -565,9 +567,9 @@ abstract public class StramTestSupport
       WebSocketServlet webSocketServlet = new WebSocketServlet()
       {
         @Override
-        public void configure(WebSocketServletFactory factory)
+        public WebSocket doWebSocketConnect(HttpServletRequest request, String protocol)
         {
-          factory.register(wsAdapterClass);
+          return websocket;
         }
       };
 

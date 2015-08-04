@@ -21,6 +21,8 @@ import com.datatorrent.netlet.AbstractLengthPrependerClient;
 
 /**
  * <p>Auth Client class.</p>
+ *
+ * @since 3.0.0
  */
 public abstract class AuthClient extends AbstractLengthPrependerClient
 {
