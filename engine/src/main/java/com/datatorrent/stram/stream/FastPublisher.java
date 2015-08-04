@@ -189,6 +189,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
       if (!write) {
         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
         write = true;
+        key.selector().wakeup();
       }
     }
   }
@@ -484,6 +485,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
     if (!write) {
       key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
       write = true;
+      key.selector().wakeup();
     }
   }
 
