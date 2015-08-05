@@ -27,9 +27,10 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.StorageAgent;
 
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
-import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
@@ -291,15 +292,14 @@ public class LogicalPlanModificationTest
 
   }
 
-  @Test
-  public void testExecutionManager() throws Exception {
+  private void testExecutionManager(StorageAgent agent) throws Exception {
 
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
-    Assert.assertEquals(""+dnm.containerStartRequests, dnm.containerStartRequests.size(), 0);
+    Assert.assertEquals("" + dnm.containerStartRequests, dnm.containerStartRequests.size(), 0);
 
 
     CreateOperatorRequest cor = new CreateOperatorRequest();
@@ -329,6 +329,18 @@ public class LogicalPlanModificationTest
     Assert.assertEquals("operator name", "o1", oper.getOperatorMeta().getName());
     Assert.assertEquals("operator class", TestGeneratorInputOperator.class, oper.getOperatorMeta().getOperator().getClass());
 
+  }
+
+  @Test
+  public void testExecutionManagerWithSyncStorageAgent() throws Exception
+  {
+    testExecutionManager(new FSStorageAgent(testMeta.dir, null));
+  }
+
+  @Test
+  public void testExecutionManagerWithAsyncStorageAgent() throws Exception
+  {
+    testExecutionManager(new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
   }
 
 }

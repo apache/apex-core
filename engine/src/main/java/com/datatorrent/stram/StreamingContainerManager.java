@@ -76,6 +76,7 @@ import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.bufferserver.auth.AuthManager;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.experimental.AppData;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.common.util.NumberAggregate;
 import com.datatorrent.common.util.Pair;
@@ -2949,7 +2950,14 @@ public class StreamingContainerManager implements PlanContext
 
       this.finals = new FinalVars(finals, lp);
       StorageAgent sa = lp.getValue(OperatorContext.STORAGE_AGENT);
-      if (sa instanceof FSStorageAgent) {
+      if(sa instanceof AsyncFSStorageAgent){
+        // replace the default storage agent, if present
+        AsyncFSStorageAgent fssa = (AsyncFSStorageAgent) sa;
+        if (fssa.path.contains(oldAppId)) {
+          fssa = new AsyncFSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
+          lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
+        }
+      } else if (sa instanceof FSStorageAgent) {
         // replace the default storage agent, if present
         FSStorageAgent fssa = (FSStorageAgent) sa;
         if (fssa.path.contains(oldAppId)) {

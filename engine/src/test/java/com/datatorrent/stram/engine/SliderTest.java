@@ -15,6 +15,9 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.File;
+
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BaseOperator;
 import org.junit.Assert;
 import org.junit.Test;
@@ -133,6 +136,8 @@ public class SliderTest
   private void test(int applicationWindowCount, int slideByWindowCount) throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    String workingDir = new File("target/sliderTest").getAbsolutePath();
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 100);
     Input input = dag.addOperator("Input", new Input());
     Sum sum = dag.addOperator("Sum", new Sum());

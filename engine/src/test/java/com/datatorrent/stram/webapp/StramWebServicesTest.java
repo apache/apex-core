@@ -56,6 +56,8 @@ import static org.junit.Assert.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
 
+import com.datatorrent.api.Context;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -125,7 +127,9 @@ public class StramWebServicesTest extends JerseyTest
       protected void configureServlets()
       {
         LogicalPlan dag = new LogicalPlan();
-        dag.setAttribute(LogicalPlan.APPLICATION_PATH, new File("target", StramWebServicesTest.class.getName()).getAbsolutePath());
+        String workingDir = new File("target", StramWebServicesTest.class.getName()).getAbsolutePath();
+        dag.setAttribute(LogicalPlan.APPLICATION_PATH, workingDir);
+        dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
         final DummyStreamingContainerManager streamingContainerManager = new DummyStreamingContainerManager(dag);
 
         appContext = new TestAppContext();

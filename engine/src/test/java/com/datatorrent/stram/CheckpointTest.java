@@ -37,6 +37,7 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.annotation.Stateless;
 
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.MockContainer.MockOperatorStats;
 import com.datatorrent.stram.StreamingContainerManager.UpdateCheckpointsContext;
 import com.datatorrent.stram.api.Checkpoint;
@@ -111,6 +112,9 @@ public class CheckpointTest
   {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    AsyncFSStorageAgent storageAgent = new AsyncFSStorageAgent(testMeta.dir + "/locaPath", testMeta.dir, null);
+    storageAgent.setSyncCheckpoint(true);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, storageAgent);
     dag.setAttribute(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 1);
     dag.setAttribute(LogicalPlan.HEARTBEAT_INTERVAL_MILLIS, 50);
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
@@ -127,14 +131,13 @@ public class CheckpointTest
     sc.setHeartbeatMonitoringEnabled(false);
     sc.run();
 
-    StorageAgent fssa = sc.getDAG().getValue(OperatorContext.STORAGE_AGENT);
     StreamingContainerManager dnm = sc.dnmgr;
     PhysicalPlan plan = dnm.getPhysicalPlan();
     Assert.assertEquals("number required containers", 1, dnm.getPhysicalPlan().getContainers().size());
 
     PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
     Set<Long> checkpoints = Sets.newHashSet();
-    for (long windowId : fssa.getWindowIds(o1p1.getId())) {
+    for (long windowId : storageAgent.getWindowIds(o1p1.getId())) {
       checkpoints.add(windowId);
     }
     Assert.assertEquals("number checkpoints " + checkpoints, 3, checkpoints.size());
@@ -142,7 +145,7 @@ public class CheckpointTest
 
     PTOperator o2p1 = plan.getOperators(dag.getMeta(o2)).get(0);
     checkpoints = Sets.newHashSet();
-    for (long windowId : fssa.getWindowIds(o2p1.getId())) {
+    for (long windowId : storageAgent.getWindowIds(o2p1.getId())) {
       checkpoints.add(windowId);
     }
     Assert.assertEquals("number checkpoints " + checkpoints, 1, checkpoints.size());
@@ -152,7 +155,7 @@ public class CheckpointTest
     Assert.assertNotNull("checkpoint not null for statefull operator " + o1p1, o1p1.stats.checkpointStats);
 
     for (Checkpoint cp : o1p1.checkpoints) {
-      Object load = fssa.load(o1p1.getId(), cp.windowId);
+      Object load = storageAgent.load(o1p1.getId(), cp.windowId);
       Assert.assertEquals("Stored Operator and Saved State", load.getClass(), o1p1.getOperatorMeta().getOperator().getClass());
     }
   }
