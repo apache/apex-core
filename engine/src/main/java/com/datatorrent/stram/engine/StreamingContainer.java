@@ -905,7 +905,8 @@ public class StreamingContainer extends YarnContainerMain
     bssc.put(StreamContext.EVENT_LOOP, eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
     bssc.put(StreamContext.BUFFER_SERVER_TOKEN, nodi.bufferServerToken);
-    if (NetUtils.isLocalAddress(bssc.getBufferServerAddress().getAddress())) {
+    InetAddress inetAddress = bssc.getBufferServerAddress().getAddress();
+    if (inetAddress != null && NetUtils.isLocalAddress(inetAddress)) {
       bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
     }
 
@@ -1096,7 +1097,8 @@ public class StreamingContainer extends YarnContainerMain
 
             StreamContext context = new StreamContext(nidi.declaredStreamId);
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
-            if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
+            InetAddress inetAddress = context.getBufferServerAddress().getAddress();
+            if (inetAddress != null && NetUtils.isLocalAddress(inetAddress)) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
             context.put(StreamContext.BUFFER_SERVER_TOKEN, nidi.bufferServerToken);
