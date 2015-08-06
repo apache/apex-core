@@ -1,0 +1,43 @@
+{
+  "operators": [
+    {
+      "name": "inputOperator",
+      "class": "com.datatorrent.stram.engine.TestGeneratorInputOperator",
+      "properties": {
+        "com.datatorrent.stram.engine.TestGeneratorInputOperator": {
+          "myConfigProperty": "myConfigPropertyValue"
+        }
+      },
+      "ports": [
+        {
+          "name": "outport",
+          "attributes": {
+            "UNIFIER_LIMIT": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "operator1",
+      "class": "com.datatorrent.stram.plan.SchemaTestOperator"
+    }
+  ],
+  "streams": [
+    {
+      "name": "inputStream",
+      "source": {
+        "operatorName": "inputOperator",
+        "portName": "outport"
+      },
+      "sinks": [
+        {
+          "operatorName": "operator1",
+          "portName": "schemaRequiredPort"
+        }
+      ],
+      "schema": {
+        "class": "com.datatorrent.stram.plan.LogicalPlanConfigurationTest$TestSchema"
+      }
+    }
+  ]
+}
