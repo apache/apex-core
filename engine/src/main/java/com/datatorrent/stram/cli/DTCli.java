@@ -1481,9 +1481,6 @@ public class DTCli
   private void printWelcomeMessage()
   {
     System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
-    if (!StramClientUtils.configComplete(conf)) {
-      System.err.println("WARNING: Configuration of DataTorrent has not been complete. Please proceed with caution and only in development environment!");
-    }
   }
 
   private void printHelp(String command, CommandSpec commandSpec, PrintStream os)
