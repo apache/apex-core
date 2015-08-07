@@ -130,6 +130,11 @@ public class LogicalPlan implements Serializable, DAG
    */
   public static Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
 
+  /**
+   * The application attempt ID from YARN
+   */
+  public static Attribute<Integer> APPLICATION_ATTEMPT_ID = new Attribute<>(1);
+
   static {
     Attribute.AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);
   }

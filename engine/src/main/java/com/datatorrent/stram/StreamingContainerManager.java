@@ -127,6 +127,8 @@ public class StreamingContainerManager implements PlanContext
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   public final static String GATEWAY_LOGIN_URL_PATH = "/ws/v2/login";
   public final static String BUILTIN_APPDATA_URL = "builtin";
+  public final static String CONTAINERS_INFO_FILENAME_FORMAT = "containers_%d.json";
+  public final static String OPERATORS_INFO_FILENAME_FORMAT = "operators_%d.json";
   public final static String APP_META_FILENAME = "meta.json";
   public final static String APP_META_KEY_ATTRIBUTES = "attributes";
   public final static String APP_META_KEY_METRICS = "metrics";
@@ -205,7 +207,7 @@ public class StreamingContainerManager implements PlanContext
   };
 
   private FSJsonLineFile containerFile;
-  private final ConcurrentMap<Integer, FSJsonLineFile> operatorFiles = Maps.newConcurrentMap();
+  private FSJsonLineFile operatorFile;
 
   private final long startTime = System.currentTimeMillis();
 
@@ -359,8 +361,11 @@ public class StreamingContainerManager implements PlanContext
       Configuration config = new YarnConfiguration();
       fileContext = uri.getScheme() == null ? FileContext.getFileContext(config) : FileContext.getFileContext(uri, config);
       saveMetaInfo();
-      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), FsPermission.getDefault());
+      String fileName = String.format(CONTAINERS_INFO_FILENAME_FORMAT, plan.getLogicalPlan().getValue(LogicalPlan.APPLICATION_ATTEMPT_ID));
+      this.containerFile = new FSJsonLineFile(fileContext, new Path(this.vars.appPath, fileName), FsPermission.getDefault());
       this.containerFile.append(getAppMasterContainerInfo());
+      fileName = String.format(OPERATORS_INFO_FILENAME_FORMAT, plan.getLogicalPlan().getValue(LogicalPlan.APPLICATION_ATTEMPT_ID));
+      this.operatorFile = new FSJsonLineFile(fileContext, new Path(this.vars.appPath, fileName), FsPermission.getDefault());
     } catch (IOException ex) {
       throw DTThrowable.wrapIfChecked(ex);
     }
@@ -490,9 +495,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     IOUtils.closeQuietly(containerFile);
-    for (FSJsonLineFile operatorFile : operatorFiles.values()) {
-      IOUtils.closeQuietly(operatorFile);
-    }
+    IOUtils.closeQuietly(operatorFile);
     if(poolExecutor != null) {
       poolExecutor.shutdown();
     }
@@ -854,8 +857,7 @@ public class StreamingContainerManager implements PlanContext
   private void saveMetaInfo() throws IOException
   {
     Path file = new Path(this.vars.appPath, APP_META_FILENAME + "." + System.nanoTime());
-    try (FSDataOutputStream os = fileContext.create(file, EnumSet.of(CreateFlag.CREATE, CreateFlag.OVERWRITE), Options.CreateOpts.CreateParent.createParent())) {
-      JSONObject top = new JSONObject();
+    try (FSDataOutputStream os = fileContext.create(file, EnumSet.of(CreateFlag.CREATE, CreateFlag.OVERWRITE), Options.CreateOpts.CreateParent.createParent())) {      JSONObject top = new JSONObject();
       JSONObject attributes = new JSONObject();
       for (Map.Entry<Attribute<?>, Object> entry : this.plan.getLogicalPlan().getAttributes().entrySet()) {
         attributes.put(entry.getKey().getSimpleName(), entry.getValue());
@@ -1379,7 +1381,7 @@ public class StreamingContainerManager implements PlanContext
   {
     long currentTimeMillis = clock.getTime();
 
-    StreamingContainerAgent sca = this.containers.get(heartbeat.getContainerId());
+    final StreamingContainerAgent sca = this.containers.get(heartbeat.getContainerId());
     if (sca == null || sca.container.getState() == PTContainer.State.KILLED) {
       // could be orphaned container that was replaced and needs to terminate
       LOG.error("Unknown container {}", heartbeat.getContainerId());
@@ -1395,34 +1397,35 @@ public class StreamingContainerManager implements PlanContext
         sca.container.bufferServerAddress = InetSocketAddress.createUnresolved(heartbeat.bufferServerHost, heartbeat.bufferServerPort);
         LOG.info("Container {} buffer server: {}", sca.container.getExternalId(), sca.container.bufferServerAddress);
       }
-      long containerStartTime = System.currentTimeMillis();
+      final long containerStartTime = System.currentTimeMillis();
       sca.container.setState(PTContainer.State.ACTIVE);
       sca.container.setStartedTime(containerStartTime);
       sca.container.setFinishedTime(-1);
       sca.jvmName = heartbeat.jvmName;
-      try {
-        containerFile.append(sca.getContainerInfo());
-      }
-      catch (IOException ex) {
-        LOG.warn("Cannot write to container file");
-      }
-      for (PTOperator ptOp : sca.container.getOperators()) {
-        try {
-          FSJsonLineFile operatorFile = operatorFiles.get(ptOp.getId());
-          if (operatorFile == null) {
-            operatorFiles.putIfAbsent(ptOp.getId(), new FSJsonLineFile(new Path(this.vars.appPath + "/operators/" + ptOp.getId()), FsPermission.getDefault()));
-            operatorFile = operatorFiles.get(ptOp.getId());
+      poolExecutor.submit(new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          try {
+            containerFile.append(sca.getContainerInfo());
+          } catch (IOException ex) {
+            LOG.warn("Cannot write to container file");
           }
-          JSONObject operatorInfo = new JSONObject();
-          operatorInfo.put("name", ptOp.getName());
-          operatorInfo.put("container", sca.container.getExternalId());
-          operatorInfo.put("startTime", containerStartTime);
-          operatorFile.append(operatorInfo);
+          for (PTOperator ptOp : sca.container.getOperators()) {
+            try {
+              JSONObject operatorInfo = new JSONObject();
+              operatorInfo.put("name", ptOp.getName());
+              operatorInfo.put("id", ptOp.getId());
+              operatorInfo.put("container", sca.container.getExternalId());
+              operatorInfo.put("startTime", containerStartTime);
+              operatorFile.append(operatorInfo);
+            } catch (IOException | JSONException ex) {
+              LOG.warn("Cannot write to operator file: ", ex);
+            }
+          }
         }
-        catch (Exception ex) {
-          LOG.warn("Cannot write to operator file: ", ex);
-        }
-      }
+      });
     }
 
     if (heartbeat.restartRequested) {
@@ -2823,9 +2826,10 @@ public class StreamingContainerManager implements PlanContext
         scm = new StreamingContainerManager(dag, enableEventRecording, new SystemClock());
       }
       else {
-        scm = new StreamingContainerManager(checkpointedState, enableEventRecording);
         // find better way to support final transient members
         PhysicalPlan plan = checkpointedState.physicalPlan;
+        plan.getLogicalPlan().setAttribute(LogicalPlan.APPLICATION_ATTEMPT_ID, dag.getAttributes().get(LogicalPlan.APPLICATION_ATTEMPT_ID));
+        scm = new StreamingContainerManager(checkpointedState, enableEventRecording);
         for (Field f : plan.getClass().getDeclaredFields()) {
           if (f.getType() == PlanContext.class) {
             f.setAccessible(true);

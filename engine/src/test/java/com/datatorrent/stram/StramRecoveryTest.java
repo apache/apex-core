@@ -391,6 +391,7 @@ public class StramRecoveryTest
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId1);
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
+    dag.setAttribute(LogicalPlan.APPLICATION_ATTEMPT_ID, 1);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
     dag.addOperator("o1", StatsListeningOperator.class);
 
@@ -408,7 +409,6 @@ public class StramRecoveryTest
     PTOperator o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
     long[] ids = new FSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, new Configuration()).getWindowIds(o1p1.getId());
     Assert.assertArrayEquals(new long[] {o1p1.getRecoveryCheckpoint().getWindowId()}, ids);
-
     Assert.assertNull(o1p1.getContainer().getExternalId());
     // trigger journal write
     o1p1.getContainer().setExternalId("cid1");

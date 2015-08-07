@@ -511,7 +511,7 @@ public class StreamingAppMasterService extends CompositeService
     if (dag.isDebug()) {
       dumpOutDebugInfo();
     }
-
+    dag.setAttribute(LogicalPlan.APPLICATION_ATTEMPT_ID, appAttemptID.getAttemptId());
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), conf);
     this.dnmgr = StreamingContainerManager.getInstance(recoveryHandler, dag, true);
     dag = this.dnmgr.getLogicalPlan();
