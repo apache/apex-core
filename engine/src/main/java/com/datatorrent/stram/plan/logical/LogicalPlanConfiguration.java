@@ -1135,11 +1135,7 @@ public class LogicalPlanConfiguration {
       String schemaClassName = streamConf.properties.getProperty(STREAM_SCHEMA);
       Class<?> schemaClass = null;
       if (schemaClassName != null) {
-        try {
-          schemaClass = Class.forName(schemaClassName);
-        } catch (ClassNotFoundException e) {
-          throw new ValidationException("schema class not found: " + schemaClassName);
-        }
+        schemaClass = StramUtils.classForName(schemaClassName, Object.class);
       }
 
       if (streamConf.sourceNode != null) {
