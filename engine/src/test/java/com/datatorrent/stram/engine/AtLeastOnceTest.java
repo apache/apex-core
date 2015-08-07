@@ -15,6 +15,7 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.junit.After;
@@ -24,7 +25,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG.Locality;
+
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -56,6 +60,10 @@ public class AtLeastOnceTest
     CollectorOperator.collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
+    String workingDir = new File("target/testInputOperatorRecovery").getAbsolutePath();
+    AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null);
+    asyncFSStorageAgent.setSyncCheckpoint(true);
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, asyncFSStorageAgent);
     dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
@@ -79,6 +87,10 @@ public class AtLeastOnceTest
     CollectorOperator.collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
+    String workingDir = new File("target/testOperatorRecovery").getAbsolutePath();
+    AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null);
+    asyncFSStorageAgent.setSyncCheckpoint(true);
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, asyncFSStorageAgent);
     dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
@@ -103,6 +115,10 @@ public class AtLeastOnceTest
     CollectorOperator.collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
+    String workingDir = new File("target/testOperatorRecovery").getAbsolutePath();
+    AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null);
+    asyncFSStorageAgent.setSyncCheckpoint(true);
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, asyncFSStorageAgent);
     //dag.getAttributes().get(DAG.HEARTBEAT_INTERVAL_MILLIS, 400);
     dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);

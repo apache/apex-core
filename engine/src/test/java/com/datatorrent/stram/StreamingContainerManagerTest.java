@@ -740,8 +740,7 @@ public class StreamingContainerManagerTest {
   @Test
   public void testPhysicalPropertyUpdate() throws Exception{
     LogicalPlan dag = new LogicalPlan();
-    String workingDir = new File("target/testPhysicalPropertyUpdate").getAbsolutePath();
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     dag.addStream("o1.outport", o1.outport, o2.inport1);
@@ -784,8 +783,7 @@ public class StreamingContainerManagerTest {
 
   private void testAppDataSources(LogicalPlan dag, boolean appendQIDToTopic) throws Exception
   {
-    String workingDir = new File("target/testAppDataSources").getAbsolutePath();
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.runAsync();
     StreamingContainerManager dnmgr = lc.dnmgr;
@@ -859,6 +857,7 @@ public class StreamingContainerManagerTest {
     try {
       server.start();
       LogicalPlan dag = new LogicalPlan();
+      dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
       TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
       GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
       dag.addStream("o1.outport", o1.outport, o2.inport1);
