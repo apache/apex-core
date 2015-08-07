@@ -15,6 +15,7 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +25,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BaseOperator;
+
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator.CheckpointListener;
@@ -42,6 +46,8 @@ public class StreamingContainerTest
   public void testCommitted() throws IOException, ClassNotFoundException
   {
     LogicalPlan lp = new LogicalPlan();
+    String workingDir = new File("target/testCommitted").getAbsolutePath();
+    lp.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
     lp.setAttribute(DAGContext.CHECKPOINT_WINDOW_COUNT, 1);
     CommitAwareOperator operator = lp.addOperator("CommitAwareOperator", new CommitAwareOperator());
 
