@@ -132,6 +132,7 @@ public class StreamingContainerManager implements PlanContext
   public final static String APP_META_FILENAME = "meta.json";
   public final static String APP_META_KEY_ATTRIBUTES = "attributes";
   public final static String APP_META_KEY_METRICS = "metrics";
+  public static final String EMBEDDABLE_QUERY_NAME_SUFFIX = ".query";
 
   public final static long LATENCY_WARNING_THRESHOLD_MILLIS = 10 * 60 * 1000; // 10 minutes
   public final static Recoverable SET_OPERATOR_PROPERTY = new SetOperatorProperty();
@@ -567,6 +568,22 @@ public class StreamingContainerManager implements PlanContext
           String queryUrl = null;
           String queryTopic = null;
 
+          boolean hasEmbeddedQuery = false;
+
+          //Discover embeddable query connectors
+          if (operatorMeta.getOperator() instanceof AppData.Store<?>) {
+            AppData.Store<?> store = (AppData.Store<?>)operatorMeta.getOperator();
+            AppData.EmbeddableQueryInfoProvider<?> embeddableQuery = store.getEmbeddableQueryInfoProvider();
+
+            if (embeddableQuery != null) {
+              hasEmbeddedQuery = true;
+              queryOperatorName = operatorMeta.getName() + EMBEDDABLE_QUERY_NAME_SUFFIX;
+              queryUrl = embeddableQuery.getAppDataURL();
+              queryTopic = embeddableQuery.getTopic();
+            }
+          }
+
+          //Discover separate query operators
           LOG.warn("DEBUG: looking at operator {} {}", operatorMeta.getName(), Thread.currentThread().getId());
           for (Map.Entry<LogicalPlan.InputPortMeta, LogicalPlan.StreamMeta> entry : inputStreams.entrySet()) {
             LogicalPlan.InputPortMeta portMeta = entry.getKey();
@@ -574,10 +591,16 @@ public class StreamingContainerManager implements PlanContext
               if (queryUrl == null) {
                 OperatorMeta queryOperatorMeta = entry.getValue().getSource().getOperatorMeta();
                 if (queryOperatorMeta.getOperator() instanceof AppData.ConnectionInfoProvider) {
-                  AppData.ConnectionInfoProvider queryOperator = (AppData.ConnectionInfoProvider) queryOperatorMeta.getOperator();
-                  queryOperatorName = queryOperatorMeta.getName();
-                  queryUrl = queryOperator.getAppDataURL();
-                  queryTopic = queryOperator.getTopic();
+                  if (!hasEmbeddedQuery) {
+                    AppData.ConnectionInfoProvider queryOperator = (AppData.ConnectionInfoProvider)queryOperatorMeta.getOperator();
+                    queryOperatorName = queryOperatorMeta.getName();
+                    queryUrl = queryOperator.getAppDataURL();
+                    queryTopic = queryOperator.getTopic();
+                  } else {
+                    LOG.warn("An embeddable query connector and the {} query operator were discovered. " +
+                             "The query operator will be ignored and the embeddable query connector will be used instead.",
+                             operatorMeta.getName());
+                  }
                 }
               } else {
                 LOG.warn("Multiple query ports found in operator {}. Ignoring the App Data Source.", operatorMeta.getName());
