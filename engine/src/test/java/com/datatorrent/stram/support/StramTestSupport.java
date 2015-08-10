@@ -265,12 +265,7 @@ abstract public class StramTestSupport
     @Override
     protected void finished(org.junit.runner.Description description)
     {
-      try {
-        FileUtils.deleteDirectory(new File(this.dir));
-      }
-      catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      FileUtils.deleteQuietly(new File(this.dir));
     }
   }
 
