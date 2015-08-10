@@ -15,6 +15,9 @@
  */
 package com.datatorrent.stram.webapp;
 
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -199,7 +202,7 @@ public class OperatorDiscoveryTest
     JSONArray outputPorts = oper.getJSONArray("outputPorts");
 
     Assert.assertNotNull(debug + "Properties aren't null ", props);
-    Assert.assertEquals(debug + "Number of properties ", 5, props.length());
+    Assert.assertEquals(debug + "Number of properties ", 4, props.length());
 
     Assert.assertNotNull(debug + "Port types aren't null ", portTypes);
     Assert.assertEquals(debug + "Number of port types ", 5, portTypes.length());
@@ -285,7 +288,16 @@ public class OperatorDiscoveryTest
 
     JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull(debug + "Properties aren't null ", props);
-    Assert.assertEquals(debug + "Number of properties ", 28, props.length());
+    Assert.assertEquals(debug + "Number of properties ", 27, props.length());
+
+    // make sure properties of excluded classes are not in the asm description of the type
+    for(String classN : TypeGraph.EXCLUDE_CLASSES){
+      Class c = Class.forName(classN.replace('/', '.'));
+      BeanInfo bi = Introspector.getBeanInfo(c);
+      for (PropertyDescriptor pd : bi.getPropertyDescriptors()){
+        Assert.assertNull(debug, getJSONProperty(props, pd.getName()));
+      }
+    }
 
     JSONObject mapProperty = getJSONProperty(props, "map");
     Assert.assertEquals(debug + "canGet " + mapProperty, true, mapProperty.get("canGet"));

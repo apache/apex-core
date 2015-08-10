@@ -38,6 +38,8 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Operator;
+
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.webapp.asm.ClassNodeType;
 import com.datatorrent.stram.webapp.asm.ClassSignatureVisitor;
@@ -73,7 +75,8 @@ public class TypeGraph
   public static final String[] EXCLUDE_CLASSES = {Object.class.getName().replace('.', '/'), 
     Enum.class.getName().replace('.', '/'), 
     Operator.class.getName().replace('.', '/'),
-    Component.class.getName().replace('.', '/')};
+    Component.class.getName().replace('.', '/'),
+    BaseOperator.class.getName().replace('.', '/')};
 
   public static final ImmutableSet<String> JACKSON_INSTANTIABLE_CLASSES;
 
