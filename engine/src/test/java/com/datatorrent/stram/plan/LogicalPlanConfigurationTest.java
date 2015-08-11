@@ -713,7 +713,7 @@ public class LogicalPlanConfigurationTest {
     }
   }
 
-  @Test
+  @Test(expected = ValidationException.class)
   public void testTupleClassAttrValidation() throws Exception
   {
     String resourcePath = "/schemaTestTopology.json";
@@ -733,12 +733,30 @@ public class LogicalPlanConfigurationTest {
     LogicalPlanConfiguration planConf = new LogicalPlanConfiguration(conf);
     LogicalPlan dag = planConf.createFromJson(json, "testLoadFromJson");
 
-    try {
-      dag.validate();
-      Assert.fail();
-    } catch (ValidationException ve) {
-      //test pass as validation exception was thrown.
-    }
+    dag.validate();
+  }
+
+  @Test
+  public void testTestTupleClassAttrSetFromConfig()
+  {
+    Configuration conf = new Configuration(false);
+    conf.set(StreamingApplication.DT_PREFIX + "operator.o2.port.schemaRequiredPort.attr.TUPLE_CLASS",
+      "com.datatorrent.stram.plan.LogicalPlanConfigurationTest$TestSchema");
+
+    StreamingApplication streamingApplication = new StreamingApplication()
+    {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        TestGeneratorInputOperator o1 = dag.addOperator("o1", new TestGeneratorInputOperator());
+        SchemaTestOperator o2 = dag.addOperator("o2", new SchemaTestOperator());
+        dag.addStream("stream", o1.outport, o2.schemaRequiredPort);
+      }
+    };
+    LogicalPlan dag = new LogicalPlan();
+    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(conf);
+    lpc.prepareDAG(dag, streamingApplication, "app");
+    dag.validate();
   }
 
   private static final Logger logger = LoggerFactory.getLogger(LogicalPlanConfigurationTest.class);
