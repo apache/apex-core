@@ -46,6 +46,7 @@
     <jetty.version>8.1.10.v20130312</jetty.version>
     <maven.deploy.repo.classifier></maven.deploy.repo.classifier>
     <license.skip>true</license.skip>
+    <checkstyle.console>false</checkstyle.console>
   </properties>
 
   <dependencies>
@@ -242,6 +243,25 @@
                     <onlyWhenRelease>true</onlyWhenRelease>
                   </requireReleaseDeps>
                 </rules>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <version>2.16</version>
+          <executions>
+            <execution>
+              <id>checkstyle</id>
+              <phase>validate</phase>
+              <goals>
+                <goal>check</goal>
+              </goals>
+              <configuration>
+                <failOnViolation>true</failOnViolation>
+                <configLocation>dt_checks.xml</configLocation>
+                <logViolationsToConsole>${checkstyle.console}</logViolationsToConsole>
               </configuration>
             </execution>
           </executions>

@@ -121,6 +121,13 @@
           <!--downloadJavadocs>true</downloadJavadocs-->
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <configuration>
+          <maxAllowedViolations>2385</maxAllowedViolations>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 

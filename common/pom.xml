@@ -50,6 +50,13 @@
           </execution>
         </executions>
       </plugin>
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-checkstyle-plugin</artifactId>
+      <configuration>
+        <maxAllowedViolations>88</maxAllowedViolations>
+      </configuration>
+    </plugin>
   </plugins>
   </build>
 
