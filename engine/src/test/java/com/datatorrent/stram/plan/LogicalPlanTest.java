@@ -613,23 +613,6 @@ public class LogicalPlanTest {
 
   }
 
-  public class DuplicatePortOperator extends GenericTestOperator {
-    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
-    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
-  }
-
-  @Test
-  public void testDuplicatePort() {
-    LogicalPlan dag = new LogicalPlan();
-    DuplicatePortOperator o1 = dag.addOperator("o1", new DuplicatePortOperator());
-    try {
-      dag.setOutputPortAttribute(o1.outport1, PortContext.QUEUE_CAPACITY, 0);
-      Assert.fail("Should detect duplicate port");
-    } catch (IllegalArgumentException e) {
-      // expected
-    }
-  }
-
   /**
    * Operator that can be used with default Java serialization instead of Kryo
    */
@@ -844,6 +827,105 @@ public class LogicalPlanTest {
   @OperatorAnnotation(checkpointableWithinAppWindow = false)
   class NotCheckpointableWithinAppWindowOperator extends GenericTestOperator
   {
+  }
+
+  @Test
+  public void testInputPortHiding()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
+    Operator2 operator2 = dag.addOperator("operator2", new Operator2());
+    dag.addStream("Stream1", input1.outport, operator2.input);
+    dag.validate();
+  }
+
+  @Test
+  public void testInvalidInputPortConnection()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
+    Operator1 operator1 = dag.addOperator("operator3", new Operator3());
+    dag.addStream("Stream1", input1.outport, operator1.input);
+    try {
+      dag.validate();
+    } catch (ValidationException ex) {
+      Assert.assertTrue("validation message", ex.getMessage().startsWith("Invalid port connected"));
+      return;
+    }
+    Assert.fail();
+  }
+
+  class Operator1 extends BaseOperator
+  {
+    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+
+      }
+    };
+  }
+
+  class Operator2 extends Operator1
+  {
+    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+
+      }
+    };
+  }
+
+  class Operator3 extends Operator1
+  {
+    @InputPortFieldAnnotation(optional = true)
+    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+
+      }
+    };
+  }
+
+  @Test
+  public void testOutputPortHiding()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    Operator5 operator5 = dag.addOperator("input", new Operator5());
+    Operator2 operator2 = dag.addOperator("operator2", new Operator2());
+    dag.addStream("Stream1", operator5.output, operator2.input);
+    dag.validate();
+  }
+
+  @Test(expected = ValidationException.class)
+  public void testInvalidOutputPortConnection()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    Operator4 operator4 = dag.addOperator("input", new Operator5());
+    Operator3 operator3 = dag.addOperator("operator3", new Operator3());
+    dag.addStream("Stream1", operator4.output, operator3.input);
+    dag.validate();
+  }
+
+  class Operator4 extends BaseOperator implements InputOperator
+  {
+    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<>();
+
+    @Override
+    public void emitTuples()
+    {
+
+    }
+  }
+
+  class Operator5 extends Operator4
+  {
+    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<>();
   }
 
   /*

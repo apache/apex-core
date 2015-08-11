@@ -189,6 +189,8 @@ public class LogicalPlan implements Serializable, DAG
     private InputPortFieldAnnotation portAnnotation;
     private AppData.QueryPort adqAnnotation;
     private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
+    //This is null when port is not hidden
+    private Class<?> classDeclaringHiddenPort;
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -267,6 +269,8 @@ public class LogicalPlan implements Serializable, DAG
     private OutputPortFieldAnnotation portAnnotation;
     private AppData.ResultPort adrAnnotation;
     private final DefaultAttributeMap attributes;
+    //This is null when port is not hidden
+    private Class<?> classDeclaringHiddenPort;
 
     public OutputPortMeta()
     {
@@ -897,7 +901,7 @@ public class LogicalPlan implements Serializable, DAG
             if (pm.operatorMeta == OperatorMeta.this && pm.fieldName.equals(field.getName())) {
               //LOG.debug("Found existing port meta for: " + field);
               inPortMap.put(portObject, pm);
-              checkDuplicateName(pm.getPortName(), pm);
+              markInputPortIfHidden(pm.getPortName(), pm, field.getDeclaringClass());
               return;
             }
           }
@@ -908,7 +912,7 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.portAnnotation = portAnnotation;
         metaPort.adqAnnotation = adqAnnotation;
         inPortMap.put(portObject, metaPort);
-        checkDuplicateName(metaPort.getPortName(), metaPort);
+        markInputPortIfHidden(metaPort.getPortName(), metaPort, field.getDeclaringClass());
       }
 
       @Override
@@ -920,7 +924,7 @@ public class LogicalPlan implements Serializable, DAG
             if (pm.operatorMeta == OperatorMeta.this && pm.fieldName.equals(field.getName())) {
               //LOG.debug("Found existing port meta for: " + field);
               outPortMap.put(portObject, pm);
-              checkDuplicateName(pm.getPortName(), pm);
+              markOutputPortIfHidden(pm.getPortName(), pm, field.getDeclaringClass());
               return;
             }
           }
@@ -931,14 +935,27 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.portAnnotation = portAnnotation;
         metaPort.adrAnnotation = adrAnnotation;
         outPortMap.put(portObject, metaPort);
-        checkDuplicateName(metaPort.getPortName(), metaPort);
+        markOutputPortIfHidden(metaPort.getPortName(), metaPort, field.getDeclaringClass());
       }
 
-      private void checkDuplicateName(String portName, Object portMeta) {
-        Object existingValue = portNameMap.put(portName, portMeta);
-        if (existingValue != null) {
-          String msg = String.format("Port name %s of %s duplicates %s", portName, portMeta, existingValue);
-          throw new IllegalArgumentException(msg);
+      private void markOutputPortIfHidden(String portName, OutputPortMeta portMeta, Class<?> declaringClass)
+      {
+        if (!portNameMap.containsKey(portName)) {
+          portNameMap.put(portName, portMeta);
+        } else {
+          // make the port optional
+          portMeta.classDeclaringHiddenPort = declaringClass;
+        }
+
+      }
+
+      private void markInputPortIfHidden(String portName, InputPortMeta portMeta, Class<?> declaringClass)
+      {
+        if (!portNameMap.containsKey(portName)) {
+          portNameMap.put(portName, portMeta);
+        } else {
+          // make the port optional
+          portMeta.classDeclaringHiddenPort = declaringClass;
         }
       }
     }
@@ -1350,10 +1367,14 @@ public class LogicalPlan implements Serializable, DAG
       for (InputPortMeta pm: portMapping.inPortMap.values()) {
         StreamMeta sm = n.inputStreams.get(pm);
         if (sm == null) {
-          if (pm.portAnnotation == null || !pm.portAnnotation.optional()) {
+          if ((pm.portAnnotation == null || !pm.portAnnotation.optional()) && pm.classDeclaringHiddenPort == null) {
             throw new ValidationException("Input port connection required: " + n.name + "." + pm.getPortName());
           }
         } else {
+          if (pm.classDeclaringHiddenPort != null) {
+            throw new ValidationException(String.format("Invalid port connected: %s.%s is hidden by %s.%s", pm.classDeclaringHiddenPort.getName(),
+              pm.getPortName(), pm.operatorMeta.getOperator().getClass().getName(), pm.getPortName()));
+          }
           // check locality constraints
           DAG.Locality locality = sm.getLocality();
           if (locality == DAG.Locality.THREAD_LOCAL) {
@@ -1374,11 +1395,15 @@ public class LogicalPlan implements Serializable, DAG
       boolean allPortsOptional = true;
       for (OutputPortMeta pm: portMapping.outPortMap.values()) {
         if (!n.outputStreams.containsKey(pm)) {
-          if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
+          if ((pm.portAnnotation != null && !pm.portAnnotation.optional()) && pm.classDeclaringHiddenPort == null) {
             throw new ValidationException("Output port connection required: " + n.name + "." + pm.getPortName());
           }
         } else {
           //port is connected
+          if (pm.classDeclaringHiddenPort != null) {
+            throw new ValidationException(String.format("Invalid port connected: %s.%s is hidden by %s.%s", pm.classDeclaringHiddenPort.getName(),
+              pm.getPortName(), pm.operatorMeta.getOperator().getClass().getName(), pm.getPortName()));
+          }
           if (pm.portAnnotation != null && pm.portAnnotation.schemaRequired()) {
             //since schema is required, the port attribute TUPLE_CLASS should be present
             if (pm.attributes.get(PortContext.TUPLE_CLASS) == null) {
