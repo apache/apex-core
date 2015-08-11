@@ -33,6 +33,16 @@ import com.datatorrent.api.annotation.Stateless;
  */
 public interface Context
 {
+  /*
+   * Note: If the same name is given to an Attribute specified in multiple Context classes, then the type of that
+   * Attribute is required to be the same accross all Context classes. This is required because if a simple attribute
+   * name is specified in a properties file at the top level context then that attribute needs to be set in all child configurations. If
+   * there were multiple Attributes specified in different Contexts with the same name, but a different type, then
+   * it would not be possible to set the values of Attributes specified by a simple attribute name in the root
+   * context of a properties file. If this were the case, then adding another Attribute with the same name as a pre-existing Attribute to a new Context
+   * class would be a backwards incompatible change.
+   */
+
   /**
    * Get the attributes associated with this context.
    * The returned map does not contain any attributes that may have been defined in the parent context of this context.
