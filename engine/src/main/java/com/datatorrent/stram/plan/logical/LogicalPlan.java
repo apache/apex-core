@@ -49,7 +49,6 @@ import com.datatorrent.common.metric.MetricsAggregator;
 import com.datatorrent.common.metric.SingleMetricAggregator;
 import com.datatorrent.common.metric.sum.DoubleSumAggregator;
 import com.datatorrent.common.metric.sum.LongSumAggregator;
-import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.Slider;
@@ -103,8 +102,6 @@ public class LogicalPlan implements Serializable, DAG
   public static Attribute<Long> RM_TOKEN_LIFE_TIME = new Attribute<Long>(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT);
   public static Attribute<String> KEY_TAB_FILE = new Attribute<String>((String) null, new StringCodec.String2String());
   public static Attribute<Double> TOKEN_REFRESH_ANTICIPATORY_FACTOR = new Attribute<Double>(0.7);
-  public static Attribute<String> LICENSE = new Attribute<String>((String) null, new StringCodec.String2String());
-  public static Attribute<String> LICENSE_ROOT = new Attribute<String>((String) null, new StringCodec.String2String());
   /**
    * Comma separated list of jar file dependencies to be deployed with the application.
    * The launcher will combine the list with built-in dependencies and those specified
@@ -897,6 +894,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {
     StreamMeta s = addStream(id);
