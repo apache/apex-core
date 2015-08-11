@@ -362,7 +362,7 @@ public class StreamingContainerManager implements PlanContext
       this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), FsPermission.getDefault());
       this.containerFile.append(getAppMasterContainerInfo());
     } catch (IOException ex) {
-      DTThrowable.rethrow(ex);
+      throw DTThrowable.wrapIfChecked(ex);
     }
   }
 
