@@ -19,6 +19,7 @@ import com.datatorrent.common.util.BaseOperator;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
+
 import java.util.*;
 
 import javax.validation.*;
@@ -49,6 +50,7 @@ import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.TestNonOptionalOutportInputOperator;
 import com.datatorrent.stram.engine.TestOutputOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
