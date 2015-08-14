@@ -193,7 +193,8 @@ public class OperatorDiscoveryTest
     String[] classFilePath = getClassFileInClasspath();
     OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(classFilePath);
     operatorDiscoverer.buildTypeGraph();
-    JSONObject oper = operatorDiscoverer.describeOperator(SubSubClassGeneric.class);
+    JSONObject oper = operatorDiscoverer.describeOperator(SubSubClassGeneric.class.getName());
+
     String debug = "\n(ASM)type info for " + TestOperator.class + ":\n" + oper.toString(2) + "\n";
 
     JSONArray props = oper.getJSONArray("properties");
@@ -280,8 +281,6 @@ public class OperatorDiscoveryTest
     od.buildTypeGraph();
 
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
-    Assert.assertFalse("Base Operator is not instantiable because it is not an InputOperator and it has no input port ",
-            OperatorDiscoverer.isInstantiableOperatorClass(BaseOperator.class));
 
     JSONObject asmDesc = od.describeClassByASM(TestOperator.class.getName());
     String debug = "\n(ASM)type info for " + TestOperator.class + ":\n" + asmDesc.toString(2) + "\n";
@@ -1069,7 +1068,7 @@ public class OperatorDiscoveryTest
     String[] classFilePath = getClassFileInClasspath();
     OperatorDiscoverer od = new OperatorDiscoverer(classFilePath);
     od.buildTypeGraph();
-    JSONObject operatorJson = od.describeOperator(SchemaRequiredOperator.class);
+    JSONObject operatorJson = od.describeOperator(SchemaRequiredOperator.class.getName());
     JSONArray portsJson = operatorJson.getJSONArray("outputPorts");
 
     Assert.assertEquals("no. of ports", 3, portsJson.length());
@@ -1093,7 +1092,7 @@ public class OperatorDiscoveryTest
     String[] classFilePath = getClassFileInClasspath();
     OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(classFilePath);
     operatorDiscoverer.buildTypeGraph();
-    JSONObject operator = operatorDiscoverer.describeOperator(SubSubClassGeneric.class);
+    JSONObject operator = operatorDiscoverer.describeOperator(SubSubClassGeneric.class.getName());
 
     JSONObject portClassHierarchy = new JSONObject();
     JSONObject portsWithSchemaClasses = new JSONObject();

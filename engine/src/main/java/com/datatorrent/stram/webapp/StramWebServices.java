@@ -288,11 +288,11 @@ public class StramWebServices
     }
 
     try {
-      Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent, searchTerm);
+      Set<String> operatorClasses = operatorDiscoverer.getOperatorClasses(parent, searchTerm);
 
-      for (Class<?> clazz : operatorClasses) {
+      for (String clazz : operatorClasses) {
         JSONObject j = new JSONObject();
-        j.put("name", clazz.getName());
+        j.put("name", clazz);
         classNames.put(j);
       }
 
@@ -318,7 +318,7 @@ public class StramWebServices
     try {
       Class<?> clazz = Class.forName(className);
       if (Operator.class.isAssignableFrom(clazz)) {
-        return operatorDiscoverer.describeOperator((Class<? extends Operator>)clazz);
+        return operatorDiscoverer.describeOperator(className);
       }
       else {
         throw new NotFoundException();
