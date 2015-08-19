@@ -42,7 +42,7 @@ import com.datatorrent.netlet.util.DTThrowable;
  */
 public class FSStorageAgent implements StorageAgent, Serializable
 {
-  public static final String TMP_FILE = "._COPYING_";
+  public static final String TMP_FILE = "_tmp";
   protected static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);
   public final String path;
   protected final transient FileContext fileContext;
