@@ -780,7 +780,8 @@ public class PhysicalPlan implements Serializable
     partitioner.partitioned(mainPC.operatorIdToPartition);
   }
 
-  private void updateStreamMappings(PMapping m) {
+  private void updateStreamMappings(PMapping m)
+  {
     for (Map.Entry<OutputPortMeta, StreamMeta> opm : m.logicalOperator.getOutputStreams().entrySet()) {
       StreamMapping ug = m.outputStreams.get(opm.getKey());
       if (ug == null) {
@@ -789,7 +790,6 @@ public class PhysicalPlan implements Serializable
       }
       LOG.debug("update stream mapping for {} {}", opm.getKey().getOperatorMeta(), opm.getKey().getPortName());
       ug.setSources(m.partitions);
-      //ug.redoMapping();
     }
 
     for (Map.Entry<InputPortMeta, StreamMeta> ipm : m.logicalOperator.getInputStreams().entrySet()) {
@@ -847,7 +847,6 @@ public class PhysicalPlan implements Serializable
         }
         LOG.debug("update upstream stream mapping for {} {}", sourceMapping.logicalOperator, ipm.getValue().getSource().getPortName());
         ug.setSources(sourceMapping.partitions);
-        //ug.redoMapping();
       }
     }
 
@@ -990,18 +989,30 @@ public class PhysicalPlan implements Serializable
   }
 
   /**
-   * Remove a partition that was reported as idle by the execution layer.
-   * Since the end stream tuple is propagated to the downstream operators,
-   * there is no need to undeploy/redeploy them as part of this operation.
+   * Remove a partition that was reported as terminated by the execution layer.
+   * Recursively removes all downstream operators with no remaining input.
    * @param p
    */
-  public void removeIdlePartition(PTOperator p)
+  public void removeTerminatedPartition(PTOperator p)
   {
+    // keep track of downstream operators for cascading remove
+    Set<PTOperator> downstreamOpers = new HashSet<>(p.outputs.size());
+    for (PTOutput out : p.outputs) {
+      for (PTInput sinkIn : out.sinks) {
+        downstreamOpers.add(sinkIn.target);
+      }
+    }
     PMapping currentMapping = this.logicalToPTOperator.get(p.operatorMeta);
     List<PTOperator> copyPartitions = Lists.newArrayList(currentMapping.partitions);
     copyPartitions.remove(p);
     removePartition(p, currentMapping);
     currentMapping.partitions = copyPartitions;
+    // remove orphaned downstream operators
+    for (PTOperator dop : downstreamOpers) {
+      if (dop.inputs.isEmpty()) {
+        removeTerminatedPartition(dop);
+      }
+    }
     deployChanges();
   }
 
@@ -1012,8 +1023,8 @@ public class PhysicalPlan implements Serializable
    * @param oper
    * @return
    */
-  private void removePartition(PTOperator oper, PMapping operatorMapping) {
-
+  private void removePartition(PTOperator oper, PMapping operatorMapping)
+  {
     // remove any parallel partition
     for (PTOutput out : oper.outputs) {
       // copy list as it is modified by recursive remove
@@ -1137,7 +1148,8 @@ public class PhysicalPlan implements Serializable
     return inputPortList;
   }
 
-  void removePTOperator(PTOperator oper) {
+  void removePTOperator(PTOperator oper)
+  {
     LOG.debug("Removing operator " + oper);
 
     // per partition merge operators

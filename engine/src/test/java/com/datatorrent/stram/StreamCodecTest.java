@@ -1178,28 +1178,6 @@ public class StreamCodecTest
     return unifiers;
   }
 
-  private void checkNotSetStreamCodecInfo(Map<Integer, StreamCodec<?>> streamCodecs, String id,
-                                          Integer streamCodecIdentifier)
-  {
-    StreamCodec<?> streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
-    Assert.assertNotNull("stream codec null " + id, streamCodecInfo);
-    Assert.assertNull("stream codec object not null " + id, streamCodecInfo);
-  }
-
-  private void checkStreamCodecInfo(Map<Integer, StreamCodec<?>> streamCodecs, String id,
-                                    Integer streamCodecIdentifier, StreamCodec<?> streamCodec)
-  {
-    checkStreamCodecInfo(streamCodecs, id, streamCodecIdentifier, streamCodec, null);
-  }
-
-  private void checkStreamCodecInfo(Map<Integer, StreamCodec<?>> streamCodecs, String id,
-                                    Integer streamCodecIdentifier, StreamCodec<?> streamCodec, String className)
-  {
-    StreamCodec<?> streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
-    Assert.assertNotNull("stream codec info null " + id, streamCodecInfo);
-    Assert.assertEquals("stream codec object " + id, streamCodec, streamCodecInfo);
-  }
-
   private void checkPresentStreamCodec(LogicalPlan.OperatorMeta operatorMeta, Operator.InputPort<?> inputPort,
                                        Map<Integer, StreamCodec<?>> streamCodecs,
                                        String id, PhysicalPlan plan )
@@ -1277,17 +1255,6 @@ public class StreamCodecTest
     return otdi;
   }
 
-  private LogicalPlan.InputPortMeta getInputPortMeta(LogicalPlan.StreamMeta streamMeta, LogicalPlan.OperatorMeta operatorMeta)
-  {
-    LogicalPlan.InputPortMeta portMeta = null;
-    for (Map.Entry<LogicalPlan.InputPortMeta, LogicalPlan.StreamMeta> entry : operatorMeta.getInputStreams().entrySet()) {
-      if (entry.getValue() == streamMeta) {
-        portMeta = entry.getKey();
-      }
-    }
-    return portMeta;
-  }
-
   // For tests so that it doesn't trigger assignment of a new id
   public boolean isStrCodecPresent(StreamCodec<?> streamCodecInfo, PhysicalPlan plan)
   {
@@ -1316,7 +1283,7 @@ public class StreamCodecTest
 
   public static class DefaultTestStreamCodec  extends DefaultStatefulStreamCodec<Object> implements Serializable
   {
-
+    private static final long serialVersionUID = 1L;
   }
 
   public static class DefaultCodecOperator extends GenericTestOperator
