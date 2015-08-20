@@ -808,14 +808,17 @@ public class OperatorDiscoverer
           continue;
         }
         boolean hasSchemaClasses = false;
-        for (String descendant : typeGraph.getInstantiableDescendants(portType)) {
-          try {
-            if (typeGraph.isInstantiableBean(descendant)) {
-              hasSchemaClasses = true;
-              break;
+        List<String> instantiableDescendants = typeGraph.getInstantiableDescendants(portType);
+        if (instantiableDescendants != null) {
+          for (String descendant : instantiableDescendants) {
+            try {
+              if (typeGraph.isInstantiableBean(descendant)) {
+                hasSchemaClasses = true;
+                break;
+              }
+            } catch (JSONException ex) {
+              LOG.warn("checking descendant is instantiable {}", descendant);
             }
-          } catch (JSONException ex) {
-            LOG.warn("checking descendant is instantiable {}", descendant);
           }
         }
         portTypesWithSchemaClasses.put(portType, hasSchemaClasses);
