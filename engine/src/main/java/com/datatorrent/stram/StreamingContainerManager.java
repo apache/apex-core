@@ -154,6 +154,7 @@ public class StreamingContainerManager implements PlanContext
   private long lastResourceRequest = 0;
   private final Map<String, StreamingContainerAgent> containers = new ConcurrentHashMap<String, StreamingContainerAgent>();
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
+  private final Map<Long, Set<PTOperator>> shutdownOperators = new HashMap<>();
   private CriticalPathInfo criticalPathInfo;
   private final ConcurrentMap<PTOperator, PTOperator> reportStats = Maps.newConcurrentMap();
   private final AtomicBoolean deployChangeInProgress = new AtomicBoolean();
@@ -1003,6 +1004,26 @@ public class StreamingContainerManager implements PlanContext
       }
       reportStats.remove(o);
     }
+
+    if (!this.shutdownOperators.isEmpty()) {
+      synchronized (this.shutdownOperators) {
+        Iterator<Map.Entry<Long, Set<PTOperator>>> it = shutdownOperators.entrySet().iterator();
+        while (it.hasNext()) {
+          Map.Entry<Long, Set<PTOperator>> windowAndOpers = it.next();
+          if (windowAndOpers.getKey().longValue() > this.committedWindowId) {
+            // wait until window is committed
+            continue;
+          } else {
+            LOG.info("Removing inactive operators at window {} {}", Codec.getStringWindowId(windowAndOpers.getKey()), windowAndOpers.getValue());
+            for (PTOperator oper : windowAndOpers.getValue()) {
+              plan.removeTerminatedPartition(oper);
+            }
+            it.remove();
+          }
+        }
+      }
+    }
+
     if (!eventQueue.isEmpty()) {
       for (PTOperator oper : plan.getAllOperators().values()) {
         if (oper.getState() != PTOperator.State.ACTIVE) {
@@ -1274,20 +1295,20 @@ public class StreamingContainerManager implements PlanContext
         else {
           switch (ds) {
             case SHUTDOWN:
-              // remove the operator from the plan
-              Runnable r = new Runnable()
-              {
-                @Override
-                public void run()
-                {
-                  if (oper.getInputs().isEmpty()) {
-                    LOG.info("Removing IDLE operator from plan {}", oper);
-                    plan.removeIdlePartition(oper);
-                  }
+              // schedule operator deactivation against the windowId
+              // will be processed once window is committed and all dependent operators completed processing
+              long windowId = oper.stats.currentWindowId.get();
+              if (ohb.windowStats != null && !ohb.windowStats.isEmpty()) {
+                windowId = ohb.windowStats.get(ohb.windowStats.size()-1).windowId;
+              }
+              LOG.debug("Operator {} deactivated at window {}", oper, windowId);
+              synchronized (this.shutdownOperators) {
+                Set<PTOperator> deactivatedOpers = this.shutdownOperators.get(windowId);
+                if (deactivatedOpers == null) {
+                  this.shutdownOperators.put(windowId, deactivatedOpers = new HashSet<>());
                 }
-
-              };
-              dispatch(r);
+                deactivatedOpers.add(oper);
+              }
               sca.undeployOpers.add(oper.getId());
               // record operator stop event
               recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
@@ -2244,7 +2265,7 @@ public class StreamingContainerManager implements PlanContext
     oi.currentWindowId = toWsWindowId(os.currentWindowId.get());
     if (os.lastHeartbeat != null) {
       oi.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
-    }    
+    }
     if (os.checkpointStats != null) {
       oi.checkpointTime = os.checkpointStats.checkpointTime;
       oi.checkpointStartTime = os.checkpointStats.checkpointStartTime;
