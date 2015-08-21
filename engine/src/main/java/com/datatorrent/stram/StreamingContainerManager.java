@@ -1004,7 +1004,7 @@ public class StreamingContainerManager implements PlanContext
       }
       reportStats.remove(o);
     }
-    
+
     if (!this.shutdownOperators.isEmpty()) {
       synchronized (this.shutdownOperators) {
         Iterator<Map.Entry<Long, Set<PTOperator>>> it = shutdownOperators.entrySet().iterator();
@@ -1023,7 +1023,7 @@ public class StreamingContainerManager implements PlanContext
         }
       }
     }
-    
+
     if (!eventQueue.isEmpty()) {
       for (PTOperator oper : plan.getAllOperators().values()) {
         if (oper.getState() != PTOperator.State.ACTIVE) {
@@ -1297,7 +1297,7 @@ public class StreamingContainerManager implements PlanContext
             case SHUTDOWN:
               // schedule operator deactivation against the windowId
               // will be processed once window is committed and all dependent operators completed processing
-              long windowId = oper.stats.currentWindowId.get(); 
+              long windowId = oper.stats.currentWindowId.get();
               if (ohb.windowStats != null && !ohb.windowStats.isEmpty()) {
                 windowId = ohb.windowStats.get(ohb.windowStats.size()-1).windowId;
               }
@@ -1305,8 +1305,9 @@ public class StreamingContainerManager implements PlanContext
               synchronized (this.shutdownOperators) {
                 Set<PTOperator> deactivatedOpers = this.shutdownOperators.get(windowId);
                 if (deactivatedOpers == null) {
-                  this.shutdownOperators.put(windowId, deactivatedOpers = Sets.newHashSet(oper));
+                  this.shutdownOperators.put(windowId, deactivatedOpers = new HashSet<>());
                 }
+                deactivatedOpers.add(oper);
               }
               sca.undeployOpers.add(oper.getId());
               // record operator stop event
@@ -2264,7 +2265,7 @@ public class StreamingContainerManager implements PlanContext
     oi.currentWindowId = toWsWindowId(os.currentWindowId.get());
     if (os.lastHeartbeat != null) {
       oi.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
-    }    
+    }
     if (os.checkpointStats != null) {
       oi.checkpointTime = os.checkpointStats.checkpointTime;
       oi.checkpointStartTime = os.checkpointStats.checkpointStartTime;
