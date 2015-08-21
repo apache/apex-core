@@ -727,6 +727,8 @@ public class StreamingContainerManagerTest
     // deploy all containers
     for (Map.Entry<PTContainer, MockContainer> ce : mockContainers.entrySet()) {
       ce.getValue().deploy();
+    }
+    for (Map.Entry<PTContainer, MockContainer> ce : mockContainers.entrySet()) {
       // skip buffer server purge in monitorHeartbeat
       ce.getKey().bufferServerAddress = null;
     }

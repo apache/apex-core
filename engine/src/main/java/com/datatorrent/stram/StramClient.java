@@ -54,7 +54,6 @@ import org.apache.log4j.DTLoggerFactory;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BasicContainerOptConfigurator;
-import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.engine.StreamingContainer;

@@ -36,6 +36,7 @@ public class AsyncFSStorageAgent extends FSStorageAgent
 
   private boolean syncCheckpoint = false;
 
+  @SuppressWarnings("unused")
   private AsyncFSStorageAgent()
   {
     super();
