@@ -302,7 +302,60 @@ public interface Context
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(OperatorContext.class);
   }
 
-  /**
+
+      /**
+    * ModuleContext interface.</p>
+    *
+    */
+   public interface ModuleContext extends OperatorContext
+   {
+
+     /**
+      * Conveys whether the module is stateful or stateless. If the module is stateless, no checkpointing is required for all opeartors in the module
+      * by the engine. The attribute is ignored when the module was already declared stateless through the
+      * {@link Stateless} annotation.
+      */
+     // sets this attribute to all operators in the module, not overriding if already specified in the operator by {@link Stateless}.
+     Attribute<Boolean> STATELESS = new Attribute<Boolean>(false);
+
+     /**
+      * The options to be pass to JVM when launching the operator. Options such as java maximum heap size can be specified here.
+      */
+     // DO WE NEED THIS
+     Attribute<String> JVM_OPTIONS = new Attribute<String>(new String2String());
+     /**
+      * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
+      */
+     Attribute<Integer> APPLICATION_WINDOW_COUNT = new Attribute<Integer>(1);
+     /**
+      * When set it changes the computation to sliding window computation where duration is determined using {@link #APPLICATION_WINDOW_COUNT} that is
+      * slided by duration determined using value of this attribute. Default value is null which is equivalent to that of {@link #APPLICATION_WINDOW_COUNT}.
+      * The value should range between  (0 - {@link #APPLICATION_WINDOW_COUNT})
+      */
+     Attribute<Integer> SLIDE_BY_WINDOW_COUNT = new Attribute<Integer>(new Integer2String());
+
+     /**
+      * Attribute of the operator that hints at the optimal checkpoint boundary.
+      * By default checkpointing happens after every predetermined streaming windows. Application developer can override
+      * this behavior by defining the following attribute. When this attribute is defined, checkpointing will be done after
+      * completion of later of regular checkpointing window and the window whose serial number is divisible by the attribute
+      * value. Typically user would define this value to be the same as that of APPLICATION_WINDOW_COUNT so checkpointing
+      * will be done at application window boundary.
+      */
+     Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(1);
+
+     /**
+      * Return the module runtime id.
+      *
+      * @return The id
+      */
+     int getId();
+
+     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(ModuleContext.class);
+   }
+
+/**
    * <p>
    * DAGContext interface.</p>
    *

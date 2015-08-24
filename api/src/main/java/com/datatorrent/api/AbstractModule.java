@@ -30,11 +30,10 @@ import java.util.Map;
  */
 public abstract class AbstractModule implements Module
 {
-  Map<String, Operator> operators = new LinkedHashMap<String, Operator>();
-  Map<String, Pair> streams = new LinkedHashMap<String, Pair>();
-  Map<String, InputPort> inputPortsMap = new LinkedHashMap<String, InputPort>();
-  Map<String, OutputPort> outputPortsMap = new LinkedHashMap<String, OutputPort>();
-
+  public Map<String, Operator> operators = new LinkedHashMap<String, Operator>();
+  public Map<String, PortPair> streams = new LinkedHashMap<String, PortPair>();
+  public Map<String, InputPort> inputPortsMap = new LinkedHashMap<String, InputPort>();
+  public Map<String, OutputPort> outputPortsMap = new LinkedHashMap<String, OutputPort>();
 
   public Map<String, InputPort> getInputPorts()
   {
@@ -46,37 +45,34 @@ public abstract class AbstractModule implements Module
     return outputPortsMap;
   }
 
-
   public void flattenDAG(DAG dag, Configuration conf)
   {
 
-      try {
-        /**
-         * Add operators is the same.
-         */
-        for (Map.Entry<String, Operator> e : operators.entrySet()) {
-          Object o = e.getValue();
-          if (o instanceof Module) {
-            Module m = (Module)o;
-            m.flattenDAG(dag, conf);
-          }
-          else {
-            dag.addOperator(e.getKey(), e.getValue());
-          }
+    try {
+      /**
+       * Add operators is the same.
+       */
+      for (Map.Entry<String, Operator> e : operators.entrySet()) {
+        Object o = e.getValue();
+        if (o instanceof Module) {
+          Module m = (Module) o;
+          m.flattenDAG(dag, conf);
+        } else {
+          dag.addOperator(e.getKey(), e.getValue());
         }
-
-        /**
-         * Add connections
-         */
-        int idx = 0;
-        for (Map.Entry<String, Pair> stream : streams.entrySet() ) {
-          stream.getValue().connect(dag
-              , "s" + stream.getKey() + "_" + idx);
-          idx++;
-        }
-      } catch (Throwable th) {
-        throw new RuntimeException(th);
       }
+
+      /**
+       * Add connections
+       */
+      int idx = 0;
+      for (Map.Entry<String, PortPair> stream : streams.entrySet()) {
+        stream.getValue().connect(dag, "s" + stream.getKey() + "_" + idx);
+        idx++;
+      }
+    } catch (Throwable th) {
+      throw new RuntimeException(th);
+    }
   }
 
   @Override public void setup(ModuleContext context)
@@ -87,38 +83,5 @@ public abstract class AbstractModule implements Module
   {
   }
 
-  public static class Pair
-  {
-    public OutputPort getOutputPort()
-    {
-      return outputPort;
-    }
-
-    public void setOutputPort(OutputPort a)
-    {
-      outputPort = a;
-    }
-
-    public InputPort getInputPort()
-    {
-      return inputPort;
-    }
-
-    public void setInputPort(InputPort b)
-    {
-      inputPort = b;
-    }
-
-    OutputPort outputPort;
-    InputPort inputPort;
-
-    public void Pair(OutputPort a, InputPort b){
-      this.outputPort = a ;
-      this.inputPort = b ;
-    }
-    public void connect(DAG dag, String label){
-      dag.addStream(label, this.outputPort , this.inputPort);
-
-    }
-  }
 }
+
