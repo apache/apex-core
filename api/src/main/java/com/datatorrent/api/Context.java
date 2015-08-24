@@ -307,7 +307,7 @@ public interface Context
     * ModuleContext interface.</p>
     *
     */
-   public interface ModuleContext extends OperatorContext
+   public interface ModuleContext extends Context
    {
 
      /**

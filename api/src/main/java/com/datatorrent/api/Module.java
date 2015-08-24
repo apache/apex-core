@@ -33,6 +33,18 @@ public interface Module extends Component<ModuleContext>
 {
 
  /**
+  * A method to return a map of operator name to operators in the module
+  *
+  */
+
+  public Map<String, Operator> getOperators();
+
+ /**
+  * A method to return a map of stream name to streams in the module
+  */
+  public Map<String, PortPair> getStreams();
+
+ /**
   * A method that returns a map of port name to input ports that are exposed by the module
   *
   * @return input ports map

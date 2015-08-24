@@ -144,6 +144,8 @@ public interface DAG extends DAGContext, Serializable
    */
   public abstract <T extends Operator> T addOperator(String name, T operator);
 
+  public abstract <T extends Module> T addModule(String name, T module);
+
   /**
    * <p>addStream.</p>
    * @param id Identifier of the stream that will be used to identify stream in DAG

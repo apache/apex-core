@@ -45,6 +45,16 @@ public abstract class AbstractModule implements Module
     return outputPortsMap;
   }
 
+  public Map<String, Operator> getOperators()
+  {
+    return operators ;
+  }
+
+  public Map<String, PortPair> getStreams()
+  {
+    return streams;
+  }
+
   public void flattenDAG(DAG dag, Configuration conf)
   {
 
