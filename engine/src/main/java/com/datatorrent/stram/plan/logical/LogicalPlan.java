@@ -21,6 +21,7 @@ import java.beans.PropertyDescriptor;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.validation.*;
@@ -390,10 +391,19 @@ public class LogicalPlan implements Serializable, DAG
     private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
     private OutputPortMeta source;
     private final String id;
+    private OperatorMeta persistOperatorForStream;
+    private InputPortMeta persistOperatorInputPort;
+    private Set<InputPortMeta> enableSinksForPersisting;
+    private String persistOperatorName;
+    public Map<InputPortMeta, OperatorMeta> sinkSpecificPersistOperatorMap;
+    public Map<InputPortMeta, InputPortMeta> sinkSpecificPersistInputPortMap;
 
     private StreamMeta(String id)
     {
       this.id = id;
+      enableSinksForPersisting = new HashSet<InputPortMeta>();
+      sinkSpecificPersistOperatorMap = new HashMap<LogicalPlan.InputPortMeta, OperatorMeta>();
+      sinkSpecificPersistInputPortMap = new HashMap<LogicalPlan.InputPortMeta, InputPortMeta>();
     }
 
     @Override
@@ -403,12 +413,14 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public Locality getLocality() {
+    public Locality getLocality()
+    {
       return this.locality;
     }
 
     @Override
-    public StreamMeta setLocality(Locality locality) {
+    public StreamMeta setLocality(Locality locality)
+    {
       this.locality = locality;
       return this;
     }
@@ -458,12 +470,26 @@ public class LogicalPlan implements Serializable, DAG
       return this;
     }
 
-    public void remove() {
+    public void remove()
+    {
       for (InputPortMeta ipm : this.sinks) {
         ipm.getOperatorWrapper().inputStreams.remove(ipm);
         if (ipm.getOperatorWrapper().inputStreams.isEmpty()) {
           rootOperators.add(ipm.getOperatorWrapper());
         }
+      }
+      // Remove persist operator for at stream level if present:
+      if (getPersistOperator() != null) {
+        removeOperator(getPersistOperator().getOperator());
+      }
+
+      // Remove persist operators added for specific sinks :
+      if (!sinkSpecificPersistOperatorMap.isEmpty()) {
+        for (Entry<InputPortMeta, OperatorMeta> entry : sinkSpecificPersistOperatorMap.entrySet()) {
+          removeOperator(entry.getValue().getOperator());
+        }
+        sinkSpecificPersistOperatorMap.clear();
+        sinkSpecificPersistInputPortMap.clear();
       }
       this.sinks.clear();
       if (this.source != null) {
@@ -516,6 +542,169 @@ public class LogicalPlan implements Serializable, DAG
       return !((this.id == null) ? (other.id != null) : !this.id.equals(other.id));
     }
 
+    @Override
+    public StreamMeta persistUsing(String name, Operator persistOperator, InputPort<?> port)
+    {
+      persistOperatorName = name;
+      enablePersistingForSinksAddedSoFar(persistOperator);
+      OperatorMeta persistOpMeta = createPersistOperatorMeta(persistOperator);
+      if (!persistOpMeta.getPortMapping().inPortMap.containsKey(port)) {
+        String msg = String.format("Port argument %s does not belong to persist operator passed %s", port, persistOperator);
+        throw new IllegalArgumentException(msg);
+      }
+
+      setPersistOperatorInputPort(persistOpMeta.getPortMapping().inPortMap.get(port));
+
+      return this;
+    }
+
+    @Override
+    public StreamMeta persistUsing(String name, Operator persistOperator)
+    {
+      persistOperatorName = name;
+      enablePersistingForSinksAddedSoFar(persistOperator);
+      OperatorMeta persistOpMeta = createPersistOperatorMeta(persistOperator);
+      InputPortMeta port = persistOpMeta.getPortMapping().inPortMap.values().iterator().next();
+      setPersistOperatorInputPort(port);
+      return this;
+    }
+
+    private void enablePersistingForSinksAddedSoFar(Operator persistOperator)
+    {
+      for (InputPortMeta portMeta : getSinks()) {
+        enableSinksForPersisting.add(portMeta);
+      }
+    }
+
+    private OperatorMeta createPersistOperatorMeta(Operator persistOperator)
+    {
+      addOperator(persistOperatorName, persistOperator);
+      OperatorMeta persistOpMeta = getOperatorMeta(persistOperatorName);
+      setPersistOperator(persistOpMeta);
+      if (persistOpMeta.getPortMapping().inPortMap.isEmpty()) {
+        String msg = String.format("Persist operator passed %s has no input ports to connect", persistOperator);
+        throw new IllegalArgumentException(msg);
+      }
+      Map<InputPort<?>, InputPortMeta> inputPortMap = persistOpMeta.getPortMapping().inPortMap;
+      int nonOptionalInputPortCount = 0;
+      for (InputPortMeta inputPort : inputPortMap.values()) {
+        if (inputPort.portAnnotation == null || !inputPort.portAnnotation.optional()) {
+          // By default input port is non-optional unless specified
+          nonOptionalInputPortCount++;
+        }
+      }
+
+      if (nonOptionalInputPortCount > 1) {
+        String msg = String.format("Persist operator %s has more than 1 non optional input port", persistOperator);
+        throw new IllegalArgumentException(msg);
+      }
+
+      Map<OutputPort<?>, OutputPortMeta> outputPortMap = persistOpMeta.getPortMapping().outPortMap;
+      for (OutputPortMeta outPort : outputPortMap.values()) {
+        if (outPort.portAnnotation != null && !outPort.portAnnotation.optional()) {
+          // By default output port is optional unless specified
+          String msg = String.format("Persist operator %s has non optional output port %s", persistOperator, outPort.fieldName);
+          throw new IllegalArgumentException(msg);
+        }
+      }
+      return persistOpMeta;
+    }
+
+    public OperatorMeta getPersistOperator()
+    {
+      return persistOperatorForStream;
+    }
+
+    private void setPersistOperator(OperatorMeta persistOperator)
+    {
+      this.persistOperatorForStream = persistOperator;
+    }
+
+    public InputPortMeta getPersistOperatorInputPort()
+    {
+      return persistOperatorInputPort;
+    }
+
+    private void setPersistOperatorInputPort(InputPortMeta inport)
+    {
+      this.addSink(inport.getPortObject());
+      this.persistOperatorInputPort = inport;
+    }
+
+    public Set<InputPortMeta> getSinksToPersist()
+    {
+      return enableSinksForPersisting;
+    }
+
+    private String getPersistOperatorName(Operator operator)
+    {
+      return id + "_persister";
+    }
+
+    private String getPersistOperatorName(InputPort<?> sinkToPersist)
+    {
+      InputPortMeta portMeta = assertGetPortMeta(sinkToPersist);
+      OperatorMeta operatorMeta = portMeta.getOperatorWrapper();
+      return id + "_" + operatorMeta.getName() + "_persister";
+    }
+
+    @Override
+    public StreamMeta persistUsing(String name, Operator persistOperator, InputPort<?> port, InputPort<?> sinkToPersist)
+    {
+      // When persist Stream is invoked for a specific sink, persist operator can directly be added
+      String persistOperatorName = name;
+      addOperator(persistOperatorName, persistOperator);
+      addSink(port);
+      InputPortMeta sinkPortMeta = assertGetPortMeta(sinkToPersist);
+      addStreamCodec(sinkPortMeta, port);
+      updateSinkSpecificPersistOperatorMap(sinkPortMeta, persistOperatorName, port);
+      return this;
+    }
+
+    private void addStreamCodec(InputPortMeta sinkToPersistPortMeta, InputPort<?> port)
+    {
+      StreamCodec<Object> inputStreamCodec = sinkToPersistPortMeta.getValue(PortContext.STREAM_CODEC) != null ? (StreamCodec<Object>) sinkToPersistPortMeta.getValue(PortContext.STREAM_CODEC) : (StreamCodec<Object>) sinkToPersistPortMeta.getPortObject().getStreamCodec();
+      if (inputStreamCodec != null) {
+        Map<InputPortMeta, StreamCodec<Object>> codecs = new HashMap<InputPortMeta, StreamCodec<Object>>();
+        codecs.put(sinkToPersistPortMeta, inputStreamCodec);
+        InputPortMeta persistOperatorPortMeta = assertGetPortMeta(port);
+        StreamCodec<Object> specifiedCodecForPersistOperator = (persistOperatorPortMeta.getValue(PortContext.STREAM_CODEC) != null) ? (StreamCodec<Object>) persistOperatorPortMeta.getValue(PortContext.STREAM_CODEC) : (StreamCodec<Object>) port.getStreamCodec();
+        StreamCodecWrapperForPersistance<Object> codec = new StreamCodecWrapperForPersistance<Object>(codecs, specifiedCodecForPersistOperator);
+        setInputPortAttribute(port, PortContext.STREAM_CODEC, codec);
+      }
+    }
+
+    private void updateSinkSpecificPersistOperatorMap(InputPortMeta sinkToPersistPortMeta, String persistOperatorName, InputPort<?> persistOperatorInPort)
+    {
+      OperatorMeta persistOpMeta = operators.get(persistOperatorName);
+      this.sinkSpecificPersistOperatorMap.put(sinkToPersistPortMeta, persistOpMeta);
+      this.sinkSpecificPersistInputPortMap.put(sinkToPersistPortMeta, persistOpMeta.getMeta(persistOperatorInPort));
+    }
+
+    public void resetStreamPersistanceOnSinkRemoval(InputPortMeta sinkBeingRemoved)
+    {
+     /*
+      * If persistStream was enabled for the entire stream and the operator
+      * to be removed was the only one enabled for persisting, Remove the persist operator
+      */
+      if (enableSinksForPersisting.contains(sinkBeingRemoved)) {
+        enableSinksForPersisting.remove(sinkBeingRemoved);
+        if (enableSinksForPersisting.isEmpty()) {
+          removeOperator(getPersistOperator().getOperator());
+          setPersistOperator(null);
+        }
+      }
+
+      // If persisting was added specific to this sink, remove the persist operator
+      if (sinkSpecificPersistInputPortMap.containsKey(sinkBeingRemoved)) {
+        sinkSpecificPersistInputPortMap.remove(sinkBeingRemoved);
+      }
+      if (sinkSpecificPersistOperatorMap.containsKey(sinkBeingRemoved)) {
+        OperatorMeta persistOpMeta = sinkSpecificPersistOperatorMap.get(sinkBeingRemoved);
+        sinkSpecificPersistOperatorMap.remove(sinkBeingRemoved);
+        removeOperator(persistOpMeta.getOperator());
+      }
+    }
   }
 
   /**
@@ -878,9 +1067,12 @@ public class LogicalPlan implements Serializable, DAG
 
     Map<InputPortMeta, StreamMeta> inputStreams = om.getInputStreams();
     for (Map.Entry<InputPortMeta, StreamMeta> e : inputStreams.entrySet()) {
+      StreamMeta stream = e.getValue();
       if (e.getKey().getOperatorWrapper() == om) {
-         e.getValue().sinks.remove(e.getKey());
+         stream.sinks.remove(e.getKey());
       }
+      // If persistStream was enabled for stream, reset stream when sink removed 
+      stream.resetStreamPersistanceOnSinkRemoval(e.getKey());
     }
     this.operators.remove(om.getName());
     rootOperators.remove(om);

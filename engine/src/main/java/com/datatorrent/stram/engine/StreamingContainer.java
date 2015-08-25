@@ -76,6 +76,7 @@ import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
+import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.stream.*;
 
@@ -1115,6 +1116,9 @@ public class StreamingContainer extends YarnContainerMain
             BufferServerSubscriber subscriber = fastPublisherSubscriber
               ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity)
               : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity);
+            if(streamCodec instanceof StreamCodecWrapperForPersistance) {
+              subscriber.acquireReservoirForPersistStream(sinkIdentifier, queueCapacity, streamCodec);
+            }
             SweepableReservoir reservoir = subscriber.acquireReservoir(sinkIdentifier, queueCapacity);
             if (checkpoint.windowId >= 0) {
               node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, reservoir, checkpoint.windowId));
@@ -1176,10 +1180,17 @@ public class StreamingContainer extends YarnContainerMain
             }
 
             /* here everything should be multisink capable */
-            if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
+            if (streamCodec instanceof StreamCodecWrapperForPersistance) {
+              PartitionAwareSinkForPersistence pas;
+              if (nidi.partitionKeys == null) {
+                pas = new PartitionAwareSinkForPersistence((StreamCodecWrapperForPersistance<Object>) streamCodec, nidi.partitionMask, stream);
+              } else {
+                pas = new PartitionAwareSinkForPersistence((StreamCodecWrapperForPersistance<Object>) streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
+              }
+              ((Stream.MultiSinkCapableStream) pair.component).setSink(sinkIdentifier, pas);
+            } else if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
               ((Stream.MultiSinkCapableStream) pair.component).setSink(sinkIdentifier, stream);
-            }
-            else {
+            } else {
               /*
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
