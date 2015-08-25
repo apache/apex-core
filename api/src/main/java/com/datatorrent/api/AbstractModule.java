@@ -55,35 +55,35 @@ public abstract class AbstractModule implements Module
     return streams;
   }
 
-  public void flattenDAG(DAG dag, Configuration conf)
-  {
-
-    try {
-      /**
-       * Add operators is the same.
-       */
-      for (Map.Entry<String, Operator> e : operators.entrySet()) {
-        Object o = e.getValue();
-        if (o instanceof Module) {
-          Module m = (Module) o;
-          m.flattenDAG(dag, conf);
-        } else {
-          dag.addOperator(e.getKey(), e.getValue());
-        }
-      }
-
-      /**
-       * Add connections
-       */
-      int idx = 0;
-      for (Map.Entry<String, PortPair> stream : streams.entrySet()) {
-        stream.getValue().connect(dag, "s" + stream.getKey() + "_" + idx);
-        idx++;
-      }
-    } catch (Throwable th) {
-      throw new RuntimeException(th);
-    }
-  }
+//  public void flattenDAG(DAG dag, Configuration conf)
+//  {
+//
+//    try {
+//      /**
+//       * Add operators is the same.
+//       */
+//      for (Map.Entry<String, Operator> e : operators.entrySet()) {
+//        Object o = e.getValue();
+//        if (o instanceof Module) {
+//          Module m = (Module) o;
+//          m.flattenDAG(dag, conf);
+//        } else {
+//          dag.addOperator(e.getKey(), e.getValue());
+//        }
+//      }
+//
+//      /**
+//       * Add connections
+//       */
+//      int idx = 0;
+//      for (Map.Entry<String, PortPair> stream : streams.entrySet()) {
+//        stream.getValue().connect(dag, "s" + stream.getKey() + "_" + idx);
+//        idx++;
+//      }
+//    } catch (Throwable th) {
+//      throw new RuntimeException(th);
+//    }
+//  }
 
   @Override public void setup(ModuleContext context)
   {

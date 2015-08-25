@@ -67,7 +67,7 @@ public interface Module extends Component<ModuleContext>
   * @param conf
   */
 
-  public void flattenDAG(DAG dag, Configuration conf);
+  //public void flattenDAG(DAG dag, Configuration conf);
 
   /**
    * Get property for the module
