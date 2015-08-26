@@ -869,6 +869,39 @@ public class LogicalPlan implements Serializable, DAG
     return operator;
   }
 
+  @Override public <T extends Module> T addModule(String name, T module)
+  {
+
+    try {
+      /**
+       * Add operators is the same.
+       */
+      for (Map.Entry<String, Operator> e : module.getOperators().entrySet()) {
+        Object o = e.getValue();
+        if (o instanceof Module) {
+          Module m = (Module) o;
+          addModule(name + "." + e.getKey(), m);
+        } else {
+          addOperator(e.getKey(), e.getValue());
+        }
+      }
+
+      /**
+       * Add connections
+       */
+      int idx = 0;
+      for (Map.Entry<String, PortPair> stream : module.getStreams().entrySet()) {
+        PortPair pair = module.getStreams().get(stream.getKey());
+        addStream(name + "." + stream.getKey() + "_" + idx, pair.getOutputPort(), pair.getInputPort());
+        //stream.getValue().connect(dag, name + "." + stream.getKey() + "_" + idx);
+        idx++;
+      }
+    } catch (Throwable th) {
+      throw new RuntimeException(th);
+    }
+    return module;
+  }
+
   public void removeOperator(Operator operator)
   {
     OperatorMeta om = getMeta(operator);

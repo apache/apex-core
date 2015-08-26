@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
 
 import com.datatorrent.bufferserver.util.Codec;
 
@@ -37,7 +36,7 @@ import com.datatorrent.bufferserver.util.Codec;
 public class RecoverableInputOperator implements InputOperator, com.datatorrent.api.Operator.CheckpointListener
 {
   public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
-  long checkpointedWindowId;
+  private long checkpointedWindowId;
   boolean firstRun = true;
   transient boolean first;
   transient long windowId;
@@ -92,7 +91,8 @@ public class RecoverableInputOperator implements InputOperator, com.datatorrent.
   @Override
   public void setup(OperatorContext context)
   {
-    firstRun &= checkpointedWindowId == 0;
+    firstRun = (checkpointedWindowId == 0);
+    logger.debug("firstRun={} checkpointedWindowId={}", firstRun, Codec.getStringWindowId(checkpointedWindowId));
   }
 
   @Override
@@ -105,6 +105,7 @@ public class RecoverableInputOperator implements InputOperator, com.datatorrent.
   {
     if (checkpointedWindowId == 0) {
       checkpointedWindowId = windowId;
+      logger.debug("firstRun={} checkpointedWindowId={}", firstRun, Codec.getStringWindowId(checkpointedWindowId));
     }
 
     logger.debug("{} checkpointed at {}", this, Codec.getStringWindowId(windowId));
@@ -113,8 +114,7 @@ public class RecoverableInputOperator implements InputOperator, com.datatorrent.
   @Override
   public void committed(long windowId)
   {
-    logger.debug("{} committed at {}", this, Codec.getStringWindowId(windowId));
-
+    logger.debug("{} committed at {} firstRun {}, checkpointedWindowId {}", this, Codec.getStringWindowId(windowId), firstRun, Codec.getStringWindowId(checkpointedWindowId));
     if (simulateFailure && firstRun && checkpointedWindowId > 0 && windowId > checkpointedWindowId) {
       throw new RuntimeException("Failure Simulation from " + this);
     }
