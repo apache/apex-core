@@ -1088,7 +1088,7 @@ public class LogicalPlan implements Serializable, DAG
       if (e.getKey().getOperatorWrapper() == om) {
          stream.sinks.remove(e.getKey());
       }
-      // If persistStream was enabled for stream, reset stream when sink removed 
+      // If persistStream was enabled for stream, reset stream when sink removed
       stream.resetStreamPersistanceOnSinkRemoval(e.getKey());
     }
     this.operators.remove(om.getName());
@@ -1431,11 +1431,11 @@ public class LogicalPlan implements Serializable, DAG
 
     for (StreamMeta s: streams.values()) {
       if (s.source == null) {
-        throw new ValidationException(String.format("stream source not connected: %s", s.getName()));
+        throw new ValidationException("Stream source not connected: " + s.getName());
       }
 
       if (s.sinks.isEmpty()) {
-        throw new ValidationException(String.format("stream sink not connected: %s", s.getName()));
+        throw new ValidationException("Stream sink not connected: " + s.getName());
       }
     }
 

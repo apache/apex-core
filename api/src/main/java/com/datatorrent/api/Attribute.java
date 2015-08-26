@@ -277,13 +277,6 @@ public class Attribute<T> implements Serializable
         if (map.containsKey(clazz)) {
           return 0;
         }
-
-        map.put(clazz, getAttributesNoSave(clazz));
-        return (long)clazz.getModifiers() << 32 | clazz.hashCode();
-      }
-
-      public static Set<Attribute<Object>> getAttributesNoSave(Class<?> clazz)
-      {
         Set<Attribute<Object>> set = new HashSet<Attribute<Object>>();
         try {
           for (Field f: clazz.getDeclaredFields()) {
@@ -330,8 +323,8 @@ public class Attribute<T> implements Serializable
         catch (Exception ex) {
           DTThrowable.rethrow(ex);
         }
-
-        return set;
+        map.put(clazz, set);
+        return (long)clazz.getModifiers() << 32 | clazz.hashCode();
       }
 
     }

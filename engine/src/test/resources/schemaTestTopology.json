@@ -36,7 +36,7 @@
         }
       ],
       "schema": {
-        "class": "com.datatorrent.stram.plan.LogicalPlanConfigurationTest$TestSchema"
+        "class": "com.datatorrent.stram.plan.logical.LogicalPlanConfigurationTest$TestSchema"
       }
     }
   ]
