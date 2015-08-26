@@ -39,12 +39,6 @@ public class FastDataList extends DataList
     super(identifier, blocksize, numberOfCacheBlocks);
   }
 
-  public FastDataList(String identifier, int blocksize, int numberOfCacheBlocks, int refCount)
-  {
-    super(identifier, blocksize, numberOfCacheBlocks, refCount);
-  }
-
-
   long item;
 
   @Override
@@ -102,7 +96,7 @@ public class FastDataList extends DataList
 
     last.writingOffset = writeOffset;
 
-    autoflushExecutor.submit(new Runnable()
+    autoFlushExecutor.submit(new Runnable()
     {
       @Override
       public void run()
@@ -116,7 +110,7 @@ public class FastDataList extends DataList
   }
 
   @Override
-  public FastDataListIterator getIterator(Block block)
+  protected FastDataListIterator getIterator(Block block)
   {
     return new FastDataListIterator(block);
   }
