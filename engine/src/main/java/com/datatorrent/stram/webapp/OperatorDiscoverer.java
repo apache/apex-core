@@ -25,6 +25,7 @@ import com.datatorrent.stram.webapp.asm.CompactFieldNode;
 import com.google.common.base.Predicate;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -277,6 +278,7 @@ public class OperatorDiscoverer
   {
     Map<String, JarFile> openJarFiles = new HashMap<String, JarFile>();
     Map<String, File> openClassFiles = new HashMap<String, File>();
+    Set<String> resSet = new HashSet<>();
     try {
       for (String path : pathsToScan) {
         File f = null;
@@ -295,17 +297,42 @@ public class OperatorDiscoverer
             JarFile jar = new JarFile(path);
             openJarFiles.put(path, jar);
             java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
+            outer:
             while (entriesEnum.hasMoreElements()) {
-              java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
-              if (!jarEntry.isDirectory() && jarEntry.getName().endsWith("-javadoc.xml")) {
+              final java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
+              String entryName = jarEntry.getName();
+              if (jarEntry.isDirectory()) {
+                continue;
+              }
+              if (entryName.endsWith("-javadoc.xml")) {
                 try {
                   processJavadocXml(jar.getInputStream(jarEntry));
                   // break;
                 } catch (Exception ex) {
-                  LOG.warn("Cannot process javadoc {} : ", jarEntry.getName(), ex);
+                  LOG.warn("Cannot process javadoc {} : ", entryName, ex);
                 }
-              } else if (!jarEntry.isDirectory() && jarEntry.getName().endsWith(".class")) {
-                typeGraph.addNode(jarEntry, jar);
+              } else if (entryName.endsWith(".class")) {
+                TypeGraph.TypeGraphVertex newNode = typeGraph.addNode(jarEntry, jar);
+                // check if any visited resources belong to this type
+                for (Iterator<String> iter = resSet.iterator(); iter.hasNext(); ) {
+                  String entry = iter.next();
+                  if (entry.startsWith(entryName.substring(0, entryName.length() - 6))) {
+                    newNode.setHasRes(true);
+                    iter.remove();
+                  }
+                }
+              } else {
+                String className = entryName;
+                // check if this resource belongs to any visited type
+                while (className.contains("/")) {
+                  className = className.substring(0, className.lastIndexOf('/'));
+                  TypeGraph.TypeGraphVertex tgv = typeGraph.getNode(className.replace('/', '.'));
+                  if (tgv != null) {
+                    tgv.setHasRes(true);
+                    break outer;
+                  }
+                }
+                resSet.add(entryName);
               }
             }
           }
