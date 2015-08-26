@@ -1214,11 +1214,11 @@ public class LogicalPlan implements Serializable, DAG
 
     for (StreamMeta s: streams.values()) {
       if (s.source == null) {
-        throw new ValidationException(String.format("stream source not connected: %s", s.getName()));
+        throw new ValidationException("stream source not connected: " + s.getName());
       }
 
       if (s.sinks.isEmpty()) {
-        throw new ValidationException(String.format("stream sink not connected: %s", s.getName()));
+        throw new ValidationException("stream sink not connected: " + s.getName());
       }
     }
 
