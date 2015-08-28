@@ -97,6 +97,10 @@ public class Server implements ServerListener
   @Override
   public void unregistered(SelectionKey key)
   {
+    for (Entry<String, AbstractLengthPrependerClient> entry : publisherChannels.entrySet()) {
+      eventloop.disconnect(entry.getValue());
+    }
+
     serverHelperExecutor.shutdown();
     storageHelperExecutor.shutdown();
     try {

@@ -194,7 +194,7 @@ public class FastDataList extends DataList
             if (da.next == null) {
               return false;
             }
-
+            logger.debug("{}: switching to the next block {}->{}", this, da, da.next);
             da.release(false);
             da.next.acquire(true);
             da = da.next;
@@ -220,6 +220,7 @@ public class FastDataList extends DataList
               return false;
             }
             else {
+              logger.debug("{}: switching to the next block {}->{}", this, da, da.next);
               da.release(false);
               da.next.acquire(true);
               da = da.next;
