@@ -705,7 +705,7 @@ public class Server implements ServerListener
     {
       synchronized (datalist)
       {
-        if (switchToNewBuffer(buffer, readOffset)) {
+        if (switchToNewBuffer(buffer, offset)) {
           return true;
         }
         suspendReadIfResumed();

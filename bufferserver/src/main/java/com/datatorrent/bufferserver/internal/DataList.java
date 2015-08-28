@@ -701,8 +701,7 @@ public class DataList
     
     protected void acquire(boolean wait)
     {
-      if (refCount.getAndIncrement() == 0 && storage != null) {
-        assert (data == null);
+      if (refCount.getAndIncrement() == 0 && storage != null && data == null) {
         final Runnable retriever = getRetriever();
         if (wait) {
           retriever.run();
