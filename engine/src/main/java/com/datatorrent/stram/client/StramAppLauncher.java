@@ -28,7 +28,6 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.NotImplementedException;
@@ -37,6 +36,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.tools.ant.DirectoryScanner;
 
 import com.datatorrent.api.StreamingApplication;
@@ -477,14 +477,10 @@ public class StramAppLauncher
     Configuration conf = propertiesBuilder.conf;
     conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.CLUSTER);
     LogicalPlan dag = appConfig.createApp(propertiesBuilder);
-    String hdfsTokenMaxLifeTime = conf.get(StramClientUtils.HDFS_TOKEN_MAX_LIFE_TIME);
-    if (hdfsTokenMaxLifeTime != null && hdfsTokenMaxLifeTime.trim().length() > 0) {
-      dag.setAttribute(LogicalPlan.HDFS_TOKEN_LIFE_TIME, Long.parseLong(hdfsTokenMaxLifeTime));
-    }
-    String rmTokenMaxLifeTime = conf.get(StramClientUtils.RM_TOKEN_MAX_LIFE_TIME);
-    if (rmTokenMaxLifeTime != null && rmTokenMaxLifeTime.trim().length() > 0) {
-      dag.setAttribute(LogicalPlan.RM_TOKEN_LIFE_TIME, Long.parseLong(rmTokenMaxLifeTime));
-    }
+    long hdfsTokenMaxLifeTime = conf.getLong(StramClientUtils.DT_HDFS_TOKEN_MAX_LIFE_TIME, conf.getLong(StramClientUtils.HDFS_TOKEN_MAX_LIFE_TIME, StramClientUtils.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT));
+    dag.setAttribute(LogicalPlan.HDFS_TOKEN_LIFE_TIME, hdfsTokenMaxLifeTime);
+    long rmTokenMaxLifeTime = conf.getLong(StramClientUtils.DT_RM_TOKEN_MAX_LIFE_TIME, conf.getLong(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_KEY, YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT));
+    dag.setAttribute(LogicalPlan.RM_TOKEN_LIFE_TIME, rmTokenMaxLifeTime);
     if (conf.get(StramClientUtils.KEY_TAB_FILE) != null) {
       dag.setAttribute(LogicalPlan.KEY_TAB_FILE, conf.get(StramClientUtils.KEY_TAB_FILE));
     }
