@@ -531,7 +531,7 @@ public class DataList
       refCount = new AtomicInteger(1);
       this.starting_window = starting_window;
       this.ending_window = ending_window;
-      logger.debug("Allocated new Data List memory Block {}", this);
+      //logger.debug("Allocated new Data List memory Block {}", this);
     }
 
     void getNextData(SerializedData current)
@@ -736,12 +736,12 @@ public class DataList
           else {
             synchronized (Block.this) {
               if (refCount.get() == 0) {
-                logger.debug("release block {} to disk", Block.this);
+                //logger.debug("release block {} to disk", Block.this);
                 freeBuffers.offer(Block.this.data);
                 Block.this.data = null;
                 numberOfInMemBlockPermits++;
               } else {
-                logger.debug("Keeping Data List Memory Block {} due to {} references.", Block.this, refCount);
+                //logger.debug("Keeping Data List Memory Block {} due to {} references.", Block.this, refCount);
               }
             }
             resumeSuspendedClients();
@@ -756,14 +756,14 @@ public class DataList
         assert (Block.this.next != null);
         final Runnable storer = getStorer(data, readingOffset, writingOffset, storage);
         if (wait && numberOfInMemBlockPermits == 0) {
-          logger.info("Releasing Data List Memory Block {}", this);
+          //logger.info("Releasing Data List Memory Block {}", this);
           storer.run();
         } else if (numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS/2) {
-          logger.info("Scheduling release of Data List Memory Block {}", this);
+          //logger.info("Scheduling release of Data List Memory Block {}", this);
           storageExecutor.submit(storer);
         }
       } else {
-        logger.debug("Keeping Data List Memory Block {} due to {} references.", this, refCount);
+        //logger.debug("Keeping Data List Memory Block {} due to {} references.", this, refCount);
       }
     }
 
@@ -849,7 +849,7 @@ public class DataList
      * @return boolean
      */
     @Override
-    public synchronized boolean hasNext()
+    public boolean hasNext()
     {
       while (size == 0) {
         size = VarInt.read(buffer, readOffset, da.writingOffset, nextOffset);
@@ -868,7 +868,7 @@ public class DataList
                   assert (da == last);
                   return false;
                 }
-                logger.debug("{}: switching to the next block {}->{}", this, da, da.next);
+                //logger.debug("{}: switching to the next block {}->{}", this, da, da.next);
                 da.release(false);
                 da.next.acquire(true);
                 da = da.next;
@@ -876,43 +876,37 @@ public class DataList
               size = 0;
               buffer = da.data;
               readOffset = da.readingOffset;
-            }
-            else {
+            } else {
               return false;
             }
         }
       }
 
-      while (true) {
-        if (nextOffset.integer + size <= da.writingOffset) {
-          current = new SerializedData(buffer, readOffset, size + nextOffset.integer - readOffset);
-          current.dataOffset = nextOffset.integer;
-          //if (buffer[current.dataOffset] == MessageType.BEGIN_WINDOW_VALUE || buffer[current.dataOffset] == MessageType.END_WINDOW_VALUE) {
-          //  Tuple t = Tuple.getTuple(current.buffer, current.dataOffset, current.length - current.dataOffset + current.offset);
-          //  logger.debug("next t = {}", t);
-          //}
-          return true;
-        }
-        else {
-          if (da.writingOffset == buffer.length) {
-            synchronized (DataList.this) {
-              if (da.next == null) {
-                assert (da == last);
-                return false;
-              }
-              logger.debug("{}: switching to the next block {}->{}", this, da, da.next);
-              da.release(false);
-              da.next.acquire(true);
-              da = da.next;
-            }
-            size = 0;
-            readOffset = nextOffset.integer = da.readingOffset;
-            buffer = da.data;
-          }
-          else {
+      if (nextOffset.integer + size <= da.writingOffset) {
+        current = new SerializedData(buffer, readOffset, size + nextOffset.integer - readOffset);
+        current.dataOffset = nextOffset.integer;
+        //if (buffer[current.dataOffset] == MessageType.BEGIN_WINDOW_VALUE || buffer[current.dataOffset] == MessageType.END_WINDOW_VALUE) {
+        //  Tuple t = Tuple.getTuple(current.buffer, current.dataOffset, current.length - current.dataOffset + current.offset);
+        //  logger.debug("next t = {}", t);
+        //}
+        return true;
+      } else if (da.writingOffset == buffer.length) {
+        synchronized (DataList.this) {
+          if (da.next == null) {
+            assert (da == last);
             return false;
           }
+          //logger.debug("{}: switching to the next block {}->{}", this, da, da.next);
+          da.release(false);
+          da.next.acquire(true);
+          da = da.next;
         }
+        size = 0;
+        readOffset = nextOffset.integer = da.readingOffset;
+        buffer = da.data;
+        return hasNext();
+      } else {
+        return false;
       }
     }
 
