@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datatorrent.stram.plan;
+package com.datatorrent.stram.plan.logical;
 
 import com.datatorrent.common.util.BaseOperator;
 import java.io.ByteArrayInputStream;

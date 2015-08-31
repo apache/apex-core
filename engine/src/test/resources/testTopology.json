@@ -13,7 +13,7 @@
         "STATS_LISTENERS" : {
           "java.util.ArrayList" : [
             {
-              "com.datatorrent.stram.plan.LogicalPlanConfigurationTest$TestStatsListener" : {
+              "com.datatorrent.stram.plan.logical.LogicalPlanConfigurationTest$TestStatsListener" : {
                 "intProp" : 222
               }
             }
@@ -38,7 +38,7 @@
         "com.datatorrent.stram.engine.GenericTestOperator":{
           "myStringProperty": "myStringPropertyValue"
         }
-        
+
       }
     },
     {
