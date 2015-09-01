@@ -324,8 +324,11 @@ public class PhysicalPlan implements Serializable
 
       boolean upstreamDeployed = true;
 
-      for (StreamMeta s : n.getInputStreams().values()) {
-        if (s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorMeta())) {
+      for (Map.Entry<InputPortMeta, StreamMeta> entry : n.getInputStreams().entrySet()) {
+        InputPortMeta port = entry.getKey();
+        StreamMeta s = entry.getValue();
+        int iterationWindows = port.getValue(PortContext.ITERATION_WINDOWS);
+        if (iterationWindows == 0 && s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorMeta())) {
           pendingNodes.push(n);
           pendingNodes.push(s.getSource().getOperatorMeta());
           upstreamDeployed = false;
@@ -334,6 +337,7 @@ public class PhysicalPlan implements Serializable
       }
 
       if (upstreamDeployed) {
+        System.out.println("##########3 Add logical " + n);
         addLogicalOperator(n);
       }
     }
@@ -937,17 +941,17 @@ public class PhysicalPlan implements Serializable
                 PTOperator slidingUnifier = StreamMapping.createSlidingUnifier(sourceOut.logicalStream, this,
                   sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT), slidingWindowCount);
                 StreamMapping.addInput(slidingUnifier, sourceOut, null);
-                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, slidingUnifier.outputs.get(0));
+                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, slidingUnifier.outputs.get(0), ipm.getKey().getValue(PortContext.ITERATION_WINDOWS));
                 sourceMapping.outputStreams.get(ipm.getValue().getSource()).slidingUnifiers.add(slidingUnifier);
               }
               else {
-                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut);
+                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut, ipm.getKey().getValue(PortContext.ITERATION_WINDOWS));
               }
               oper.inputs.add(input);
             }
           }
         }
-      } else {
+      } else if (sourceMapping != null) { // TODO: DOUBLE CHECK THIS
         StreamMapping ug = sourceMapping.outputStreams.get(ipm.getValue().getSource());
         if (ug == null) {
           ug = new StreamMapping(ipm.getValue(), this);

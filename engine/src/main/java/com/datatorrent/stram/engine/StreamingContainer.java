@@ -884,6 +884,8 @@ public class StreamingContainer extends YarnContainerMain
       Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ctx.stateless ? Stateless.WINDOW_ID : ndi.checkpoint.windowId), ctx, ndi.type);
       node.currentWindowId = ndi.checkpoint.windowId;
       node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
+      node.firstWindowMillis = firstWindowMillis;
+      node.windowWidthMillis = windowWidthMillis;
 
       node.setId(ndi.id);
       nodes.put(ndi.id, node);

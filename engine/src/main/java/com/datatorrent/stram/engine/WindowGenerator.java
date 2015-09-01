@@ -317,7 +317,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
     }
     assert (multiplier >= 0);
     windowId = windowId & WindowGenerator.WINDOW_MASK;
-    return firstWindowMillis + (multiplier * windowWidthMillis * (WindowGenerator.MAX_WINDOW_ID + 1)) + windowId * windowWidthMillis;
+    return firstWindowMillis + (multiplier * baseChangeInterval) + (windowId * windowWidthMillis);
   }
 
   private class MasterReservoir extends CircularBuffer<Tuple> implements Reservoir

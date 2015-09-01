@@ -18,6 +18,7 @@ package com.datatorrent.stram.plan;
 import com.datatorrent.common.util.BaseOperator;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
 
@@ -27,6 +28,7 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
+import com.datatorrent.stram.StramLocalCluster;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import com.google.common.collect.Maps;
@@ -107,6 +109,34 @@ public class LogicalPlanTest {
        // expected
      }
 
+  }
+
+  @Test
+  public void testIteration()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator opA = dag.addOperator("A", TestGeneratorInputOperator.class);
+    GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
+    GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
+    GenericTestOperator opD = dag.addOperator("D", GenericTestOperator.class);
+
+    dag.addStream("AtoB", opA.outport, opB.inport1);
+    dag.addStream("BtoC", opB.outport1, opC.inport1);
+    dag.addStream("CtoD", opC.outport1, opD.inport1);
+    dag.addStream("CtoB", opC.outport2, opB.inport2);
+    dag.setInputPortAttribute(opB.inport2, PortContext.ITERATION_WINDOWS, 1);
+
+    try {
+      final StramLocalCluster localCluster = new StramLocalCluster(dag);
+      localCluster.runAsync();
+      Thread.sleep(10000);
+      localCluster.shutdown();
+    } catch (InterruptedException ex) {
+      // ignore
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   public static class ValidationOperator extends BaseOperator {

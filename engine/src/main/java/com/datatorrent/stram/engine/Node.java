@@ -104,6 +104,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   private ExecutorService executorService;
   private Queue<Pair<FutureTask<Stats.CheckpointStats>, Long>> taskQueue;
   protected Stats.CheckpointStats checkpointStats;
+  public long firstWindowMillis;
+  public long windowWidthMillis;
 
   public Node(OPERATOR operator, OperatorContext context)
   {

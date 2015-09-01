@@ -1000,7 +1000,7 @@ public class StreamingContainerManager implements PlanContext
       return operatorStatus.latencyMA.getAvg();
     }
     for (PTOperator.PTInput input : maxOperator.getInputs()) {
-      if (null != input.source.source) {
+      if (null != input.source.source && input.iterationWindows > 0) {
         operators.add(input.source.source);
       }
     }
@@ -1913,7 +1913,10 @@ public class StreamingContainerManager implements PlanContext
         PTOperator sinkOperator = sink.target;
         if (!ctx.visited.contains(sinkOperator)) {
           // downstream traversal
-          updateRecoveryCheckpoints(sinkOperator, ctx);
+
+          if (sink.iterationWindows > 0) {
+            updateRecoveryCheckpoints(sinkOperator, ctx);
+          }
         }
         // recovery window id cannot move backwards
         // when dynamically adding new operators
