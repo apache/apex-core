@@ -1,6 +1,23 @@
 DataTorrent RTS Release Notes
 ========================================================================================================================
 
+Version 3.1.0
+------------------------------------------------------------------------------------------------------------------------
+
+### Operator Improvements
+
+* Fix Base Operator To Not Show Name Property In App Builder
+
+### Few Bug Fixes
+
+* Test exceptions due to missing directory in saveMetaInfo
+* FSStorageAgent to account for HDFS lease when writing checkpoint files
+* Container and operator json line file in StreamingContainerManager should not be appended from previous app attempt 
+* SchemaSupport: TUPLE_CLASS attribute should use Class2String StringCodec
+* Controlled plan modification on operator shutdown 
+* Fix Base Operator To Not Show Name Property In App Builder
+
+
 Version 3.0.0
 ------------------------------------------------------------------------------------------------------------------------
 
