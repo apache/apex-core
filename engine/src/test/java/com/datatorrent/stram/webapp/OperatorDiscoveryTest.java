@@ -49,6 +49,7 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.util.ObjectMapperFactory;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 
@@ -493,6 +494,26 @@ public class OperatorDiscoveryTest
 
 
   }
+
+  @Test
+  public void testExternalResource() throws Exception
+  {
+
+
+    StramTestSupport.createAppPackageFile();
+    
+    String[] classFilePath = getClassFileInClasspath();
+
+    String[]cPaths = Lists.asList("src/test/resources/testAppPackage/mydtapp/target/mydtapp-1.0-SNAPSHOT.jar", classFilePath).toArray(new String[]{});
+    OperatorDiscoverer od = new OperatorDiscoverer(cPaths);
+    od.buildTypeGraph();
+
+    Assert.assertEquals("true", od.describeClass("com.example.mydtapp.StdoutOperator").getString("hasResource"));
+
+    StramTestSupport.removeAppPackageFile();
+
+  }
+
 
   public static class Structured
   {
