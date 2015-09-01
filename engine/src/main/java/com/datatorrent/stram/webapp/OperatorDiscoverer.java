@@ -25,6 +25,7 @@ import com.datatorrent.stram.webapp.asm.CompactFieldNode;
 import com.google.common.base.Predicate;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -277,6 +278,8 @@ public class OperatorDiscoverer
   {
     Map<String, JarFile> openJarFiles = new HashMap<String, JarFile>();
     Map<String, File> openClassFiles = new HashMap<String, File>();
+    // use global cache to load resource in/out of the same jar as the classes
+    Set<String> resourceCacheSet = new HashSet<>();
     try {
       for (String path : pathsToScan) {
         File f = null;
@@ -296,16 +299,44 @@ public class OperatorDiscoverer
             openJarFiles.put(path, jar);
             java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
             while (entriesEnum.hasMoreElements()) {
-              java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
-              if (!jarEntry.isDirectory() && jarEntry.getName().endsWith("-javadoc.xml")) {
+              final java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
+              String entryName = jarEntry.getName();
+              if (jarEntry.isDirectory()) {
+                continue;
+              }
+              if (entryName.endsWith("-javadoc.xml")) {
                 try {
                   processJavadocXml(jar.getInputStream(jarEntry));
                   // break;
                 } catch (Exception ex) {
-                  LOG.warn("Cannot process javadoc {} : ", jarEntry.getName(), ex);
+                  LOG.warn("Cannot process javadoc {} : ", entryName, ex);
                 }
-              } else if (!jarEntry.isDirectory() && jarEntry.getName().endsWith(".class")) {
-                typeGraph.addNode(jarEntry, jar);
+              } else if (entryName.endsWith(".class")) {
+                TypeGraph.TypeGraphVertex newNode = typeGraph.addNode(jarEntry, jar);
+                // check if any visited resources belong to this type
+                for (Iterator<String> iter = resourceCacheSet.iterator(); iter.hasNext(); ) {
+                  String entry = iter.next();
+                  if (entry.startsWith(entryName.substring(0, entryName.length() - 6))) {
+                    newNode.setHasResource(true);
+                    iter.remove();
+                  }
+                }
+              } else {
+                String className = entryName;
+                boolean foundClass = false;
+                // check if this resource belongs to any visited type
+                while (className.contains("/")) {
+                  className = className.substring(0, className.lastIndexOf('/'));
+                  TypeGraph.TypeGraphVertex tgv = typeGraph.getNode(className.replace('/', '.'));
+                  if (tgv != null) {
+                    tgv.setHasResource(true);
+                    foundClass = true;
+                    break;
+                  }
+                }
+                if (!foundClass) {
+                  resourceCacheSet.add(entryName);
+                }
               }
             }
           }
@@ -317,8 +348,7 @@ public class OperatorDiscoverer
       typeGraph.trim();
 
       typeGraph.updatePortTypeInfoInTypeGraph(openJarFiles, openClassFiles);
-    }
-   finally {
+    } finally {
       for (Entry<String, JarFile> entry : openJarFiles.entrySet()) {
         try {
           entry.getValue().close();
