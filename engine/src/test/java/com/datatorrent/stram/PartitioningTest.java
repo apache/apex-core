@@ -151,7 +151,7 @@ public class PartitioningTest
   {
     LogicalPlan dag = new LogicalPlan();
     File checkpointDir = new File(TEST_OUTPUT_DIR, "testDefaultPartitioning");
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointDir.getPath() + "/localPath", checkpointDir.getPath(), null));
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointDir.getPath(), null));
 
     Integer[][] testData = {
       {4, 5}
@@ -252,7 +252,7 @@ public class PartitioningTest
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 5);
     File checkpointDir = new File(TEST_OUTPUT_DIR, "testDynamicDefaultPartitioning");
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointDir.getPath() + "/localPath", checkpointDir.getPath(), null));
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointDir.getPath(), null));
 
     CollectorOperator.receivedTuples.clear();
 
@@ -401,7 +401,7 @@ public class PartitioningTest
     {
       File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, checkpointDir.getPath());
-      dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointDir.getPath() + "/localPath", checkpointDir.getPath(), null));
+      dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointDir.getPath(), null));
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
       dag.setAttribute(input, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitionLoadWatch()}));
@@ -423,7 +423,7 @@ public class PartitioningTest
         Checkpoint checkpoint = new Checkpoint(10L, 0, 0);
         p.checkpoints.add(checkpoint);
         p.setRecoveryCheckpoint(checkpoint);
-        AsyncFSStorageAgent agent = new AsyncFSStorageAgent(checkpointDir.getPath() + "/localPath", checkpointDir.getPath(), null);
+        AsyncFSStorageAgent agent = new AsyncFSStorageAgent(checkpointDir.getPath(), null);
         agent.save(inputDeployed, p.getId(), 10L);
         agent.copyToHDFS(p.getId(), 10l);
 

@@ -476,7 +476,7 @@ public class StreamingContainerManagerTest
     FileUtils.deleteDirectory(path.getAbsoluteFile());
     FileUtils.forceMkdir(new File(path.getAbsoluteFile(), "/localPath"));
 
-    AsyncFSStorageAgent sa = new AsyncFSStorageAgent(path.getPath() + "/localPath", path.getPath(), null);
+    AsyncFSStorageAgent sa = new AsyncFSStorageAgent(path.getPath(), null);
 
     long[] windowIds = new long[]{123L, 345L, 234L};
     for (long windowId : windowIds) {
@@ -813,7 +813,7 @@ public class StreamingContainerManagerTest
   public void testPhysicalPropertyUpdate() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     dag.addStream("o1.outport", o1.outport, o2.inport1);
@@ -857,7 +857,7 @@ public class StreamingContainerManagerTest
 
   private void testAppDataSources(LogicalPlan dag, boolean appendQIDToTopic) throws Exception
   {
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.runAsync();
     StreamingContainerManager dnmgr = lc.dnmgr;
@@ -931,7 +931,7 @@ public class StreamingContainerManagerTest
     try {
       server.start();
       LogicalPlan dag = new LogicalPlan();
-      dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
+      dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
       TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
       GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
       dag.addStream("o1.outport", o1.outport, o2.inport1);

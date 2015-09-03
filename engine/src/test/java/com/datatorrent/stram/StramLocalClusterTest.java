@@ -69,7 +69,7 @@ public class StramLocalClusterTest
   {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
 
     TestGeneratorInputOperator genNode = dag.addOperator("genNode", TestGeneratorInputOperator.class);
     genNode.setMaxTuples(2);
@@ -109,7 +109,7 @@ public class StramLocalClusterTest
   {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null);
+    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.dir, null);
     agent.setSyncCheckpoint(true);
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, agent);
 

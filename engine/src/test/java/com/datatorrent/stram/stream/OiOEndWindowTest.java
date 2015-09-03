@@ -97,7 +97,7 @@ public class OiOEndWindowTest
   {
     LogicalPlan lp = new LogicalPlan();
     String workingDir = new File("target/validateOiOImplementation").getAbsolutePath();
-    lp.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
+    lp.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir, null));
     TestInputOperator io = lp.addOperator("Input Operator", new TestInputOperator());
     FirstGenericOperator go = lp.addOperator("First Generic Operator", new FirstGenericOperator());
     SecondGenericOperator out = lp.addOperator("Second Generic Operator", new SecondGenericOperator());

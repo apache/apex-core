@@ -130,7 +130,7 @@ public class StramRecoveryTest
   @Test
   public void testPhysicalPlanSerializationWithAsyncAgent() throws Exception
   {
-    testPhysicalPlanSerialization(new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
+    testPhysicalPlanSerialization(new AsyncFSStorageAgent(testMeta.dir, null));
   }
 
   public static class StatsListeningOperator extends TestGeneratorInputOperator implements StatsListener
@@ -273,7 +273,7 @@ public class StramRecoveryTest
   @Test
   public void testContainerManagerWithAsyncAgent() throws Exception
   {
-    testPhysicalPlanSerialization(new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
+    testPhysicalPlanSerialization(new AsyncFSStorageAgent(testMeta.dir, null));
   }
 
   @Test
@@ -450,8 +450,7 @@ public class StramRecoveryTest
   public void testRestartAppWithAsyncAgent() throws Exception
   {
     String appPath1 = testMeta.dir + "/app1";
-    String checkpointPath = testMeta.dir + "/localPath";
-    testRestartApp(new AsyncFSStorageAgent(checkpointPath, appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, null), appPath1);
+    testRestartApp(new AsyncFSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, null), appPath1);
   }
 
   @Test
