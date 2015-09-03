@@ -642,7 +642,7 @@ public class StramClientUtils
       context.evaluateString(scope, "var _prop = {}", "EvalLaunchProperties", 0, null);
       for (Map.Entry<String, String> entry : vars) {
         LOG.info("Evaluating: {}", "_prop[\"" + entry.getKey() + "\"] = " + entry.getValue());
-        context.evaluateString(scope, "_prop[\"" + entry.getKey() + "\"] = \"" + StringEscapeUtils.escapeJava(entry.getValue()) + "\"", "EvalLaunchProperties", 0, null);
+        context.evaluateString(scope, "_prop[\"" + StringEscapeUtils.escapeJava(entry.getKey())  + "\"] = \"" + StringEscapeUtils.escapeJava(entry.getValue()) + "\"", "EvalLaunchProperties", 0, null);
       }
 
       for (Map.Entry<Object, Object> entry : target.entrySet()) {
