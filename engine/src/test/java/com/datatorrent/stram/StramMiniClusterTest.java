@@ -203,7 +203,7 @@ public class StramMiniClusterTest
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration(conf);
     tb.addFromProperties(dagProps, null);
     LogicalPlan dag = createDAG(tb);
-    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null);
+    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.dir, null);
     agent.setSyncCheckpoint(true);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
     Configuration yarnConf = new Configuration(yarnCluster.getConfig());
@@ -362,7 +362,7 @@ public class StramMiniClusterTest
 
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null);
+    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.dir, null);
     agent.setSyncCheckpoint(true);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
     FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);

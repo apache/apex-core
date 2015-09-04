@@ -174,7 +174,7 @@ public class StatsTest
     int tupleCount = 10;
     LogicalPlan dag = new LogicalPlan();
     String workingDir = new File("target").getAbsolutePath();
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir, null));
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     TestInputStatsListener testInputStatsListener = new TestInputStatsListener();
     dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{testInputStatsListener}));
@@ -230,7 +230,7 @@ public class StatsTest
   {
     LogicalPlan dag = new LogicalPlan();
     String workingDir = new File("target/baseTestForQueueSize").getAbsolutePath();
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir, null));
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 200);
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     testOper.setMaxTuples(maxTuples);

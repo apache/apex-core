@@ -52,7 +52,7 @@ public class AsyncFSStorageAgentTest
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
-      storageAgent = new AsyncFSStorageAgent(basePath, applicationPath, null);
+      storageAgent = new AsyncFSStorageAgent(applicationPath, null);
 
       Attribute.AttributeMap.DefaultAttributeMap attributes = new Attribute.AttributeMap.DefaultAttributeMap();
       attributes.put(DAG.APPLICATION_PATH, applicationPath);
@@ -116,7 +116,7 @@ public class AsyncFSStorageAgentTest
   public void testRecovery() throws IOException
   {
     testSave();
-    testMeta.storageAgent = new AsyncFSStorageAgent(testMeta.basePath, testMeta.applicationPath, null);
+    testMeta.storageAgent = new AsyncFSStorageAgent(testMeta.applicationPath, null);
     testSave();
   }
 

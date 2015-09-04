@@ -61,7 +61,7 @@ public class AtLeastOnceTest
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
     String workingDir = new File("target/testInputOperatorRecovery").getAbsolutePath();
-    AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null);
+    AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(workingDir, null);
     asyncFSStorageAgent.setSyncCheckpoint(true);
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, asyncFSStorageAgent);
     dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
@@ -88,7 +88,7 @@ public class AtLeastOnceTest
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
     String workingDir = new File("target/testOperatorRecovery").getAbsolutePath();
-    AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null);
+    AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(workingDir, null);
     asyncFSStorageAgent.setSyncCheckpoint(true);
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, asyncFSStorageAgent);
     dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
@@ -116,7 +116,7 @@ public class AtLeastOnceTest
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
     String workingDir = new File("target/testOperatorRecovery").getAbsolutePath();
-    AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null);
+    AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(workingDir, null);
     asyncFSStorageAgent.setSyncCheckpoint(true);
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, asyncFSStorageAgent);
     //dag.getAttributes().get(DAG.HEARTBEAT_INTERVAL_MILLIS, 400);

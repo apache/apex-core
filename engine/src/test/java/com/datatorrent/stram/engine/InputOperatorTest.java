@@ -126,7 +126,7 @@ public class InputOperatorTest
   {
     LogicalPlan dag = new LogicalPlan();
     String testWorkDir = new File("target").getAbsolutePath();
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testWorkDir + "/localBasePath", testWorkDir, null));
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testWorkDir, null));
     EvenOddIntegerGeneratorInputOperator generator = dag.addOperator("NumberGenerator", EvenOddIntegerGeneratorInputOperator.class);
     final CollectorModule<Number> collector = dag.addOperator("NumberCollector", new CollectorModule<Number>());
 
