@@ -47,7 +47,7 @@ public class StreamingContainerTest
   {
     LogicalPlan lp = new LogicalPlan();
     String workingDir = new File("target/testCommitted").getAbsolutePath();
-    lp.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
+    lp.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir, null));
     lp.setAttribute(DAGContext.CHECKPOINT_WINDOW_COUNT, 1);
     CommitAwareOperator operator = lp.addOperator("CommitAwareOperator", new CommitAwareOperator());
 

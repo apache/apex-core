@@ -306,7 +306,7 @@ public class WindowGeneratorTest
     logger.info("Testing Out of Sequence Error");
     LogicalPlan dag = new LogicalPlan();
     String workingDir = new File("target/testOutofSequenceError").getAbsolutePath();
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir, null));
     RandomNumberGenerator rng = dag.addOperator("random", new RandomNumberGenerator());
     MyLogger ml = dag.addOperator("logger", new MyLogger());
 

@@ -137,7 +137,7 @@ public class SliderTest
   {
     LogicalPlan dag = new LogicalPlan();
     String workingDir = new File("target/sliderTest").getAbsolutePath();
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir, null));
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 100);
     Input input = dag.addOperator("Input", new Input());
     Sum sum = dag.addOperator("Sum", new Sum());

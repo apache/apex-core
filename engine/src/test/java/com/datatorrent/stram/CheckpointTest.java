@@ -112,7 +112,7 @@ public class CheckpointTest
   {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    AsyncFSStorageAgent storageAgent = new AsyncFSStorageAgent(testMeta.dir + "/locaPath", testMeta.dir, null);
+    AsyncFSStorageAgent storageAgent = new AsyncFSStorageAgent(testMeta.dir, null);
     storageAgent.setSyncCheckpoint(true);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, storageAgent);
     dag.setAttribute(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 1);

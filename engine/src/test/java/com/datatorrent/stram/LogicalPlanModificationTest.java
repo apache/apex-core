@@ -340,7 +340,7 @@ public class LogicalPlanModificationTest
   @Test
   public void testExecutionManagerWithAsyncStorageAgent() throws Exception
   {
-    testExecutionManager(new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
+    testExecutionManager(new AsyncFSStorageAgent(testMeta.dir, null));
   }
 
 }

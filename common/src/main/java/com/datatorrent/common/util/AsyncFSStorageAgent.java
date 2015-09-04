@@ -27,9 +27,8 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.netlet.util.DTThrowable;
 public class AsyncFSStorageAgent extends FSStorageAgent
 {
-  private final transient FileSystem fs;
   private final transient Configuration conf;
-  private final String localBasePath;
+  private final transient String localBasePath;
 
   private boolean syncCheckpoint = false;
 
@@ -37,32 +36,31 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   private AsyncFSStorageAgent()
   {
     super();
-    fs = null;
     conf = null;
     localBasePath = null;
   }
 
   public AsyncFSStorageAgent(String path, Configuration conf)
   {
-    this(".", path, conf);
-  }
-
-  public AsyncFSStorageAgent(String localBasePath, String path, Configuration conf)
-  {
     super(path, conf);
-    if (localBasePath == null) {
-      this.localBasePath = "/tmp";
-    }
-    else {
-      this.localBasePath = localBasePath;
-    }
-    logger.debug("Initialize storage agent with {}.", this.localBasePath);
-    this.conf = conf == null ? new Configuration() : conf;
     try {
-      fs = FileSystem.newInstance(this.conf);
+      File tempFile = File.createTempFile("msp", "msp");
+      this.localBasePath = new File(tempFile.getParent(), "localcheckpoint").getAbsolutePath();
+      tempFile.delete();
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
+    logger.info("using {} as the basepath for checkpointing.", this.localBasePath);
+    this.conf = conf == null ? new Configuration() : conf;
+  }
+
+  /*
+   * Storage Agent should internally manage localBasePath. It should not take it from user
+   */
+  @Deprecated
+  public AsyncFSStorageAgent(String localBasePath, String path, Configuration conf)
+  {
+    this(path, conf);
   }
 
   @Override
@@ -122,7 +120,7 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   @Override
   public Object readResolve() throws ObjectStreamException
   {
-    return new AsyncFSStorageAgent(this.localBasePath, this.path, null);
+    return new AsyncFSStorageAgent(this.path, null);
   }
 
   public boolean isSyncCheckpoint()

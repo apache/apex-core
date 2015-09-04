@@ -129,7 +129,7 @@ public class StramWebServicesTest extends JerseyTest
         LogicalPlan dag = new LogicalPlan();
         String workingDir = new File("target", StramWebServicesTest.class.getName()).getAbsolutePath();
         dag.setAttribute(LogicalPlan.APPLICATION_PATH, workingDir);
-        dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
+        dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir, null));
         final DummyStreamingContainerManager streamingContainerManager = new DummyStreamingContainerManager(dag);
 
         appContext = new TestAppContext();
