@@ -420,7 +420,7 @@ public class PhysicalPlan implements Serializable
     Collection<PTOperator> ptOperators = getOperators(sinkPortMeta.getOperatorWrapper());
     Collection<PartitionKeys> partitionKeysList = new ArrayList<PartitionKeys>();
     for (PTOperator p : ptOperators) {
-      PartitionKeys keys = (PartitionKeys) p.getPartitionKeys().get(sinkPortMeta.getPortObject());
+      PartitionKeys keys = p.partitionKeys.get(sinkPortMeta);
       partitionKeysList.add(keys);
     }
 
@@ -1390,7 +1390,33 @@ public class PhysicalPlan implements Serializable
         getDeps(operator, visited);
       }
     }
+    visited.addAll(getDependentPersistOperators(operators));
     return visited;
+  }
+
+  private Set<PTOperator> getDependentPersistOperators(Collection<PTOperator> operators)
+  {
+    Set<PTOperator> persistOperators = new LinkedHashSet<PTOperator>();
+    if (operators != null) {
+      for (PTOperator operator : operators) {
+        for (PTInput in : operator.inputs) {
+          if (in.logicalStream.getPersistOperator() != null) {
+            for (InputPortMeta inputPort : in.logicalStream.getSinksToPersist()) {
+              if (inputPort.getOperatorWrapper().equals(operator.operatorMeta)) {
+                // Redeploy the stream wide persist operator only if the current sink is being persisted
+                persistOperators.addAll(getOperators(in.logicalStream.getPersistOperator()));
+                break;
+              }
+            }
+          }
+          for (Entry<InputPortMeta, OperatorMeta> entry : in.logicalStream.sinkSpecificPersistOperatorMap.entrySet()) {
+            // Redeploy sink specific persist operators
+            persistOperators.addAll(getOperators(entry.getValue()));
+          }
+        }
+      }
+    }
+    return persistOperators;
   }
 
   /**

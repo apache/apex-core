@@ -1,12 +1,14 @@
 package com.datatorrent.stram.plan;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -956,11 +958,22 @@ public class StreamPersistanceTests
 
     List<PTOperator> ptos = plan.getOperators(passThruMeta);
 
+    PTOperator persistOperatorContainer = null;
+
     for (PTContainer container : plan.getContainers()) {
       for (PTOperator operator : container.getOperators()) {
         operator.setState(PTOperator.State.ACTIVE);
+        if (operator.getName().equals("persister")) {
+          persistOperatorContainer = operator;
+        }
       }
     }
+
+    // Check that persist operator is part of dependents redeployed
+    Set<PTOperator> operators = plan.getDependents(ptos);
+    logger.debug("Operators to be re-deployed = {}", operators);
+    // Validate that persist operator is part of dependents
+    assertTrue("persist operator should be part of the operators to be redeployed", operators.contains(persistOperatorContainer));
 
     LogicalPlan.StreamMeta s1 = (LogicalPlan.StreamMeta) s;
     StreamCodec codec = s1.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC);

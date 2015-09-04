@@ -52,7 +52,7 @@ public class StreamCodecWrapperForPersistance<T> implements StreamCodec<T>, Seri
       Collection<PartitionKeys> partitionKeysList = entry.getValue();
 
       for (PartitionKeys keys : partitionKeysList) {
-        if (keys.partitions.contains(keys.mask & codec.getPartition(o))) {
+        if ( keys.partitions != null && keys.partitions.contains(keys.mask & codec.getPartition(o))) {
           // Then at least one of the partitions is getting this event
           // So send the event to persist operator
           return true;
