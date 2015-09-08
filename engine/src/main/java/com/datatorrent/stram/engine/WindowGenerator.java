@@ -269,6 +269,34 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
     return getWindowMillis(windowId, firstWindowMillis, windowWidthMillis) + windowWidthMillis;
   }
 
+  public static long getNextWindowId(long windowId, long firstWindowMillis, long windowWidthMillis)
+  {
+    return getAheadWindowId(windowId, firstWindowMillis, windowWidthMillis, 1);
+  }
+
+  public static long getAheadWindowId(long windowId, long firstWindowMillis, long windowWidthMillis, int ahead)
+  {
+    long millis = getWindowMillis(windowId, firstWindowMillis, windowWidthMillis);
+    millis += ahead * windowWidthMillis;
+    return getWindowId(millis, firstWindowMillis, windowWidthMillis);
+  }
+
+  /**
+   * Returns the number of windows windowIdA is ahead of windowIdB.
+   *
+   * @param windowIdA
+   * @param windowIdB
+   * @param firstWindowMillis
+   * @param windowWidthMillis
+   * @return the number of windows ahead, negative if windowIdA is behind windowIdB
+   */
+  public static long compareWindowId(long windowIdA, long windowIdB, long firstWindowMillis, long windowWidthMillis)
+  {
+    long millisA = getWindowMillis(windowIdA, firstWindowMillis, windowWidthMillis);
+    long millisB = getWindowMillis(windowIdB, firstWindowMillis, windowWidthMillis);
+    return (millisA - millisB) / windowWidthMillis;
+  }
+
   /**
    * @param windowId
    * @param firstWindowMillis
@@ -277,9 +305,19 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
    */
   public static long getWindowMillis(long windowId, long firstWindowMillis, long windowWidthMillis)
   {
-    long millis = (windowId >> 32) * 1000 + windowWidthMillis * (windowId & WindowGenerator.WINDOW_MASK);
-    millis = millis > firstWindowMillis ? millis : firstWindowMillis;
-    return millis;
+    if (windowId == -1) {
+      return firstWindowMillis;
+    }
+    long baseMillis = (windowId >> 32) * 1000;
+    long diff = baseMillis - firstWindowMillis;
+    long baseChangeInterval = windowWidthMillis * (WindowGenerator.MAX_WINDOW_ID + 1);
+    long multiplier = diff / baseChangeInterval;
+    if (diff % baseChangeInterval > 0) {
+      multiplier++;
+    }
+    assert (multiplier >= 0);
+    windowId = windowId & WindowGenerator.WINDOW_MASK;
+    return firstWindowMillis + (multiplier * windowWidthMillis * (WindowGenerator.MAX_WINDOW_ID + 1)) + windowId * windowWidthMillis;
   }
 
   private class MasterReservoir extends CircularBuffer<Tuple> implements Reservoir

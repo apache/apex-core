@@ -321,16 +321,64 @@ public class WindowGeneratorTest
   {
     long first = 1431714014000L;
 
-    long time1 = WindowGenerator.getWindowMillis(6149164867354886271L, first, 500);
-    long time2 = WindowGenerator.getWindowMillis(6149164867354886272L, first, 500);
+    for (int windowWidthMillis : new int[]{500, 123}) {
+      long time1 = WindowGenerator.getWindowMillis(6149164867354886271L, first, windowWidthMillis);
+      long time2 = WindowGenerator.getWindowMillis(6149164867354886272L, first, windowWidthMillis);
 
-    long window1 = WindowGenerator.getWindowId(time1, first, 500);
-    long window2 = WindowGenerator.getWindowId(time2, first, 500);
+      long window1 = WindowGenerator.getWindowId(time1, first, windowWidthMillis);
+      long window2 = WindowGenerator.getWindowId(time2, first, windowWidthMillis);
 
-    Assert.assertEquals("window 1", 6149164867354886271L, window1);
-    Assert.assertEquals("window 2", 6149164867354886272L, window2);
+      Assert.assertEquals("window 1", 6149164867354886271L, window1);
+      Assert.assertEquals("window 2", 6149164867354886272L, window2);
 
-    Assert.assertTrue(time2 > time1);
+      Assert.assertEquals("window millis difference", windowWidthMillis, time2 - time1);
+    }
+  }
+
+  @Test
+  public void testWindowToTimeBaseSecondRollover()
+  {
+    long first = 1431714014123L;
+
+    for (int windowWidthMillis : new int[]{500, 123}) {
+      long window1 = WindowGenerator.getWindowId(first, first, windowWidthMillis);
+      window1 |= WindowGenerator.MAX_WINDOW_ID;
+      long window2 = WindowGenerator.getNextWindowId(window1, first, windowWidthMillis);
+      Assert.assertTrue("base seconds should be greater during an rollover", (window2 >> 32) > (window1 >> 32));
+      long time1 = WindowGenerator.getWindowMillis(window1, first, windowWidthMillis);
+      long time2 = WindowGenerator.getWindowMillis(window2, first, windowWidthMillis);
+
+      Assert.assertEquals("max window id", WindowGenerator.MAX_WINDOW_ID, window1 & WindowGenerator.WINDOW_MASK);
+      Assert.assertEquals("rollover after max", 0, window2 & WindowGenerator.WINDOW_MASK);
+      Assert.assertEquals("window millis difference", windowWidthMillis, time2 - time1);
+    }
+  }
+
+  @Test
+  public void testWindowIdAhead()
+  {
+    long first = 1431714014123L;
+    int ahead = 678;
+    for (int windowWidthMillis : new int[]{500, 123}) {
+      long window1 = WindowGenerator.getWindowId(first, first, windowWidthMillis);
+      long window2 = WindowGenerator.getAheadWindowId(window1, first, windowWidthMillis, ahead);
+      for (int i = 0; i < ahead; i++) {
+        window1 = WindowGenerator.getNextWindowId(window1, first, windowWidthMillis);
+      }
+      Assert.assertEquals(window2, window1);
+    }
+  }
+
+  @Test
+  public void testWindowIdCompare()
+  {
+    long first = 1431714014123L;
+    int ahead = 341;
+    for (int windowWidthMillis : new int[]{500, 123}) {
+      long window1 = WindowGenerator.getWindowId(first, first, windowWidthMillis);
+      long window2 = WindowGenerator.getAheadWindowId(window1, first, windowWidthMillis, ahead);
+      Assert.assertEquals(ahead, WindowGenerator.compareWindowId(window2, window1, first, windowWidthMillis));
+    }
   }
 
   public static final Logger logger = LoggerFactory.getLogger(WindowGeneratorTest.class);
