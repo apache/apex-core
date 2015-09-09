@@ -46,6 +46,7 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
 
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
@@ -70,8 +71,7 @@ public class StramRecoveryTest
   private static final Logger LOG = LoggerFactory.getLogger(StramRecoveryTest.class);
   @Rule public final TestMeta testMeta = new TestMeta();
 
-  @Test
-  public void testPhysicalPlanSerialization() throws Exception
+  private void testPhysicalPlanSerialization(StorageAgent agent) throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
 
@@ -86,7 +86,7 @@ public class StramRecoveryTest
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     TestPlanContext ctx = new TestPlanContext();
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     ByteArrayOutputStream  bos = new ByteArrayOutputStream();
@@ -121,6 +121,18 @@ public class StramRecoveryTest
 
   }
 
+  @Test
+  public void testPhysicalPlanSerializationWithSyncAgent() throws Exception
+  {
+    testPhysicalPlanSerialization(new FSStorageAgent(testMeta.dir, null));
+  }
+
+  @Test
+  public void testPhysicalPlanSerializationWithAsyncAgent() throws Exception
+  {
+    testPhysicalPlanSerialization(new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
+  }
+
   public static class StatsListeningOperator extends TestGeneratorInputOperator implements StatsListener
   {
     int processStatsCnt = 0;
@@ -144,14 +156,13 @@ public class StramRecoveryTest
    * Test serialization of the container manager with mock execution layer.
    * @throws Exception
    */
-  @Test
-  public void testContainerManager() throws Exception
+  private void testContainerManager(StorageAgent agent) throws Exception
   {
     FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
 
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
 
     StatsListeningOperator o1 = dag.addOperator("o1", StatsListeningOperator.class);
 
@@ -251,6 +262,18 @@ public class StramRecoveryTest
 
     // offline checkpoint detection
     assertEquals("checkpoints after recovery", Lists.newArrayList(firstCheckpoint, offlineCheckpoint), o1p1.checkpoints);
+  }
+
+  @Test
+  public void testContainerManagerWithSyncAgent() throws Exception
+  {
+    testPhysicalPlanSerialization(new FSStorageAgent(testMeta.dir, null));
+  }
+
+  @Test
+  public void testContainerManagerWithAsyncAgent() throws Exception
+  {
+    testPhysicalPlanSerialization(new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
   }
 
   @Test
@@ -358,19 +381,18 @@ public class StramRecoveryTest
     scm.setPhysicalOperatorProperty(o1p1.getId(), "maxTuples", "50");
   }
 
-  @Test
-  public void testRestartApp() throws Exception
+  private void testRestartApp(StorageAgent agent, String appPath1) throws Exception
   {
     FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
     String appId1 = "app1";
     String appId2 = "app2";
-    String appPath1 = testMeta.dir + "/" + appId1;
     String appPath2 = testMeta.dir + "/" + appId2;
 
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId1);
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, null));
+    dag.setAttribute(LogicalPlan.APPLICATION_ATTEMPT_ID, 1);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
     dag.addOperator("o1", StatsListeningOperator.class);
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
@@ -387,7 +409,6 @@ public class StramRecoveryTest
     PTOperator o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
     long[] ids = new FSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, new Configuration()).getWindowIds(o1p1.getId());
     Assert.assertArrayEquals(new long[] {o1p1.getRecoveryCheckpoint().getWindowId()}, ids);
-
     Assert.assertNull(o1p1.getContainer().getExternalId());
     // trigger journal write
     o1p1.getContainer().setExternalId("cid1");
@@ -416,6 +437,21 @@ public class StramRecoveryTest
     ids = new FSStorageAgent(appPath2 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, new Configuration()).getWindowIds(o1p1.getId());
     Assert.assertArrayEquals("checkpoints copied", new long[] {o1p1.getRecoveryCheckpoint().getWindowId()}, ids);
 
+  }
+
+  @Test
+  public void testRestartAppWithSyncAgent() throws Exception
+  {
+    String appPath1 = testMeta.dir + "/app1";
+    testRestartApp(new FSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, null), appPath1);
+  }
+
+  @Test
+  public void testRestartAppWithAsyncAgent() throws Exception
+  {
+    String appPath1 = testMeta.dir + "/app1";
+    String checkpointPath = testMeta.dir + "/localPath";
+    testRestartApp(new AsyncFSStorageAgent(checkpointPath, appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, null), appPath1);
   }
 
   @Test

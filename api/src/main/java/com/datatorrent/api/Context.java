@@ -151,6 +151,13 @@ public interface Context
      * a generic codec.
      */
     Attribute<StreamCodec<?>> STREAM_CODEC = new Attribute<StreamCodec<?>>(new Object2String<StreamCodec<?>>());
+
+    /**
+     * Provides the tuple class which the port receives or emits. While this attribute is null by default,
+     * whether it is needed or not is controlled through the port annotation.
+     */
+    Attribute<Class<?>> TUPLE_CLASS = new Attribute<>(new Class2String<>());
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(PortContext.class);
   }

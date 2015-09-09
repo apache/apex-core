@@ -16,8 +16,8 @@
 package com.datatorrent.api.annotation;
 
 import java.lang.annotation.*;
+
 /**
- *
  * Annotation for input ports on streaming operators.<p>
  *
  * @since 0.3.2
@@ -33,4 +33,12 @@ public @interface InputPortFieldAnnotation
    * @return - true if port is optional, false otherwise.
    */
   public boolean optional() default false;
+
+  /**
+   * Whether this port needs to know the tuple class. When true, application will have to set
+   * the port attribute- TUPLE_CLASS of the port otherwise dag validation will fail.
+   *
+   * @return true if schema is required; false otherwise.
+   */
+  public boolean schemaRequired() default false;
 }

@@ -19,6 +19,7 @@ import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -26,6 +27,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.Nullable;
 
+import com.datatorrent.netlet.util.DTThrowable;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
@@ -76,6 +78,7 @@ import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.bufferserver.auth.AuthManager;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.experimental.AppData;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.common.util.NumberAggregate;
 import com.datatorrent.common.util.Pair;
@@ -124,6 +127,8 @@ public class StreamingContainerManager implements PlanContext
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   public final static String GATEWAY_LOGIN_URL_PATH = "/ws/v2/login";
   public final static String BUILTIN_APPDATA_URL = "builtin";
+  public final static String CONTAINERS_INFO_FILENAME_FORMAT = "containers_%d.json";
+  public final static String OPERATORS_INFO_FILENAME_FORMAT = "operators_%d.json";
   public final static String APP_META_FILENAME = "meta.json";
   public final static String APP_META_KEY_ATTRIBUTES = "attributes";
   public final static String APP_META_KEY_METRICS = "metrics";
@@ -149,6 +154,7 @@ public class StreamingContainerManager implements PlanContext
   private long lastResourceRequest = 0;
   private final Map<String, StreamingContainerAgent> containers = new ConcurrentHashMap<String, StreamingContainerAgent>();
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
+  private final Map<Long, Set<PTOperator>> shutdownOperators = new HashMap<>();
   private CriticalPathInfo criticalPathInfo;
   private final ConcurrentMap<PTOperator, PTOperator> reportStats = Maps.newConcurrentMap();
   private final AtomicBoolean deployChangeInProgress = new AtomicBoolean();
@@ -172,6 +178,7 @@ public class StreamingContainerManager implements PlanContext
   private final Cache<Long, Object> commandResponse = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
   private long lastLatencyWarningTime;
   private transient ExecutorService poolExecutor;
+  private FileContext fileContext;
 
   //logic operator name to a queue of logical metrics. this gets cleared periodically
   private final Map<String, Queue<Pair<Long, Map<String, Object>>>> logicalMetrics = Maps.newConcurrentMap();
@@ -201,7 +208,7 @@ public class StreamingContainerManager implements PlanContext
   };
 
   private FSJsonLineFile containerFile;
-  private final ConcurrentMap<Integer, FSJsonLineFile> operatorFiles = Maps.newConcurrentMap();
+  private FSJsonLineFile operatorFile;
 
   private final long startTime = System.currentTimeMillis();
 
@@ -328,22 +335,8 @@ public class StreamingContainerManager implements PlanContext
       this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     }
     this.plan = new PhysicalPlan(dag, this);
-    setupWsClient();
-    setupRecording(enableEventRecording);
-    setupStringCodecs();
     this.journal = new Journal(this);
-    try {
-      saveMetaInfo();
-    } catch (IOException ex) {
-      LOG.error("Error saving meta info to DFS", ex);
-    }
-
-    try {
-      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short)0644));
-      this.containerFile.append(getAppMasterContainerInfo());
-    } catch (IOException ex) {
-      LOG.warn("Caught exception when instantiating for container info file. Ignoring", ex);
-    }
+    init(enableEventRecording);
   }
 
   private StreamingContainerManager(CheckpointState checkpointedState, boolean enableEventRecording)
@@ -353,20 +346,29 @@ public class StreamingContainerManager implements PlanContext
     poolExecutor = Executors.newFixedThreadPool(4);
     this.plan = checkpointedState.physicalPlan;
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
+    this.journal = new Journal(this);
+    init(enableEventRecording);
+  }
+
+  private void init(boolean enableEventRecording)
+  {
     setupWsClient();
     setupRecording(enableEventRecording);
     setupStringCodecs();
-    this.journal = new Journal(this);
+
     try {
+      Path file = new Path(this.vars.appPath);
+      URI uri = file.toUri();
+      Configuration config = new YarnConfiguration();
+      fileContext = uri.getScheme() == null ? FileContext.getFileContext(config) : FileContext.getFileContext(uri, config);
       saveMetaInfo();
-    } catch (IOException ex) {
-      LOG.error("Error saving meta info to DFS", ex);
-    }
-    try {
-      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short) 0644));
+      String fileName = String.format(CONTAINERS_INFO_FILENAME_FORMAT, plan.getLogicalPlan().getValue(LogicalPlan.APPLICATION_ATTEMPT_ID));
+      this.containerFile = new FSJsonLineFile(fileContext, new Path(this.vars.appPath, fileName), FsPermission.getDefault());
       this.containerFile.append(getAppMasterContainerInfo());
+      fileName = String.format(OPERATORS_INFO_FILENAME_FORMAT, plan.getLogicalPlan().getValue(LogicalPlan.APPLICATION_ATTEMPT_ID));
+      this.operatorFile = new FSJsonLineFile(fileContext, new Path(this.vars.appPath, fileName), FsPermission.getDefault());
     } catch (IOException ex) {
-      LOG.error("Caught exception when instantiating for container info file", ex);
+      throw DTThrowable.wrapIfChecked(ex);
     }
   }
 
@@ -494,8 +496,9 @@ public class StreamingContainerManager implements PlanContext
     }
 
     IOUtils.closeQuietly(containerFile);
-    for (FSJsonLineFile operatorFile : operatorFiles.values()) {
-      IOUtils.closeQuietly(operatorFile);
+    IOUtils.closeQuietly(operatorFile);
+    if(poolExecutor != null) {
+      poolExecutor.shutdown();
     }
     if(poolExecutor != null) {
       poolExecutor.shutdown();
@@ -857,10 +860,8 @@ public class StreamingContainerManager implements PlanContext
    */
   private void saveMetaInfo() throws IOException
   {
-    Path path = new Path(this.vars.appPath, APP_META_FILENAME + "." + System.nanoTime());
-    FileContext fc = FileContext.getFileContext(path.toUri());
-    try (FSDataOutputStream os = fc.create(path, EnumSet.of(CreateFlag.CREATE, CreateFlag.OVERWRITE))) {
-      JSONObject top = new JSONObject();
+    Path file = new Path(this.vars.appPath, APP_META_FILENAME + "." + System.nanoTime());
+    try (FSDataOutputStream os = fileContext.create(file, EnumSet.of(CreateFlag.CREATE, CreateFlag.OVERWRITE), Options.CreateOpts.CreateParent.createParent())) {      JSONObject top = new JSONObject();
       JSONObject attributes = new JSONObject();
       for (Map.Entry<Attribute<?>, Object> entry : this.plan.getLogicalPlan().getAttributes().entrySet()) {
         attributes.put(entry.getKey().getSimpleName(), entry.getValue());
@@ -876,7 +877,7 @@ public class StreamingContainerManager implements PlanContext
       throw new RuntimeException(ex);
     }
     Path origPath = new Path(this.vars.appPath, APP_META_FILENAME);
-    fc.rename(path, origPath, Options.Rename.OVERWRITE);
+    fileContext.rename(file, origPath, Options.Rename.OVERWRITE);
   }
 
   public Queue<Pair<Long, Map<String, Object>>> getWindowMetrics(String operatorName)
@@ -1006,6 +1007,26 @@ public class StreamingContainerManager implements PlanContext
       }
       reportStats.remove(o);
     }
+
+    if (!this.shutdownOperators.isEmpty()) {
+      synchronized (this.shutdownOperators) {
+        Iterator<Map.Entry<Long, Set<PTOperator>>> it = shutdownOperators.entrySet().iterator();
+        while (it.hasNext()) {
+          Map.Entry<Long, Set<PTOperator>> windowAndOpers = it.next();
+          if (windowAndOpers.getKey().longValue() > this.committedWindowId) {
+            // wait until window is committed
+            continue;
+          } else {
+            LOG.info("Removing inactive operators at window {} {}", Codec.getStringWindowId(windowAndOpers.getKey()), windowAndOpers.getValue());
+            for (PTOperator oper : windowAndOpers.getValue()) {
+              plan.removeTerminatedPartition(oper);
+            }
+            it.remove();
+          }
+        }
+      }
+    }
+
     if (!eventQueue.isEmpty()) {
       for (PTOperator oper : plan.getAllOperators().values()) {
         if (oper.getState() != PTOperator.State.ACTIVE) {
@@ -1277,20 +1298,20 @@ public class StreamingContainerManager implements PlanContext
         else {
           switch (ds) {
             case SHUTDOWN:
-              // remove the operator from the plan
-              Runnable r = new Runnable()
-              {
-                @Override
-                public void run()
-                {
-                  if (oper.getInputs().isEmpty()) {
-                    LOG.info("Removing IDLE operator from plan {}", oper);
-                    plan.removeIdlePartition(oper);
-                  }
+              // schedule operator deactivation against the windowId
+              // will be processed once window is committed and all dependent operators completed processing
+              long windowId = oper.stats.currentWindowId.get();
+              if (ohb.windowStats != null && !ohb.windowStats.isEmpty()) {
+                windowId = ohb.windowStats.get(ohb.windowStats.size()-1).windowId;
+              }
+              LOG.debug("Operator {} deactivated at window {}", oper, windowId);
+              synchronized (this.shutdownOperators) {
+                Set<PTOperator> deactivatedOpers = this.shutdownOperators.get(windowId);
+                if (deactivatedOpers == null) {
+                  this.shutdownOperators.put(windowId, deactivatedOpers = new HashSet<>());
                 }
-
-              };
-              dispatch(r);
+                deactivatedOpers.add(oper);
+              }
               sca.undeployOpers.add(oper.getId());
               // record operator stop event
               recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
@@ -1384,7 +1405,7 @@ public class StreamingContainerManager implements PlanContext
   {
     long currentTimeMillis = clock.getTime();
 
-    StreamingContainerAgent sca = this.containers.get(heartbeat.getContainerId());
+    final StreamingContainerAgent sca = this.containers.get(heartbeat.getContainerId());
     if (sca == null || sca.container.getState() == PTContainer.State.KILLED) {
       // could be orphaned container that was replaced and needs to terminate
       LOG.error("Unknown container {}", heartbeat.getContainerId());
@@ -1400,34 +1421,35 @@ public class StreamingContainerManager implements PlanContext
         sca.container.bufferServerAddress = InetSocketAddress.createUnresolved(heartbeat.bufferServerHost, heartbeat.bufferServerPort);
         LOG.info("Container {} buffer server: {}", sca.container.getExternalId(), sca.container.bufferServerAddress);
       }
-      long containerStartTime = System.currentTimeMillis();
+      final long containerStartTime = System.currentTimeMillis();
       sca.container.setState(PTContainer.State.ACTIVE);
       sca.container.setStartedTime(containerStartTime);
       sca.container.setFinishedTime(-1);
       sca.jvmName = heartbeat.jvmName;
-      try {
-        containerFile.append(sca.getContainerInfo());
-      }
-      catch (IOException ex) {
-        LOG.warn("Cannot write to container file");
-      }
-      for (PTOperator ptOp : sca.container.getOperators()) {
-        try {
-          FSJsonLineFile operatorFile = operatorFiles.get(ptOp.getId());
-          if (operatorFile == null) {
-            operatorFiles.putIfAbsent(ptOp.getId(), new FSJsonLineFile(new Path(this.vars.appPath + "/operators/" + ptOp.getId()), new FsPermission((short)0644)));
-            operatorFile = operatorFiles.get(ptOp.getId());
+      poolExecutor.submit(new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          try {
+            containerFile.append(sca.getContainerInfo());
+          } catch (IOException ex) {
+            LOG.warn("Cannot write to container file");
           }
-          JSONObject operatorInfo = new JSONObject();
-          operatorInfo.put("name", ptOp.getName());
-          operatorInfo.put("container", sca.container.getExternalId());
-          operatorInfo.put("startTime", containerStartTime);
-          operatorFile.append(operatorInfo);
+          for (PTOperator ptOp : sca.container.getOperators()) {
+            try {
+              JSONObject operatorInfo = new JSONObject();
+              operatorInfo.put("name", ptOp.getName());
+              operatorInfo.put("id", ptOp.getId());
+              operatorInfo.put("container", sca.container.getExternalId());
+              operatorInfo.put("startTime", containerStartTime);
+              operatorFile.append(operatorInfo);
+            } catch (IOException | JSONException ex) {
+              LOG.warn("Cannot write to operator file: ", ex);
+            }
+          }
         }
-        catch (Exception ex) {
-          LOG.warn("Cannot write to operator file: ", ex);
-        }
-      }
+      });
     }
 
     if (heartbeat.restartRequested) {
@@ -2251,6 +2273,10 @@ public class StreamingContainerManager implements PlanContext
       oi.checkpointTime = os.checkpointStats.checkpointTime;
       oi.checkpointStartTime = os.checkpointStats.checkpointStartTime;
     }
+    if (os.checkpointStats != null) {
+      oi.checkpointTime = os.checkpointStats.checkpointTime;
+      oi.checkpointStartTime = os.checkpointStats.checkpointStartTime;
+    }
     oi.checkpointTimeMA = os.checkpointTimeMA.getAvg();
     for (PortStatus ps : os.inputPortStatusList.values()) {
       PortInfo pinfo = new PortInfo();
@@ -2828,9 +2854,10 @@ public class StreamingContainerManager implements PlanContext
         scm = new StreamingContainerManager(dag, enableEventRecording, new SystemClock());
       }
       else {
-        scm = new StreamingContainerManager(checkpointedState, enableEventRecording);
         // find better way to support final transient members
         PhysicalPlan plan = checkpointedState.physicalPlan;
+        plan.getLogicalPlan().setAttribute(LogicalPlan.APPLICATION_ATTEMPT_ID, dag.getAttributes().get(LogicalPlan.APPLICATION_ATTEMPT_ID));
+        scm = new StreamingContainerManager(checkpointedState, enableEventRecording);
         for (Field f : plan.getClass().getDeclaredFields()) {
           if (f.getType() == PlanContext.class) {
             f.setAccessible(true);
@@ -2949,7 +2976,14 @@ public class StreamingContainerManager implements PlanContext
 
       this.finals = new FinalVars(finals, lp);
       StorageAgent sa = lp.getValue(OperatorContext.STORAGE_AGENT);
-      if (sa instanceof FSStorageAgent) {
+      if(sa instanceof AsyncFSStorageAgent){
+        // replace the default storage agent, if present
+        AsyncFSStorageAgent fssa = (AsyncFSStorageAgent) sa;
+        if (fssa.path.contains(oldAppId)) {
+          fssa = new AsyncFSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
+          lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
+        }
+      } else if (sa instanceof FSStorageAgent) {
         // replace the default storage agent, if present
         FSStorageAgent fssa = (FSStorageAgent) sa;
         if (fssa.path.contains(oldAppId)) {

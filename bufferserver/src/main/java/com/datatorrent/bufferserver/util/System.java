@@ -36,7 +36,7 @@ public class System
       DefaultEventLoop el = eventloops.get(identifier);
       if (el == null) {
         try {
-          eventloops.put(identifier, el = new DefaultEventLoop(identifier));
+          eventloops.put(identifier, el = DefaultEventLoop.createEventLoop(identifier));
         }
         catch (IOException io) {
           throw new RuntimeException(io);

@@ -91,7 +91,7 @@ public class MockContainer
     for (Map.Entry<Integer, MockOperatorStats> oe : this.stats.entrySet()) {
       OperatorHeartbeat ohb = new OperatorHeartbeat();
       ohb.setNodeId(oe.getKey());
-      ohb.setState(OperatorHeartbeat.DeployState.ACTIVE);
+      ohb.setState(oe.getValue().deployState);
       OperatorStats lstats = new OperatorStats();
       lstats.checkpoint = new Checkpoint(oe.getValue().checkpointWindowId, 0, 0);
       lstats.windowId = oe.getValue().currentWindowId;

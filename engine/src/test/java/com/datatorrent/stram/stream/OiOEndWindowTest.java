@@ -15,6 +15,9 @@
  */
 package com.datatorrent.stram.stream;
 
+import java.io.File;
+
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.api.*;
 import org.junit.Assert;
@@ -93,6 +96,8 @@ public class OiOEndWindowTest
   public void validateOiOImplementation() throws Exception
   {
     LogicalPlan lp = new LogicalPlan();
+    String workingDir = new File("target/validateOiOImplementation").getAbsolutePath();
+    lp.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir + "/localPath", workingDir, null));
     TestInputOperator io = lp.addOperator("Input Operator", new TestInputOperator());
     FirstGenericOperator go = lp.addOperator("First Generic Operator", new FirstGenericOperator());
     SecondGenericOperator out = lp.addOperator("Second Generic Operator", new SecondGenericOperator());

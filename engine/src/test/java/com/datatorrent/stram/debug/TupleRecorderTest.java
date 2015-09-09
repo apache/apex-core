@@ -32,6 +32,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 
+import com.datatorrent.api.Context;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.debug.TupleRecorder.PortInfo;
@@ -210,6 +212,7 @@ public class TupleRecorderTest
   public void testRecordingFlow() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testWorkDir.getAbsolutePath() + "/localPath", testWorkDir.getAbsolutePath(), null));
 
     dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, "file://" + testWorkDir.getAbsolutePath());
     dag.getAttributes().put(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE, 1024);  // 1KB per part

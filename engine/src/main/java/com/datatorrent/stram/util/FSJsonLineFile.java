@@ -17,7 +17,8 @@ package com.datatorrent.stram.util;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.apache.hadoop.conf.Configuration;
+import java.util.EnumSet;
+
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -32,29 +33,13 @@ import org.slf4j.LoggerFactory;
  */
 public class FSJsonLineFile implements Closeable
 {
-  private final FileSystem fs;
   private final ObjectMapper objectMapper;
   private final FSDataOutputStream os;
   private static final Logger LOG = LoggerFactory.getLogger(FSJsonLineFile.class);
 
-  public FSJsonLineFile(Path path, FsPermission permission) throws IOException
+  public FSJsonLineFile(FileContext fileContext, Path path, FsPermission permission) throws IOException
   {
-    fs = FileSystem.newInstance(path.toUri(), new Configuration());
-    FSDataOutputStream myos;
-    if (fs.exists(path)) {
-      try {
-        // happens if not the first application attempt
-        myos = fs.append(path);
-      }
-      catch (IOException ex) {
-        LOG.warn("Caught exception (OK during unit test): {}", ex.getMessage());
-        myos = FileSystem.create(fs, path, permission);
-      }
-    }
-    else {
-      myos = FileSystem.create(fs, path, permission);
-    }
-    os = myos;
+    this.os = fileContext.create(path, EnumSet.of(CreateFlag.CREATE, CreateFlag.APPEND), Options.CreateOpts.perms(permission));
     this.objectMapper = (new JSONSerializationProvider()).getContext(null);
   }
 
@@ -74,7 +59,6 @@ public class FSJsonLineFile implements Closeable
   public void close() throws IOException
   {
     os.close();
-    fs.close();
   }
 
 }

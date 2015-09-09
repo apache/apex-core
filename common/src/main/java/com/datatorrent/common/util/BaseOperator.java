@@ -33,6 +33,7 @@ public class BaseOperator implements Operator
   /**
    * @return the name property of the operator.
    */
+  @Deprecated
   public String getName()
   {
     return name;
@@ -43,6 +44,7 @@ public class BaseOperator implements Operator
    *
    * @param name
    */
+  @Deprecated
   public void setName(String name)
   {
     this.name = name;

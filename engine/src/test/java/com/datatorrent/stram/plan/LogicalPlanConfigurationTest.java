@@ -21,6 +21,8 @@ import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.util.*;
 
+import javax.validation.ValidationException;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
@@ -682,6 +684,81 @@ public class LogicalPlanConfigurationTest {
     }
   }
 
+  @Test
+  public void testTupleClassAttr() throws Exception
+  {
+    String resourcePath = "/schemaTestTopology.json";
+    InputStream is = this.getClass().getResourceAsStream(resourcePath);
+    if (is == null) {
+      fail("Could not load " + resourcePath);
+    }
+    StringWriter writer = new StringWriter();
+
+    IOUtils.copy(is, writer);
+    JSONObject json = new JSONObject(writer.toString());
+
+    Configuration conf = new Configuration(false);
+
+    LogicalPlanConfiguration planConf = new LogicalPlanConfiguration(conf);
+    LogicalPlan dag = planConf.createFromJson(json, "testLoadFromJson");
+    dag.validate();
+
+    OperatorMeta operator1 = dag.getOperatorMeta("operator1");
+    assertEquals("operator1.classname", SchemaTestOperator.class, operator1.getOperator().getClass());
+
+    StreamMeta input1 = dag.getStream("inputStream");
+    assertNotNull(input1);
+    for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
+      Assert.assertEquals("tuple class name required", TestSchema.class, targetPort.getAttributes().get(PortContext.TUPLE_CLASS));
+    }
+  }
+
+  @Test(expected = ValidationException.class)
+  public void testTupleClassAttrValidation() throws Exception
+  {
+    String resourcePath = "/schemaTestTopology.json";
+    InputStream is = this.getClass().getResourceAsStream(resourcePath);
+    if (is == null) {
+      fail("Could not load " + resourcePath);
+    }
+    StringWriter writer = new StringWriter();
+
+    IOUtils.copy(is, writer);
+    JSONObject json = new JSONObject(writer.toString());
+
+    //removing schema so that validation fails
+    json.getJSONArray("streams").getJSONObject(0).remove("schema");
+    Configuration conf = new Configuration(false);
+
+    LogicalPlanConfiguration planConf = new LogicalPlanConfiguration(conf);
+    LogicalPlan dag = planConf.createFromJson(json, "testLoadFromJson");
+
+    dag.validate();
+  }
+
+  @Test
+  public void testTestTupleClassAttrSetFromConfig()
+  {
+    Configuration conf = new Configuration(false);
+    conf.set(StreamingApplication.DT_PREFIX + "operator.o2.port.schemaRequiredPort.attr.TUPLE_CLASS",
+      "com.datatorrent.stram.plan.LogicalPlanConfigurationTest$TestSchema");
+
+    StreamingApplication streamingApplication = new StreamingApplication()
+    {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        TestGeneratorInputOperator o1 = dag.addOperator("o1", new TestGeneratorInputOperator());
+        SchemaTestOperator o2 = dag.addOperator("o2", new SchemaTestOperator());
+        dag.addStream("stream", o1.outport, o2.schemaRequiredPort);
+      }
+    };
+    LogicalPlan dag = new LogicalPlan();
+    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(conf);
+    lpc.prepareDAG(dag, streamingApplication, "app");
+    dag.validate();
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(LogicalPlanConfigurationTest.class);
 
   public static class TestApplication implements StreamingApplication {
@@ -789,7 +866,11 @@ public class LogicalPlanConfigurationTest {
         return false;
       return true;
     }
-    
+
+  }
+
+  public static class TestSchema
+  {
   }
 }
 

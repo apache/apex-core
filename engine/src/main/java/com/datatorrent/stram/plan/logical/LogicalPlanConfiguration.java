@@ -77,6 +77,7 @@ public class LogicalPlanConfiguration {
   public static final String STREAM_SINKS = "sinks";
   public static final String STREAM_TEMPLATE = "template";
   public static final String STREAM_LOCALITY = "locality";
+  public static final String STREAM_SCHEMA = "schema";
 
   public static final String OPERATOR_PREFIX =  StreamingApplication.DT_PREFIX + "operator.";
   public static final String OPERATOR_CLASSNAME = "classname";
@@ -908,6 +909,11 @@ public class LogicalPlanConfiguration {
       if (locality != null) {
         prop.setProperty(streamPrefix + STREAM_LOCALITY, locality);
       }
+      JSONObject schema = stream.optJSONObject("schema");
+      if (schema != null) {
+        String schemaClass = schema.getString("class");
+        prop.setProperty(streamPrefix + STREAM_SCHEMA, schemaClass);
+      }
     }
     return addFromProperties(prop, conf);
   }
@@ -1126,6 +1132,12 @@ public class LogicalPlanConfiguration {
       DAG.StreamMeta sd = dag.addStream(streamConfEntry.getKey());
       sd.setLocality(streamConf.getLocality());
 
+      String schemaClassName = streamConf.properties.getProperty(STREAM_SCHEMA);
+      Class<?> schemaClass = null;
+      if (schemaClassName != null) {
+        schemaClass = StramUtils.classForName(schemaClassName, Object.class);
+      }
+
       if (streamConf.sourceNode != null) {
         String portName = null;
         for (Map.Entry<String, StreamConf> e : streamConf.sourceNode.outputs.entrySet()) {
@@ -1137,6 +1149,10 @@ public class LogicalPlanConfiguration {
         Operators.PortMappingDescriptor sourcePortMap = new Operators.PortMappingDescriptor();
         Operators.describe(sourceDecl, sourcePortMap);
         sd.setSource(sourcePortMap.outputPorts.get(portName).component);
+
+        if (schemaClass != null) {
+          dag.setOutputPortAttribute(sourcePortMap.outputPorts.get(portName).component, PortContext.TUPLE_CLASS, schemaClass);
+        }
       }
 
       for (OperatorConf targetNode : streamConf.targetNodes) {
@@ -1150,6 +1166,10 @@ public class LogicalPlanConfiguration {
         Operators.PortMappingDescriptor targetPortMap = new Operators.PortMappingDescriptor();
         Operators.describe(targetDecl, targetPortMap);
         sd.addSink(targetPortMap.inputPorts.get(portName).component);
+
+        if (schemaClass != null) {
+          dag.setInputPortAttribute(targetPortMap.inputPorts.get(portName).component, PortContext.TUPLE_CLASS, schemaClass);
+        }
       }
     }
 
@@ -1164,7 +1184,7 @@ public class LogicalPlanConfiguration {
    */
   public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name)
   {
-    // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attt below is used 
+    // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attribute below is used
     String connectAddress = conf.get(StreamingApplication.DT_PREFIX + Context.DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
     dag.setAttribute(Context.DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null? conf.get(GATEWAY_LISTEN_ADDRESS): connectAddress);
     if (app != null) {

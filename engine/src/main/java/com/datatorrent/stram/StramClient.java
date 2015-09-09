@@ -52,9 +52,8 @@ import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.DTLoggerFactory;
 
 import com.datatorrent.api.Context.OperatorContext;
-
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BasicContainerOptConfigurator;
-import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.engine.StreamingContainer;
@@ -349,7 +348,7 @@ public class StramClient
 
     // Dump out information about cluster capability as seen by the resource manager
     int maxMem = newApp.getNewApplicationResponse().getMaximumResourceCapability().getMemory();
-    LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
+    LOG.info("Max mem capability of resources in this cluster " + maxMem);
     int amMemory = dag.getMasterMemoryMB();
     if (amMemory > maxMem) {
       LOG.info("AM memory specified above max threshold of cluster. Using max value."
@@ -456,8 +455,9 @@ public class StramClient
       if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) { /* which would be the most likely case */
         Path checkpointPath = new Path(appPath, LogicalPlan.SUBDIR_CHECKPOINTS);
         // use conf client side to pickup any proxy settings from dt-site.xml
-        dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(checkpointPath.toString(), conf));
+        dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointPath.toString(), conf));
       }
+
       if(dag.getAttributes().get(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR) == null){
         dag.setAttribute(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR,new BasicContainerOptConfigurator());
       }

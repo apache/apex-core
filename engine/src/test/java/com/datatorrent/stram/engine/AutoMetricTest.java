@@ -15,7 +15,6 @@
  */
 package com.datatorrent.stram.engine;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
@@ -23,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -41,6 +39,7 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Stats.OperatorStats;
 
 import com.datatorrent.common.partitioner.StatelessPartitioner;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.AutoMetricTest.TestOperator.TestStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -183,6 +182,7 @@ public class AutoMetricTest
   public void testMetricPropagation() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir + "/localPath", testMeta.dir, null));
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
 
@@ -229,8 +229,6 @@ public class AutoMetricTest
   {
     CountDownLatch latch = new CountDownLatch(1);
 
-    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
-
     LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(new Configuration());
     LogicalPlan dag = new LogicalPlan();
 
@@ -260,8 +258,6 @@ public class AutoMetricTest
   {
     CountDownLatch latch = new CountDownLatch(2);
 
-    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
-
     LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(new Configuration());
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
@@ -287,8 +283,6 @@ public class AutoMetricTest
   @Test
   public void testInjectionOfDefaultMetricsAggregator() throws Exception
   {
-    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
-
     LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(new Configuration());
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
@@ -364,8 +358,6 @@ public class AutoMetricTest
   public void testMetricsAnnotatedMethod() throws Exception
   {
     CountDownLatch latch = new CountDownLatch(1);
-
-    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
 
     LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(new Configuration());
     LogicalPlan dag = new LogicalPlan();

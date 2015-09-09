@@ -86,7 +86,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.JSONSerializationProvider;
-import com.datatorrent.stram.util.ObjectMapperFactory;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
@@ -1481,9 +1480,6 @@ public class DTCli
   private void printWelcomeMessage()
   {
     System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
-    if (!StramClientUtils.configComplete(conf)) {
-      System.err.println("WARNING: Configuration of DataTorrent has not been complete. Please proceed with caution and only in development environment!");
-    }
   }
 
   private void printHelp(String command, CommandSpec commandSpec, PrintStream os)
@@ -3002,37 +2998,44 @@ public class DTCli
       String[] jarFiles = files.split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
-        ObjectMapper defaultValueMapper = ObjectMapperFactory.getOperatorValueSerializer();
-        
         OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         String searchTerm = commandLineInfo.args.length > 1 ? commandLineInfo.args[1] : null;
-        Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName, searchTerm);
+        Set<String> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName, searchTerm);
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
         JSONObject portClassHier = new JSONObject();
+        JSONObject portTypesWithSchemaClasses = new JSONObject();
 
         JSONObject failed = new JSONObject();
-        for (Class<? extends Operator> clazz : operatorClasses) {
+
+        for (final String clazz : operatorClasses) {
           try {
             JSONObject oper = operatorDiscoverer.describeOperator(clazz);
 
             // add default value
-            Operator operIns = clazz.newInstance();
-            String s = defaultValueMapper.writeValueAsString(operIns);
-            oper.put("defaultValue", new JSONObject(s).get(clazz.getName()));
+            operatorDiscoverer.addDefaultValue(clazz, oper);
             
-            // add class hier info to portClassHier
-            operatorDiscoverer.buildPortClassHier(oper, portClassHier);
+            // add class hierarchy info to portClassHier and fetch port types with schema classes
+            operatorDiscoverer.buildAdditionalPortInfo(oper, portClassHier, portTypesWithSchemaClasses);
+
+            Iterator portTypesIter = portTypesWithSchemaClasses.keys();
+            while (portTypesIter.hasNext()) {
+              if (!portTypesWithSchemaClasses.getBoolean((String) portTypesIter.next())) {
+                portTypesIter.remove();
+              }
+            }
 
             arr.put(oper);
           } catch (Exception | NoClassDefFoundError ex) {
             // ignore this class
-            final String cls = clazz.getName();
+            final String cls = clazz;
             failed.put(cls, ex.toString());
           }
         }
+
         json.put("operatorClasses", arr);
         json.put("portClassHier", portClassHier);
+        json.put("portTypesWithSchemaClasses", portTypesWithSchemaClasses);
         if (failed.length() > 0) {
           json.put("failedOperators", failed);
         }
@@ -3042,7 +3045,6 @@ public class DTCli
         FileUtils.deleteDirectory(tmpDir);
       }
     }
-
   }
 
   private class GetJarOperatorPropertiesCommand implements Command
@@ -3059,7 +3061,7 @@ public class DTCli
       try {
         OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
-        printJson(operatorDiscoverer.describeOperator(operatorClass));
+        printJson(operatorDiscoverer.describeOperator(operatorClass.getName()));
       } finally {
         FileUtils.deleteDirectory(tmpDir);
       }

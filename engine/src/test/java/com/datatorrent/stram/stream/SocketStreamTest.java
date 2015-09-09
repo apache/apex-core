@@ -19,8 +19,6 @@ import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
 import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.stram.stream.BufferServerPublisher;
-import com.datatorrent.stram.stream.BufferServerSubscriber;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.api.Sink;
@@ -29,12 +27,14 @@ import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.netlet.EventLoop;
 import java.io.IOException;
-import static java.lang.Thread.sleep;
+
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static java.lang.Thread.sleep;
 
 /**
  *
@@ -49,7 +49,7 @@ public class SocketStreamTest
 
   static {
     try {
-      eventloop = new DefaultEventLoop("StreamTestEventLoop");
+      eventloop = DefaultEventLoop.createEventLoop("StreamTestEventLoop");
     }
     catch (IOException ex) {
       throw new RuntimeException(ex);

@@ -89,16 +89,16 @@ public class LogicalPlanTest {
      dag.findStronglyConnected(dag.getMeta(operator7), cycles);
      assertEquals("operator self reference", 1, cycles.size());
      assertEquals("operator self reference", 1, cycles.get(0).size());
-     assertEquals("operator self reference", operator7.getName(), cycles.get(0).get(0));
+     assertEquals("operator self reference", dag.getMeta(operator7).getName(), cycles.get(0).get(0));
 
      // 3 operator cycle
      cycles.clear();
      dag.findStronglyConnected(dag.getMeta(operator4), cycles);
      assertEquals("3 operator cycle", 1, cycles.size());
      assertEquals("3 operator cycle", 3, cycles.get(0).size());
-     assertTrue("operator2", cycles.get(0).contains(operator2.getName()));
-     assertTrue("operator3", cycles.get(0).contains(operator3.getName()));
-     assertTrue("operator4", cycles.get(0).contains(operator4.getName()));
+     assertTrue("operator2", cycles.get(0).contains(dag.getMeta(operator2).getName()));
+     assertTrue("operator3", cycles.get(0).contains(dag.getMeta(operator3).getName()));
+     assertTrue("operator4", cycles.get(0).contains(dag.getMeta(operator4).getName()));
 
      try {
        dag.validate();
@@ -294,7 +294,7 @@ public class LogicalPlanTest {
       Assert.fail("should throw ConstraintViolationException");
     } catch (ConstraintViolationException e) {
       Assert.assertEquals("violation details", constraintViolations, e.getConstraintViolations());
-      String expRegex = ".*ValidationTestOperator\\{name=testOperator}, propertyPath='intField1', message='must be greater than or equal to 2',.*value=1}]";
+      String expRegex = ".*ValidationTestOperator\\{name=null}, propertyPath='intField1', message='must be greater than or equal to 2',.*value=1}]";
       Assert.assertThat("exception message", e.getMessage(), RegexMatcher.matches(expRegex));
     }
 
@@ -396,7 +396,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("should raise operator is not partitionable for operator1");
     } catch (ValidationException e) {
-      Assert.assertEquals("", "Operator " + operator.getName() + " provides partitioning capabilities but the annotation on the operator class declares it non partitionable!", e.getMessage());
+      Assert.assertEquals("", "Operator " + dag.getMeta(operator).getName() + " provides partitioning capabilities but the annotation on the operator class declares it non partitionable!", e.getMessage());
     }
 
     dag.setAttribute(operator, OperatorContext.PARTITIONER, null);
@@ -406,7 +406,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("should raise operator is not partitionable for operator1");
     } catch (ValidationException e) {
-      Assert.assertEquals("", "Operator " + operator.getName() + " is not partitionable but PARTITION_PARALLEL attribute is set", e.getMessage());
+      Assert.assertEquals("", "Operator " + dag.getMeta(operator).getName() + " is not partitionable but PARTITION_PARALLEL attribute is set", e.getMessage());
     }
 
     dag.setInputPortAttribute(operator.input1, PortContext.PARTITION_PARALLEL, false);
@@ -419,7 +419,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("should raise operator is not partitionable for operator2");
     } catch (ValidationException e) {
-      Assert.assertEquals("Operator " + operator2.getName() + " provides partitioning capabilities but the annotation on the operator class declares it non partitionable!", e.getMessage());
+      Assert.assertEquals("Operator " + dag.getMeta(operator2).getName() + " provides partitioning capabilities but the annotation on the operator class declares it non partitionable!", e.getMessage());
     }
   }
 

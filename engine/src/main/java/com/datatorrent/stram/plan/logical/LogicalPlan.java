@@ -49,7 +49,6 @@ import com.datatorrent.common.metric.MetricsAggregator;
 import com.datatorrent.common.metric.SingleMetricAggregator;
 import com.datatorrent.common.metric.sum.DoubleSumAggregator;
 import com.datatorrent.common.metric.sum.LongSumAggregator;
-import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.Slider;
@@ -103,8 +102,6 @@ public class LogicalPlan implements Serializable, DAG
   public static Attribute<Long> RM_TOKEN_LIFE_TIME = new Attribute<Long>(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT);
   public static Attribute<String> KEY_TAB_FILE = new Attribute<String>((String) null, new StringCodec.String2String());
   public static Attribute<Double> TOKEN_REFRESH_ANTICIPATORY_FACTOR = new Attribute<Double>(0.7);
-  public static Attribute<String> LICENSE = new Attribute<String>((String) null, new StringCodec.String2String());
-  public static Attribute<String> LICENSE_ROOT = new Attribute<String>((String) null, new StringCodec.String2String());
   /**
    * Comma separated list of jar file dependencies to be deployed with the application.
    * The launcher will combine the list with built-in dependencies and those specified
@@ -132,6 +129,11 @@ public class LogicalPlan implements Serializable, DAG
    * only one container will be requested from the resource manager.
    */
   public static Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
+
+  /**
+   * The application attempt ID from YARN
+   */
+  public static Attribute<Integer> APPLICATION_ATTEMPT_ID = new Attribute<>(1);
 
   static {
     Attribute.AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);
@@ -854,10 +856,6 @@ public class LogicalPlan implements Serializable, DAG
   @Override
   public <T extends Operator> T addOperator(String name, T operator)
   {
-    // TODO: optional interface to provide contextual information to instance
-    if (operator instanceof BaseOperator) {
-      ((BaseOperator)operator).setName(name);
-    }
     if (operators.containsKey(name)) {
       if (operators.get(name) == (Object)operator) {
         return operator;
@@ -901,6 +899,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {
     StreamMeta s = addStream(id);
@@ -1170,6 +1169,13 @@ public class LogicalPlan implements Serializable, DAG
               validateThreadLocal(n);
             }
           }
+
+          if (pm.portAnnotation != null && pm.portAnnotation.schemaRequired()) {
+            //since schema is required, the port attribute TUPLE_CLASS should be present
+            if (pm.attributes.get(PortContext.TUPLE_CLASS) == null) {
+              throw new ValidationException("Attribute " + PortContext.TUPLE_CLASS.getName() + " missing on port : " + n.name + "." + pm.getPortName());
+            }
+          }
         }
       }
 
@@ -1178,6 +1184,14 @@ public class LogicalPlan implements Serializable, DAG
         if (!n.outputStreams.containsKey(pm)) {
           if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
             throw new ValidationException("Output port connection required: " + n.name + "." + pm.getPortName());
+          }
+        } else {
+          //port is connected
+          if (pm.portAnnotation != null && pm.portAnnotation.schemaRequired()) {
+            //since schema is required, the port attribute TUPLE_CLASS should be present
+            if (pm.attributes.get(PortContext.TUPLE_CLASS) == null) {
+              throw new ValidationException("Attribute " + PortContext.TUPLE_CLASS.getName() + " missing on port : " + n.name + "." + pm.getPortName());
+            }
           }
         }
         allPortsOptional &= (pm.portAnnotation != null && pm.portAnnotation.optional());
@@ -1204,7 +1218,7 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
 
-    // Validate root operators are input operators 
+    // Validate root operators are input operators
     for (OperatorMeta om : this.rootOperators) {
       if (!(om.getOperator() instanceof InputOperator)) {
         throw new ValidationException(String.format("Root operator: %s is not a Input operator",
