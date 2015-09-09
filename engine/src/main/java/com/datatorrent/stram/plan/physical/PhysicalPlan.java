@@ -1053,7 +1053,10 @@ public class PhysicalPlan implements Serializable
       StorageAgent agent = oper.operatorMeta.getValue(OperatorContext.STORAGE_AGENT);
       agent.save(oo, oper.id, windowId);
       if (agent instanceof AsyncFSStorageAgent) {
-        ((AsyncFSStorageAgent) agent).copyToHDFS(oper.id, windowId);
+        AsyncFSStorageAgent asyncFSStorageAgent = (AsyncFSStorageAgent)agent;
+        if(!asyncFSStorageAgent.isSyncCheckpoint()) {
+          asyncFSStorageAgent.copyToHDFS(oper.id, windowId);
+        }
       }
     } catch (IOException e) {
       // inconsistent state, no recovery option, requires shutdown

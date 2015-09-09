@@ -66,6 +66,10 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   @Override
   public void save(final Object object, final int operatorId, final long windowId) throws IOException
   {
+    if(syncCheckpoint){
+      super.save(object, operatorId, windowId);
+      return;
+    }
     String operatorIdStr = String.valueOf(operatorId);
     File directory = new File(localBasePath, operatorIdStr);
     if (!directory.exists()) {
@@ -120,7 +124,9 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   @Override
   public Object readResolve() throws ObjectStreamException
   {
-    return new AsyncFSStorageAgent(this.path, null);
+    AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(this.path, null);
+    asyncFSStorageAgent.setSyncCheckpoint(syncCheckpoint);
+    return asyncFSStorageAgent;
   }
 
   public boolean isSyncCheckpoint()

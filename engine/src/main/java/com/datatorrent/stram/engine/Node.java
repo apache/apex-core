@@ -466,21 +466,22 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
           ba.save(operator, id, windowId);
           if (ba instanceof AsyncFSStorageAgent) {
             AsyncFSStorageAgent asyncFSStorageAgent = (AsyncFSStorageAgent) ba;
-            if (!asyncFSStorageAgent.isSyncCheckpoint() && PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
-              CheckpointHandler checkpointHandler = new CheckpointHandler();
-              checkpointHandler.agent = asyncFSStorageAgent;
-              checkpointHandler.operatorId = id;
-              checkpointHandler.windowId = windowId;
-              checkpointHandler.stats = checkpointStats;
-              FutureTask<Stats.CheckpointStats> futureTask = new FutureTask<Stats.CheckpointStats>(checkpointHandler);
-              taskQueue.add(new Pair<FutureTask<Stats.CheckpointStats>, Long>(futureTask, windowId));
-              executorService.submit(futureTask);
-              checkpoint = null;
-              checkpointStats = null;
-              return;
-            }
-            else {
-              asyncFSStorageAgent.copyToHDFS(id, windowId);
+            if (!asyncFSStorageAgent.isSyncCheckpoint()) {
+              if(PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
+                CheckpointHandler checkpointHandler = new CheckpointHandler();
+                checkpointHandler.agent = asyncFSStorageAgent;
+                checkpointHandler.operatorId = id;
+                checkpointHandler.windowId = windowId;
+                checkpointHandler.stats = checkpointStats;
+                FutureTask<Stats.CheckpointStats> futureTask = new FutureTask<Stats.CheckpointStats>(checkpointHandler);
+                taskQueue.add(new Pair<FutureTask<Stats.CheckpointStats>, Long>(futureTask, windowId));
+                executorService.submit(futureTask);
+                checkpoint = null;
+                checkpointStats = null;
+                return;
+              }else{
+                asyncFSStorageAgent.copyToHDFS(id, windowId);
+              }
             }
           }
           checkpointStats.checkpointTime = System.currentTimeMillis() - checkpointStats.checkpointStartTime;
