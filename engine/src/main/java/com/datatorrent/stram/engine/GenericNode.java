@@ -194,10 +194,10 @@ public class GenericNode extends Node<Operator>
     insideWindow = applicationWindowCount != 0;
   }
 
-  private int getIterationWindows(String portName)
+  private int getIterationWindowCount(String portName)
   {
     Operators.PortContextPair<InputPort<?>> pcPair = descriptor.inputPorts.get(portName);
-    return pcPair.context.getValue(PortContext.ITERATION_WINDOWS);
+    return pcPair.context.getValue(PortContext.ITERATION_WINDOW_COUNT);
   }
 
   /**
@@ -216,8 +216,8 @@ public class GenericNode extends Node<Operator>
     int totalQueues = inputs.size();
     int regularQueues = totalQueues;
     for (String portName : inputs.keySet()) {
-      int iterationWindows = getIterationWindows(portName);
-      if (iterationWindows > 0) {
+      int iterationWindowCount = getIterationWindowCount(portName);
+      if (iterationWindowCount > 0) {
         regularQueues--;
       }
     }
@@ -240,8 +240,8 @@ public class GenericNode extends Node<Operator>
           SweepableReservoir activePort = activePortEntry.getValue();
           Tuple t = activePort.sweep();
           if (t != null) {
-            int iterationWindows = getIterationWindows(activePortEntry.getKey());
-            long tupleWindowId = WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, iterationWindows);
+            int iterationWindowCount = getIterationWindowCount(activePortEntry.getKey());
+            long tupleWindowId = WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, iterationWindowCount);
             logger.debug("############# GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()), firstWindowMillis, windowWidthMillis);
             switch (t.getType()) {
               case BEGIN_WINDOW:
@@ -253,9 +253,10 @@ public class GenericNode extends Node<Operator>
                   }
                   receivedEndWindow = 0;
                   if (currentWindowId != tupleWindowId) {
+                    // This is the first BEGIN_WINDOW we are getting for this window
                     for (Map.Entry<String, SweepableReservoir> entry : inputs.entrySet()) {
                       long diff = WindowGenerator.compareWindowId(tupleWindowId, initialWindowId, firstWindowMillis, windowWidthMillis);
-                      if (diff < getIterationWindows(entry.getKey())) {
+                      if (diff < getIterationWindowCount(entry.getKey())) {
                         logger.debug("##### REMOVING BEGIN_WINDOW EXPECTATION FROM {} ({} < {})", entry.getKey(), diff);
                         activeQueues.remove(entry.getKey());
                         expectingBeginWindow--;
@@ -341,7 +342,7 @@ public class GenericNode extends Node<Operator>
 
               case CHECKPOINT:
                 activePort.remove();
-                if (iterationWindows == 0) {
+                if (iterationWindowCount == 0) {
                   long checkpointWindow = tupleWindowId;
                   if (lastCheckpointWindowId < checkpointWindow) {
                     if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
@@ -371,7 +372,7 @@ public class GenericNode extends Node<Operator>
                 buffers.remove();
 
                 // ignore iteration port
-                if (iterationWindows == 0) {
+                if (iterationWindowCount == 0) {
                   int baseSeconds = t.getBaseSeconds();
                   tracker = null;
                   Iterator<TupleTracker> trackerIterator = resetTupleTracker.iterator();
@@ -413,7 +414,7 @@ public class GenericNode extends Node<Operator>
                     if (!activeQueues.isEmpty()) {
                       // make sure they are all queues from iteration
                       for (Map.Entry<String, SweepableReservoir> entry : activeQueues) {
-                        if (getIterationWindows(entry.getKey()) == 0) {
+                        if (getIterationWindowCount(entry.getKey()) == 0) {
                           assert(false);
                         }
                       }
@@ -430,7 +431,7 @@ public class GenericNode extends Node<Operator>
                 activePort.remove();
                 buffers.remove();
                 // ignore iteration port
-                if (iterationWindows == 0) {
+                if (iterationWindowCount == 0) {
                   for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext(); ) {
                     Entry<String, SweepableReservoir> e = it.next();
                     if (e.getValue() == activePort) {

@@ -162,7 +162,7 @@ public interface Context
      * Attribute of input port to specify how many windows ahead incoming windows should be treated as.
      * This is for iterative processing.
      */
-    Attribute<Integer> ITERATION_WINDOWS = new Attribute<>(0);
+    Attribute<Integer> ITERATION_WINDOW_COUNT = new Attribute<>(0);
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(PortContext.class);

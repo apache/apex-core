@@ -18,7 +18,6 @@ package com.datatorrent.stram.plan;
 import com.datatorrent.common.util.BaseOperator;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
 
@@ -125,7 +124,7 @@ public class LogicalPlanTest {
     dag.addStream("BtoC", opB.outport1, opC.inport1);
     dag.addStream("CtoD", opC.outport1, opD.inport1);
     dag.addStream("CtoB", opC.outport2, opB.inport2);
-    dag.setInputPortAttribute(opB.inport2, PortContext.ITERATION_WINDOWS, 1);
+    dag.setInputPortAttribute(opB.inport2, PortContext.ITERATION_WINDOW_COUNT, 1);
 
     try {
       final StramLocalCluster localCluster = new StramLocalCluster(dag);

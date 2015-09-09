@@ -78,7 +78,7 @@ public class PTOperator implements java.io.Serializable
     public final PartitionKeys partitions;
     public final PTOutput source;
     public final String portName;
-    public final int iterationWindows;
+    public final int iterationWindowCount;
 
     /**
      *
@@ -88,7 +88,7 @@ public class PTOperator implements java.io.Serializable
      * @param partitions
      * @param source
      */
-    protected PTInput(String portName, StreamMeta logicalStream, PTOperator target, PartitionKeys partitions, PTOutput source, int iterationWindows)
+    protected PTInput(String portName, StreamMeta logicalStream, PTOperator target, PartitionKeys partitions, PTOutput source, int iterationWindowCount)
     {
       this.logicalStream = logicalStream;
       this.target = target;
@@ -96,7 +96,7 @@ public class PTOperator implements java.io.Serializable
       this.source = source;
       this.portName = portName;
       this.source.sinks.add(this);
-      this.iterationWindows = 0;
+      this.iterationWindowCount = 0;
     }
 
     /**
