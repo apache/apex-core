@@ -63,13 +63,17 @@ public abstract class Operators
     @Override
     public void addInputPort(Operator.InputPort<?> port, Field field, InputPortFieldAnnotation portAnnotation, AppData.QueryPort adqAnnotation)
     {
-      inputPorts.put(field.getName(), new PortContextPair<InputPort<?>>(port));
+      if (!inputPorts.containsKey(field.getName())) {
+        inputPorts.put(field.getName(), new PortContextPair<InputPort<?>>(port));
+      }
     }
 
     @Override
     public void addOutputPort(Operator.OutputPort<?> port, Field field, OutputPortFieldAnnotation portAnnotation, AppData.ResultPort adrAnnotation)
     {
-      outputPorts.put(field.getName(), new PortContextPair<OutputPort<?>>(port));
+      if (!outputPorts.containsKey(field.getName())) {
+        outputPorts.put(field.getName(), new PortContextPair<OutputPort<?>>(port));
+      }
     }
   };
 
