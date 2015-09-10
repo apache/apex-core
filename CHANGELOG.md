@@ -5,15 +5,15 @@ Apex Changelog
 Version 3.1.0
 ------------------------------------------------------------------------------------------------------------------------
 
-** Improvement
-    * [APEX-12] - Fix Base Operator To Not Show Name Property In App Builder
+### Improvement
+* [APEX-12] - Fix Base Operator To Not Show Name Property In App Builder
 
-** Bug
-    * [APEX-35] - Test exceptions due to missing directory in saveMetaInfo
-    * [APEX-36] - FSStorageAgent to account for HDFS lease when writing checkpoint files
-    * [APEX-37] - Container and operator json line file in StreamingContainerManager should not be appended from previous app attempt 
-    * [APEX-43] - SchemaSupport: TUPLE_CLASS attribute should use Class2String StringCodec
-    * [APEX-56] - Controlled plan modification on operator shutdown 
+### Bug
+* [APEX-35] - Test exceptions due to missing directory in saveMetaInfo
+* [APEX-36] - FSStorageAgent to account for HDFS lease when writing checkpoint files
+* [APEX-37] - Container and operator json line file in StreamingContainerManager should not be appended from previous app attempt 
+* [APEX-43] - SchemaSupport: TUPLE_CLASS attribute should use Class2String StringCodec
+* [APEX-56] - Controlled plan modification on operator shutdown 
 
 
 
