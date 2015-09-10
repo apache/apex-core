@@ -97,6 +97,10 @@ public class Server implements ServerListener
   @Override
   public void unregistered(SelectionKey key)
   {
+    for (Entry<String, AbstractLengthPrependerClient> entry : publisherChannels.entrySet()) {
+      eventloop.disconnect(entry.getValue());
+    }
+
     serverHelperExecutor.shutdown();
     storageHelperExecutor.shutdown();
     try {
@@ -262,7 +266,7 @@ public class Server implements ServerListener
         //logger.debug("old list = {}", dl);
       }
       else {
-        dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks, 0) : new DataList(upstream_identifier, blockSize, numberOfCacheBlocks, 0);
+        dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks) : new DataList(upstream_identifier, blockSize, numberOfCacheBlocks);
         publisherBuffers.put(upstream_identifier, dl);
         //logger.debug("new list = {}", dl);
       }
@@ -401,7 +405,7 @@ public class Server implements ServerListener
           PublishRequestTuple publisherRequest = (PublishRequestTuple)request;
 
           DataList dl = handlePublisherRequest(publisherRequest, this);
-          dl.setAutoflushExecutor(serverHelperExecutor);
+          dl.setAutoFlushExecutor(serverHelperExecutor);
 
           Publisher publisher;
           if (publisherRequest.getVersion().equals(Tuple.FAST_VERSION)) {
@@ -617,6 +621,25 @@ public class Server implements ServerListener
     }
 
     @Override
+    public boolean resumeReadIfSuspended()
+    {
+      eventloop.submit(new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          final int interestOps = key.interestOps();
+          if ((interestOps & SelectionKey.OP_READ) == 0) {
+            logger.debug("Resuming read on key {} with attachment {}", key, key.attachment());
+            read(0);
+            key.interestOps(interestOps | SelectionKey.OP_READ);
+          }
+        }
+      });
+      return true;
+    }
+
+    @Override
     public void read(int len)
     {
       //logger.debug("read {} bytes", len);
@@ -634,7 +657,9 @@ public class Server implements ServerListener
                    * so we allocate a new byteBuffer and copy over the partially written data to the
                    * new byteBuffer and start as if we always had full room but not enough data.
                    */
-                  switchToNewBuffer(buffer, readOffset);
+                  if (!switchToNewBufferOrSuspendRead(buffer, readOffset)) {
+                    return;
+                  }
                 }
               }
               else if (dirty) {
@@ -660,10 +685,13 @@ public class Server implements ServerListener
             /*
              * hit wall while writing serialized data, so have to allocate a new byteBuffer.
              */
-            switchToNewBuffer(buffer, readOffset - VarInt.getSize(size));
+            if (!switchToNewBufferOrSuspendRead(buffer, readOffset - VarInt.getSize(size))) {
+              readOffset -= VarInt.getSize(size);
+              size = 0;
+              return;
+            }
             size = 0;
-          }
-          else if (dirty) {
+          } else if (dirty) {
             dirty = false;
             datalist.flush(writeOffset);
           }
@@ -673,21 +701,38 @@ public class Server implements ServerListener
       while (true);
     }
 
-    public void switchToNewBuffer(byte[] array, int offset)
+    private boolean switchToNewBufferOrSuspendRead(final byte[] array, final int offset)
     {
-      byte[] newBuffer = new byte[datalist.getBlockSize()];
-      byteBuffer = ByteBuffer.wrap(newBuffer);
-      if (array == null || array.length - offset == 0) {
-        writeOffset = 0;
+      synchronized (datalist)
+      {
+        if (switchToNewBuffer(buffer, offset)) {
+          return true;
+        }
+        suspendReadIfResumed();
+        datalist.addSuspendedClient(this);
+        return false;
       }
-      else {
-        writeOffset = array.length - offset;
-        System.arraycopy(buffer, offset, newBuffer, 0, writeOffset);
-        byteBuffer.position(writeOffset);
+    }
+
+    private boolean switchToNewBuffer(final byte[] array, final int offset)
+    {
+      if (datalist.isMemoryBlockAvailable()) {
+        final byte[] newBuffer = datalist.getOrAllocateBuffer();
+        byteBuffer = ByteBuffer.wrap(newBuffer);
+        if (array == null || array.length - offset == 0) {
+          writeOffset = 0;
+        } else {
+          writeOffset = array.length - offset;
+          System.arraycopy(buffer, offset, newBuffer, 0, writeOffset);
+          byteBuffer.position(writeOffset);
+        }
+        buffer = newBuffer;
+        readOffset = 0;
+        datalist.addBuffer(buffer);
+        return true;
+      } else {
+        return false;
       }
-      buffer = newBuffer;
-      readOffset = 0;
-      datalist.addBuffer(buffer);
     }
 
     @Override
@@ -714,7 +759,7 @@ public class Server implements ServerListener
     @Override
     public String toString()
     {
-      return "Server.Publisher{" + "datalist=" + datalist + '}';
+      return getClass().getName() + '@' + Integer.toHexString(hashCode()) + " {datalist=" + datalist + '}';
     }
 
     private volatile boolean torndown;
