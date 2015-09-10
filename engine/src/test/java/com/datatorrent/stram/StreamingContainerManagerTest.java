@@ -901,10 +901,9 @@ public class StreamingContainerManagerTest
   @Test
   public void testAppDataPush() throws Exception
   {
-    int port = 12345;
     final String topic = "xyz";
     final List<JSONObject> messages = new ArrayList<JSONObject>();
-    EmbeddedWebSocketServer server = new EmbeddedWebSocketServer(port);
+    EmbeddedWebSocketServer server = new EmbeddedWebSocketServer(0);
     server.setWebSocket(new WebSocket.OnTextMessage()
     {
 
@@ -930,6 +929,7 @@ public class StreamingContainerManagerTest
     });
     try {
       server.start();
+      int port = server.getPort();
       LogicalPlan dag = new LogicalPlan();
       dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
       TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);

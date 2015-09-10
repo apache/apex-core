@@ -533,7 +533,7 @@ abstract public class StramTestSupport
 
     private final Logger LOG = LoggerFactory.getLogger(EmbeddedWebSocketServer.class);
 
-    private final int port;
+    private int port;
     private Server server;
     private WebSocket websocket;
 
@@ -570,6 +570,14 @@ abstract public class StramTestSupport
 
       contextHandler.addServlet(new ServletHolder(webSocketServlet), "/pubsub");
       server.start();
+      if (port == 0) {
+        port = server.getConnectors()[0].getLocalPort();
+      }
+    }
+
+    public int getPort()
+    {
+      return port;
     }
 
     public void stop() throws Exception
