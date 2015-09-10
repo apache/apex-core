@@ -2777,95 +2777,88 @@ public class DTCli
         }
       }
 
-      if (commandLineInfo.args.length >= 2) {
-        String jarfile = expandFileName(commandLineInfo.args[0], true);
-        AppPackage ap = null;
+      if (commandLineInfo.args.length > 0) {
+        String filename = expandFileName(commandLineInfo.args[0], true);
+
         // see if the first argument is actually an app package
         try {
-          ap = new AppPackage(new File(jarfile));
-        }
-        catch (Exception ex) {
-          // fall through
-        }
-        if (ap != null) {
+          AppPackage ap = new AppPackage(new File(filename));
+          ap.close();
           new ShowLogicalPlanAppPackageCommand().execute(args, reader);
           return;
+        } catch (Exception ex) {
+          // fall through
         }
-        String appName = commandLineInfo.args[1];
-        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, commandLineInfo.ignorePom);
-        submitApp.loadDependencies();
-        List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName, commandLineInfo.exactMatch);
-        if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
-          throw new CliException("No application in jar file matches '" + appName + "'");
-        }
-        else if (matchingAppFactories.size() > 1) {
-          throw new CliException("More than one application in jar file match '" + appName + "'");
-        }
-        else {
-          Map<String, Object> map = new HashMap<String, Object>();
-          PrintStream originalStream = System.out;
-          AppFactory appFactory = matchingAppFactories.get(0);
-          try {
-            if (raw) {
-              PrintStream dummyStream = new PrintStream(new OutputStream()
-              {
-                @Override
-                public void write(int b)
-                {
-                  // no-op
-                }
 
-              });
-              System.setOut(dummyStream);
-            }
-            LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
-            map.put("applicationName", appFactory.getName());
-            map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
-          }
-          finally {
-            if (raw) {
-              System.setOut(originalStream);
-            }
-          }
-          printJson(map);
-        }
-      }
-      else if (commandLineInfo.args.length == 1) {
-        String filename = expandFileName(commandLineInfo.args[0], true);
-        if (filename.endsWith(".json")) {
-          File file = new File(filename);
-          StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
-          AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(file);
-          LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
-          Map<String, Object> map = new HashMap<String, Object>();
-          map.put("applicationName", appFactory.getName());
-          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
-          printJson(map);
-        }
-        else if (filename.endsWith(".properties")) {
-          File file = new File(filename);
-          StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
-          AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
-          LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
-          Map<String, Object> map = new HashMap<String, Object>();
-          map.put("applicationName", appFactory.getName());
-          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
-          printJson(map);
-        }
-        else {
+        if (commandLineInfo.args.length >= 2) {
+          String appName = commandLineInfo.args[1];
           StramAppLauncher submitApp = getStramAppLauncher(filename, config, commandLineInfo.ignorePom);
           submitApp.loadDependencies();
-          List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
-          List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
-          for (AppFactory appFactory : appFactoryList) {
-            Map<String, Object> m = new HashMap<String, Object>();
-            m.put("name", appFactory.getName());
-            appList.add(m);
+          List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName, commandLineInfo.exactMatch);
+          if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
+            throw new CliException("No application in jar file matches '" + appName + "'");
+          } else if (matchingAppFactories.size() > 1) {
+            throw new CliException("More than one application in jar file match '" + appName + "'");
+          } else {
+            Map<String, Object> map = new HashMap<String, Object>();
+            PrintStream originalStream = System.out;
+            AppFactory appFactory = matchingAppFactories.get(0);
+            try {
+              if (raw) {
+                PrintStream dummyStream = new PrintStream(new OutputStream()
+                {
+                  @Override
+                  public void write(int b)
+                  {
+                    // no-op
+                  }
+
+                });
+                System.setOut(dummyStream);
+              }
+              LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
+              map.put("applicationName", appFactory.getName());
+              map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+            } finally {
+              if (raw) {
+                System.setOut(originalStream);
+              }
+            }
+            printJson(map);
           }
-          printJson(appList, "applications");
+        } else {
+          if (filename.endsWith(".json")) {
+            File file = new File(filename);
+            StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
+            AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+            LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
+            Map<String, Object> map = new HashMap<String, Object>();
+            map.put("applicationName", appFactory.getName());
+            map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+            printJson(map);
+          } else if (filename.endsWith(".properties")) {
+            File file = new File(filename);
+            StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
+            AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+            LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
+            Map<String, Object> map = new HashMap<String, Object>();
+            map.put("applicationName", appFactory.getName());
+            map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+            printJson(map);
+          } else {
+            StramAppLauncher submitApp = getStramAppLauncher(filename, config, commandLineInfo.ignorePom);
+            submitApp.loadDependencies();
+            List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
+            List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
+            for (AppFactory appFactory : appFactoryList) {
+              Map<String, Object> m = new HashMap<String, Object>();
+              m.put("name", appFactory.getName());
+              appList.add(m);
+            }
+            printJson(appList, "applications");
+          }
         }
-      }
-      else {
+      } else {
         if (currentApp == null) {
           throw new CliException("No application selected");
         }
