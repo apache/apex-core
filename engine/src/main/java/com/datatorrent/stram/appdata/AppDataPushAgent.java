@@ -261,14 +261,14 @@ public class AppDataPushAgent extends AbstractService
         valueSchema.put("type", type == null ? metricValue.getClass().getCanonicalName() : type);
         String[] dimensionAggregators = metricAggregatorMeta.getDimensionAggregatorsFor(metricName);
         if (dimensionAggregators != null) {
-          valueSchema.put("dimensionAggregators", dimensionAggregators);
+          valueSchema.put("dimensionAggregators", Arrays.asList(dimensionAggregators));
         }
         valueSchemas.put(valueSchema);
       }
       result.put("values", valueSchemas);
       String[] timeBuckets = metricAggregatorMeta.getTimeBuckets();
       if (timeBuckets != null) {
-        result.put("timeBuckets", timeBuckets);
+        result.put("timeBuckets", Arrays.asList(timeBuckets));
       }
 
     } catch (JSONException ex) {
