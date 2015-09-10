@@ -173,7 +173,7 @@ public class StreamingContainerManager implements PlanContext
   private long completeEndWindowStatsWindowId;
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
   private final AtomicLong nodeToStramRequestIds = new AtomicLong(1);
-  private long allocatedMemoryBytes = 0;
+  private int allocatedMemoryMB = 0;
   private List<AppDataSource> appDataSources = null;
   private final Cache<Long, Object> commandResponse = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
   private long lastLatencyWarningTime;
@@ -394,7 +394,7 @@ public class StreamingContainerManager implements PlanContext
       }
       if (nmHttpPort != null) {
         String nodeHttpAddress = nmHost + ":" + nmHttpPort;
-        if (allocatedMemoryBytes == 0) {
+        if (allocatedMemoryMB == 0) {
           String url = ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/ws/v1/node/containers/" + ci.id;
           WebServicesClient webServicesClient = new WebServicesClient();
           try {
@@ -402,7 +402,7 @@ public class StreamingContainerManager implements PlanContext
             JSONObject json = new JSONObject(content);
             int totalMemoryNeededMB = json.getJSONObject("container").getInt("totalMemoryNeededMB");
             if (totalMemoryNeededMB > 0) {
-              allocatedMemoryBytes = totalMemoryNeededMB * 1024 * 1024;
+              allocatedMemoryMB = totalMemoryNeededMB;
             } else {
               LOG.warn("Could not determine the memory allocated for the streaming application master.  Node manager is reporting {} MB from {}", totalMemoryNeededMB, url);
             }
@@ -415,7 +415,7 @@ public class StreamingContainerManager implements PlanContext
         ci.rawContainerLogsUrl = ConfigUtils.getRawContainerLogsUrl(conf, nodeHttpAddress, plan.getLogicalPlan().getAttributes().get(LogicalPlan.APPLICATION_ID), ci.id);
       }
     }
-    ci.memoryMBAllocated = (int)(allocatedMemoryBytes / (1024 * 1024));
+    ci.memoryMBAllocated = allocatedMemoryMB;
     ci.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
     ci.lastHeartbeat = -1;
     ci.startedTime = startTime;
