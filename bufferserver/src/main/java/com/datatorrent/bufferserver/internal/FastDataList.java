@@ -39,12 +39,6 @@ public class FastDataList extends DataList
     super(identifier, blocksize, numberOfCacheBlocks);
   }
 
-  public FastDataList(String identifier, int blocksize, int numberOfCacheBlocks, int refCount)
-  {
-    super(identifier, blocksize, numberOfCacheBlocks, refCount);
-  }
-
-
   long item;
 
   @Override
@@ -102,7 +96,7 @@ public class FastDataList extends DataList
 
     last.writingOffset = writeOffset;
 
-    autoflushExecutor.submit(new Runnable()
+    autoFlushExecutor.submit(new Runnable()
     {
       @Override
       public void run()
@@ -116,7 +110,7 @@ public class FastDataList extends DataList
   }
 
   @Override
-  public FastDataListIterator getIterator(Block block)
+  protected FastDataListIterator getIterator(Block block)
   {
     return new FastDataListIterator(block);
   }
@@ -188,59 +182,37 @@ public class FastDataList extends DataList
     }
 
     @Override
-    public synchronized boolean hasNext()
+    public boolean hasNext()
     {
       while (size == 0) {
         if (da.writingOffset - readOffset >= 2) {
           size = buffer[readOffset];
           size |= (buffer[readOffset + 1] << 8);
-        }
-        else {
-          if (da.writingOffset == buffer.length) {
-            if (da.next == null) {
-              return false;
-            }
-
-            da.release(false);
-            da.next.acquire(true);
-            da = da.next;
-            size = 0;
-            buffer = da.data;
-            readOffset = da.readingOffset;
-          }
-          else {
+        } else {
+          if (da.writingOffset == buffer.length && switchToNextBlock()) {
+            continue;
+          } else {
             return false;
           }
         }
       }
 
-      while (true) {
-        if (readOffset + size + 2 <= da.writingOffset) {
-          current = new SerializedData(buffer, readOffset, size + 2);
-          current.dataOffset = readOffset + 2;
-          return true;
-        }
-        else {
-          if (da.writingOffset == buffer.length) {
-            if (da.next == null) {
-              return false;
-            }
-            else {
-              da.release(false);
-              da.next.acquire(true);
-              da = da.next;
-              size = 0;
-              readOffset = nextOffset.integer = da.readingOffset;
-              buffer = da.data;
-            }
-          }
-          else {
+      if (readOffset + size + 2 <= da.writingOffset) {
+        current = new SerializedData(buffer, readOffset, size + 2);
+        current.dataOffset = readOffset + 2;
+        return true;
+      } else {
+        if (da.writingOffset == buffer.length) {
+          if (!switchToNextBlock()) {
             return false;
           }
+          nextOffset.integer = da.readingOffset;
+          return hasNext();
+        } else {
+          return false;
         }
       }
     }
-
   }
 
   private static final Logger logger = LoggerFactory.getLogger(FastDataList.class);
