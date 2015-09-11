@@ -554,7 +554,7 @@ public class StramWebServices
       Iterator<String> keys = request.keys();
       while (keys.hasNext()) {
         String key = keys.next();
-        String val = request.getString(key);
+        String val = request.isNull(key) ? null : request.getString(key);
         LOG.debug("Setting property for {}: {}={}", operatorName, key, val);
         dagManager.setOperatorProperty(operatorName, key, val);
       }
@@ -582,7 +582,7 @@ public class StramWebServices
       Iterator<String> keys = request.keys();
       while (keys.hasNext()) {
         String key = keys.next();
-        String val = request.getString(key);
+        String val = request.isNull(key) ? null : request.getString(key);
         dagManager.setPhysicalOperatorProperty(operatorId, key, val);
       }
     }
