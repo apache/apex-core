@@ -44,9 +44,10 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   {
     super(path, conf);
     try {
-      File tempFile = File.createTempFile("msp", "msp");
-      this.localBasePath = new File(tempFile.getParent(), "localcheckpoint").getAbsolutePath();
+      File tempFile = File.createTempFile("checkpoint", null);
       tempFile.delete();
+      tempFile.mkdir();
+      this.localBasePath = tempFile.getAbsolutePath();
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
