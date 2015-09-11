@@ -550,6 +550,9 @@ public class StramClient
       if (dag.getMasterJVMOptions() != null) {
         vargs.add(dag.getMasterJVMOptions());
       }
+      Path tmpDir = new Path(ApplicationConstants.Environment.PWD.$(),
+        YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
+      vargs.add("-Djava.io.tmpdir=" + tmpDir);
       vargs.add("-Xmx" + (amMemory * 3 / 4) + "m");
       vargs.add("-XX:+HeapDumpOnOutOfMemoryError");
       vargs.add("-XX:HeapDumpPath=/tmp/dt-heap-" + appId.getId() + ".bin");
