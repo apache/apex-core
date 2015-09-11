@@ -28,6 +28,7 @@ import javax.xml.bind.annotation.XmlElement;
 
 import com.google.common.collect.Maps;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -709,7 +710,7 @@ public class StreamingAppMasterService extends CompositeService
 
       if (UserGroupInformation.isSecurityEnabled() && System.currentTimeMillis() >= expiryTime && hdfsKeyTabFile != null) {
         String applicationId = appAttemptID.getApplicationId().toString();
-        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, "." + File.separator + "tmp", applicationId, conf, hdfsKeyTabFile, credentials, rmAddress, true);
+        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, FileUtils.getTempDirectoryPath(), applicationId, conf, hdfsKeyTabFile, credentials, rmAddress, true);
       }
 
       Runnable r;
