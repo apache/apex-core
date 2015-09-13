@@ -112,7 +112,14 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
          * if there is any state write that for the subscriber before we write the data.
          */
         if (dsp.state != null) {
-          write(DataTuple.getSerializedTuple(MessageType.CODEC_STATE_VALUE, dsp.state));
+          array = DataTuple.getSerializedTuple(MessageType.CODEC_STATE_VALUE, dsp.state);
+          try {
+            while (!write(array)) {
+              sleep(5);
+            }
+          } catch (InterruptedException ie) {
+            throw new RuntimeException(ie);
+          }
         }
         /*
          * Now that the state if any has been sent, we can proceed with the actual data we want to send.
