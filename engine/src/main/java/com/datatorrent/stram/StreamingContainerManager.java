@@ -842,6 +842,10 @@ public class StreamingContainerManager implements PlanContext
           metricPool.add(physicalMetrics);
         }
       }
+      if (metricPool.isEmpty()) {
+        //nothing to aggregate
+        continue;
+      }
       Map<String, Object> lm = aggregator.aggregate(windowId, metricPool);
 
       if (lm != null && lm.size() > 0) {
