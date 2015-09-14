@@ -134,6 +134,9 @@
         </dependencies>
         <configuration>
           <excludedGroups>${test.excludedGroups}</excludedGroups>
+          <systemPropertyVariables>
+            <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
+          </systemPropertyVariables>
         </configuration>
       </plugin>
       <plugin>
