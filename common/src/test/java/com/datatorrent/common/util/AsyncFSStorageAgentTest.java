@@ -63,7 +63,6 @@ public class AsyncFSStorageAgentTest
     {
       try {
         FileUtils.deleteDirectory(new File("target/" + description.getClassName()));
-        FileUtils.deleteDirectory(new File(FileUtils.getTempDirectory(), "localcheckpoint"));
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
