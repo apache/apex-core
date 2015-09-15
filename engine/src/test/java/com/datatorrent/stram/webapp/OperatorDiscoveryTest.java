@@ -1105,5 +1105,14 @@ public class OperatorDiscoveryTest
 
     Assert.assertEquals("number of port types with schema", 0, portsWithSchemaClasses.length());
   }
+
+  @Test
+  public void testMethodType()
+  {
+    Assert.assertEquals("@omitFromUI", OperatorDiscoverer.MethodTagType.OMIT_FROM_UI, OperatorDiscoverer.MethodTagType.from("@omitFromUI"));
+    Assert.assertEquals("@useSchema", OperatorDiscoverer.MethodTagType.USE_SCHEMA, OperatorDiscoverer.MethodTagType.from("@useSchema"));
+    Assert.assertEquals("@description", OperatorDiscoverer.MethodTagType.DESCRIPTION, OperatorDiscoverer.MethodTagType.from("@description"));
+    Assert.assertEquals("@random", null, OperatorDiscoverer.MethodTagType.from("@random"));
+  }
 }
 
