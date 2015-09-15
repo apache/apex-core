@@ -7,7 +7,7 @@ Apache Apex is a unified platform for big data stream and batch processing. Use 
 
 ##Documentation
 
-Please visit the [documentation section](https://www.datatorrent.com/developer-resources/). To get started with developing applications, have a look at [Application Packages Guide](https://www.datatorrent.com/docs/guides/ApplicationPackages.html) and [Application Developer Guide](https://www.datatorrent.com/docs/guides/ApplicationDeveloperGuide.html).
+Please visit the [documentation section](http://apex.incubator.apache.org/docs.html). 
 
 [Malhar](https://github.com/apache/incubator-apex-malhar) is the library of application building blocks and examples that will help you build out your first Apex application quickly.
 
@@ -80,4 +80,5 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 ##Contact
 
-Use dev@apex.incubator.apache.org to ask questions and discuss ideas. To subscribe, send email to dev-subscribe@apex.incubator.apache.org or visit the archive at http://mail-archives.apache.org/mod_mbox/incubator-apex-dev/ 
+Please visit http://apex.incubator.apache.org and [subscribe](http://apex.incubator.apache.org/community.html) to the mailing lists.
+
