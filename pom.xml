@@ -113,7 +113,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-enforcer-plugin</artifactId>
-        <version>1.0.1</version>
+        <version>1.4.1</version>
         <executions>
           <execution>
             <id>enforce-tools</id>
@@ -128,6 +128,10 @@
                 <requireMavenVersion>
                   <version>[3.0.2,)</version>
                 </requireMavenVersion>
+                <requireReleaseDeps>
+                  <message>Snapshots are not allowed</message>
+                  <onlyWhenRelease>true</onlyWhenRelease>
+                </requireReleaseDeps>
               </rules>
             </configuration>
           </execution>
