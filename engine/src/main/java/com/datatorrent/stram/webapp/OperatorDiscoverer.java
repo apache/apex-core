@@ -25,7 +25,6 @@ import com.datatorrent.stram.webapp.asm.CompactFieldNode;
 import com.google.common.base.Predicate;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -75,8 +74,6 @@ public class OperatorDiscoverer
   public static final String PORT_TYPE_INFO_KEY = "portTypeInfo";
   private final TypeGraph typeGraph = TypeGraphFactory.createTypeGraphProtoType();
 
-  private static final String USE_SCHEMA_TAG = "@useSchema";
-  private static final String DESCRIPTION_TAG = "@description";
   private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+?");
 
   private static final String SCHEMA_REQUIRED_KEY = "schemaRequired";
@@ -88,7 +85,6 @@ public class OperatorDiscoverer
     final Map<String, String> tags = new HashMap<String, String>();
     final Map<String, MethodInfo> getMethods = Maps.newHashMap();
     final Map<String, MethodInfo> setMethods = Maps.newHashMap();
-    final Set<String> invisibleGetSetMethods = new HashSet<String>();
     final Map<String, String> fields = new HashMap<String, String>();
   }
 
@@ -97,6 +93,21 @@ public class OperatorDiscoverer
     Map<String, String> descriptions = Maps.newHashMap();
     Map<String, String> useSchemas = Maps.newHashMap();
     String comment;
+    boolean omitFromUI;
+  }
+
+  private enum MethodTagType
+  {
+    USE_SCHEMA("@useSchema"),
+    DESCRIPTION("@description"),
+    OMIT_FROM_UI("@omitFromUI");
+
+    private final String tag;
+
+    MethodTagType(String tag)
+    {
+      this.tag = tag;
+    }
   }
 
   private class JavadocSAXHandler extends DefaultHandler {
@@ -139,12 +150,12 @@ public class OperatorDiscoverer
             boolean lSetterCheck = !lGetterCheck && isSetter(methodName);
 
             if (lGetterCheck || lSetterCheck) {
-              if ("@omitFromUI".equals(tagName)) {
-                oci.invisibleGetSetMethods.add(methodName);
-              } else if (DESCRIPTION_TAG.equals(tagName)) {
-                addTagToMethod(lGetterCheck ? oci.getMethods : oci.setMethods, tagText, true);
-              } else if (USE_SCHEMA_TAG.equals(tagName)) {
-                addTagToMethod(lGetterCheck ? oci.getMethods : oci.setMethods, tagText, false);
+              if (MethodTagType.OMIT_FROM_UI.tag.equals(tagName)) {
+                addTagToMethod(lGetterCheck ? oci.getMethods : oci.setMethods, tagText, MethodTagType.OMIT_FROM_UI);
+              } else if (MethodTagType.USE_SCHEMA.tag.equals(tagName)) {
+                addTagToMethod(lGetterCheck ? oci.getMethods : oci.setMethods, tagText, MethodTagType.USE_SCHEMA);
+              } else if (MethodTagType.DESCRIPTION.tag.equals(tagName)) {
+                addTagToMethod(lGetterCheck ? oci.getMethods : oci.setMethods, tagText, MethodTagType.DESCRIPTION);
               }
             }
 //            if ("@return".equals(tagName) && isGetter(methodName)) {
@@ -168,17 +179,21 @@ public class OperatorDiscoverer
       }
     }
 
-    private void addTagToMethod(Map<String, MethodInfo> methods, String tagText, boolean isDescription)
+    private void addTagToMethod(Map<String, MethodInfo> methods, String tagText, MethodTagType tagType)
     {
       MethodInfo mi = methods.get(methodName);
       if (mi == null) {
         mi = new MethodInfo();
         methods.put(methodName, mi);
       }
+      if (tagType == MethodTagType.OMIT_FROM_UI) {
+        mi.omitFromUI = true;
+        return;
+      }
       String[] tagParts = Iterables.toArray(Splitter.on(WHITESPACE_PATTERN).trimResults().omitEmptyStrings().
         limit(2).split(tagText), String.class);
       if (tagParts.length == 2) {
-        if (isDescription) {
+        if (tagType == MethodTagType.DESCRIPTION) {
           mi.descriptions.put(tagParts[0], tagParts[1]);
         } else {
           mi.useSchemas.put(tagParts[0], tagParts[1]);
@@ -388,7 +403,7 @@ public class OperatorDiscoverer
       }
     });
 
-    if (searchTerm == null && parent == Operator.class.getName()) {
+    if (searchTerm == null && parent.equals(Operator.class.getName())) {
       return filteredClass;
     }
 
@@ -398,7 +413,7 @@ public class OperatorDiscoverer
 
     Set<String> result = new HashSet<String>();
     for (String clazz : filteredClass) {
-      if (parent == Operator.class.getName() || typeGraph.isAncestor(parent, clazz)) {
+      if (parent.equals(Operator.class.getName()) || typeGraph.isAncestor(parent, clazz)) {
         if (searchTerm == null) {
           result.add(clazz);
         } else {
@@ -595,13 +610,16 @@ public class OperatorDiscoverer
         result.put(propJ);
         continue;
       }
-      if (oci.invisibleGetSetMethods.contains(getPrefix + propName) || oci.invisibleGetSetMethods.contains(setPrefix + propName)) {
+      MethodInfo setterInfo = oci.setMethods.get(setPrefix + propName);
+      MethodInfo getterInfo = oci.getMethods.get(getPrefix + propName);
+
+      if ((getterInfo != null && getterInfo.omitFromUI) || (setterInfo != null && setterInfo.omitFromUI)) {
         continue;
       }
-      MethodInfo methodInfo = oci.setMethods.get(setPrefix + propName);
-      methodInfo = methodInfo == null ? oci.getMethods.get(getPrefix + propName) : methodInfo;
-      if (methodInfo != null) {
-        addTagsToProperties(methodInfo, propJ);
+      if (setterInfo != null) {
+        addTagsToProperties(setterInfo, propJ);
+      } else if (getterInfo != null) {
+        addTagsToProperties(getterInfo, propJ);
       }
       result.put(propJ);
     }
