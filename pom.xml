@@ -120,9 +120,6 @@
                 <requireReleaseDeps>
                   <message>Snapshots are not allowed</message>
                   <onlyWhenRelease>true</onlyWhenRelease>
-                  <excludes>
-                    <exclude>org.couchbase.mock:CouchbaseMock</exclude>
-                  </excludes>
                 </requireReleaseDeps>
               </rules>
             </configuration>
