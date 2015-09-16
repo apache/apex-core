@@ -112,35 +112,6 @@
         <version>2.1</version>
       </plugin>
       <plugin>
-        <artifactId>maven-enforcer-plugin</artifactId>
-        <version>1.4.1</version>
-        <executions>
-          <execution>
-            <id>enforce-tools</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <requireJavaVersion>
-                  <version>[1.7.0,)</version>
-                </requireJavaVersion>
-                <requireMavenVersion>
-                  <version>[3.0.2,)</version>
-                </requireMavenVersion>
-                <requireReleaseDeps>
-                  <message>Snapshots are not allowed</message>
-                  <onlyWhenRelease>true</onlyWhenRelease>
-                  <excludes>
-                    <exclude>org.couchbase.mock:CouchbaseMock</exclude>
-                  </excludes>
-                </requireReleaseDeps>
-              </rules>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.14.1</version>
         <dependencies>
@@ -219,6 +190,55 @@
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>exec-maven-plugin</artifactId>
           <version>1.2.1</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <version>1.4.1</version>
+          <executions>
+            <execution>
+              <id>enforce-java</id>
+              <goals>
+                <goal>enforce</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <requireJavaVersion>
+                    <version>[1.7.0,)</version>
+                    <message>Build requires Java 1.7 or above.</message>
+                  </requireJavaVersion>
+                </rules>
+              </configuration>
+            </execution>
+            <execution>
+              <id>enforce-maven</id>
+              <goals>
+                <goal>enforce</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <requireMavenVersion>
+                    <version>[3.0.5,)</version>
+                    <message>Build requires Maven 3.0.5 or above.</message>
+                  </requireMavenVersion>
+                </rules>
+              </configuration>
+            </execution>
+            <execution>
+              <id>enforce-release-dependencies</id>
+              <goals>
+                <goal>enforce</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <requireReleaseDeps>
+                    <message>Snapshots dependencies are not allowed for release build.</message>
+                    <onlyWhenRelease>true</onlyWhenRelease>
+                  </requireReleaseDeps>
+                </rules>
+              </configuration>
+            </execution>
+          </executions>
         </plugin>
       </plugins>
     </pluginManagement>
