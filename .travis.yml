@@ -1,4 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 language: java
+
 notifications:
   slack:
     secure: GlWD2EjgNC6Lg2DtAfZuKhg2RTHE0FMeyfHH24D7TKmV49gRVTzTTqvExwOdLLYDDIu966eOF5w90/PfiD11A4rpm6+WyjRHDkpOhTyjBKWc2btMqNwiP1hRf2uKEG6A+RgszaQJ4HkGiMxIpDJ3o/jaTpBseOeA399t8Z7Pkd6obXVAEMcnm2XtfUPzIBqGblVkiecS3OzbkzjKWaOG6+nlp+ajVO7MazsOR05JNZ1MXnDOK/Qq/7xLBtweF4r/O8okyg52fST4pGqk4JTTI++bVFoRySpjNWSSJbdrfkWG/7h0sfqMcwMj8TpZqojcCuTvZih+IyPZwX3MP6Ls4bF6OFcD3BvWg049WbstA6ZdKnVW9fOiJoJ+Bx9gNI0tKtYeDt/8nMBfSRVMmzRVEGdTOEEpFs7n79OVVytwbp8qYFU+waqlG1/tMQvCclSaxuY8d236Ybg410KLiMQ0YhQ8ZaTVagHu2l0KrfV16Xq3/CRsolHa8k7PxDzmCxdi07Ao/mrorQLmJWoc7FkxEw6ZrEGHP17HTn5uidoTkANgGak4AVgrJm6zLKdAERxvr1KMnfyuJLT1ZK1x73SV+3EpdzcMLxvq2dMaBpZcfARiYB04EwSHVBdm/D0AIZtRL2s1rG85y1OtCkDMd04ZEvbwdKYZ+fD+HjTn7Zo7AKM=
