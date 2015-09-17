@@ -573,8 +573,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       logger.warn("Ignoring {} attribute in favor of {} processing mode", OperatorContext.CHECKPOINT_WINDOW_COUNT.getSimpleName(), ProcessingMode.EXACTLY_ONCE.name());
       CHECKPOINT_WINDOW_COUNT = 1;
     }
-
-    context.setThread(Thread.currentThread());
+    
     activateSinks();
     if (operator instanceof Operator.ActivationListener) {
       ((Operator.ActivationListener<OperatorContext>) operator).activate(context);

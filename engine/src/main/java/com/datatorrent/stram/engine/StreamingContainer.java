@@ -1351,6 +1351,7 @@ public class StreamingContainer extends YarnContainerMain
         @Override
         public void run()
         {
+          node.context.setThread(Thread.currentThread());
           HashSet<OperatorDeployInfo> setOperators = new HashSet<OperatorDeployInfo>();
           OperatorDeployInfo currentdi = ndi;
           try {
