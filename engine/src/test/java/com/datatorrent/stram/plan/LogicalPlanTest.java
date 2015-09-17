@@ -124,7 +124,7 @@ public class LogicalPlanTest {
     dag.addStream("BtoC", opB.outport1, opC.inport1);
     dag.addStream("CtoD", opC.outport1, opD.inport1);
     dag.addStream("CtoB", opC.outport2, opB.inport2);
-    dag.setInputPortAttribute(opB.inport2, PortContext.ITERATION_WINDOW_COUNT, 1);
+    dag.setInputPortAttribute(opB.inport2, PortContext.ITERATION_WINDOW_OFFSET, 1);
 
     try {
       final StramLocalCluster localCluster = new StramLocalCluster(dag);

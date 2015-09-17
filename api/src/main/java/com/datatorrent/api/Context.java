@@ -159,10 +159,10 @@ public interface Context
     Attribute<Class<?>> TUPLE_CLASS = new Attribute<>(new Class2String<>());
 
     /**
-     * Attribute of input port to specify how many windows ahead incoming windows should be treated as.
+     * Attribute of input port to specify how many windows behind incoming windows should be treated as.
      * This is for iterative processing.
      */
-    Attribute<Integer> ITERATION_WINDOW_COUNT = new Attribute<>(0);
+    Attribute<Integer> ITERATION_WINDOW_OFFSET = new Attribute<>(0);
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(PortContext.class);

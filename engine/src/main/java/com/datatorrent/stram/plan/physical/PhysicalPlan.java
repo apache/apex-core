@@ -327,7 +327,7 @@ public class PhysicalPlan implements Serializable
       for (Map.Entry<InputPortMeta, StreamMeta> entry : n.getInputStreams().entrySet()) {
         InputPortMeta port = entry.getKey();
         StreamMeta s = entry.getValue();
-        int iterationWindows = port.getValue(PortContext.ITERATION_WINDOW_COUNT);
+        int iterationWindows = port.getValue(PortContext.ITERATION_WINDOW_OFFSET);
         if (iterationWindows == 0 && s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorMeta())) {
           pendingNodes.push(n);
           pendingNodes.push(s.getSource().getOperatorMeta());
@@ -941,11 +941,11 @@ public class PhysicalPlan implements Serializable
                 PTOperator slidingUnifier = StreamMapping.createSlidingUnifier(sourceOut.logicalStream, this,
                   sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT), slidingWindowCount);
                 StreamMapping.addInput(slidingUnifier, sourceOut, null);
-                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, slidingUnifier.outputs.get(0), ipm.getKey().getValue(PortContext.ITERATION_WINDOW_COUNT));
+                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, slidingUnifier.outputs.get(0), ipm.getKey().getValue(PortContext.ITERATION_WINDOW_OFFSET));
                 sourceMapping.outputStreams.get(ipm.getValue().getSource()).slidingUnifiers.add(slidingUnifier);
               }
               else {
-                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut, ipm.getKey().getValue(PortContext.ITERATION_WINDOW_COUNT));
+                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut, ipm.getKey().getValue(PortContext.ITERATION_WINDOW_OFFSET));
               }
               oper.inputs.add(input);
             }
