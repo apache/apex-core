@@ -21,6 +21,7 @@
 package com.datatorrent.common.util;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.EnumSet;
 
 import org.apache.hadoop.conf.Configuration;
@@ -49,9 +50,7 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   {
     super(path, conf);
     try {
-      File tempFile = File.createTempFile("msp", "msp");
-      this.localBasePath = new File(tempFile.getParent(), "localcheckpoint").getAbsolutePath();
-      tempFile.delete();
+      this.localBasePath = Files.createTempDirectory("chkp").toString();
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
