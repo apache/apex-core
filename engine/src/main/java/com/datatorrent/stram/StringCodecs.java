@@ -54,6 +54,9 @@ public class StringCodecs
       @SuppressWarnings("unchecked")
       public Object convert(Class type, Object value)
       {
+        if (value == null) {
+          return null;
+        }
         for (Class<?> clazz = value.getClass(); clazz != null; clazz = clazz.getSuperclass()) {
           Class<? extends StringCodec> codec = codecs.get(clazz);
           if (codec == null) {
@@ -84,7 +87,7 @@ public class StringCodecs
       @Override
       public Object convert(Class type, Object value)
       {
-        return URI.create(value.toString());
+        return value == null ? null : URI.create(value.toString());
       }
     }, URI.class);
   }
@@ -124,7 +127,7 @@ public class StringCodecs
             @Override
             public Object convert(Class type, Object value)
             {
-              return codecInstance.fromString(value.toString());
+              return value == null ? null : codecInstance.fromString(value.toString());
             }
 
           }, entry.getKey());
@@ -150,7 +153,7 @@ public class StringCodecs
       @Override
       public Object convert(Class type, Object value)
       {
-        return codecInstance.fromString(value.toString());
+        return value == null ? null : codecInstance.fromString(value.toString());
       }
 
     }, clazz);

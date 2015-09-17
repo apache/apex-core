@@ -34,6 +34,7 @@ import java.util.concurrent.CountDownLatch;
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -599,7 +600,7 @@ public class StreamingContainer extends YarnContainerMain
     while (!exitHeartbeatLoop) {
 
       if (UserGroupInformation.isSecurityEnabled() && System.currentTimeMillis() >= expiryTime && hdfsKeyTabFile != null) {
-        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, "." + File.separator + "tmp", containerId, conf, hdfsKeyTabFile, credentials, null, false);
+        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, FileUtils.getTempDirectoryPath(), containerId, conf, hdfsKeyTabFile, credentials, null, false);
       }
       synchronized (this.heartbeatTrigger) {
         try {

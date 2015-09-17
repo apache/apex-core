@@ -18,6 +18,7 @@ package com.datatorrent.stram.client;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.util.JSONSerializationProvider;
 import net.lingala.zip4j.exception.ZipException;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -37,6 +38,8 @@ import org.junit.BeforeClass;
 public class AppPackageTest
 {
   private static AppPackage ap;
+  //yet another app package which retains the files
+  private static AppPackage yap;
   private static JSONSerializationProvider jomp;
   private static JSONObject json;
 
@@ -49,6 +52,9 @@ public class AppPackageTest
       File file = StramTestSupport.createAppPackageFile();
       // Set up test instance
       ap = new AppPackage(file, true);
+      // set up another instance
+      File testfolder = new File("target/testapp");
+      yap = new AppPackage(file, testfolder, false);
       jomp = new JSONSerializationProvider();
       json = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
 
@@ -58,6 +64,9 @@ public class AppPackageTest
       throw new RuntimeException(e);
     } catch (JSONException e) {
       throw new RuntimeException(e);
+    } finally {
+      IOUtils.closeQuietly(ap);
+      IOUtils.closeQuietly(yap);
     }
   }
 
@@ -82,6 +91,10 @@ public class AppPackageTest
     JSONObject dag = application.getJSONObject("dag");
     Assert.assertTrue("There is at least one stream", dag.getJSONArray("streams").length() >= 1);
     Assert.assertEquals("There are two operator", 2, dag.getJSONArray("operators").length());
+
+    Assert.assertTrue("app package extraction folder should be retained", new File("target/testapp").exists());
+    yap.cleanContent();
+    Assert.assertTrue("app package extraction folder should be removed", !new File("target/testapp").exists());
   }
 
   @Test

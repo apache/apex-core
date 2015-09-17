@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
  *
  * @since 1.0.3
  */
-public class AppPackage extends JarFile implements Closeable
+public class AppPackage extends JarFile
 {
   public static final String ATTRIBUTE_DT_ENGINE_VERSION = "DT-Engine-Version";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_NAME = "DT-App-Package-Name";
@@ -63,6 +63,7 @@ public class AppPackage extends JarFile implements Closeable
   private final Set<String> configs = new TreeSet<String>();
 
   private final File resourcesDirectory;
+  private final boolean cleanOnClose;
 
   public static class AppInfo
   {
@@ -97,14 +98,27 @@ public class AppPackage extends JarFile implements Closeable
    * If app directory is to be processed, there may be resource leak in the class loader. Only pass true for short-lived
    * applications
    *
+   * If contentFolder is not null, it will try to create the contentFolder, file will be retained on disk after App Package is closed
+   * If contentFolder is null, temp folder will be created and will be cleaned on close()
+   *
    * @param file
+   * @param contentFolder  the folder that the app package will be extracted to
    * @param processAppDirectory
    * @throws java.io.IOException
    * @throws net.lingala.zip4j.exception.ZipException
    */
-  public AppPackage(File file, boolean processAppDirectory) throws IOException, ZipException
+  public AppPackage(File file, File contentFolder, boolean processAppDirectory) throws IOException, ZipException
   {
     super(file);
+
+    if (contentFolder != null) {
+      FileUtils.forceMkdir(contentFolder);
+      cleanOnClose = false;
+    } else {
+      cleanOnClose =  true;
+      contentFolder = new File("/tmp/dt-appPackage-" + Long.toString(System.nanoTime()));
+    }
+
     Manifest manifest = getManifest();
     if (manifest == null) {
       throw new IOException("Not a valid app package. MANIFEST.MF is not present.");
@@ -120,7 +134,7 @@ public class AppPackage extends JarFile implements Closeable
       throw new IOException("Not a valid app package.  Class-Path is missing from MANIFEST.MF");
     }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
-    directory = new File("/tmp/dt-appPackage-" + Long.toString(System.nanoTime()));
+    directory = contentFolder;
     extractToDirectory(directory, file);
     if (processAppDirectory) {
       processAppDirectory(new File(directory, "app"));
@@ -146,6 +160,25 @@ public class AppPackage extends JarFile implements Closeable
         }
       }
     }
+  }
+
+  /**
+   * Creates an App Package object.
+   *
+   * If app directory is to be processed, there may be resource leak in the class loader. Only pass true for short-lived
+   * applications
+   *
+   * Files in app package will be extracted to tmp folder and will be cleaned on close()
+   * The close() method could be explicitly called or implicitly called by GC finalize()
+   *
+   * @param file
+   * @param processAppDirectory
+   * @throws java.io.IOException
+   * @throws net.lingala.zip4j.exception.ZipException
+   */
+  public AppPackage(File file, boolean processAppDirectory) throws IOException, ZipException
+  {
+    this(file, null, processAppDirectory);
   }
 
   public static void extractToDirectory(File directory, File appPackageFile) throws ZipException
@@ -177,7 +210,15 @@ public class AppPackage extends JarFile implements Closeable
   public void close() throws IOException
   {
     super.close();
+    if (cleanOnClose) {
+      cleanContent();
+    }
+  }
+
+  public void cleanContent() throws IOException
+  {
     FileUtils.deleteDirectory(directory);
+    LOG.debug("App Package {}-{} folder {} is removed", appPackageName, appPackageVersion, directory.getAbsolutePath());
   }
 
   public String getAppPackageName()

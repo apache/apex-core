@@ -554,7 +554,7 @@ public class GenericNode extends Node<Operator>
           }
 
           if (need2sleep) {
-            if (handleIdleTime) {
+            if (handleIdleTime && insideWindow) {
               ((IdleTimeHandler) operator).handleIdleTime();
             }
             else {
