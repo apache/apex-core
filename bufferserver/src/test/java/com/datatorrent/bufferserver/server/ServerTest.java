@@ -105,7 +105,7 @@ public class ServerTest
     assertEquals(bss.tupleCount.get(), 0);
   }
 
-  @Test(dependsOnMethods = {"testNoPublishNoSubscribe"})
+  @Test(dependsOnMethods = {"testNoPublishNoSubscribe"}, timeOut = 50)
   @SuppressWarnings("SleepWhileInLoop")
   public void test1Window() throws InterruptedException
   {
@@ -128,12 +128,14 @@ public class ServerTest
         break;
       }
     }
-    Thread.sleep(10);
+
+    while (bss.tupleCount.get() != 1) {
+      Thread.sleep(10);
+    }
 
     eventloopClient.disconnect(bss);
     eventloopClient.disconnect(bsp);
 
-    assertEquals(bss.tupleCount.get(), 1);
     Assert.assertFalse(bss.resetPayloads.isEmpty());
   }
 
@@ -315,7 +317,7 @@ public class ServerTest
 
   @Test(dependsOnMethods = {"testRepublish"})
   @SuppressWarnings("SleepWhileInLoop")
-  public void testReblishLowerWindow() throws InterruptedException
+  public void testRepublishLowerWindow() throws InterruptedException
   {
     bsp = new Publisher("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
@@ -365,7 +367,7 @@ public class ServerTest
     assertEquals(bss.tupleCount.get(), 8);
   }
 
-  @Test(dependsOnMethods = {"testReblishLowerWindow"})
+  @Test(dependsOnMethods = {"testRepublishLowerWindow"})
   @SuppressWarnings("SleepWhileInLoop")
   public void testReset() throws InterruptedException
   {

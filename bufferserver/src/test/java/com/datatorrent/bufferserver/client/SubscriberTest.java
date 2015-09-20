@@ -61,7 +61,7 @@ public class SubscriberTest
     eventloopServer.start();
     eventloopClient.start();
 
-    instance = new Server(0);
+    instance = new Server(0, 64, 2);
     address = instance.run(eventloopServer);
     assert (address instanceof InetSocketAddress);
   }
@@ -74,7 +74,7 @@ public class SubscriberTest
     eventloopClient.stop();
   }
 
-  @Test
+  @Test(timeOut = 1000)
   @SuppressWarnings("SleepWhileInLoop")
   public void test() throws InterruptedException
   {
@@ -218,7 +218,7 @@ public class SubscriberTest
     eventloopClient.disconnect(bsp2);
     eventloopClient.disconnect(bss2);
 
-    Assert.assertTrue((bss2.lastPayload.getWindowId() - 8) * 3 < bss2.tupleCount.get());
+    Assert.assertTrue((bss2.lastPayload.getWindowId() - 8) * 3 <= bss2.tupleCount.get());
   }
 
 }

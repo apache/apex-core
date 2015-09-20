@@ -398,7 +398,7 @@ public class DataList
 
   public boolean isMemoryBlockAvailable()
   {
-    return numberOfInMemBlockPermits.get() > 0;
+    return (storage == null) || (numberOfInMemBlockPermits.get() > 0);
   }
 
   public byte[] newBuffer()
@@ -733,7 +733,9 @@ public class DataList
         }
       } else if (wait && data == null) {
         try {
-          wait();
+          synchronized (Block.this) {
+            wait();
+          }
         }
         catch (InterruptedException ex) {
           throw new RuntimeException("Interrupted while waiting for data to be loaded!", ex);
