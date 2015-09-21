@@ -525,6 +525,45 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
+  @SuppressWarnings( {"UnnecessaryBoxing", "AssertEqualsBetweenInconvertibleTypes"})
+  public void testUnifierLevelAttributes() {
+    String appName = "app1";
+    final GenericTestOperator operator1 = new GenericTestOperator();
+    final GenericTestOperator operator2 = new GenericTestOperator();
+    StreamingApplication app = new StreamingApplication() {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        dag.addOperator("operator1", operator1);
+        dag.addOperator("operator2", operator2);
+        dag.addStream("s1", operator1.outport1, operator2.inport1);
+      }
+    };
+
+    Properties props = new Properties();
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1.outputport.outport1.unifier." + OperatorContext.APPLICATION_WINDOW_COUNT.getName(), "2");
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1.outputport.outport1.unifier." + OperatorContext.MEMORY_MB.getName(), "512");
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
+    dagBuilder.addFromProperties(props, null);
+
+    String appPath = app.getClass().getName().replace(".", "/") + ".class";
+
+    LogicalPlan dag = new LogicalPlan();
+    dagBuilder.prepareDAG(dag, app, appPath);
+
+    OperatorMeta om = null;
+    for (Map.Entry<OutputPortMeta, StreamMeta> entry : dag.getOperatorMeta("operator1").getOutputStreams().entrySet()) {
+      if(entry.getKey().getPortName().equals("outport1")) {
+        om = entry.getKey().getUnifierMeta();
+      }
+    }
+    Assert.assertNotNull(om);
+    Assert.assertEquals("", Integer.valueOf(2), om.getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
+    Assert.assertEquals("", Integer.valueOf(512), om.getValue(OperatorContext.MEMORY_MB));
+  }
+
+  @Test
   public void testOperatorLevelProperties() {
     String appName = "app1";
     final GenericTestOperator operator1 = new GenericTestOperator();
