@@ -26,6 +26,7 @@ import javax.ws.rs.core.UriBuilder;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
@@ -328,10 +329,15 @@ public class StramAgent extends FSAgent
   {
     YarnClient yarnClient = YarnClient.createYarnClient();
     String url;
+    ApplicationReport ar = null;
     try {
       yarnClient.init(conf);
       yarnClient.start();
-      ApplicationReport ar = yarnClient.getApplicationReport(ConverterUtils.toApplicationId(appId));
+      ar = yarnClient.getApplicationReport(ConverterUtils.toApplicationId(appId));
+      if (ar == null) {
+        LOG.error("YARN does not have record for this application {}", appId);
+        return null;
+      }
       String trackingUrl = ar.getTrackingUrl();
       if (!trackingUrl.startsWith("http://")
               && !trackingUrl.startsWith("https://")) {
@@ -350,13 +356,17 @@ public class StramAgent extends FSAgent
       url += WebServices.PATH;
     }
     catch (Exception ex) {
-      //LOG.error("Caught exception when retrieving web services info", ex);
+      LOG.error("Caught exception when retrieving web services info", ex);
       return null;
     }
     finally {
       yarnClient.stop();
     }
 
+    if (ar.getYarnApplicationState() != YarnApplicationState.RUNNING) {
+      LOG.warn("Application {} is not running (state: {})", appId, ar.getYarnApplicationState());
+      return null;
+    }
     WebServicesClient webServicesClient = new WebServicesClient();
     try {
       JSONObject response;
@@ -415,7 +425,7 @@ public class StramAgent extends FSAgent
       catch (JSONException ex) {
         LOG.error("Error reading from the permissions info. Ignoring", ex);
       }
-      catch (IOException ex) {
+      catch (Exception ex) {
         // ignore
       }
       finally {
@@ -424,7 +434,7 @@ public class StramAgent extends FSAgent
       return new StramWebServicesInfo(appMasterUrl, version, appPath, user, secToken, permissionsInfo);
     }
     catch (Exception ex) {
-      LOG.debug("Caught exception when retrieving web service info for app " + appId, ex);
+      LOG.error("Caught exception when retrieving web service info for app " + appId, ex);
       return null;
     }
   }
