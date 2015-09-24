@@ -1,15 +1,15 @@
 
 
-Welcome to Apex!
-===============
+Apache Apex (incubating)
+========================
 
-Apex is a unified platform for big data stream and batch processing. Use cases include ingestion, ETL, real-time analytics, alerts and real-time actions. Apex is a Hadoop-native YARN implementation and uses HDFS by default. It simplifies development and productization of Hadoop applications by reducing time to market. Key features include Enterprise Grade Operability with Fault Tolerance,  State Management, Event Processing Guarantees, No Data Loss, In-memory Performance & Scalability and Native Window Support.
+Apache Apex is a unified platform for big data stream and batch processing. Use cases include ingestion, ETL, real-time analytics, alerts and real-time actions. Apex is a Hadoop-native YARN implementation and uses HDFS by default. It simplifies development and productization of Hadoop applications by reducing time to market. Key features include Enterprise Grade Operability with Fault Tolerance,  State Management, Event Processing Guarantees, No Data Loss, In-memory Performance & Scalability and Native Window Support.
 
 ##Documentation
 
-Please visit the [documentation section](https://www.datatorrent.com/developer-resources/). To get started with developing applications, have a look at [Application Packages Guide](https://www.datatorrent.com/docs/guides/ApplicationPackages.html) and [Application Developer Guide](https://www.datatorrent.com/docs/guides/ApplicationDeveloperGuide.html).
+Please visit the [documentation section](http://apex.incubator.apache.org/docs.html). 
 
-[Malhar](https://github.com/DataTorrent/Malhar) is the library of application building blocks and examples that will help you build out your first Apex application quickly.
+[Malhar](https://github.com/apache/incubator-apex-malhar) is a library of application building blocks and examples that will help you build out your first Apex application quickly.
 
 ##Contributing
 
@@ -60,6 +60,8 @@ https://www.datatorrent.com/download/
 
 ##Issue tracking
 
+(Note that we will be moving to the Apache JIRA system soon.)
+
 [Apex JIRA](https://malhar.atlassian.net/projects/APEX) issue tracking system is used for this project.
 You can submit new issues and track the progress of existing issues at https://malhar.atlassian.net/projects/APEX.
 
@@ -78,4 +80,5 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 ##Contact
 
-Use apex-dev@googlegroups.com to discuss ideas, ask questions about the implementation or any other communication while working on the engine code.  To subscribe or browse the message archive, visit https://groups.google.com/forum/#!forum/apex-dev
+Please visit http://apex.incubator.apache.org and [subscribe](http://apex.incubator.apache.org/community.html) to the mailing lists.
+
