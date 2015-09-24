@@ -15,7 +15,9 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,12 +32,14 @@ import com.google.common.math.IntMath;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DefaultPartition;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StreamCodec;
-
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StreamingContainerAgent;
+import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -188,6 +192,69 @@ public class StreamMapping implements java.io.Serializable
     }
   }
 
+  private List<PTOutput> setupPartitionerUnifiers(List<PTOutput> upstream, Partitioner<Operator> partitioner)
+  {
+    Operator.Unifier<?> unifier = streamMeta.getSource().getUnifier();
+
+    if (unifier == null) {
+      unifier = new DefaultUnifier();
+    }
+
+    Collection<Partitioner.Partition<Operator>> collection = new ArrayList<>(1);
+    DefaultPartition<Operator> firstPartition = new DefaultPartition<Operator>(unifier);
+    collection.add(firstPartition);
+
+    Collection<Partitioner.Partition<Operator>> partitions = partitioner.definePartitions(collection, new PhysicalPlan.UnifierPartitioningContextImpl());
+
+    if (partitions.size() <= 1) {
+      return upstream;
+    }
+    OperatorMeta om = streamMeta.getSource().getOperatorMeta();
+
+    InputPortMeta portMeta = null;
+    Map<InputPortMeta, StreamMeta> inputs = om.getInputStreams();
+    if (!inputs.isEmpty()) {
+      portMeta = inputs.keySet().iterator().next();
+      DefaultPartition.assignPartitionKeys(partitions, portMeta.getPortObject());
+    }
+
+    List<PTOutput> Unifierupstream = new LinkedList<>();
+    for (Partitioner.Partition<Operator> partition : partitions) {
+      PortMappingDescriptor mergeDesc = new PortMappingDescriptor();
+      Operators.describe(unifier, mergeDesc);
+      if (mergeDesc.outputPorts.size() != 1) {
+        throw new AssertionError("Unifier should have single output port, found: " + mergeDesc.outputPorts);
+      }
+
+      PTOperator pu = plan.newOperator(om, "#unique#" + streamMeta.getSource().getUnifierMeta().getName());
+
+      pu.unifiedOperatorMeta = streamMeta.getSource().getOperatorMeta();
+
+      pu.outputs.add(new PTOutput(mergeDesc.outputPorts.keySet().iterator().next(), streamMeta, pu));
+
+      if (partition != null) {
+        pu.setPartitionKeys(partition.getPartitionKeys());
+      }
+      plan.newOpers.put(pu, unifier);
+      for (int j = 0; j < upstream.size(); j++) {
+        PTOutput source = upstream.get(j);
+        if (portMeta != null) {
+          addInput(pu, source, partition.getPartitionKeys().get(portMeta.getPortObject()));
+        } else {
+          addInput(pu, source, null);
+        }
+      }
+      this.cascadingUnifiers.add(pu);
+      for (PTOutput source : pu.outputs) {
+        if (source.logicalStream == streamMeta) {
+          Unifierupstream.add(source);
+        }
+      }
+    }
+
+    return Unifierupstream;
+  }
+
   /**
    * rebuild the tree, which may cause more changes to execution layer than need be
    * TODO: investigate incremental logic
@@ -222,6 +289,12 @@ public class StreamMapping implements java.io.Serializable
       plan.undeployOpers.addAll(currentUnifiers);
       addSlidingUnifiers();
 
+      List<PTOutput> unifierSources = this.upstream;
+      Partitioner<Operator> partitioner = streamMeta.getSource().getUnifierMeta().getAttributes().contains(Context.OperatorContext.PARTITIONER) ?
+          (Partitioner<Operator>)streamMeta.getSource().getUnifierMeta().getValue(Context.OperatorContext.PARTITIONER) : null;
+      if (partitioner != null) {
+        unifierSources = setupPartitionerUnifiers(this.upstream, partitioner);
+      }
       int limit = streamMeta.getSource().getValue(PortContext.UNIFIER_LIMIT);
 
       boolean separateUnifiers = false;
@@ -237,13 +310,12 @@ public class StreamMapping implements java.io.Serializable
         }
       }
 
-      List<PTOutput> unifierSources = this.upstream;
       Map<StreamCodec<?>, List<PTOutput>> cascadeUnifierSourcesMap = Maps.newHashMap();
 
-      if (limit > 1 && this.upstream.size() > limit) {
+      if (limit > 1 && unifierSources.size() > limit) {
         // cascading unifier
         if (!separateUnifiers) {
-          unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
+          unifierSources = setupCascadingUnifiers(unifierSources, currentUnifiers, limit, 0);
         } else {
           for (InputPortMeta ipm : streamMeta.getSinks()) {
             StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(ipm);

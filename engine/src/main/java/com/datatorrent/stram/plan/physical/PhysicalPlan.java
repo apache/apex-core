@@ -576,6 +576,26 @@ public class PhysicalPlan implements Serializable
     }
   }
 
+  public static class UnifierPartitioningContextImpl implements Partitioner.PartitioningContext
+  {
+
+    protected UnifierPartitioningContextImpl()
+    {
+    }
+
+    @Override
+    public int getParallelPartitionCount()
+    {
+      return 0;
+    }
+
+    @Override
+    public List<InputPort<?>> getInputPorts()
+    {
+      return null;
+    }
+  }
+
   private void initPartitioning(PMapping m, int partitionCnt)
   {
     Operator operator = m.logicalOperator.getOperator();
