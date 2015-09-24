@@ -1079,6 +1079,18 @@ public class LogicalPlan implements Serializable, DAG
     return operator;
   }
 
+  @Override
+  public <T extends Module> T addModule(String name, Class<T> moduleClass)
+  {
+    throw new UnsupportedOperationException("Modules are not supported");
+  }
+
+  @Override
+  public <T extends Module> T addModule(String name, T module)
+  {
+    throw new UnsupportedOperationException("Modules are not supported");
+  }
+
   public void removeOperator(Operator operator)
   {
     OperatorMeta om = getMeta(operator);
@@ -1231,6 +1243,12 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
+  public ModuleMeta getModuleMeta(String moduleName)
+  {
+    throw new UnsupportedOperationException("Modules are not supported");
+  }
+
+  @Override
   public OperatorMeta getMeta(Operator operator)
   {
     // TODO: cache mapping
@@ -1240,6 +1258,12 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     throw new IllegalArgumentException("Operator not associated with the DAG: " + operator);
+  }
+
+  @Override
+  public ModuleMeta getMeta(Module module)
+  {
+    throw new UnsupportedOperationException("Modules are not supported");
   }
 
   public int getMaxContainerCount()
