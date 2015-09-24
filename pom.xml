@@ -158,6 +158,21 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.rat</groupId>
+        <artifactId>apache-rat-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>.gitattributes</exclude>
+            <exclude>.gitignore</exclude>
+            <exclude>.git/**</exclude>
+            <exclude>.idea/**</exclude>
+            <exclude>**/src/test/resources/**/MANIFEST.MF</exclude>
+            <exclude>**/src/test/resources/**/*.json</exclude>
+            <exclude>**/src/test/resources/**/*.txt</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
     </plugins>
     <pluginManagement>
       <plugins>
@@ -267,6 +282,11 @@
           <configuration>
             <configLocation>apex_checks.xml</configLocation>
           </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.rat</groupId>
+          <artifactId>apache-rat-plugin</artifactId>
+          <version>0.11</version>
         </plugin>
       </plugins>
     </pluginManagement>
