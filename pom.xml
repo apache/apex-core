@@ -71,7 +71,7 @@
     <!-- do not change jetty version as later versions have problems with DefaultServlet -->
     <jetty.version>8.1.10.v20130312</jetty.version>
     <license.skip>true</license.skip>
-    <checkstyle.console>false</checkstyle.console>
+    <checkstyle.console>true</checkstyle.console>
   </properties>
 
   <dependencies>
@@ -323,7 +323,7 @@
                 <goal>check</goal>
               </goals>
               <configuration>
-                <failOnViolation>true</failOnViolation>
+                <failOnViolation>false</failOnViolation>
                 <logViolationsToConsole>${checkstyle.console}</logViolationsToConsole>
               </configuration>
             </execution>
