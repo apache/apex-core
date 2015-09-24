@@ -260,11 +260,13 @@
               </goals>
               <configuration>
                 <failOnViolation>true</failOnViolation>
-                <configLocation>dt_checks.xml</configLocation>
                 <logViolationsToConsole>${checkstyle.console}</logViolationsToConsole>
               </configuration>
             </execution>
           </executions>
+          <configuration>
+            <configLocation>apex_checks.xml</configLocation>
+          </configuration>
         </plugin>
       </plugins>
     </pluginManagement>
