@@ -99,6 +99,7 @@ public class StramWSFilter implements Filter
         proxyAddresses = new HashSet<String>();
         for (String proxyHost : proxyHosts) {
           try {
+            logger.debug("resolving proxy hostname {}", proxyHost);
             for (InetAddress add : InetAddress.getAllByName(proxyHost)) {
               logger.debug("proxy address is: {}", add.getHostAddress());
               proxyAddresses.add(add.getHostAddress());
@@ -153,6 +154,7 @@ public class StramWSFilter implements Filter
       authenticate = false;
     }
     if (authenticate) {
+      logger.debug("Authenticating");
       Cookie cookie = null;
       if (httpReq.getCookies() != null) {
         for (Cookie c : httpReq.getCookies()) {
@@ -168,8 +170,11 @@ public class StramWSFilter implements Filter
         user = verifyClientToken(cookie.getValue());
         valid = true;
         logger.debug("Token valid");
+      } else {
+        logger.debug("Cookie not found");
       }
       if (!valid) {
+        logger.debug("Auth failure {}", HttpServletResponse.SC_UNAUTHORIZED);
         httpResp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
         return;
       }
