@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram.client;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Map;
 
@@ -29,6 +30,7 @@ import javax.ws.rs.core.UriBuilder;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
@@ -321,6 +323,7 @@ public class StramAgent extends FSAgent
     return info == null ? getAppsRoot() + "/" + appId : info.appPath;
   }
 
+  // Note that this method only works if the app is running.  We might want to deprecate this method.
   public String getUser(String appid)
   {
     StramWebServicesInfo info = getWebServicesInfo(appid);
@@ -334,7 +337,16 @@ public class StramAgent extends FSAgent
     try {
       yarnClient.init(conf);
       yarnClient.start();
+
       ApplicationReport ar = yarnClient.getApplicationReport(ConverterUtils.toApplicationId(appId));
+      if (ar == null) {
+        LOG.warn("YARN does not have record for this application {}", appId);
+        return null;
+      } else if (ar.getYarnApplicationState() != YarnApplicationState.RUNNING) {
+        LOG.debug("Application {} is not running (state: {})", appId, ar.getYarnApplicationState());
+        return null;
+      }
+
       String trackingUrl = ar.getTrackingUrl();
       if (!trackingUrl.startsWith("http://")
               && !trackingUrl.startsWith("https://")) {
@@ -353,7 +365,7 @@ public class StramAgent extends FSAgent
       url += WebServices.PATH;
     }
     catch (Exception ex) {
-      //LOG.error("Caught exception when retrieving web services info", ex);
+      LOG.error("Caught exception when retrieving web services info", ex);
       return null;
     }
     finally {
@@ -415,11 +427,8 @@ public class StramAgent extends FSAgent
         is = fileSystem.open(new Path(appPath, "permissions.json"));
         permissionsInfo = new JSONObject(IOUtils.toString(is));
       }
-      catch (JSONException ex) {
-        LOG.error("Error reading from the permissions info. Ignoring", ex);
-      }
-      catch (IOException ex) {
-        // ignore
+      catch (FileNotFoundException ex) {
+        // ignore if file is not found
       }
       finally {
         IOUtils.closeQuietly(is);
@@ -427,7 +436,7 @@ public class StramAgent extends FSAgent
       return new StramWebServicesInfo(appMasterUrl, version, appPath, user, secToken, permissionsInfo);
     }
     catch (Exception ex) {
-      LOG.debug("Caught exception when retrieving web service info for app " + appId, ex);
+      LOG.warn("Caught exception when retrieving web service info for app {}", appId, ex);
       return null;
     }
   }
