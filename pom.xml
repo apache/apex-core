@@ -37,8 +37,8 @@
 
   <licenses>
     <license>
-      <name>Copyright &copy; 2015 DataTorrent, Inc.</name>
-      <url>http://www.datatorrent.com/</url>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
     </license>
   </licenses>
 
