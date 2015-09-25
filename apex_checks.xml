@@ -135,13 +135,16 @@
       <property name="caseIndent" value="2"/>
     </module>
 
-    <module name="CustomImportOrder">
-      <property name="thirdPartyPackageRegExp" value=".*"/>
-      <property name="specialImportsRegExp" value="com.datatorrent"/>
-      <property name="sortImportsInGroupAlphabetically" value="true"/>
-      <property name="customImportOrderRules"
-                value="STATIC###STANDARD_JAVA_PACKAGE###THIRD_PARTY_PACKAGE###SPECIAL_IMPORTS"/>
+    <module name="ImportOrder">
+      <property name="groups" value="/^javax?\./,org,com,*,/com\.datatorrent/"/>
+      <property name="ordered" value="true"/>
+      <property name="separated" value="true"/>
+      <property name="option" value="above"/>
+      <property name="sortStaticImportsAlphabetically" value="true"/>
     </module>
+
+    <module name="RedundantImport"/>
+    <module name="UnusedImports"/>
     <module name="MethodParamPad"/>
   </module>
 
