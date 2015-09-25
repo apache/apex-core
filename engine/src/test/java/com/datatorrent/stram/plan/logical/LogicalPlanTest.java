@@ -19,9 +19,11 @@
 package com.datatorrent.stram.plan.logical;
 
 import com.datatorrent.common.util.BaseOperator;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.util.*;
 
 import javax.validation.*;
@@ -41,6 +43,7 @@ import static org.junit.Assert.*;
 
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.api.*;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -683,7 +686,85 @@ public class LogicalPlanTest {
     Assert.assertNotNull("port object null", o1Clone.inport1);
   }
 
-  private static class TestStreamCodec implements StreamCodec<Object> {
+  @Test
+  public void testAttributeValuesSerializableCheck() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException
+  {
+    LogicalPlan dag = new LogicalPlan();
+    Attribute<Object> attr = new Attribute<Object>(new TestAttributeValue(), new Object2String());
+    Field nameField = Attribute.class.getDeclaredField("name");
+    nameField.setAccessible(true);
+    nameField.set(attr, "Test_Attribute");
+    nameField.setAccessible(false);
+
+    assertNotNull(attr);
+    // Dag attribute not serializable test
+    dag.setAttribute(attr, new TestAttributeValue());
+    try {
+      dag.validate();
+      Assert.fail("Setting not serializable attribute should throw exception");
+    } catch (ValidationException e) {
+      assertEquals("Validation Exception should match ", "Attribute value(s) for Test_Attribute in com.datatorrent.api.DAG are not serializable", e.getMessage());
+    }
+
+    // Operator attribute not serializable test
+    dag = new LogicalPlan();
+    TestGeneratorInputOperator operator = dag.addOperator("TestOperator", TestGeneratorInputOperator.class);
+    dag.setAttribute(operator, attr, new TestAttributeValue());
+    try {
+      dag.validate();
+      Assert.fail("Setting not serializable attribute should throw exception");
+    } catch (ValidationException e) {
+      assertEquals("Validation Exception should match ", "Attribute value(s) for Test_Attribute in TestOperator are not serializable", e.getMessage());
+    }
+
+    // Output Port attribute not serializable test
+    dag = new LogicalPlan();
+    operator = dag.addOperator("TestOperator", TestGeneratorInputOperator.class);
+    dag.setOutputPortAttribute(operator.outport, attr, new TestAttributeValue());
+    try {
+      dag.validate();
+      Assert.fail("Setting not serializable attribute should throw exception");
+    } catch (ValidationException e) {
+      assertEquals("Validation Exception should match ", "Attribute value(s) for Test_Attribute in TestOperator.outport are not serializable", e.getMessage());
+    }
+
+    // Input Port attribute not serializable test
+    dag = new LogicalPlan();
+    GenericTestOperator operator1 = dag.addOperator("TestOperator", GenericTestOperator.class);
+    dag.setInputPortAttribute(operator1.inport1, attr, new TestAttributeValue());
+    try {
+      dag.validate();
+      Assert.fail("Setting non serializable attribute should throw exception");
+    } catch (ValidationException e) {
+      assertEquals("Validation Exception should match ", "Attribute value(s) for Test_Attribute in TestOperator.inport1 are not serializable", e.getMessage());
+    }
+  }
+
+  private static class Object2String implements StringCodec<Object>
+  {
+
+    @Override
+    public Object fromString(String string)
+    {
+      // Stub method for testing - do nothing
+      return null;
+    }
+
+    @Override
+    public String toString(Object pojo)
+    {
+      // Stub method for testing - do nothing
+      return null;
+    }
+
+  }
+
+  private static class TestAttributeValue
+  {
+  }
+
+  private static class TestStreamCodec implements StreamCodec<Object>
+  {
     @Override
     public Object fromByteArray(Slice fragment)
     {

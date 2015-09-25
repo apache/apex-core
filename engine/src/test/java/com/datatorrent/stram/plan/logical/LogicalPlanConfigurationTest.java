@@ -20,6 +20,7 @@ package com.datatorrent.stram.plan.logical;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 
@@ -82,6 +83,11 @@ public class LogicalPlanConfigurationTest {
       OperatorMeta n = dag.getOperatorMeta(id);
       assertNotNull("operator exists id=" + id, n);
       return n;
+  }
+
+  public static class TestStreamCodec<T> extends JsonStreamCodec<T> implements Serializable
+  {
+    private static final long serialVersionUID = 1L;
   }
 
   /**
