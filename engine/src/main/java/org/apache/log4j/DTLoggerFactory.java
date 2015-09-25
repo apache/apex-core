@@ -46,7 +46,7 @@ public class DTLoggerFactory implements LoggerFactory
 
   private static DTLoggerFactory SINGLETON;
 
-  public synchronized static DTLoggerFactory getInstance()
+  public static synchronized DTLoggerFactory getInstance()
   {
     if (SINGLETON == null) {
       SINGLETON = new DTLoggerFactory();
@@ -57,10 +57,13 @@ public class DTLoggerFactory implements LoggerFactory
   private final ConcurrentMap<String, Logger> loggerMap;
   private final Map<String, Level> patternLevel;
 
-  public ImmutableMap<String, String> getPatternLevels() {
-    return ImmutableMap.copyOf(Maps.transformValues(patternLevel, new Function<Level, String>(){
+  public ImmutableMap<String, String> getPatternLevels()
+  {
+    return ImmutableMap.copyOf(Maps.transformValues(patternLevel, new Function<Level, String>()
+    {
       @Override
-      public String apply(Level input) {
+      public String apply(Level input)
+      {
         return input == null ? "" : input.toString();
       }
     }));
@@ -92,8 +95,7 @@ public class DTLoggerFactory implements LoggerFactory
         changeLoggersLevel(targetChanges);
       }
       initialized = true;
-    }
-    else {
+    } else {
       LOG.warn("DT Logger Factory already initialized.");
     }
   }
@@ -120,8 +122,7 @@ public class DTLoggerFactory implements LoggerFactory
           }
           if (wider.charAt(i) != finer.charAt(i)) {
             break;
-          }
-          else if (i == wider.length() - 1) {
+          } else if (i == wider.length() - 1) {
             remove = true;
           }
         }
@@ -209,6 +210,7 @@ public class DTLoggerFactory implements LoggerFactory
     {
       initialized = false;
     }
+
     private void initialize()
     {
       if (!initialized) {
