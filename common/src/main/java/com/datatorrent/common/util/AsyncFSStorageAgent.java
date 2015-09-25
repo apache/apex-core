@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @since 3.1.0
- */
 
 package com.datatorrent.common.util;
 
@@ -30,6 +27,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.netlet.util.DTThrowable;
+
+/**
+ * <p>AsyncFSStorageAgent class.</p>
+ *
+ * @since 3.1.0
+ */
+
 public class AsyncFSStorageAgent extends FSStorageAgent
 {
   private final transient FileSystem fs;
