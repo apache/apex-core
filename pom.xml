@@ -170,6 +170,10 @@
             <exclude>**/src/test/resources/**/MANIFEST.MF</exclude>
             <exclude>**/src/test/resources/**/*.json</exclude>
             <exclude>**/src/test/resources/**/*.txt</exclude>
+            <exclude>**/resources/META-INF/services/**</exclude>
+            <exclude>CHANGELOG.md</exclude>
+            <exclude>**/archetype-resources/**</exclude>
+            <exclude>README.md</exclude>
           </excludes>
         </configuration>
       </plugin>
