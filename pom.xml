@@ -86,6 +86,9 @@
             <exclude>**/archetype-resources/**</exclude>
             <exclude>src/test/resources/projects/basic/goal.txt</exclude>
           </excludes>
+          <mapping>
+            <dtcli>SCRIPT_STYLE</dtcli>
+          </mapping>
         </configuration>
         <executions>
           <execution>
