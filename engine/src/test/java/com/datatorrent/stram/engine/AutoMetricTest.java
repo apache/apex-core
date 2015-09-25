@@ -27,6 +27,7 @@ import java.util.concurrent.CountDownLatch;
 
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -257,6 +258,7 @@ public class AutoMetricTest
   }
 
   @Test
+  @Ignore
   public void testMetricsAggregations() throws Exception
   {
     CountDownLatch latch = new CountDownLatch(2);
