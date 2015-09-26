@@ -33,6 +33,9 @@ import org.apache.hadoop.http.FilterInitializer;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.stram.util.ConfigUtils;
 
 /**
@@ -43,12 +46,15 @@ import com.datatorrent.stram.util.ConfigUtils;
  */
 public class StramWSFilterInitializer extends FilterInitializer
 {
+  private static final Logger logger = LoggerFactory.getLogger(StramWSFilterInitializer.class);
+
   private static final String FILTER_NAME = "AM_PROXY_FILTER";
   private static final String FILTER_CLASS = StramWSFilter.class.getCanonicalName();
 
   @Override
   public void initFilter(FilterContainer container, Configuration conf)
   {
+    logger.debug("Conf {}", conf);
     Map<String, String> params = new HashMap<String, String>();
     Collection<String> proxies = new ArrayList<String>();
     if (ConfigUtils.isRMHAEnabled(conf)) {
@@ -80,6 +86,8 @@ public class StramWSFilterInitializer extends FilterInitializer
   public String getProxyHostAndPort(Configuration conf)
   {
     String addr = conf.get(YarnConfiguration.PROXY_ADDRESS);
+    logger.info("proxy address setting {}", addr);
+    logger.debug("proxy setting sources {}", conf.getPropertySources(YarnConfiguration.PROXY_ADDRESS));
     if (addr == null || addr.isEmpty()) {
       addr = getResolvedRMWebAppURLWithoutScheme(conf, null);
     }
@@ -96,27 +104,29 @@ public class StramWSFilterInitializer extends FilterInitializer
     boolean sslEnabled = conf.getBoolean(
             CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_KEY,
             CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_DEFAULT);
-    return getResolvedRMWebAppURLWithoutScheme(conf, sslEnabled, (rmId != null) ? "." + rmId : null);
+    return getResolvedRMWebAppURLWithoutScheme(conf, sslEnabled, (rmId != null) ? "." + rmId : "");
   }
 
   /*
     From org.apache.hadoop.yarn.webapp.util.WebAppUtils
     Modified for HA support
   */
-  public String getResolvedRMWebAppURLWithoutScheme(Configuration conf, boolean sslEnabled, String rmId)
+  public String getResolvedRMWebAppURLWithoutScheme(Configuration conf, boolean sslEnabled, String rmPrpKey)
   {
     InetSocketAddress address = null;
     if (sslEnabled) {
       address =
-              conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS + rmId,
+              conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS + rmPrpKey,
                       YarnConfiguration.DEFAULT_RM_WEBAPP_HTTPS_ADDRESS,
                       YarnConfiguration.DEFAULT_RM_WEBAPP_HTTPS_PORT);
     } else {
       address =
-              conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_ADDRESS + rmId,
+              conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_ADDRESS + rmPrpKey,
                       YarnConfiguration.DEFAULT_RM_WEBAPP_ADDRESS,
                       YarnConfiguration.DEFAULT_RM_WEBAPP_PORT);
     }
+    logger.info("rm webapp address setting {}", address);
+    logger.debug("rm setting sources {}", conf.getPropertySources(YarnConfiguration.RM_WEBAPP_ADDRESS));
     address = NetUtils.getConnectAddress(address);
     StringBuffer sb = new StringBuffer();
     InetAddress resolved = address.getAddress();
@@ -133,6 +143,7 @@ public class StramWSFilterInitializer extends FilterInitializer
       sb.append(address.getHostName());
     }
     sb.append(":").append(address.getPort());
+    logger.info("rm webapp resolved hostname {}", sb.toString());
     return sb.toString();
   }
 

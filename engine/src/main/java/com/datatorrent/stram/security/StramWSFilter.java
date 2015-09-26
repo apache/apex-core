@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.Token;
 
 import com.datatorrent.stram.webapp.WebServices;
@@ -102,6 +103,7 @@ public class StramWSFilter implements Filter
         proxyAddresses = new HashSet<String>();
         for (String proxyHost : proxyHosts) {
           try {
+            logger.debug("resolving proxy hostname {}", proxyHost);
             for (InetAddress add : InetAddress.getAllByName(proxyHost)) {
               logger.debug("proxy address is: {}", add.getHostAddress());
               proxyAddresses.add(add.getHostAddress());
@@ -133,9 +135,8 @@ public class StramWSFilter implements Filter
 
     HttpServletRequest httpReq = (HttpServletRequest)req;
     HttpServletResponse httpResp = (HttpServletResponse)resp;
-    logger.debug("Remote address for request is: {}", httpReq.getRemoteAddr());
+    String remoteAddr = httpReq.getRemoteAddr();
     String requestURI = httpReq.getRequestURI();
-    logger.debug("Request path {}", requestURI);
     boolean authenticate = true;
     String user = null;
     if(getProxyAddresses().contains(httpReq.getRemoteAddr())) {
@@ -149,9 +150,11 @@ public class StramWSFilter implements Filter
       }
       if (requestURI.equals(WebServices.PATH) && (user != null)) {
         String token = createClientToken(user, httpReq.getLocalAddr());
-        logger.debug("Create token {}", token);
+        logger.debug("{}: creating token {}", remoteAddr, token);
         Cookie cookie = new Cookie(CLIENT_COOKIE, token);
         httpResp.addCookie(cookie);
+      } else {
+        logger.info("{}: proxy access to URI {} by user {}, no cookie created", remoteAddr, requestURI, user);
       }
       authenticate = false;
     }
@@ -167,19 +170,24 @@ public class StramWSFilter implements Filter
       }
       boolean valid = false;
       if (cookie != null) {
-        logger.debug("Verifying token {}", cookie.getValue());
-        user = verifyClientToken(cookie.getValue());
-        valid = true;
-        logger.debug("Token valid");
+        user = verifyClientToken(cookie.getValue(), remoteAddr);
+        if (user != null) {
+          valid = true;
+        } else {
+          logger.debug("{}: invalid cookie {}", remoteAddr, cookie.getValue());
+        }
+      } else {
+        logger.debug("{}: cookie not found {}", remoteAddr, CLIENT_COOKIE);
       }
       if (!valid) {
+        logger.debug("{}: auth failure", remoteAddr);
         httpResp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
         return;
       }
     }
 
     if(user == null) {
-      logger.debug("Could not find {} cookie, so user will not be set", WEBAPP_PROXY_USER);
+      logger.debug("{}: could not find user, so user principal will not be set", remoteAddr);
       chain.doFilter(req, resp);
     } else {
       final StramWSPrincipal principal = new StramWSPrincipal(user);
@@ -199,16 +207,31 @@ public class StramWSFilter implements Filter
     return token.encodeToUrlString();
   }
 
-  private String verifyClientToken(String tokenstr) throws IOException
+  private String verifyClientToken(String tokenstr, String cid) throws IOException
   {
     Token<StramDelegationTokenIdentifier> token = new Token<StramDelegationTokenIdentifier>();
-    token.decodeFromUrlString(tokenstr);
+    try {
+      token.decodeFromUrlString(tokenstr);
+    } catch (IOException e) {
+      logger.debug("{}: error decoding token: {}", cid, e.getMessage());
+      return null;
+    }
     byte[] identifier = token.getIdentifier();
     byte[] password = token.getPassword();
     StramDelegationTokenIdentifier tokenIdentifier = new StramDelegationTokenIdentifier();
     DataInputStream input = new DataInputStream(new ByteArrayInputStream(identifier));
-    tokenIdentifier.readFields(input);
-    tokenManager.verifyToken(tokenIdentifier, password);
+    try {
+      tokenIdentifier.readFields(input);
+    } catch (IOException e) {
+      logger.debug("{}: error decoding identifier: {}", cid, e.getMessage());
+      return null;
+    }
+    try {
+      tokenManager.verifyToken(tokenIdentifier, password);
+    } catch (SecretManager.InvalidToken e) {
+      logger.debug("{}: invalid token {}: {}", cid, tokenIdentifier, e.getMessage());
+      return null;
+    }
     return tokenIdentifier.getOwner().toString();
   }
 }
