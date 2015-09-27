@@ -51,7 +51,6 @@ import com.sun.jersey.api.client.WebResource;
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 
-import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -206,9 +205,6 @@ public class StramMiniClusterTest
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration(conf);
     tb.addFromProperties(dagProps, null);
     LogicalPlan dag = createDAG(tb);
-    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.dir, null);
-    agent.setSyncCheckpoint(true);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
     Configuration yarnConf = new Configuration(yarnCluster.getConfig());
     StramClient client = new StramClient(yarnConf, dag);
     try {
@@ -231,7 +227,7 @@ public class StramMiniClusterTest
   private LogicalPlan createDAG(LogicalPlanConfiguration lpc) throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, "file:" + System.getProperty("user.dir") + "/" + testMeta.dir);
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, new File(testMeta.dir).toURI().toString());
     lpc.prepareDAG(dag,null,"testApp");
     dag.validate();
     Assert.assertEquals("", Integer.valueOf(128), dag.getValue(DAG.MASTER_MEMORY_MB));
@@ -364,10 +360,7 @@ public class StramMiniClusterTest
   {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.dir, null);
-    agent.setSyncCheckpoint(true);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, new File(testMeta.dir).toURI().toString());
     FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);
     dag.getContextAttributes(badOperator).put(OperatorContext.RECOVERY_ATTEMPTS, 1);
 
