@@ -364,8 +364,8 @@ public class StramMiniClusterTest
   {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.dir, null);
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, "file:" + System.getProperty("user.dir") + '/' + testMeta.dir);
+    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(dag.getAttributes().get(LogicalPlan.APPLICATION_PATH), null);
     agent.setSyncCheckpoint(true);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
     FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);
