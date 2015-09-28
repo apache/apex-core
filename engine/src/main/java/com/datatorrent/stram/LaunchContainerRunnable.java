@@ -118,28 +118,19 @@ public class LaunchContainerRunnable implements Runnable
     LOG.info("CLASSPATH: {}", classPathEnv);
   }
 
+  public static void addFileToLocalResources(final String name, final FileStatus fileStatus, final LocalResourceType type, final Map<String, LocalResource> localResources)
+  {
+    final LocalResource localResource = LocalResource.newInstance(ConverterUtils.getYarnUrlFromPath(fileStatus.getPath()),
+            type, LocalResourceVisibility.APPLICATION, fileStatus.getLen(), fileStatus.getModificationTime());
+    localResources.put(name, localResource);
+  }
+
   public static void addFilesToLocalResources(LocalResourceType type, String commaSeparatedFileNames, Map<String, LocalResource> localResources, FileSystem fs) throws IOException
   {
     String[] files = StringUtils.splitByWholeSeparator(commaSeparatedFileNames, StramClient.LIB_JARS_SEP);
     for (String file : files) {
-      Path dst = new Path(file);
-      // Create a local resource to point to the destination jar path
-      FileStatus destStatus = fs.getFileStatus(dst);
-      LocalResource amJarRsrc = Records.newRecord(LocalResource.class);
-      // Set the type of resource - file or archive
-      amJarRsrc.setType(type);
-      // Set visibility of the resource
-      // Setting to most private option
-      amJarRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
-      // Set the resource to be copied over
-      amJarRsrc.setResource(ConverterUtils.getYarnUrlFromPath(dst));
-      // Set timestamp and length of file so that the framework
-      // can do basic sanity checks for the local resource
-      // after it has been copied over to ensure it is the same
-      // resource the client intended to use with the application
-      amJarRsrc.setTimestamp(destStatus.getModificationTime());
-      amJarRsrc.setSize(destStatus.getLen());
-      localResources.put(dst.getName(), amJarRsrc);
+      final Path dst = new Path(file);
+      addFileToLocalResources(dst.getName(), fs.getFileStatus(dst), type, localResources);
     }
   }
 
