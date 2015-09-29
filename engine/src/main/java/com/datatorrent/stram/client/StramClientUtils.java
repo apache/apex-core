@@ -98,6 +98,8 @@ public class StramClientUtils
   public static final String KEY_TAB_FILE = StramUserLogin.DT_AUTH_PREFIX + "store.keytab";
   public static final String TOKEN_ANTICIPATORY_REFRESH_FACTOR = StramUserLogin.DT_AUTH_PREFIX + "token.refresh.factor";
   public static final long DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT = 7 * 24 * 60 * 60 * 1000;
+  public static final String DT_NODE_BLACKLIST_TIME = StreamingApplication.DT_PREFIX + "node-blacklist-time";
+  public static final String DT_MAX_CONSECUTIVE_NODE_FAILURES = StreamingApplication.DT_PREFIX + "max-consecutive-node-failures";
 
   /**
    * TBD<p>
