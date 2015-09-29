@@ -25,7 +25,7 @@
           "attributes": {
             "UNIFIER_LIMIT": 8,
             "STREAM_CODEC" : {
-              "com.datatorrent.common.codec.JsonStreamCodec" : {}
+              "com.datatorrent.stram.plan.logical.LogicalPlanConfigurationTest$TestStreamCodec" : {}
             }
           }
         }
