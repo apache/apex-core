@@ -87,9 +87,9 @@ public class DTLoggerFactory implements LoggerFactory
       String loggersLevel = System.getProperty(DT_LOGGERS_LEVEL);
       if (!Strings.isNullOrEmpty(loggersLevel)) {
         Map<String, String> targetChanges = Maps.newHashMap();
-        String targets[] = loggersLevel.split(",");
+        String[] targets = loggersLevel.split(",");
         for (String target : targets) {
-          String parts[] = target.split(":");
+          String[] parts = target.split(":");
           targetChanges.put(parts[0], parts[1]);
         }
         changeLoggersLevel(targetChanges);
