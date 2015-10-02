@@ -43,6 +43,10 @@ public @interface ApplicationAnnotation {
    * <li>Runtime application alias -- specified in application code</li>
    * 
    */
-  public String name();
-  
+  String name();
+
+  /**
+   * Description of the application.  Optional.
+   */
+  String description() default "";
 }

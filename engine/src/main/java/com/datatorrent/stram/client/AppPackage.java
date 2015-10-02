@@ -74,6 +74,7 @@ public class AppPackage extends JarFile
     public final String file;
     public final String type;
     public String displayName;
+    public String description;
     public LogicalPlan dag;
     public String error;
     public String errorStackTrace;
@@ -322,6 +323,7 @@ public class AppPackage extends JarFile
             }
             AppInfo appInfo = new AppInfo(appName, entry.getName(), "class");
             appInfo.displayName = appFactory.getDisplayName();
+            appInfo.description = appFactory.getDescription();
             try {
               appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
               appInfo.dag.validate();
@@ -353,6 +355,7 @@ public class AppPackage extends JarFile
           stramAppLauncher.loadDependencies();
           AppInfo appInfo = new AppInfo(appFactory.getName(), entry.getName(), "json");
           appInfo.displayName = appFactory.getDisplayName();
+          appInfo.description = appFactory.getDescription();
           try {
             appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
             appInfo.dag.validate();
