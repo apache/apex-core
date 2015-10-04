@@ -25,10 +25,6 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Sets;
-
 import org.mozilla.javascript.Scriptable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +37,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -60,6 +55,10 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.log4j.DTLoggerFactory;
+
+import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 
 import com.datatorrent.api.StreamingApplication;
 
@@ -249,10 +248,7 @@ public class StramClientUtils
       for (String rmId : ConfigUtils.getRMHAIds(conf)) {
         LOG.info("Yarn Resource Manager id: {}", rmId);
         // Set RM_ID to get the corresponding RM_ADDRESS
-        services.add(SecurityUtil.buildTokenService(NetUtils.createSocketAddr(
-                conf.get(RM_HOSTNAME_PREFIX + rmId),
-                YarnConfiguration.DEFAULT_RM_PORT,
-                RM_HOSTNAME_PREFIX + rmId)).toString());
+        services.add(SecurityUtil.buildTokenService(getRMHAAddress(rmId)).toString());
       }
       Text rmTokenService = new Text(Joiner.on(',').join(services));
 
@@ -285,6 +281,20 @@ public class StramClientUtils
       LOG.info("RM dt {}", token);
 
       credentials.addToken(token.getService(), token);
+    }
+
+    public InetSocketAddress getRMHAAddress(String rmId)
+    {
+      YarnConfiguration yarnConf;
+      if (conf instanceof YarnConfiguration) {
+        yarnConf = (YarnConfiguration)conf;
+      } else {
+        yarnConf = new YarnConfiguration(conf);
+      }
+      yarnConf.set(ConfigUtils.RM_HA_ID, rmId);
+      InetSocketAddress socketAddr = yarnConf.getSocketAddr(YarnConfiguration.RM_ADDRESS, YarnConfiguration.DEFAULT_RM_ADDRESS, YarnConfiguration.DEFAULT_RM_PORT);
+      yarnConf.unset(ConfigUtils.RM_HA_ID);
+      return socketAddr;
     }
 
   }
