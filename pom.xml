@@ -27,12 +27,12 @@
   <version>3.2.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Realtime Stream Processing Framework</name>
-  <url>http://www.datatorrent.com</url>
+  <name>Apache Apex Core</name>
+  <url>http://apex.apache.org</url>
 
   <organization>
-    <name>DataTorrent, Inc.</name>
-    <url>http://www.datatorrent.com/</url>
+    <name>Apache Software Foundation</name>
+    <url>http://www.apache.org</url>
   </organization>
 
   <licenses>
@@ -47,7 +47,7 @@
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
-      <id>Datatorrent-Releases</id>
+      <id>datatorrent</id>
       <name>DataTorrent Release Repository</name>
       <url>https://www.datatorrent.com/maven/content/repositories/releases/</url>
     </repository>
@@ -55,7 +55,6 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <netbeans.hint.license>datatorrent-inc</netbeans.hint.license>
     <maven.compiler.optimize>false</maven.compiler.optimize>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
     <hadoop.version>2.2.0</hadoop.version>
@@ -96,8 +95,8 @@
         <configuration>
           <header>license.txt</header>
           <properties>
-            <owner>DataTorrent, Inc.</owner>
-            <email>apex-dev@googlegroups.com</email>
+            <owner>Apache Software Foundation</owner>
+            <email>dev@apex.incubator.apache.org</email>
           </properties>
           <excludes>
             <exclude>license.txt</exclude>
