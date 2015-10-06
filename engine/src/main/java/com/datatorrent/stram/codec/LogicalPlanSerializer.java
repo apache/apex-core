@@ -212,7 +212,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       String operatorKey = LogicalPlanConfiguration.OPERATOR_PREFIX + operatorMeta.getName();
       Operator operator = operatorMeta.getOperator();
       props.setProperty(operatorKey + "." + LogicalPlanConfiguration.OPERATOR_CLASSNAME, operator.getClass().getName());
-      BeanMap operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operator);
+      BeanMap operatorProperties = LogicalPlanConfiguration.getObjectProperties(operator);
       @SuppressWarnings("rawtypes")
       Iterator entryIterator = operatorProperties.entryIterator();
       while (entryIterator.hasNext()) {
