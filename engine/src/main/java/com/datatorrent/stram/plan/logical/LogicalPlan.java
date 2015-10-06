@@ -45,6 +45,8 @@ import com.google.common.collect.Sets;
 import com.datatorrent.api.*;
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Module.ProxyInputPort;
+import com.datatorrent.api.Module.ProxyOutputPort;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
@@ -154,6 +156,7 @@ public class LogicalPlan implements Serializable, DAG
   private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
   private transient int nodeIndex = 0; // used for cycle validation
   private transient Stack<OperatorMeta> stack = new Stack<OperatorMeta>(); // used for cycle validation
+  private transient Map<String, ArrayListMultimap<OutputPort<?>, InputPort<?>>> streamLinks = new HashMap<String, ArrayListMultimap<Operator.OutputPort<?>, Operator.InputPort<?>>>();
 
   @Override
   public Attribute.AttributeMap getAttributes()
@@ -1211,6 +1214,7 @@ public class LogicalPlan implements Serializable, DAG
         subModuleMeta.setParent(this);
         subModuleMeta.flattenModule(dag, conf);
       }
+      dag.applyStreamLinks();
       parentDAG.addDAGToCurrentDAG(this);
     }
 
@@ -1311,11 +1315,49 @@ public class LogicalPlan implements Serializable, DAG
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {
     StreamMeta s = addStream(id);
-    s.setSource(source);
-    for (Operator.InputPort<?> sink: sinks) {
-      s.addSink(sink);
+    id = s.id;
+    ArrayListMultimap<Operator.OutputPort<?>, Operator.InputPort<?>> streamMap = ArrayListMultimap.create();
+    if (!(source instanceof ProxyOutputPort)) {
+      s.setSource(source);
+    }
+    for (Operator.InputPort<?> sink : sinks) {
+      if (source instanceof ProxyOutputPort || sink instanceof ProxyInputPort) {
+        streamMap.put(source, sink);
+        streamLinks.put(id, streamMap);
+      } else {
+        if (s.getSource() == null) {
+          s.setSource(source);
+        }
+        s.addSink(sink);
+      }
     }
     return s;
+  }
+
+  /**
+   * This will be called once the Logical Dag is expanded, and the proxy input and proxy output ports are populated with the actual ports that they refer to
+   * This method adds sources and sinks for the StreamMeta objects which were left empty in the addStream call.
+   */
+  public void applyStreamLinks()
+  {
+    for (String id : streamLinks.keySet()) {
+      StreamMeta s = getStream(id);
+      for (Map.Entry<Operator.OutputPort<?>, Operator.InputPort<?>> pair : streamLinks.get(id).entries()) {
+        if (s.getSource() == null) {
+          Operator.OutputPort<?> outputPort = pair.getKey();
+          while (outputPort instanceof ProxyOutputPort) {
+            outputPort = ((ProxyOutputPort<?>)outputPort).get();
+          }
+          s.setSource(outputPort);
+        }
+
+        Operator.InputPort<?> inputPort = pair.getValue();
+        while (inputPort instanceof ProxyInputPort) {
+          inputPort = ((ProxyInputPort<?>)inputPort).get();
+        }
+        s.addSink(inputPort);
+      }
+    }
   }
 
   @SuppressWarnings({ "unchecked", "rawtypes" })

@@ -2128,6 +2128,7 @@ public class LogicalPlanConfiguration {
     for (ModuleMeta moduleMeta : dag.getAllModules()) {
       moduleMeta.flattenModule(dag, conf);
     }
+    dag.applyStreamLinks();
   }
 
   public static Properties readProperties(String filePath) throws IOException
