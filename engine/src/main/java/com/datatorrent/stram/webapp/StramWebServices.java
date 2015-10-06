@@ -715,7 +715,7 @@ public class StramWebServices
       throw new NotFoundException();
     }
 
-    BeanMap operatorProperties = LogicalPlanConfiguration.getOperatorProperties(logicalOperator.getOperator());
+    BeanMap operatorProperties = LogicalPlanConfiguration.getObjectProperties(logicalOperator.getOperator());
     Map<String, Object> m = new HashMap<String, Object>();
     @SuppressWarnings("rawtypes")
     Iterator entryIterator = operatorProperties.entryIterator();

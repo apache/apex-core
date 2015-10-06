@@ -37,6 +37,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import com.datatorrent.api.*;
@@ -1067,7 +1068,7 @@ public class LogicalPlan implements Serializable, DAG
   public <T extends Operator> T addOperator(String name, T operator)
   {
     if (operators.containsKey(name)) {
-      if (operators.get(name) == (Object)operator) {
+      if (operators.get(name).operator == operator) {
         return operator;
       }
       throw new IllegalArgumentException("duplicate operator id: " + operators.get(name));
@@ -1079,16 +1080,99 @@ public class LogicalPlan implements Serializable, DAG
     return operator;
   }
 
-  @Override
-  public <T extends Module> T addModule(String name, Class<T> moduleClass)
+  public final class ModuleMeta implements DAG.ModuleMeta, Serializable
   {
-    throw new UnsupportedOperationException("Modules are not supported");
+    private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
+    private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
+    private final Attribute.AttributeMap attributes;
+    @SuppressWarnings("unused")
+    private final int id;
+    @NotNull
+    private final String name;
+    private transient Integer nindex; // for cycle detection
+    private transient Integer lowlink; // for cycle detection
+    private transient Module module;
+
+    public ModuleMeta(String name, Module module)
+    {
+      this(name, module, new DefaultAttributeMap());
+    }
+
+    public ModuleMeta(String name, Module module, DefaultAttributeMap attributeMap)
+    {
+      LOG.debug("Initializing {} as {}", name, module.getClass().getName());
+      this.name = name;
+      this.module = module;
+      this.id = logicalOperatorSequencer.decrementAndGet();
+      this.attributes = attributeMap;
+    }
+
+    @Override public String getName()
+    {
+      return name;
+    }
+
+    @Override public Module getModule()
+    {
+      return module;
+    }
+
+    @Override public DAG.InputPortMeta getMeta(InputPort<?> port)
+    {
+      return null;
+    }
+
+    @Override public DAG.OutputPortMeta getMeta(OutputPort<?> port)
+    {
+      return null;
+    }
+
+    @Override public Attribute.AttributeMap getAttributes()
+    {
+      return null;
+    }
+
+    @Override public <T> T getValue(Attribute<T> key)
+    {
+      return null;
+    }
+
+    @Override public void setCounters(Object counters)
+    {
+
+    }
+
+    @Override public void sendMetrics(Collection<String> metricNames)
+    {
+
+    }
   }
 
-  @Override
-  public <T extends Module> T addModule(String name, T module)
+  public transient Map<String, ModuleMeta> modules = Maps.newHashMap();
+
+  @Override public <T extends Module> T addModule(String name, T module)
   {
-    throw new UnsupportedOperationException("Modules are not supported");
+    if (modules.containsKey(name)) {
+      if (modules.get(name).module == module) {
+        return module;
+      }
+      throw new IllegalArgumentException("duplicate module is: " + modules.get(name));
+    }
+    ModuleMeta meta = new ModuleMeta(name, module);
+    modules.put(name, meta);
+    return module;
+  }
+
+  @Override public <T extends Module> T addModule(String name, Class<T> clazz)
+  {
+    T instance;
+    try {
+      instance = clazz.newInstance();
+    } catch (Exception ex) {
+      throw new IllegalArgumentException(ex);
+    }
+    addModule(name, instance);
+    return instance;
   }
 
   public void removeOperator(Operator operator)
@@ -1231,6 +1315,10 @@ public class LogicalPlan implements Serializable, DAG
     return Collections.unmodifiableCollection(this.operators.values());
   }
 
+  public Collection<ModuleMeta> getAllModules() {
+    return Collections.unmodifiableCollection(this.modules.values());
+  }
+
   public Collection<StreamMeta> getAllStreams()
   {
     return Collections.unmodifiableCollection(this.streams.values());
@@ -1242,10 +1330,9 @@ public class LogicalPlan implements Serializable, DAG
     return this.operators.get(operatorName);
   }
 
-  @Override
   public ModuleMeta getModuleMeta(String moduleName)
   {
-    throw new UnsupportedOperationException("Modules are not supported");
+    return null;
   }
 
   @Override
@@ -1260,10 +1347,14 @@ public class LogicalPlan implements Serializable, DAG
     throw new IllegalArgumentException("Operator not associated with the DAG: " + operator);
   }
 
-  @Override
   public ModuleMeta getMeta(Module module)
   {
-    throw new UnsupportedOperationException("Modules are not supported");
+    for (ModuleMeta m : getAllModules()) {
+      if (m.module == module) {
+        return m;
+      }
+    }
+    throw new IllegalArgumentException("Module not associated with the DAG: " + module);
   }
 
   public int getMaxContainerCount()
