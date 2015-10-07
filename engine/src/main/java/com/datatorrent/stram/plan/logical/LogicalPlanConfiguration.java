@@ -2116,10 +2116,18 @@ public class LogicalPlanConfiguration {
 
     // Expand the modules within the dag recursively
     setModuleProperties(dag, appName);
+    flattenDAG(dag, conf);
 
     // inject external operator configuration
     setOperatorConfiguration(dag, appConfs, appName);
     setStreamConfiguration(dag, appConfs, appName);
+  }
+
+  private void flattenDAG(LogicalPlan dag, Configuration conf)
+  {
+    for (ModuleMeta moduleMeta : dag.getAllModules()) {
+      moduleMeta.flattenModule(dag, conf);
+    }
   }
 
   public static Properties readProperties(String filePath) throws IOException
