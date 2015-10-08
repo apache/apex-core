@@ -18,24 +18,21 @@
  */
 package com.datatorrent.stram.security;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.http.FilterContainer;
 import org.apache.hadoop.http.FilterInitializer;
-import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.util.ConfigUtils;
 
 /**
@@ -100,51 +97,20 @@ public class StramWSFilterInitializer extends FilterInitializer
     Replace with methods from Hadoop when HA support is available
     HttpConfig is not used as it's audience is private as well and it's interface has changed from Hadoop 2.2 to 2.6
   */
-  public String getResolvedRMWebAppURLWithoutScheme(Configuration conf, String rmId) {
-    boolean sslEnabled = conf.getBoolean(
-            CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_KEY,
-            CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_DEFAULT);
-    return getResolvedRMWebAppURLWithoutScheme(conf, sslEnabled, (rmId != null) ? "." + rmId : "");
+  public String getResolvedRMWebAppURLWithoutScheme(Configuration conf, String rmId)
+  {
+    InetSocketAddress socketAddress = StramClientUtils.getRMWebAddress(conf, rmId);
+    return StramClientUtils.getSocketConnectString(socketAddress);
   }
 
   /*
     From org.apache.hadoop.yarn.webapp.util.WebAppUtils
     Modified for HA support
   */
-  public String getResolvedRMWebAppURLWithoutScheme(Configuration conf, boolean sslEnabled, String rmPrpKey)
+  public String getResolvedRMWebAppURLWithoutScheme(Configuration conf, boolean sslEnabled, String rmId)
   {
-    InetSocketAddress address = null;
-    if (sslEnabled) {
-      address =
-              conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS + rmPrpKey,
-                      YarnConfiguration.DEFAULT_RM_WEBAPP_HTTPS_ADDRESS,
-                      YarnConfiguration.DEFAULT_RM_WEBAPP_HTTPS_PORT);
-    } else {
-      address =
-              conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_ADDRESS + rmPrpKey,
-                      YarnConfiguration.DEFAULT_RM_WEBAPP_ADDRESS,
-                      YarnConfiguration.DEFAULT_RM_WEBAPP_PORT);
-    }
-    logger.info("rm webapp address setting {}", address);
-    logger.debug("rm setting sources {}", conf.getPropertySources(YarnConfiguration.RM_WEBAPP_ADDRESS));
-    address = NetUtils.getConnectAddress(address);
-    StringBuffer sb = new StringBuffer();
-    InetAddress resolved = address.getAddress();
-    if (resolved == null || resolved.isAnyLocalAddress() ||
-            resolved.isLoopbackAddress()) {
-      String lh = address.getHostName();
-      try {
-        lh = InetAddress.getLocalHost().getCanonicalHostName();
-      } catch (UnknownHostException e) {
-        //Ignore and fallback.
-      }
-      sb.append(lh);
-    } else {
-      sb.append(address.getHostName());
-    }
-    sb.append(":").append(address.getPort());
-    logger.info("rm webapp resolved hostname {}", sb.toString());
-    return sb.toString();
+    InetSocketAddress socketAddress = StramClientUtils.getRMWebAddress(conf, sslEnabled, rmId);
+    return StramClientUtils.getSocketConnectString(socketAddress);
   }
 
 }

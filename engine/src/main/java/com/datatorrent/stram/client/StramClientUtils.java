@@ -34,9 +34,11 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -730,6 +732,49 @@ public class StramClientUtils
       }
     }
     return null;
+  }
+
+  public static InetSocketAddress getRMWebAddress(Configuration conf, String rmId)
+  {
+    boolean sslEnabled = conf.getBoolean(CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_KEY, CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_DEFAULT);
+    return getRMWebAddress(conf, sslEnabled, rmId);
+  }
+
+  public static InetSocketAddress getRMWebAddress(Configuration conf, boolean sslEnabled, String rmId)
+  {
+    rmId = (rmId == null) ? "" : ("." + rmId);
+    InetSocketAddress address;
+    if (sslEnabled) {
+      address = conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS + rmId, YarnConfiguration.DEFAULT_RM_WEBAPP_HTTPS_ADDRESS, YarnConfiguration.DEFAULT_RM_WEBAPP_HTTPS_PORT);
+    } else {
+      address = conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_ADDRESS + rmId, YarnConfiguration.DEFAULT_RM_WEBAPP_ADDRESS, YarnConfiguration.DEFAULT_RM_WEBAPP_PORT);
+    }
+    LOG.info("rm webapp address setting {}", address);
+    LOG.debug("rm setting sources {}", conf.getPropertySources(YarnConfiguration.RM_WEBAPP_ADDRESS));
+    InetSocketAddress resolvedSocketAddress = NetUtils.getConnectAddress(address);
+    InetAddress resolved = resolvedSocketAddress.getAddress();
+    if (resolved == null || resolved.isAnyLocalAddress() || resolved.isLoopbackAddress()) {
+      try {
+        resolvedSocketAddress = InetSocketAddress.createUnresolved(InetAddress.getLocalHost().getCanonicalHostName(), address.getPort());
+      } catch (UnknownHostException e) {
+        //Ignore and fallback.
+      }
+    }
+    return resolvedSocketAddress;
+  }
+
+  public static String getSocketConnectString(InetSocketAddress socketAddress)
+  {
+    String host;
+    InetAddress address = socketAddress.getAddress();
+    if (address == null) {
+      host = socketAddress.getHostString();
+    } else if (address.isAnyLocalAddress() || address.isLoopbackAddress()) {
+      host = address.getCanonicalHostName();
+    } else {
+      host = address.getHostName();
+    }
+    return host + ":" + socketAddress.getPort();
   }
 
 }
