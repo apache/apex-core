@@ -1,6 +1,27 @@
 Apex Changelog
 ========================================================================================================================
 
+Version 3.1.1
+------------------------------------------------------------------------------------------------------------------------
+
+### Improvement
+
+* [APEX-122] - Fail release build when there are dependencies on snapshot version
+
+### Task
+
+* [APEX-81] - Update netlet dependency to release version
+
+### Bug
+
+* [APEX-89] - Javascript error when launching an app under CDH 5.2 (hadoop 2.5.0)
+* [APEX-101] - Negative Memory reported for Application Master
+* [APEX-121] - Making sure that state is transferred to client for Statefull Codec
+* [APEX-126] - handleIdleTime Called Outside Of The Space Between beginWindow and endWindow
+* [APEX-127] - Tags of overridden setter/getter methods are lost if there are no comments
+* [APEX-149] - In secure mode non-HA setup STRAM web service calls are failing
+* [APEX-170] -  StringCodec registered with BeanUtils is throwing null pointer
+
 
 Version 3.1.0
 ------------------------------------------------------------------------------------------------------------------------
