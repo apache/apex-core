@@ -25,14 +25,17 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.mozilla.javascript.Scriptable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.fs.FileSystem;
@@ -647,57 +650,62 @@ public class StramClientUtils
 
   public static void evalProperties(Properties target, Configuration vars)
   {
-    Pattern substitionPattern = Pattern.compile("\\$\\{(.+?)\\}");
+    ScriptEngine engine = new ScriptEngineManager().getEngineByName("javascript");
+
+    Pattern substitutionPattern = Pattern.compile("\\$\\{(.+?)\\}");
     Pattern evalPattern = Pattern.compile("\\{% (.+?) %\\}");
 
-    org.mozilla.javascript.Context context = org.mozilla.javascript.Context.enter();
-    context.setOptimizationLevel(-1);
-    Scriptable scope = context.initStandardObjects();
     try {
-      context.evaluateString(scope, "var _prop = {}", "EvalLaunchProperties", 0, null);
+      engine.eval("var _prop = {}");
       for (Map.Entry<String, String> entry : vars) {
-        LOG.info("Evaluating: {}", "_prop[\"" + entry.getKey() + "\"] = " + entry.getValue());
-        context.evaluateString(scope, "_prop[\"" + StringEscapeUtils.escapeJava(entry.getKey())  + "\"] = \"" + StringEscapeUtils.escapeJava(entry.getValue()) + "\"", "EvalLaunchProperties", 0, null);
+        String evalString = String.format("_prop[\"%s\"] = \"%s\"", StringEscapeUtils.escapeJava(entry.getKey()), StringEscapeUtils.escapeJava(entry.getValue()));
+        LOG.debug("Evaluating: {}", evalString);
+        engine.eval(evalString);
+      }
+    } catch (ScriptException ex) {
+      LOG.warn("Javascript error: {}", ex.getMessage());
+    }
+
+    for (Map.Entry<Object, Object> entry : target.entrySet()) {
+      String value = entry.getValue().toString();
+
+      Matcher matcher = substitutionPattern.matcher(value);
+      if (matcher.find()) {
+        StringBuilder newValue = new StringBuilder();
+        int cursor = 0;
+        do {
+          newValue.append(value.substring(cursor, matcher.start()));
+          String subst = vars.get(matcher.group(1));
+          if (subst != null) {
+            newValue.append(subst);
+          }
+          cursor = matcher.end();
+        } while (matcher.find());
+        newValue.append(value.substring(cursor));
+        target.put(entry.getKey(), newValue.toString());
       }
 
-      for (Map.Entry<Object, Object> entry : target.entrySet()) {
-        String value = entry.getValue().toString();
+      matcher = evalPattern.matcher(value);
+      if (matcher.find()) {
+        StringBuilder newValue = new StringBuilder();
+        int cursor = 0;
+        do {
+          newValue.append(value.substring(cursor, matcher.start()));
+          try {
+            Object result = engine.eval(matcher.group(1));
+            String eval = result.toString();
 
-        Matcher matcher = substitionPattern.matcher(value);
-        if (matcher.find()) {
-          StringBuilder newValue = new StringBuilder();
-          int cursor = 0;
-          do {
-            newValue.append(value.substring(cursor, matcher.start()));
-            String subst = vars.get(matcher.group(1));
-            if (subst != null) {
-              newValue.append(subst);
-            }
-            cursor = matcher.end();
-          } while (matcher.find());
-          newValue.append(value.substring(cursor));
-          target.put(entry.getKey(), newValue.toString());
-        }
-
-        matcher = evalPattern.matcher(value);
-        if (matcher.find()) {
-          StringBuilder newValue = new StringBuilder();
-          int cursor = 0;
-          do {
-            newValue.append(value.substring(cursor, matcher.start()));
-            String eval = context.evaluateString(scope, matcher.group(1), "EvalLaunchProperties", 0, null).toString();
             if (eval != null) {
               newValue.append(eval);
             }
-            cursor = matcher.end();
-          } while (matcher.find());
-          newValue.append(value.substring(cursor));
-          target.put(entry.getKey(), newValue.toString());
-        }
+          } catch (ScriptException ex) {
+            LOG.warn("JavaScript exception {}", ex.getMessage());
+          }
+          cursor = matcher.end();
+        } while (matcher.find());
+        newValue.append(value.substring(cursor));
+        target.put(entry.getKey(), newValue.toString());
       }
-    }
-    finally {
-      org.mozilla.javascript.Context.exit();
     }
   }
 

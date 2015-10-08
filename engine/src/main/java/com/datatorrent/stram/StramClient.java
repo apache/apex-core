@@ -121,7 +121,6 @@ public class StramClient
       org.apache.http.message.BasicHeaderValueParser.class,
       com.esotericsoftware.minlog.Log.class,
       org.apache.xbean.asm5.tree.ClassNode.class,
-      org.mozilla.javascript.Scriptable.class,
       // The jersey client inclusion is only for Hadoop-2.2 and should be removed when we upgrade our Hadoop
       // dependency version since Hadoop-2.3 onwards has jersey client bundled
       com.sun.jersey.api.client.ClientHandler.class,
