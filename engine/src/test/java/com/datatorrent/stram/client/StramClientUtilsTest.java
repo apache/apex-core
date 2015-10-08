@@ -19,7 +19,9 @@
 package com.datatorrent.stram.client;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -57,9 +59,16 @@ public class StramClientUtilsTest
     conf.set(YarnConfiguration.RM_WEBAPP_ADDRESS, "192.168.1.1:8032");
     conf.set(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS, "192.168.1.2:8032");
     Assert.assertEquals(getHostString("192.168.1.1") + ":8032", StramClientUtils.getSocketConnectString(StramClientUtils.getRMWebAddress(conf, null)));
+    List<InetSocketAddress> addresses = StramClientUtils.getRMAddresses(conf);
+    Assert.assertEquals(1, addresses.size());
+    Assert.assertEquals(getHostString("192.168.1.1") + ":8032", StramClientUtils.getSocketConnectString(addresses.get(0)));
+
     conf.setBoolean(CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_KEY, true);
     Assert.assertEquals(getHostString("192.168.1.2") + ":8032", StramClientUtils.getSocketConnectString(StramClientUtils.getRMWebAddress(conf, null)));
-    
+    addresses = StramClientUtils.getRMAddresses(conf);
+    Assert.assertEquals(1, addresses.size());
+    Assert.assertEquals(getHostString("192.168.1.2") + ":8032", StramClientUtils.getSocketConnectString(addresses.get(0)));
+
     // set localhost if host is unknown
     conf.set(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS, "someunknownhost.:8032");
 
@@ -70,12 +79,16 @@ public class StramClientUtilsTest
     Assert.assertEquals(InetAddress.getLocalHost().getCanonicalHostName() + ":8032", StramClientUtils.getSocketConnectString(StramClientUtils.getRMWebAddress(conf, null)));
 
     // test when HA is enabled
-    conf.getBoolean(ConfigUtils.RM_HA_ENABLED, true);
+    conf.setBoolean(ConfigUtils.RM_HA_ENABLED, true);
     conf.set(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS + ".rm1", "192.168.1.1:8032");
     conf.set(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS + ".rm2", "192.168.1.2:8032");
+    conf.set("yarn.resourcemanager.ha.rm-ids", "rm1,rm2");
     Assert.assertEquals(getHostString("192.168.1.1") + ":8032", StramClientUtils.getSocketConnectString(StramClientUtils.getRMWebAddress(conf, "rm1")));
     Assert.assertEquals(getHostString("192.168.1.2") + ":8032", StramClientUtils.getSocketConnectString(StramClientUtils.getRMWebAddress(conf, "rm2")));
-
+    addresses = StramClientUtils.getRMAddresses(conf);
+    Assert.assertEquals(2, addresses.size());
+    Assert.assertEquals(getHostString("192.168.1.1") + ":8032", StramClientUtils.getSocketConnectString(addresses.get(0)));
+    Assert.assertEquals(getHostString("192.168.1.2") + ":8032", StramClientUtils.getSocketConnectString(addresses.get(1)));
   }
 
 }

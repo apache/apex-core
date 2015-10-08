@@ -777,4 +777,21 @@ public class StramClientUtils
     return host + ":" + socketAddress.getPort();
   }
 
+  public static List<InetSocketAddress> getRMAddresses(Configuration conf)
+  {
+
+    List<InetSocketAddress> rmAddresses = new ArrayList<>();
+    if (ConfigUtils.isRMHAEnabled(conf)) {
+      // HA is enabled get all
+      for (String rmId : ConfigUtils.getRMHAIds(conf)) {
+        InetSocketAddress socketAddress = getRMWebAddress(conf, rmId);
+        rmAddresses.add(socketAddress);
+      }
+    } else {
+      InetSocketAddress socketAddress = getRMWebAddress(conf, null);
+      rmAddresses.add(socketAddress);
+    }
+    return rmAddresses;
+  }
+
 }
