@@ -36,7 +36,7 @@ public interface DataListener
 
   /**
    */
-  public void addedData();
+  public boolean addedData();
 
   /**
    *
