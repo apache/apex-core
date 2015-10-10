@@ -264,8 +264,7 @@ public class LogicalNode implements DataListener
                   break;
               }
             }
-          }
-          else {
+          } else {
             while (ready && iterator.hasNext()) {
               SerializedData data = iterator.next();
               switch (data.buffer[data.dataOffset]) {
@@ -298,8 +297,10 @@ public class LogicalNode implements DataListener
         catch (InterruptedException ie) {
           throw new RuntimeException(ie);
         }
-      }
-      else {
+        if (!ready) {
+          iterator.suspend();
+        }
+      } else {
         catchUp();
       }
     }
