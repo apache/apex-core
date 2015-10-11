@@ -121,7 +121,6 @@ public class StramClient
       org.apache.http.message.BasicHeaderValueParser.class,
       com.esotericsoftware.minlog.Log.class,
       org.apache.xbean.asm5.tree.ClassNode.class,
-      org.mozilla.javascript.Scriptable.class,
       // The jersey client inclusion is only for Hadoop-2.2 and should be removed when we upgrade our Hadoop
       // dependency version since Hadoop-2.3 onwards has jersey client bundled
       com.sun.jersey.api.client.ClientHandler.class,
@@ -497,15 +496,7 @@ public class StramClient
       outStream = fs.create(launchConfigDst, true);
       conf.writeXml(outStream);
       outStream.close();
-
-      FileStatus topologyFileStatus = fs.getFileStatus(cfgDst);
-      LocalResource topologyRsrc = Records.newRecord(LocalResource.class);
-      topologyRsrc.setType(LocalResourceType.FILE);
-      topologyRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
-      topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(cfgDst.toUri()));
-      topologyRsrc.setTimestamp(topologyFileStatus.getModificationTime());
-      topologyRsrc.setSize(topologyFileStatus.getLen());
-      localResources.put(LogicalPlan.SER_FILE_NAME, topologyRsrc);
+      LaunchContainerRunnable.addFileToLocalResources(LogicalPlan.SER_FILE_NAME, fs.getFileStatus(cfgDst), LocalResourceType.FILE, localResources);
 
       // Set local resource info into app master container launch context
       amContainer.setLocalResources(localResources);
