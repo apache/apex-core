@@ -762,18 +762,13 @@ public class StreamingContainerManagerTest
     mc1.sendHeartbeat();
     scm.monitorHeartbeat();
 
+    Assert.assertEquals("committedWindowId", 1, scm.getCommittedWindowId());
+
     o2p1mos.currentWindowId(2).checkpointWindowId(2);
     mc2.sendHeartbeat();
     scm.monitorHeartbeat();
-    Assert.assertEquals("committedWindowId", 1, scm.getCommittedWindowId());
-    scm.monitorHeartbeat(); // committedWindowId updated in next cycle
-    Assert.assertEquals("committedWindowId", 2, scm.getCommittedWindowId());
-    Assert.assertEquals(1, o1p1.getContainer().getOperators().size());
-    Assert.assertEquals(1, o2p1.getContainer().getOperators().size());
-    Assert.assertEquals(2, physicalPlan.getContainers().size());
 
-    // call again as events are processed after committed window was updated
-    scm.processEvents();
+    // Operators are shutdown when both operators reach window Id 2
     Assert.assertEquals(0, o1p1.getContainer().getOperators().size());
     Assert.assertEquals(0, o2p1.getContainer().getOperators().size());
     Assert.assertEquals(0, physicalPlan.getContainers().size());
