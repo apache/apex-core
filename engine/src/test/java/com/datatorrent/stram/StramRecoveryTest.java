@@ -36,6 +36,7 @@ import org.apache.hadoop.ipc.RPC.Server;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.test.MockitoUtil;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -65,6 +66,7 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
+import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 
 import static org.junit.Assert.assertEquals;
@@ -72,12 +74,20 @@ import static org.junit.Assert.assertEquals;
 public class StramRecoveryTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramRecoveryTest.class);
-  @Rule public final TestMeta testMeta = new TestMeta();
+
+  @Rule
+  public final TestMeta testMeta = new TestMeta();
+
+  private LogicalPlan dag;
+
+  @Before
+  public void setup()
+  {
+    dag = StramTestSupport.createDAG(testMeta);
+  }
 
   private void testPhysicalPlanSerialization(StorageAgent agent) throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
-
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     PartitioningTestOperator o2 = dag.addOperator("o2", PartitioningTestOperator.class);
     o2.setPartitionCount(3);
@@ -127,13 +137,13 @@ public class StramRecoveryTest
   @Test
   public void testPhysicalPlanSerializationWithSyncAgent() throws Exception
   {
-    testPhysicalPlanSerialization(new FSStorageAgent(testMeta.dir, null));
+    testPhysicalPlanSerialization(new FSStorageAgent(testMeta.getPath(), null));
   }
 
   @Test
   public void testPhysicalPlanSerializationWithAsyncAgent() throws Exception
   {
-    testPhysicalPlanSerialization(new AsyncFSStorageAgent(testMeta.dir, null));
+    testPhysicalPlanSerialization(new AsyncFSStorageAgent(testMeta.getPath(), null));
   }
 
   public static class StatsListeningOperator extends TestGeneratorInputOperator implements StatsListener
@@ -161,10 +171,6 @@ public class StramRecoveryTest
    */
   private void testContainerManager(StorageAgent agent) throws Exception
   {
-    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
-
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
 
     StatsListeningOperator o1 = dag.addOperator("o1", StatsListeningOperator.class);
@@ -188,8 +194,7 @@ public class StramRecoveryTest
     assertEquals("state " + o1p1, PTOperator.State.PENDING_DEPLOY, o1p1.getState());
 
     // test restore initial snapshot + log
-    dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    dag = StramTestSupport.createDAG(testMeta);
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
     dag = scm.getLogicalPlan();
     plan = scm.getPhysicalPlan();
@@ -245,8 +250,7 @@ public class StramRecoveryTest
     checkpoint(scm, o1p1, offlineCheckpoint);
 
     // test restore
-    dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    dag = StramTestSupport.createDAG(testMeta);
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
 
     Assert.assertNotSame("dag references", dag, scm.getLogicalPlan());
@@ -270,13 +274,13 @@ public class StramRecoveryTest
   @Test
   public void testContainerManagerWithSyncAgent() throws Exception
   {
-    testPhysicalPlanSerialization(new FSStorageAgent(testMeta.dir, null));
+    testPhysicalPlanSerialization(new FSStorageAgent(testMeta.getPath(), null));
   }
 
   @Test
   public void testContainerManagerWithAsyncAgent() throws Exception
   {
-    testPhysicalPlanSerialization(new AsyncFSStorageAgent(testMeta.dir, null));
+    testPhysicalPlanSerialization(new AsyncFSStorageAgent(testMeta.getPath(), null));
   }
 
   @Test
@@ -284,9 +288,7 @@ public class StramRecoveryTest
   {
     final MutableInt flushCount = new MutableInt();
     final MutableBoolean isClosed = new MutableBoolean(false);
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.getPath(), null));
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     StreamingContainerManager scm = new StreamingContainerManager(dag);
@@ -386,12 +388,10 @@ public class StramRecoveryTest
 
   private void testRestartApp(StorageAgent agent, String appPath1) throws Exception
   {
-    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
     String appId1 = "app1";
     String appId2 = "app2";
-    String appPath2 = testMeta.dir + "/" + appId2;
+    String appPath2 = testMeta.getPath() + "/" + appId2;
 
-    LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId1);
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
     dag.setAttribute(LogicalPlan.APPLICATION_ATTEMPT_ID, 1);
@@ -445,21 +445,21 @@ public class StramRecoveryTest
   @Test
   public void testRestartAppWithSyncAgent() throws Exception
   {
-    String appPath1 = testMeta.dir + "/app1";
+    final String appPath1 = testMeta.getPath() + "/app1";
     testRestartApp(new FSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, null), appPath1);
   }
 
   @Test
   public void testRestartAppWithAsyncAgent() throws Exception
   {
-    String appPath1 = testMeta.dir + "/app1";
+    final String appPath1 = testMeta.getPath() + "/app1";
     testRestartApp(new AsyncFSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, null), appPath1);
   }
 
   @Test
   public void testRpcFailover() throws Exception
   {
-    String appPath = testMeta.dir;
+    String appPath = testMeta.getPath();
     Configuration conf = new Configuration(false);
     final AtomicBoolean timedout = new AtomicBoolean();
 

@@ -22,6 +22,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -50,12 +51,18 @@ public class OutputUnifiedTest
   @Rule
   public StramTestSupport.TestMeta testMeta = new StramTestSupport.TestMeta();
 
-  @Test
-  public void testManyToOnePartition() throws Exception {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+  private LogicalPlan dag;
 
+  @Before
+  public void setup()
+  {
+    dag = StramTestSupport.createDAG(testMeta);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+  }
+
+  @Test
+  public void testManyToOnePartition() throws Exception
+  {
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
 
@@ -83,11 +90,8 @@ public class OutputUnifiedTest
   }
 
   @Test
-  public void testMxNPartition() throws Exception {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
-
+  public void testMxNPartition() throws Exception
+  {
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
 
@@ -117,11 +121,8 @@ public class OutputUnifiedTest
   }
 
   @Test
-  public void testParallelPartition() throws Exception {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
-
+  public void testParallelPartition() throws Exception
+  {
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
 
