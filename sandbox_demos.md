@@ -9,7 +9,7 @@ Basic Demo Applications
 
 These applications require minimal resources and configuration changes and can be launched with a single click.  Ensure Hadoop [YARN](http://localhost:8088/cluster/cluster) and [HDFS](http://localhost:50070/dfshealth.jsp) are active and ready before launching DataTorrent demo applications.
 
-1.  Navigate to <a href="http://localhost:9090/#/packages" target="_blank">App Packages</a> under Develop tab of the DataTorrent console, and select one of the demo packages.  In this example we will use **PiDemo** application package.
+1.  Navigate to <a href="http://localhost:9090/#/dev/packages" target="_blank">App Packages</a> under Develop tab of the DataTorrent console, and select one of the demo packages.  In this example we will use **PiDemo** application package.
 
 2.  From the list of available Applications, locate PiDemo and press the launch button.
     
