@@ -26,6 +26,7 @@ import java.util.concurrent.FutureTask;
 import javax.validation.ValidationException;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -46,18 +47,26 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PlanModifier;
+import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.google.common.collect.Sets;
 
 public class LogicalPlanModificationTest
 {
-  @Rule public TestMeta testMeta = new TestMeta();
+  private LogicalPlan dag;
+
+  @Rule
+  public TestMeta testMeta = new TestMeta();
+
+  @Before
+  public void setup()
+  {
+    dag = StramTestSupport.createDAG(testMeta);
+  }
 
   @Test
   public void testAddOperator()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
@@ -94,7 +103,6 @@ public class LogicalPlanModificationTest
   @Test
   public void testSetOperatorProperty()
   {
-    LogicalPlan dag = new LogicalPlan();
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     OperatorMeta o1Meta = dag.getMeta(o1);
 
@@ -121,8 +129,6 @@ public class LogicalPlanModificationTest
   @Test
   public void testRemoveOperator()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     OperatorMeta o1Meta = dag.getMeta(o1);
     GenericTestOperator o12 = dag.addOperator("o12", GenericTestOperator.class);
@@ -191,8 +197,6 @@ public class LogicalPlanModificationTest
   @Test
   public void testRemoveOperator2()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     OperatorMeta o1Meta = dag.getMeta(o1);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -233,8 +237,6 @@ public class LogicalPlanModificationTest
   @Test
   public void testRemoveStream()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
 
@@ -255,8 +257,6 @@ public class LogicalPlanModificationTest
   @Test
   public void testAddStream()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
 
@@ -295,10 +295,8 @@ public class LogicalPlanModificationTest
 
   }
 
-  private void testExecutionManager(StorageAgent agent) throws Exception {
-
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
+  private void testExecutionManager(StorageAgent agent) throws Exception
+  {
     dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
@@ -337,13 +335,13 @@ public class LogicalPlanModificationTest
   @Test
   public void testExecutionManagerWithSyncStorageAgent() throws Exception
   {
-    testExecutionManager(new FSStorageAgent(testMeta.dir, null));
+    testExecutionManager(new FSStorageAgent(testMeta.getPath(), null));
   }
 
   @Test
   public void testExecutionManagerWithAsyncStorageAgent() throws Exception
   {
-    testExecutionManager(new AsyncFSStorageAgent(testMeta.dir, null));
+    testExecutionManager(new AsyncFSStorageAgent(testMeta.getPath(), null));
   }
 
 }
