@@ -194,14 +194,12 @@ public class AutoMetricTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testMetricPropagation() throws Exception
   {
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.getPath(), null));
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
 
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     TestStatsListener sl = new TestStatsListener();
     dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)sl));
-    //dag.setAttribute(testOper, OperatorContext.INITIAL_PARTITION_COUNT, 1);
 
     GenericTestOperator collector = dag.addOperator("Collector", new GenericTestOperator());
     dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(Locality.CONTAINER_LOCAL);

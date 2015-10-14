@@ -69,8 +69,6 @@ public class StramLocalClusterTest
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.getPath(), null));
-
     TestGeneratorInputOperator genNode = dag.addOperator("genNode", TestGeneratorInputOperator.class);
     genNode.setMaxTuples(2);
 
