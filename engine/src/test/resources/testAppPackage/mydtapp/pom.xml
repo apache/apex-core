@@ -33,7 +33,7 @@
 
   <properties>
     <!-- change this if you desire to use a different version of DataTorrent -->
-    <datatorrent.version>3.0.0</datatorrent.version>
+    <datatorrent.version>3.3.0-incubating-SNAPSHOT</datatorrent.version>
     <datatorrent.apppackage.classpath>lib/*.jar</datatorrent.apppackage.classpath>
   </properties>
 
@@ -184,8 +184,8 @@
   <dependencies>
     <!-- add your dependencies here -->
     <dependency>
-      <groupId>com.datatorrent</groupId>
-      <artifactId>dt-common</artifactId>
+      <groupId>org.apache.apex</groupId>
+      <artifactId>apex-common</artifactId>
       <version>${datatorrent.version}</version>
       <scope>provided</scope>
     </dependency>

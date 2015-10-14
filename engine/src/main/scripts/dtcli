@@ -67,7 +67,7 @@ fi
 
 if [ -f "$MVN_GENERATED_PATH" ]; then
   # development launch mode
-  DT_CORE_JAR="$BUILD_DIR/dt-engine.jar"
+  DT_CORE_JAR="$BUILD_DIR/apex-engine.jar"
   if [ ! -f "$DT_CORE_JAR" ]; then
     echoerr "Error: Cannot find $DT_CORE_JAR";
     exit 1;
