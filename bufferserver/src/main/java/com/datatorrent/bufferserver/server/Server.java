@@ -636,9 +636,14 @@ public class Server implements ServerListener
         {
           final int interestOps = key.interestOps();
           if ((interestOps & SelectionKey.OP_READ) == 0) {
-            logger.debug("Resuming read on key {} with attachment {}", key, key.attachment());
             read(0);
-            key.interestOps(interestOps | SelectionKey.OP_READ);
+            if (datalist.isClientSuspended(Publisher.this)) {
+              logger.debug("Keeping read on key {} with attachment {} suspended. ", key, key.attachment(), datalist);
+              datalist.notifyListeners();
+            } else {
+              logger.debug("Resuming read on key {} with attachment {}", key, key.attachment());
+              key.interestOps(interestOps | SelectionKey.OP_READ);
+            }
           }
         }
       });

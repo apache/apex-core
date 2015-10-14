@@ -40,7 +40,6 @@ import com.datatorrent.bufferserver.util.VarInt;
 import com.datatorrent.netlet.AbstractClient;
 import com.datatorrent.netlet.util.VarInt.MutableInt;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
@@ -66,7 +65,7 @@ public class DataList
   protected int size;
   protected int processingOffset;
   protected long baseSeconds;
-  private final List<AbstractClient> suspendedClients = newArrayList();
+  private final Set<AbstractClient> suspendedClients = newHashSet();
   private final AtomicInteger numberOfInMemBlockPermits;
   private MutableInt nextOffset = new MutableInt();
 
@@ -255,6 +254,12 @@ public class DataList
 
     last.writingOffset = writeOffset;
 
+    notifyListeners();
+
+  }
+
+  public void notifyListeners()
+  {
     autoFlushExecutor.submit(new Runnable()
     {
       @Override
@@ -381,7 +386,14 @@ public class DataList
   public boolean suspendRead(final AbstractClient client)
   {
     synchronized (suspendedClients) {
-      return client.suspendReadIfResumed() && suspendedClients.add(client);
+      return suspendedClients.add(client) && client.suspendReadIfResumed();
+    }
+  }
+
+  public boolean isClientSuspended(final AbstractClient client)
+  {
+    synchronized (suspendedClients) {
+      return suspendedClients.contains(client);
     }
   }
 
@@ -727,17 +739,25 @@ public class DataList
 
     protected void acquire(boolean wait)
     {
-      if (refCount.getAndIncrement() == 0 && storage != null && data == null) {
+      int refCount = this.refCount.getAndIncrement();
+      synchronized (Block.this) {
+        if (data != null) {
+          return;
+        }
+      }
+      if (refCount == 0 && storage != null) {
         final Runnable retriever = getRetriever();
         if (wait) {
           retriever.run();
         } else {
           future = storageExecutor.submit(retriever);
         }
-      } else if (wait && data == null) {
+      } else if (wait) {
         try {
           synchronized (Block.this) {
-            wait();
+            while (data == null) {
+              wait();
+            }
           }
         }
         catch (InterruptedException ex) {
@@ -761,13 +781,17 @@ public class DataList
           }
           else {
             //logger.debug("Spooled {} to disk", Block.this);
+            int numberOfInMemBlockPermits;
             synchronized (Block.this) {
               if (refCount.get() == 0) {
                 Block.this.data = null;
+                numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.incrementAndGet();
+              } else {
+                numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.get();
               }
             }
-            int numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.incrementAndGet();
             assert numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS : "Number of in memory block permits " + numberOfInMemBlockPermits + " exceeded configured maximum " + MAX_COUNT_OF_INMEM_BLOCKS + '.';
+            logger.debug("Number of in memory block permits {}", numberOfInMemBlockPermits);
             resumeSuspendedClients(numberOfInMemBlockPermits);
           }
         }
@@ -846,6 +870,7 @@ public class DataList
     protected int readOffset;
     MutableInt nextOffset = new MutableInt();
     int size;
+    protected boolean suspended;
 
     /**
      *
@@ -853,9 +878,8 @@ public class DataList
      */
     DataListIterator(Block da)
     {
-      da.acquire(true);
+      suspended = true;
       this.da = da;
-      buffer = da.data;
       readOffset = da.readingOffset;
     }
 
@@ -893,6 +917,14 @@ public class DataList
     @Override
     public boolean hasNext()
     {
+      if (suspended)
+      {
+        logger.debug("Resuming {}->{}", this, da);
+        suspended = false;
+        da.acquire(true);
+        buffer = da.data;
+      }
+
       while (size == 0) {
         size = VarInt.read(buffer, readOffset, da.writingOffset, nextOffset);
         switch (nextOffset.integer) {
@@ -953,8 +985,20 @@ public class DataList
     public void close()
     {
       if (da != null) {
-        da.release(false);
+        if (!suspended) {
+          da.release(false);
+        }
         da = null;
+        buffer = null;
+      }
+    }
+
+    protected void suspend()
+    {
+      if (!suspended) {
+        logger.debug("Suspending {}->{}", this, da);
+        suspended = true;
+        da.release(false);
         buffer = null;
       }
     }
