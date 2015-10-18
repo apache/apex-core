@@ -108,11 +108,10 @@
             <exclude>DISCLAIMER</exclude>
             <exclude>LICENSE</exclude>
             <exclude>NOTICE</exclude>
-            <exclude>license.txt</exclude>
             <exclude>**/*.md</exclude>
             <exclude>**/*.txt</exclude>
+            <exclude>**/*.importorder</exclude>
             <exclude>**/archetype-resources/**</exclude>
-            <exclude>src/test/resources/projects/basic/goal.txt</exclude>
           </excludes>
           <mapping>
             <dtcli>SCRIPT_STYLE</dtcli>
@@ -186,11 +185,11 @@
             <exclude>.idea/**</exclude>
             <exclude>**/src/test/resources/**/MANIFEST.MF</exclude>
             <exclude>**/src/test/resources/**/*.json</exclude>
-            <exclude>**/src/test/resources/**/*.txt</exclude>
             <exclude>**/resources/META-INF/services/**</exclude>
-            <exclude>CHANGELOG.md</exclude>
             <exclude>**/archetype-resources/**</exclude>
-            <exclude>README.md</exclude>
+            <exclude>**/*.md</exclude>
+            <exclude>**/*.txt</exclude>
+            <exclude>**/*.importorder</exclude>
           </excludes>
         </configuration>
       </plugin>
