@@ -33,7 +33,7 @@
   <version>3.2.0-incubating-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Apache Apex Core</name>
+  <name>Apache Apex</name>
   <url>http://apex.apache.org</url>
 
   <organization>
@@ -100,7 +100,7 @@
         <artifactId>license-maven-plugin</artifactId>
         <version>2.11</version>
         <configuration>
-          <header>license.txt</header>
+          <header>header.txt</header>
           <properties>
             <owner>Apache Software Foundation</owner>
             <email>dev@apex.incubator.apache.org</email>
