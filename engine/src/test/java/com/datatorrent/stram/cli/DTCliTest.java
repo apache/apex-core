@@ -24,12 +24,15 @@ import com.datatorrent.stram.client.ConfigPackage;
 import com.datatorrent.stram.client.DTConfiguration;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestHomeDirectory;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
+
 import static com.datatorrent.stram.support.StramTestSupport.setEnv;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -56,17 +59,20 @@ public class DTCliTest
   static TemporaryFolder testFolder = new TemporaryFolder();
   static DTCli cli = new DTCli();
 
-  static Map<String, String> env = new HashMap<String, String>();
-  static String userHome;
+  Map<String, String> env = new HashMap<String, String>();
 
-  @BeforeClass
-  public static void starting()
+  @Rule
+  public TestMeta testMeta = new TestMeta();
+
+  @Before
+  public void beforeTest()
   {
     try {
-      userHome = System.getProperty("user.home");
-      env.put("HOME", System.getProperty("user.dir") + "/src/test/resources/testAppPackage");
+      File userHome = new File(testMeta.getPath());
+      env.put("HOME", userHome.getAbsolutePath());
       setEnv(env);
-
+      FileUtils.copyDirectory(new File("src/test/resources/testAppPackage/.dt"), new File(userHome, ".dt"));
+System.out.println("**"+userHome);
       cli.init();
       // Set up jar file to use with constructor
       testFolder.create();
@@ -78,7 +84,7 @@ public class DTCliTest
       throw new RuntimeException(e);
     }
   }
-
+/*
   @AfterClass
   public static void finished()
   {
@@ -93,7 +99,7 @@ public class DTCliTest
       throw new RuntimeException(e);
     }
   }
-
+*/
   @Test
   public void testLaunchAppPackagePropertyPrecedence() throws Exception
   {
