@@ -112,6 +112,7 @@
             <exclude>**/*.txt</exclude>
             <exclude>**/*.importorder</exclude>
             <exclude>**/archetype-resources/**</exclude>
+            <exclude>misc/ide-templates/**</exclude>
           </excludes>
           <mapping>
             <dtcli>SCRIPT_STYLE</dtcli>
@@ -190,6 +191,7 @@
             <exclude>**/*.md</exclude>
             <exclude>**/*.txt</exclude>
             <exclude>**/*.importorder</exclude>
+            <exclude>misc/ide-templates/**</exclude>
           </excludes>
         </configuration>
       </plugin>
