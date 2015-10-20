@@ -64,7 +64,10 @@ public class DTCliTest
   {
     try {
       userHome = System.getProperty("user.home");
-      env.put("HOME", System.getProperty("user.dir") + "/src/test/resources/testAppPackage");
+      String newHome = System.getProperty("user.dir") + "/target";
+      FileUtils.forceMkdir(new File(newHome + "/.dt"));
+      FileUtils.copyFile(new File(System.getProperty("user.dir") + "/src/test/resources/testAppPackage/dt-site.xml"), new File(newHome + "/.dt/dt-site.xml"));
+      env.put("HOME", newHome);
       setEnv(env);
 
       cli.init();
@@ -83,7 +86,7 @@ public class DTCliTest
   public static void finished()
   {
     try {
-      env.put("HOME", System.getProperty("user.dir") + userHome);
+      env.put("HOME", userHome);
       setEnv(env);
 
       StramTestSupport.removeAppPackageFile();
