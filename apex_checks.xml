@@ -80,7 +80,12 @@
     </module>
 
     <module name="NoWhitespaceBefore">
-      <property name="tokens" value="SEMI, DOT, POST_DEC, POST_INC"/>
+      <property name="tokens" value="COMMA, SEMI, POST_DEC, POST_INC"/>
+    </module>
+
+    <module name="NoWhitespaceBefore">
+      <property name="tokens" value="DOT"/>
+      <property name="allowLineBreaks" value="true"/>
     </module>
 
     <module name="WhitespaceAround">
@@ -133,6 +138,9 @@
       <property name="basicOffset" value="2"/>
       <property name="braceAdjustment" value="0"/>
       <property name="caseIndent" value="2"/>
+      <property name="throwsIndent" value="2"/>
+      <property name="arrayInitIndent" value="2"/>
+      <property name="lineWrappingIndentation" value="2"/>
     </module>
 
     <module name="ImportOrder">
