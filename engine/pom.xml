@@ -23,15 +23,15 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.datatorrent</groupId>
-    <artifactId>dt-framework</artifactId>
-    <version>3.3.0-SNAPSHOT</version>
+    <groupId>org.apache.apex</groupId>
+    <artifactId>apex</artifactId>
+    <version>3.3.0-incubating-SNAPSHOT</version>
   </parent>
 
-  <artifactId>dt-engine</artifactId>
+  <artifactId>apex-engine</artifactId>
   <packaging>jar</packaging>
 
-  <name>Streaming Application Manager</name>
+  <name>Apache Apex Stream Processing Engine</name>
 
   <build>
     <finalName>${project.artifactId}</finalName>
@@ -165,7 +165,7 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>dt-bufferserver</artifactId>
+      <artifactId>apex-bufferserver</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

@@ -22,12 +22,18 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.datatorrent</groupId>
-  <artifactId>dt-framework</artifactId>
-  <version>3.3.0-SNAPSHOT</version>
+  <parent>
+    <groupId>org.apache</groupId>
+    <artifactId>apache</artifactId>
+    <version>16</version>
+  </parent>
+
+  <groupId>org.apache.apex</groupId>
+  <artifactId>apex</artifactId>
+  <version>3.3.0-incubating-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Apache Apex Core</name>
+  <name>Apache Apex</name>
   <url>http://apex.apache.org</url>
 
   <organization>
@@ -43,6 +49,7 @@
   </licenses>
 
   <repositories>
+    <!-- added for semantic versioning check, won't be needed once we publish to central -->
     <repository>
       <snapshots>
         <enabled>false</enabled>
@@ -63,7 +70,6 @@
     <jersey.version>1.9</jersey.version>
     <!-- do not change jetty version as later versions have problems with DefaultServlet -->
     <jetty.version>8.1.10.v20130312</jetty.version>
-    <maven.deploy.repo.classifier></maven.deploy.repo.classifier>
     <license.skip>true</license.skip>
     <checkstyle.console>false</checkstyle.console>
   </properties>
@@ -93,7 +99,7 @@
         <artifactId>license-maven-plugin</artifactId>
         <version>2.11</version>
         <configuration>
-          <header>license.txt</header>
+          <header>header.txt</header>
           <properties>
             <owner>Apache Software Foundation</owner>
             <email>dev@apex.incubator.apache.org</email>
@@ -102,11 +108,11 @@
             <exclude>DISCLAIMER</exclude>
             <exclude>LICENSE</exclude>
             <exclude>NOTICE</exclude>
-            <exclude>license.txt</exclude>
             <exclude>**/*.md</exclude>
             <exclude>**/*.txt</exclude>
+            <exclude>**/*.importorder</exclude>
             <exclude>**/archetype-resources/**</exclude>
-            <exclude>src/test/resources/projects/basic/goal.txt</exclude>
+            <exclude>misc/ide-templates/**</exclude>
           </excludes>
           <mapping>
             <dtcli>SCRIPT_STYLE</dtcli>
@@ -180,11 +186,12 @@
             <exclude>.idea/**</exclude>
             <exclude>**/src/test/resources/**/MANIFEST.MF</exclude>
             <exclude>**/src/test/resources/**/*.json</exclude>
-            <exclude>**/src/test/resources/**/*.txt</exclude>
             <exclude>**/resources/META-INF/services/**</exclude>
-            <exclude>CHANGELOG.md</exclude>
             <exclude>**/archetype-resources/**</exclude>
-            <exclude>README.md</exclude>
+            <exclude>**/*.md</exclude>
+            <exclude>**/*.txt</exclude>
+            <exclude>**/*.importorder</exclude>
+            <exclude>misc/ide-templates/**</exclude>
           </excludes>
         </configuration>
       </plugin>
@@ -340,30 +347,29 @@
   </build>
   <profiles>
     <profile>
-      <id>release</id>
+      <id>apache-release</id>
       <modules>
       </modules>
       <properties>
         <maven.compiler.debug>false</maven.compiler.debug>
         <maven.compiler.optimize>true</maven.compiler.optimize>
         <maven.deploy.skip>false</maven.deploy.skip>
-        <!-- always generate on release build -->
-        <generate-revision-info-phase>generate-resources</generate-revision-info-phase>
-        <distMgmtDevUrl>internal.repo::default::file://${project.build.directory}/mvn-repo</distMgmtDevUrl>
-        <distMgmtUrl>dav:http://www.datatorrent.com:8081/nexus/content/repositories</distMgmtUrl>
+        <distMgmtSnapshotsId>apache.snapshots.https</distMgmtSnapshotsId>
+        <distMgmtSnapshotsUrl>https://repository.apache.org/content/repositories/snapshots</distMgmtSnapshotsUrl>
+        <distMgmtReleaseId>apache.staging.https</distMgmtReleaseId>
+        <distMgmtReleaseUrl>https://repository.apache.org/service/local/staging/deploy/maven2</distMgmtReleaseUrl>
+        <distMgmtDevUrl>file://${project.build.directory}/mvn-repo</distMgmtDevUrl>
         <package.prefix>/opt/datatorrent</package.prefix>
         <package.groupname>dtorrent</package.groupname>
       </properties>
       <distributionManagement>
         <repository>
-          <id>releases</id>
-          <name>DataTorrent Repository</name>
-          <url>${distMgmtUrl}/${maven.deploy.repo.classifier}releases/</url>
+          <id>${distMgmtReleaseId}</id>
+          <url>${distMgmtReleaseUrl}</url>
         </repository>
         <snapshotRepository>
-          <id>snapshots</id>
-          <name>DataTorrent Snapshots</name>
-          <url>${distMgmtUrl}/${maven.deploy.repo.classifier}snapshots/</url>
+          <id>${distMgmtSnapshotsId}</id>
+          <url>${distMgmtSnapshotsUrl}</url>
         </snapshotRepository>
       </distributionManagement>
       <build>
@@ -377,43 +383,6 @@
                 <id>parse-version</id>
                 <goals>
                   <goal>parse-version</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <artifactId>maven-site-plugin</artifactId>
-            <version>3.2</version>
-          </plugin>
-          <plugin>
-            <artifactId>maven-deploy-plugin</artifactId>
-            <version>2.7</version>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <executions>
-              <execution>
-                <!-- build javadoc jars per jar for publishing to maven -->
-                <id>module-javadocs</id>
-                <phase>prepare-package</phase>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-                <configuration>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-source-plugin</artifactId>
-            <version>2.2.1</version>
-            <executions>
-              <execution>
-                <id>attach-sources</id>
-                <goals>
-                  <goal>jar-no-fork</goal>
                 </goals>
               </execution>
             </executions>

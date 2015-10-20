@@ -153,12 +153,16 @@ public class CompactUtil
         if (annotation.desc.contains("InputPortFieldAnnotation")
             || annotation.desc.contains("OutputPortFieldAnnotation")) {
           List<Object> annotationValues = annotation.values;
-          int index = 0;
-          while (index < annotationValues.size()) {
-            annotationMap.put((String) annotationValues.get(index++), annotationValues.get(index++));
+          if (annotationValues != null) {
+            int index = 0;
+            while (index <= annotationValues.size() - 2) {
+              String key = (String)annotationValues.get(index++);
+              Object value = annotationValues.get(index++);
+              annotationMap.put(key, value);
+            }
+            node.setAnnotations(annotationMap);
+            annotations.add(node);
           }
-          node.setAnnotations(annotationMap);
-          annotations.add(node);
         }
       }
       cfn.setVisibleAnnotations(annotations);
