@@ -19,8 +19,13 @@
 package com.datatorrent.bufferserver.internal;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,7 +45,6 @@ import com.datatorrent.bufferserver.util.VarInt;
 import com.datatorrent.netlet.AbstractClient;
 import com.datatorrent.netlet.util.VarInt.MutableInt;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
@@ -66,9 +70,10 @@ public class DataList
   protected int size;
   protected int processingOffset;
   protected long baseSeconds;
-  private final List<AbstractClient> suspendedClients = newArrayList();
+  private final Set<AbstractClient> suspendedClients = newHashSet();
   private final AtomicInteger numberOfInMemBlockPermits;
   private MutableInt nextOffset = new MutableInt();
+  private Future<?> future;
 
   public DataList(final String identifier, final int blockSize, final int numberOfCacheBlocks)
   {
@@ -106,13 +111,20 @@ public class DataList
       for (Block temp = first; temp != null; temp = temp.next) {
         if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
           if (temp != last) {
+            last.refCount.decrementAndGet();
             last = temp;
             do {
               temp = temp.next;
               temp.discard(false);
-              if (temp.data != null) {
-                temp.data = null;
-                numberOfInMemBlockRewound++;
+              synchronized (temp) {
+                if (temp.refCount.get() != 0) {
+                  logger.debug("Discarded block {} has positive reference count. Listeners: {}", temp, all_listeners);
+                  throw new IllegalStateException("Discarded block " + temp + " has positive reference count!");
+                }
+                if (temp.data != null) {
+                  temp.data = null;
+                  numberOfInMemBlockRewound++;
+                }
               }
             } while (temp.next != null);
             last.next = null;
@@ -148,8 +160,13 @@ public class DataList
         Block temp = first;
         while (temp != last) {
           temp.discard(false);
-          temp.data = null;
-          temp = temp.next;
+          synchronized (temp) {
+            if (temp.refCount.get() != 0) {
+              throw new IllegalStateException("Discarded block " + temp + " not zero reference count!");
+            }
+            temp.data = null;
+            temp = temp.next;
+          }
         }
       }
       first = last;
@@ -173,9 +190,15 @@ public class DataList
           break;
         }
         temp.discard(false);
-        if (temp.data != null) {
-          temp.data = null;
-          numberOfInMemBlockPurged++;
+        synchronized (temp) {
+          if (temp.refCount.get() != 0) {
+            logger.debug("Discarded block {} has positive reference count. Listeners: {}", temp, all_listeners);
+            throw new IllegalStateException("Discarded block " + temp + " has positive reference count!");
+          }
+          if (temp.data != null) {
+            temp.data = null;
+            numberOfInMemBlockPurged++;
+          }
         }
       }
     }
@@ -202,21 +225,15 @@ public class DataList
     do {
       while (size == 0) {
         size = VarInt.read(last.data, processingOffset, writeOffset, nextOffset);
-        switch (nextOffset.integer) {
-          case -5:
-            throw new RuntimeException("problemo!");
-
-          case -4:
-          case -3:
-          case -2:
-          case -1:
-          case 0:
-            if (writeOffset == last.data.length) {
-              nextOffset.integer = 0;
-              processingOffset = 0;
-              size = 0;
-            }
-            break flush;
+        if (nextOffset.integer > -5 && nextOffset.integer < 1) {
+          if (writeOffset == last.data.length) {
+            nextOffset.integer = 0;
+            processingOffset = 0;
+            size = 0;
+          }
+          break flush;
+        } else if (nextOffset.integer == -5) {
+          throw new RuntimeException("problemo!");
         }
       }
 
@@ -240,6 +257,9 @@ public class DataList
             Tuple rwt = Tuple.getTuple(last.data, processingOffset, size);
             baseSeconds = (long)rwt.getBaseSeconds() << 32;
             break;
+
+          default:
+            break;
         }
         processingOffset += size;
         size = 0;
@@ -255,17 +275,28 @@ public class DataList
 
     last.writingOffset = writeOffset;
 
-    autoFlushExecutor.submit(new Runnable()
-    {
-      @Override
-      public void run()
-      {
-        for (DataListener dl : all_listeners) {
-          dl.addedData();
-        }
-      }
+    notifyListeners();
 
-    });
+  }
+
+  public void notifyListeners()
+  {
+    if (future == null || future.isDone() || future.isCancelled()) {
+      future = autoFlushExecutor.submit(new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          boolean atLeastOneListenerHasDataToSend;
+          do {
+            atLeastOneListenerHasDataToSend = false;
+            for (DataListener dl : all_listeners) {
+              atLeastOneListenerHasDataToSend |= dl.addedData();
+            }
+          } while (atLeastOneListenerHasDataToSend);
+        }
+      });
+    }
   }
 
   public void setAutoFlushExecutor(final ExecutorService es)
@@ -381,7 +412,7 @@ public class DataList
   public boolean suspendRead(final AbstractClient client)
   {
     synchronized (suspendedClients) {
-      return client.suspendReadIfResumed() && suspendedClients.add(client);
+      return suspendedClients.add(client) && client.suspendReadIfResumed();
     }
   }
 
@@ -395,6 +426,8 @@ public class DataList
         }
         suspendedClients.clear();
       }
+    } else {
+      logger.debug("Keeping clients: {} suspended, numberOfInMemBlockPermits={}, Listeners: {}", suspendedClients, numberOfInMemBlockPermits, all_listeners);
     }
     return resumedSuspendedClients;
   }
@@ -409,7 +442,7 @@ public class DataList
     return new byte[blockSize];
   }
 
-  public void addBuffer(byte[] array)
+  public synchronized void addBuffer(byte[] array)
   {
     final int numberOfInMemBlockPermits = this.numberOfInMemBlockPermits.decrementAndGet();
     if (numberOfInMemBlockPermits < 0) {
@@ -468,8 +501,7 @@ public class DataList
         oldestBlockIndex = index;
         oldestReadOffset = entry.getValue().getReadOffset();
         status.slowestConsumer = entry.getKey();
-      }
-      else if (index == oldestBlockIndex && entry.getValue().getReadOffset() < oldestReadOffset) {
+      } else if (index == oldestBlockIndex && entry.getValue().getReadOffset() < oldestReadOffset) {
         oldestReadOffset = entry.getValue().getReadOffset();
         status.slowestConsumer = entry.getKey();
       }
@@ -481,8 +513,7 @@ public class DataList
       status.numBytesAllocated += b.data.length;
       if (oldestBlockIndex == i) {
         status.numBytesWaiting += b.writingOffset - oldestReadOffset;
-      }
-      else if (oldestBlockIndex < i) {
+      } else if (oldestBlockIndex < i) {
         status.numBytesWaiting += b.writingOffset - b.readingOffset;
       }
       b = b.next;
@@ -508,7 +539,7 @@ public class DataList
     /**
      * actual data - stored as length followed by actual data.
      */
-    byte data[];
+    byte[] data;
     /**
      * readingOffset is the offset of the first valid byte in the array.
      */
@@ -536,8 +567,8 @@ public class DataList
     /**
      * how count of references to this block.
      */
-    AtomicInteger refCount;
-    Future future;
+    private final AtomicInteger refCount;
+    private Future<?> future;
 
     public Block(String id, int size)
     {
@@ -566,8 +597,7 @@ public class DataList
         if (current.offset + current.length > writingOffset) {
           current.length = 0;
         }
-      }
-      else {
+      } else {
         current.length = 0;
       }
     }
@@ -581,7 +611,7 @@ public class DataList
           SerializedData sd = dli.next();
           switch (sd.buffer[sd.dataOffset]) {
             case MessageType.RESET_WINDOW_VALUE:
-              ResetWindowTuple rwt = (ResetWindowTuple) Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
+              ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
               bs = (long)rwt.getBaseSeconds() << 32;
               if (bs > windowId) {
                 writingOffset = sd.offset;
@@ -590,11 +620,14 @@ public class DataList
               break;
 
             case MessageType.BEGIN_WINDOW_VALUE:
-              BeginWindowTuple bwt = (BeginWindowTuple) Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
+              BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
               if ((bs | bwt.getWindowId()) >= windowId) {
                 writingOffset = sd.offset;
                 break done;
               }
+              break;
+
+            default:
               break;
           }
         }
@@ -628,19 +661,19 @@ public class DataList
           SerializedData sd = dli.next();
           switch (sd.buffer[sd.dataOffset]) {
             case MessageType.RESET_WINDOW_VALUE:
-              ResetWindowTuple rwt = (ResetWindowTuple) Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
+              ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
               bs = (long)rwt.getBaseSeconds() << 32;
               lastReset = sd;
               break;
 
             case MessageType.BEGIN_WINDOW_VALUE:
-              BeginWindowTuple bwt = (BeginWindowTuple) Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
+              BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
               if ((bs | bwt.getWindowId()) > longWindowId) {
                 found = true;
                 if (lastReset != null) {
-                /*
-                 * Restore the last Reset tuple if there was any and adjust the writingOffset to the beginning of the reset tuple.
-                 */
+                  /*
+                   * Restore the last Reset tuple if there was any and adjust the writingOffset to the beginning of the reset tuple.
+                   */
                   if (sd.offset >= lastReset.length) {
                     sd.offset -= lastReset.length;
                     if (!(sd.buffer == lastReset.buffer && sd.offset == lastReset.offset)) {
@@ -655,6 +688,10 @@ public class DataList
 
                 break done;
               }
+              break;
+
+            default:
+              break;
           }
         }
       }
@@ -671,8 +708,7 @@ public class DataList
           System.arraycopy(lastReset.buffer, lastReset.offset, this.data, this.readingOffset, lastReset.length);
           this.starting_window = this.ending_window = bs;
           //logger.debug("=20140220= reassign the windowids {}", this);
-        }
-        else {
+        } else {
           this.readingOffset = this.writingOffset;
           this.starting_window = this.ending_window = longWindowId;
           //logger.debug("=20140220= avoid the windowids {}", this);
@@ -692,8 +728,7 @@ public class DataList
           sd.offset = 0;
           sd.dataOffset = VarInt.write(sd.length - i, sd.buffer, sd.offset, i);
           sd.buffer[sd.dataOffset] = MessageType.NO_MESSAGE_VALUE;
-        }
-        else {
+        } else {
           logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
         }
 
@@ -710,15 +745,17 @@ public class DataList
         {
           byte[] data = storage.retrieve(identifier, uniqueIdentifier);
           synchronized (Block.this) {
-            Block.this.data = data;
-            readingOffset = 0;
-            writingOffset = data.length;
-            if (refCount.get() > 1) {
+            if (Block.this.data == null) {
+              Block.this.data = data;
+              readingOffset = 0;
+              writingOffset = data.length;
               Block.this.notifyAll();
-            }
-            int numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.decrementAndGet();
-            if (numberOfInMemBlockPermits < 0) {
-              logger.warn("Exceeded allowed memory block allocation by {}", -numberOfInMemBlockPermits);
+              int numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.decrementAndGet();
+              if (numberOfInMemBlockPermits < 0) {
+                logger.warn("Exceeded allowed memory block allocation by {}", -numberOfInMemBlockPermits);
+              }
+            } else {
+              logger.debug("Block {} was already loaded into memory", Block.this);
             }
           }
         }
@@ -727,20 +764,34 @@ public class DataList
 
     protected void acquire(boolean wait)
     {
-      if (refCount.getAndIncrement() == 0 && storage != null && data == null) {
+      int refCount = this.refCount.getAndIncrement();
+      synchronized (Block.this) {
+        if (data != null) {
+          return;
+        }
+      }
+      if (refCount == 0 && storage != null) {
         final Runnable retriever = getRetriever();
+        if (future != null && future.cancel(false)) {
+          logger.debug("Block {} future is cancelled", this);
+        }
         if (wait) {
+          future = null;
           retriever.run();
         } else {
           future = storageExecutor.submit(retriever);
         }
-      } else if (wait && data == null) {
+      } else if (wait) {
         try {
           synchronized (Block.this) {
-            wait();
+            if (future == null) {
+              throw new IllegalStateException("No task is scheduled to retrieve block " + Block.this);
+            }
+            while (data == null) {
+              wait();
+            }
           }
-        }
-        catch (InterruptedException ex) {
+        } catch (InterruptedException ex) {
           throw new RuntimeException("Interrupted while waiting for data to be loaded!", ex);
         }
       }
@@ -758,15 +809,16 @@ public class DataList
           }
           if (uniqueIdentifier == 0) {
             logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
-          }
-          else {
-            //logger.debug("Spooled {} to disk", Block.this);
+          } else {
+            int numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.get();
             synchronized (Block.this) {
-              if (refCount.get() == 0) {
+              if (refCount.get() == 0 && Block.this.data != null) {
                 Block.this.data = null;
+                numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.incrementAndGet();
+              } else {
+                logger.debug("Keeping Block {} unchanged", Block.this);
               }
             }
-            int numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.incrementAndGet();
             assert numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS : "Number of in memory block permits " + numberOfInMemBlockPermits + " exceeded configured maximum " + MAX_COUNT_OF_INMEM_BLOCKS + '.';
             resumeSuspendedClients(numberOfInMemBlockPermits);
           }
@@ -780,10 +832,17 @@ public class DataList
       if (refCount == 0 && storage != null) {
         assert (next != null);
         final Runnable storer = getStorer(data, readingOffset, writingOffset, storage);
-        if (wait && numberOfInMemBlockPermits.get() == 0) {
+        if (future != null && future.cancel(false)) {
+          logger.debug("Block {} future is cancelled", this);
+        }
+        final int numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.get();
+        if (wait && numberOfInMemBlockPermits == 0) {
+          future = null;
           storer.run();
-        } else if (numberOfInMemBlockPermits.get() < MAX_COUNT_OF_INMEM_BLOCKS/2) {
+        } else if (numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS / 2) {
           future = storageExecutor.submit(storer);
+        } else {
+          future = null;
         }
       } else {
         logger.debug("Holding {} in memory due to {} references.", this, refCount);
@@ -809,11 +868,12 @@ public class DataList
     protected void discard(final boolean wait)
     {
       if (storage != null) {
-        if (future != null) {
-          future.cancel(false);
-        }
         final Runnable discarder = getDiscarder();
+        if (future != null && future.cancel(false)) {
+          logger.debug("Block {} future is cancelled", this);
+        }
         if (wait) {
+          future = null;
           discarder.run();
         } else {
           future = storageExecutor.submit(discarder);
@@ -828,7 +888,7 @@ public class DataList
              + ", readingOffset=" + readingOffset + ", writingOffset=" + writingOffset
              + ", starting_window=" + Codec.getStringWindowId(starting_window) + ", ending_window=" + Codec.getStringWindowId(ending_window)
              + ", refCount=" + refCount.get() + ", uniqueIdentifier=" + uniqueIdentifier + ", next=" + (next == null ? "null" : next.identifier)
-             + '}';
+             + ", future=" + (future == null ? "null" : future.isDone() ? "Done" : future.isCancelled() ? "Cancelled" : future) + '}';
     }
 
   }
@@ -895,19 +955,13 @@ public class DataList
     {
       while (size == 0) {
         size = VarInt.read(buffer, readOffset, da.writingOffset, nextOffset);
-        switch (nextOffset.integer) {
-          case -5:
-            throw new RuntimeException("problemo!");
-
-          case -4:
-          case -3:
-          case -2:
-          case -1:
-          case 0:
-            if (da.writingOffset == buffer.length && switchToNextBlock()) {
-              continue;
-            }
-            return false;
+        if (nextOffset.integer > -5 && nextOffset.integer < 1) {
+          if (da.writingOffset == buffer.length && switchToNextBlock()) {
+            continue;
+          }
+          return false;
+        } else if (size == -5) {
+          throw new RuntimeException("problemo!");
         }
       }
 
@@ -963,6 +1017,12 @@ public class DataList
     {
       readOffset = processingOffset;
       size = 0;
+    }
+
+    @Override
+    public String toString()
+    {
+      return getClass().getName() + '@' + Integer.toHexString(hashCode()) + "{da=" + da + '}';
     }
 
   }

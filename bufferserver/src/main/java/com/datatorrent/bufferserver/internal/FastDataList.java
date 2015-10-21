@@ -99,17 +99,8 @@ public class FastDataList extends DataList
 
     last.writingOffset = writeOffset;
 
-    autoFlushExecutor.submit(new Runnable()
-    {
-      @Override
-      public void run()
-      {
-        for (DataListener dl : all_listeners) {
-          dl.addedData();
-        }
-      }
+    notifyListeners();
 
-    });
   }
 
   @Override
