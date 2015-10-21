@@ -57,7 +57,7 @@ public class VersionInfo {
         }
       }
 
-      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/maven/com.datatorrent/dt-engine/pom.properties");
+      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/maven/org.apache.apex/apex-engine/pom.properties");
       while (resources.hasMoreElements()) {
         Properties pomInfo = new Properties();
         pomInfo.load(resources.nextElement().openStream());
