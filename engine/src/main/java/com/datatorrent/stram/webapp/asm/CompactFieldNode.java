@@ -23,6 +23,11 @@ import java.util.List;
 
 import org.apache.xbean.asm5.tree.AnnotationNode;
 import org.apache.xbean.asm5.tree.FieldNode;
+/**
+ * <p>CompactFieldNode class.</p>
+ *
+ * @since 3.2.0
+ */
 public class CompactFieldNode {
   private String name;
   private String desc;

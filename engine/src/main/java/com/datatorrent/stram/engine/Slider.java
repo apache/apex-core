@@ -26,6 +26,11 @@ import java.util.List;
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.Unifier;
+/**
+ * <p>Slider class.</p>
+ *
+ * @since 3.2.0
+ */
 public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operator.ActivationListener<OperatorContext>, StatsListener, Serializable, Operator.CheckpointListener
 {
   private List<List<Object>> cache;
