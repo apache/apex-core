@@ -24,6 +24,11 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import com.datatorrent.api.annotation.RecordField;
 
+/**
+ * <p>ContainerInfo class.</p>
+ *
+ * @since 3.2.0
+ */
 @XmlRootElement(name = "container")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class ContainerInfo {

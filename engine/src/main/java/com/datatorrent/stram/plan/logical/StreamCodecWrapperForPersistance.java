@@ -29,7 +29,11 @@ import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-
+/**
+ * <p>StreamCodecWrapperForPersistance class.</p>
+ *
+ * @since 3.2.0
+ */
 public class StreamCodecWrapperForPersistance<T> implements StreamCodec<T>, Serializable
 {
 

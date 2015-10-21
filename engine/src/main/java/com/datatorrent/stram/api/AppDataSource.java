@@ -21,6 +21,11 @@ package com.datatorrent.stram.api;
 import java.util.Map;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
+/**
+ * <p>AppDataSource class.</p>
+ *
+ * @since 3.2.0
+ */
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 public class AppDataSource
 {

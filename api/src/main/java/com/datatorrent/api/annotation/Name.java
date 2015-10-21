@@ -20,6 +20,11 @@ package com.datatorrent.api.annotation;
 
 import java.lang.annotation.*;
 
+/**
+ * <p>Name class.</p>
+ *
+ * @since 3.2.0
+ */
 @Documented
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
