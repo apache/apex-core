@@ -358,6 +358,7 @@
         <distMgmtReleaseId>apache.staging.https</distMgmtReleaseId>
         <distMgmtReleaseUrl>https://repository.apache.org/service/local/staging/deploy/maven2</distMgmtReleaseUrl>
         <distMgmtDevUrl>file://${project.build.directory}/mvn-repo</distMgmtDevUrl>
+        <sourceReleaseAssemblyDescriptor>source-release-zip-tar</sourceReleaseAssemblyDescriptor>
         <package.prefix>/opt/datatorrent</package.prefix>
         <package.groupname>dtorrent</package.groupname>
       </properties>
