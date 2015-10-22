@@ -54,13 +54,13 @@
     <module name="LeftCurly">
       <property name="option" value="eol"/>
       <property name="tokens"
-                value="LITERAL_CATCH, LITERAL_DO, LITERAL_ELSE, LITERAL_FINALLY, LITERAL_FOR, LITERAL_IF, LITERAL_SWITCH, LITERAL_SYNCHRONIZED, LITERAL_TRY, LITERAL_WHILE"/>
+                value="LITERAL_CATCH, LITERAL_DO, LITERAL_ELSE, LITERAL_FINALLY, LITERAL_FOR, LITERAL_IF, LITERAL_SWITCH, LITERAL_SYNCHRONIZED, LITERAL_TRY, LITERAL_WHILE, STATIC_INIT"/>
     </module>
 
     <module name="LeftCurly">
       <property name="option" value="nl"/>
       <property name="tokens"
-                value="ANNOTATION_DEF, CLASS_DEF, CTOR_DEF, ENUM_DEF, ENUM_CONSTANT_DEF, INTERFACE_DEF, METHOD_DEF, STATIC_INIT "/>
+                value="ANNOTATION_DEF, CLASS_DEF, CTOR_DEF, ENUM_DEF, ENUM_CONSTANT_DEF, INTERFACE_DEF, METHOD_DEF"/>
     </module>
 
     <module name="RightCurly">
