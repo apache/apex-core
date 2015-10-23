@@ -1,0 +1,3 @@
+#if($project.properties.postNoticeText)
+$project.properties.postNoticeText
+#end
