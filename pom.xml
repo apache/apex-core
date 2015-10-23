@@ -393,6 +393,15 @@
         </plugins>
       </build>
     </profile>
-
+    <profile>
+      <activation>
+        <file>
+          <missing>${basedir}/src/main</missing>
+        </file>
+      </activation>
+      <properties>
+        <remoteresources.skip>true</remoteresources.skip>
+      </properties>
+    </profile>
   </profiles>
 </project>
