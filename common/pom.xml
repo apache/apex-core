@@ -29,7 +29,7 @@
   </parent>
 
   <artifactId>apex-common</artifactId>
-  <name>Apache Apex Common Library</name>
+  <name>Apache Apex (incubating) Common Library</name>
   <packaging>jar</packaging>
 
   <build>

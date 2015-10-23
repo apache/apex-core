@@ -31,7 +31,7 @@
   <artifactId>apex-bufferserver</artifactId>
   <description>Interface for nodes from 2 different containers to talk to each other.</description>
 
-  <name>Apache Apex Buffer Server</name>
+  <name>Apache Apex (incubating) Buffer Server</name>
 
   <build>
     <plugins>
