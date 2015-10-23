@@ -31,7 +31,7 @@
   <artifactId>apex-engine</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Apex Stream Processing Engine</name>
+  <name>Apache Apex (incubating) Stream Processing Engine</name>
 
   <build>
     <finalName>${project.artifactId}</finalName>

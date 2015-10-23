@@ -30,7 +30,7 @@
   </parent>
 
   <artifactId>apex-api</artifactId>
-  <name>Apache Apex API</name>
+  <name>Apache Apex (incubating) API</name>
   <packaging>jar</packaging>
 
   <repositories>

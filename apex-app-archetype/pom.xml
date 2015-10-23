@@ -31,7 +31,7 @@
   <artifactId>apex-app-archetype</artifactId>
   <packaging>maven-archetype</packaging>
 
-  <name>Apache Apex Application Maven Archetype</name>
+  <name>Apache Apex (incubating) Application Maven Archetype</name>
 
   <build>
     <extensions>
