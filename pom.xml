@@ -108,6 +108,7 @@
             <exclude>DISCLAIMER</exclude>
             <exclude>LICENSE</exclude>
             <exclude>NOTICE</exclude>
+            <exclude>**/NOTICE.vm</exclude>
             <exclude>**/*.md</exclude>
             <exclude>**/*.txt</exclude>
             <exclude>**/*.importorder</exclude>
@@ -192,6 +193,7 @@
             <exclude>**/*.txt</exclude>
             <exclude>**/*.importorder</exclude>
             <exclude>misc/ide-templates/**</exclude>
+            <exclude>**/NOTICE.vm</exclude>
           </excludes>
         </configuration>
       </plugin>
@@ -362,6 +364,7 @@
         <sourceReleaseAssemblyDescriptor>source-release-zip-tar</sourceReleaseAssemblyDescriptor>
         <package.prefix>/opt/datatorrent</package.prefix>
         <package.groupname>dtorrent</package.groupname>
+        <postNoticeText>The initial developer of the original code is&#xA;DataTorrent, Inc. (http://www.datatorrent.com)&#xA;Copyright (c) 2012 - 2015. All Rights Reserved.</postNoticeText>
       </properties>
       <distributionManagement>
         <repository>
