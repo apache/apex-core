@@ -29,8 +29,6 @@ import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Context;
-
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.StramLocalCluster.MockComponentFactory;
@@ -48,11 +46,12 @@ public class StramLocalClusterTest
   @Rule
   public StramTestSupport.TestMeta testMeta = new StramTestSupport.TestMeta();
 
+  private LogicalPlan dag;
+
   @Before
   public void setup() throws IOException
   {
-//    StramChild.eventloop = new DefaultEventLoop("StramLocalClusterTestEventLoop");
-//    StramChild.eventloop.start();
+    dag = StramTestSupport.createDAG(testMeta);
   }
 
   @After
@@ -70,10 +69,6 @@ public class StramLocalClusterTest
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
-
     TestGeneratorInputOperator genNode = dag.addOperator("genNode", TestGeneratorInputOperator.class);
     genNode.setMaxTuples(2);
 
@@ -110,11 +105,9 @@ public class StramLocalClusterTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testRecovery() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.dir, null);
+    AsyncFSStorageAgent agent = new AsyncFSStorageAgent(testMeta.getPath(), null);
     agent.setSyncCheckpoint(true);
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, agent);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, agent);
 
     TestGeneratorInputOperator node1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     // data will be added externally from test

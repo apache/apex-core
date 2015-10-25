@@ -57,7 +57,7 @@ public class VersionInfo {
         }
       }
 
-      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/maven/com.datatorrent/dt-engine/pom.properties");
+      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/maven/org.apache.apex/apex-engine/pom.properties");
       while (resources.hasMoreElements()) {
         Properties pomInfo = new Properties();
         pomInfo.load(resources.nextElement().openStream());
@@ -153,6 +153,25 @@ public class VersionInfo {
     } else {
       return Integer.signum(vals1.length - vals2.length);
     }
+  }
+
+  public static boolean isCompatible(String thisVersion, String requiredVersion)
+  {
+    String[] thisVersionComponent = normalizeVersion(thisVersion).split("\\.");
+    String[] requiredVersionComponent = normalizeVersion(requiredVersion).split("\\.");
+
+    // major version check
+    if (!thisVersionComponent[0].equals(requiredVersionComponent[0])) {
+      return false;
+    }
+
+    // minor version check
+    if (Integer.parseInt(thisVersionComponent[1]) < Integer.parseInt(requiredVersionComponent[1])) {
+      return false;
+    }
+
+    // patch version doesn't matter
+    return true;
   }
 
   private static String normalizeVersion(String ver)

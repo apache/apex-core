@@ -18,7 +18,6 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BaseOperator;
 
 import java.io.IOException;
@@ -43,6 +42,7 @@ import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -52,7 +52,11 @@ import com.datatorrent.stram.tuple.Tuple;
  */
 public class ProcessingModeTests
 {
-  @Rule public TestMeta testMeta = new TestMeta();
+  @Rule
+  public TestMeta testMeta = new TestMeta();
+
+  private LogicalPlan dag;
+
   ProcessingMode processingMode;
   int maxTuples = 30;
 
@@ -64,6 +68,7 @@ public class ProcessingModeTests
   @Before
   public void setup() throws IOException
   {
+    dag = StramTestSupport.createDAG(testMeta);
     StreamingContainer.eventloop.start();
   }
 
@@ -79,11 +84,9 @@ public class ProcessingModeTests
     CollectorOperator.collection.clear();
     CollectorOperator.duplicates.clear();
 
-    LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
     rip.setSimulateFailure(true);
@@ -105,8 +108,6 @@ public class ProcessingModeTests
     CollectorOperator.collection.clear();
     CollectorOperator.duplicates.clear();
 
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
     dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
@@ -130,8 +131,6 @@ public class ProcessingModeTests
     CollectorOperator.collection.clear();
     CollectorOperator.duplicates.clear();
 
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
     dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);

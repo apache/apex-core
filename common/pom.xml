@@ -23,13 +23,13 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>com.datatorrent</groupId>
-    <artifactId>dt-framework</artifactId>
-    <version>3.3.0-SNAPSHOT</version>
+    <groupId>org.apache.apex</groupId>
+    <artifactId>apex</artifactId>
+    <version>3.3.0-incubating-SNAPSHOT</version>
   </parent>
 
-  <artifactId>dt-common</artifactId>
-  <name>Base Library</name>
+  <artifactId>apex-common</artifactId>
+  <name>Apache Apex (incubating) Common Library</name>
   <packaging>jar</packaging>
 
   <build>
@@ -74,7 +74,7 @@
       <groupId>org.apache.maven.plugins</groupId>
       <artifactId>maven-checkstyle-plugin</artifactId>
       <configuration>
-        <maxAllowedViolations>87</maxAllowedViolations>
+        <maxAllowedViolations>80</maxAllowedViolations>
       </configuration>
     </plugin>
   </plugins>
@@ -83,7 +83,7 @@
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>dt-api</artifactId>
+      <artifactId>apex-api</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

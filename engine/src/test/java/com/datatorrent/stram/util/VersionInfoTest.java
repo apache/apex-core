@@ -42,4 +42,16 @@ public class VersionInfoTest
     Assert.assertTrue(c < 0);
   }
 
+  @Test
+  public void testCompatibleVersion()
+  {
+    Assert.assertFalse(VersionInfo.isCompatible("1.0", "1.1"));
+    Assert.assertTrue(VersionInfo.isCompatible("1.10", "1.2"));
+    Assert.assertTrue(VersionInfo.isCompatible("1.10.0", "1.10.34"));
+    Assert.assertTrue(VersionInfo.isCompatible("1.10.55", "1.10.3"));
+    Assert.assertTrue(VersionInfo.isCompatible("1.10.55", "1.10.55"));
+    Assert.assertFalse(VersionInfo.isCompatible("1.10.55", "2.10.55"));
+    Assert.assertFalse(VersionInfo.isCompatible("2.10.55", "1.10.55"));
+  }
+
 }

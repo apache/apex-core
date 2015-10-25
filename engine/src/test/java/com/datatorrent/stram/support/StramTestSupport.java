@@ -22,6 +22,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Field;
+import java.net.URI;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -50,6 +54,7 @@ import com.datatorrent.stram.api.AppDataSource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.WindowGenerator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -253,23 +258,54 @@ abstract public class StramTestSupport
 
   public static class TestMeta extends TestWatcher
   {
-    public String dir = null;
+    private File dir;
 
     @Override
     protected void starting(org.junit.runner.Description description)
     {
-      String methodName = description.getMethodName();
-      String className = description.getClassName();
-      //className = className.substring(className.lastIndexOf('.') + 1);
-      this.dir = "target/" + className + "/" + methodName;
-      new File(this.dir).mkdirs();
+      final String methodName = description.getMethodName();
+      final String className = description.getClassName();
+      dir = new File("target/" + className + "/" + methodName);
+      try {
+        Files.createDirectories(dir.toPath());
+      } catch (FileAlreadyExistsException e) {
+        try {
+          Files.delete(dir.toPath());
+          Files.createDirectories(dir.toPath());
+        } catch (IOException ioe) {
+          throw new RuntimeException("Fail to create test working directory " + dir.getAbsolutePath(), e);
+        }
+      } catch (IOException e) {
+        throw new RuntimeException("Fail to create test working directory " + dir.getAbsolutePath(), e);
+      }
     }
 
     @Override
     protected void finished(org.junit.runner.Description description)
     {
-      FileUtils.deleteQuietly(new File(this.dir));
+      FileUtils.deleteQuietly(dir);
     }
+
+    public String getPath()
+    {
+      return dir.getPath();
+    }
+
+    public String getAbsolutePath()
+    {
+      return dir.getAbsolutePath();
+    }
+
+    public Path toPath()
+    {
+      return dir.toPath();
+    }
+
+    public URI toURI()
+    {
+      return dir.toURI();
+    }
+
   }
 
   public static class TestHomeDirectory extends TestWatcher
@@ -333,6 +369,20 @@ abstract public class StramTestSupport
     }
   }
 
+  public static LogicalPlan createDAG(final TestMeta testMeta, final String suffix)
+  {
+    if (suffix == null) {
+      throw new NullPointerException();
+    }
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.getPath() + suffix);
+    return dag;
+  }
+
+  public static LogicalPlan createDAG(final TestMeta testMeta)
+  {
+    return createDAG(testMeta, "");
+  }
 
   public static class MemoryStorageAgent implements StorageAgent, Serializable
   {

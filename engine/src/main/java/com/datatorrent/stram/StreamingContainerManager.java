@@ -1040,10 +1040,7 @@ public class StreamingContainerManager implements PlanContext
         Iterator<Map.Entry<Long, Set<PTOperator>>> it = shutdownOperators.entrySet().iterator();
         while (it.hasNext()) {
           Map.Entry<Long, Set<PTOperator>> windowAndOpers = it.next();
-          if (windowAndOpers.getKey().longValue() > this.committedWindowId) {
-            // wait until window is committed
-            continue;
-          } else {
+          if (windowAndOpers.getKey().longValue() <= this.committedWindowId || checkDownStreamOperators(windowAndOpers)) {
             LOG.info("Removing inactive operators at window {} {}", Codec.getStringWindowId(windowAndOpers.getKey()), windowAndOpers.getValue());
             for (PTOperator oper : windowAndOpers.getValue()) {
               plan.removeTerminatedPartition(oper);
@@ -1070,8 +1067,7 @@ public class StreamingContainerManager implements PlanContext
       try {
         command.run();
         count++;
-      }
-      catch (Exception e) {
+      } catch (Exception e) {
         // TODO: handle error
         LOG.error("Failed to execute {}", command, e);
       }
@@ -1081,13 +1077,25 @@ public class StreamingContainerManager implements PlanContext
     if (count > 0) {
       try {
         checkpoint();
-      }
-      catch (Exception e) {
+      } catch (Exception e) {
         throw new RuntimeException("Failed to checkpoint state.", e);
       }
     }
 
     return count;
+  }
+
+  private boolean checkDownStreamOperators(Map.Entry<Long, Set<PTOperator>> windowAndOpers)
+  {
+    // Check if all downStream operators are at higher window Ids, then operator can be removed from dag
+    Set<PTOperator> downStreamOperators = getPhysicalPlan().getDependents(windowAndOpers.getValue());
+    for (PTOperator oper : downStreamOperators) {
+      long windowId = oper.stats.currentWindowId.get();
+      if (windowId < windowAndOpers.getKey().longValue()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -1495,8 +1503,6 @@ public class StreamingContainerManager implements PlanContext
     }
     Set<Integer> reportedOperators = Sets.newHashSetWithExpectedSize(sca.container.getOperators().size());
 
-    boolean containerIdle = true;
-
     for (OperatorHeartbeat shb : heartbeat.getContainerStats().operators) {
 
       long maxEndWindowTimestamp = 0;
@@ -1533,9 +1539,7 @@ public class StreamingContainerManager implements PlanContext
 
       oper.stats.lastHeartbeat = shb;
       List<ContainerStats.OperatorStats> statsList = shb.getOperatorStatsContainer();
-      if (!oper.stats.isIdle()) {
-        containerIdle = false;
-      }
+
       if (!statsList.isEmpty()) {
         long tuplesProcessed = 0;
         long tuplesEmitted = 0;
@@ -1743,11 +1747,10 @@ public class StreamingContainerManager implements PlanContext
 
     ContainerHeartbeatResponse rsp = getHeartbeatResponse(sca);
 
-    if (containerIdle && isApplicationIdle()) {
+    if (heartbeat.getContainerStats().operators.isEmpty() && isApplicationIdle()) {
       LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
       rsp.shutdown = true;
-    }
-    else {
+    } else {
       if (sca.shutdownRequested) {
         LOG.info("requesting shutdown for container {}", heartbeat.getContainerId());
         rsp.shutdown = true;
@@ -2393,9 +2396,12 @@ public class StreamingContainerManager implements PlanContext
         }
       }
     }
-    loi.checkpointTimeMA = checkpointTimeAggregate.getAvg().longValue();
-    loi.counters = latestLogicalCounters.get(operator.getName());
-    loi.autoMetrics = latestLogicalMetrics.get(operator.getName());
+    if (physicalOperators.size() > 0) {
+      loi.checkpointTimeMA = checkpointTimeAggregate.getAvg().longValue();
+      loi.counters = latestLogicalCounters.get(operator.getName());
+      loi.autoMetrics = latestLogicalMetrics.get(operator.getName());
+    }
+
     return loi;
   }
 
