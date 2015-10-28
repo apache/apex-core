@@ -227,7 +227,7 @@ as name value pairs, in XML format, like the following.
 </configuration> 
 ```
 
-## Application attributes {.c13 .c14 .c30}
+## Application attributes
 
 Application attributes are used to specify the platform behavior for the
 application. They can be specified using the parameter
