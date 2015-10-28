@@ -141,6 +141,7 @@
       <property name="throwsIndent" value="2"/>
       <property name="arrayInitIndent" value="2"/>
       <property name="lineWrappingIndentation" value="2"/>
+      <property name="forceStrictCondition" value="true"/>
     </module>
 
     <module name="ImportOrder">
