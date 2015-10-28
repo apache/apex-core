@@ -3,28 +3,28 @@
 ## Introduction
 In the world of big data many enterprises have a common problem, they have tremendous amounts of data flowing into their systems and they need to observe historical trends in that data.
 
-It would be useful for the vendor to look at historical data already aggregated over certain key across time buckets. This process of receiving individual events, aggregating them over time, and drilling down into the data using some parameters is called Dimensions Computation.
+It would be useful for the vendor to look at historical data already aggregated over certain keys across time buckets. This process of receiving individual events, aggregating them over time, and drilling down into the data using some parameters is called Dimensions Computation.
 
 ## Overview
 
 ### What is Dimensions Computation?
-Dimensions Computation is a powerful mechanism that allows you to spot trends in your streaming data in real-time. This tutorial will cover the concepts behind Dimensions Computation and provide details on the process of performing Dimensions Computation. We will also show you how to use Data Torrent's out of the box operators to easily add Dimensions Computation to the application.
+Dimensions Computation is a powerful mechanism that allows you to spot trends in your streaming data in real-time. This tutorial will cover the concepts behind Dimensions Computation and provide details on the process of performing Dimensions Computation. We will also show you how to use Data Torrent's out of the box operators to easily add Dimensions Computation to an application.
 
-### Functionality - In a nutshell
-*Dimensions Computation* provides a way for business to perform aggregations on configured numeric data. Dimensions Computation work along with *Dimension Store* which provides the capability for the applications to display historical data/trends.
+### Functionality - In a Nutshell
+*Dimensions Computation* provides a way for business to perform aggregations on configured numeric data. The Dimensions Computation operator works along with the *Dimension Store* operator, which provides the capability for applications to display historical data/trends.
 
 ## Terminology / Concepts
 #### Key Set
 A key set is set of fields in the incoming tuple which are used to combine the data for aggregation.
 
 #### Value Set
-Value set is the set of fields in the incoming tuple on which various Aggregators needs to be applied.
+Value set is the set of fields in the incoming tuple on which various Aggregators need to be applied.
 
 #### Aggregator
-A mathematical function that need to be applied on value fields in incoming tuple. For e.g. SUM, COUNT, MAX, MIN, AVERAGE etc.
+A mathematical function that needs to be applied on value fields in an incoming tuple. For e.g. SUM, COUNT, MAX, MIN, AVERAGE etc.
 
 #### Aggregates
-An object containing the aggregated values for configured value set.
+An object containing the aggregated values for a configured value set and key combination.
 
 #### Time buckets
 Time buckets indicates the time interval for which the floor time should be calculated.
@@ -34,7 +34,7 @@ After calculating the floor value for certain time, that time-value essentially 
 Currently supported time buckets are 1 sec, 1 min, 1 hour, 1 day.
 
 #### Combinations
-This indicates group of the keys which should be used for aggregate computations.
+This indicates a group of the keys which should be used for aggregate computations.
 
 #### Incremental Aggregators
 These are aggregate functions for which the computation is possible only by using previous aggregates value and the new value.
@@ -46,8 +46,7 @@ MIN = ( {Current_Value} < {Previous_MIN} ) ? {Current_Value} : {Previous_MIN}
 ```
 
 #### On-the-fly Aggregators (OTF Aggregators)
-These are the aggregate functions which needs more than one aggregates for computation.
-These are the aggregate which can be calculated on the fly if dependent aggregate are provided.
+These are the aggregate functions which needs the result of more than one incremental aggregator and can be calculated on the fly if necessary incremental aggregations are provided.
 For e.g.
 ```
 AVERAGE = {Current_SUM} / {Current_COUNT}
@@ -61,21 +60,21 @@ This is an Apex Operator which perform transient and/or final aggregation over t
 
 
 
-## Use cases
+## Use Cases
 Consider the case of a digital advertisement publisher who is receiving hundreds of thousands of click events every second. Looking at the history of individual clicks and impressions doesn't tell the publisher much about what is going on with their users and advertisements. A useful technique the publisher may try is to look at the total number of clicks and impressions that happened every second, minute, hour, and day. Such a technique would be helpful for finding global trends in their system, but it may not provide enough granularity to take action on more localized trends. For example, looking at the total clicks and impressions for a particular advertiser, a particular geographical area, or a combination of the two could provide some actionable insight. We shall use this example to demonstrate the Dimension Computation and Dimensions Store functionality in rest of the tutorial.
 
 ## Architecture
 
-Dimensions Computation contains with 4 apex operators working in sync, viz. Dimensions Computation, Dimensions Store, Query and Query Result. Following diagram shows a general DAG for a complete Dimensions Computation application.
+Dimensions Computation requires 4 apex operators working in sync: Dimensions Computation, Dimensions Store, Query, and Query Result. The following diagram shows a general DAG for a complete Dimensions Computation application.
 
 Individual operators takes up following responsibilities:
 
 #### DimensionsComputation
-This operator works only with incremental aggregates. The incoming data stream is expected to contains tuples which are Plan Old Java Object (POJO) having the data to be used for aggregations.
-Based on [configuration](#configuration) provided, DimensionsComputation operator will apply incremental aggregators on the value set of the tuple data within a boundary of an application window. After application window is over the aggregate value is reset to calculate the fresh new aggregates. Thus, there are discrete Aggregates generated by DimensionsComputation operator for every application window. This output then further goes to DimensionStore (labeled as Store in [DAG](#dag)) for calculating cumulative aggregates.
+This operator works only with incremental aggregates. The incoming data stream is expected to contain tuples which are Plan Old Java Objects (POJO)s, which have the data to be used for aggregations.
+Based on the provided [configuration](#configuration), the DimensionsComputation operator will apply incremental aggregators on the value set of the tuple data within a boundary of an application window. After the application window is over the aggregate value is reset to calculate the fresh new aggregates. Thus, there are discrete Aggregates generated by DimensionsComputation operator for every application window. This output then further goes to DimensionStore (labeled as Store in [DAG](#dag)) for calculating cumulative aggregates.
 
 #### DimensionsStore
-This operator takes discrete aggregates generates by DimensionsComputation operator and generates cumulative aggregates. As the aggregates generated by DimensionsComputation operator are essentially the incremental aggregate, the sum of multiple such aggregates can provide cumulative aggregates as follows:
+This operator takes discrete aggregates generates by DimensionsComputation operator and generates cumulative aggregates. As the aggregates generated by the DimensionsComputation operator are essentially the incremental aggregate, the sum of multiple such aggregates can provide cumulative aggregates as follows:
 
 ```
 SUM1 = SUM(Value11, Value12, ...)
@@ -84,13 +83,13 @@ SUM2 = SUM(Value21, Value22, ...)
 {Cumulative_SUM} = SUM1 + SUM2
 ```
 
-DimensionsStore also takes care of storing the transient aggregates in a persistent proprietary store called HDHT. The DimensionsStore then uses HDHT to present the requested historical data.
+The DimensionsStore also takes care of storing the transient aggregates in a persistent proprietary store called HDHT. The DimensionsStore then uses HDHT to present the requested historical data.
 
 #### Query
-This operator interfaces with *pubsub server* of *DataTorrent Gateway*. The browser creates Websocket connection with pubsub server hosted by DataTorrent Gateway. Over this websocket connection, the Dashboard UI Widgets send queries to pubsub server. The query operator polls pubsub server regularly against configured topic to receive queries. These queries are parsed by the Query operator and passed onto DimensionsStore to fetch data from HDHT Store.
+This operator interfaces with *pubsub server* of *DataTorrent Gateway*. The browser creates Websocket connection with pubsub server hosted by DataTorrent Gateway. Over this websocket connection, the Dashboard UI Widgets send queries to pubsub server. The query operator subscribes to the configured pub sub topic to receive queries. These queries are parsed by the Query operator and passed onto DimensionsStore to fetch data from HDHT Store.
 
 #### QueryResult
-This operator gets the result from DimensionsStore operator for given query. The result are reconstructed into a format understandable by widget. Once the result is reconstructed into required format, they're sent to pubsub server for publishing to UI widgets.
+This operator gets the result from the DimensionsStore operator for a given query. The results are reconstructed into a format understandable by a widget. Once the results are reconstructed into the required format, they're sent to pubsub server for publishing to UI widgets.
 
 <a link="dag">
 ### DAG
@@ -103,9 +102,9 @@ This operator gets the result from DimensionsStore operator for given query. The
 ### Configuration Definitions
 Configuration of Dimensions Computation application is divided into 2 parts:
 
-#### Dimensions Computation Schema configuration
+#### Dimensions Computation Schema Configuration
 The Dimensions Computation Schema tells the Dimensions Computation operator information about the Aggregations.
-The Dimensions Computation schema looks like following:
+The Dimensions Computation schema looks like the following:
 
 ```json
 {"keys":[{"name":"publisher","type":"string","enumValues":["twitter","facebook","yahoo"]},
@@ -130,23 +129,23 @@ The Dimensions Computation schema looks like following:
 ```
 
 The schema configuration is a JSON string containing following information:
-1. **keys:** This contains the set of keys from input tuple.
+1. **keys:** This contains the set of keys derived from an input tuple.
 The *name* field gives the name of the field from input tuple.
 The *type* can be defined for individual keys.
 Also, possible values for individual key can be provides using *enumValues*.
 
-1. **values:** This contains the set of fields from input tuple on which aggregates should be calculated.
+1. **values:** This contains the set of fields from an input tuple on which aggregates should be calculated.
 The *name* field gives the name of the field from input tuple.
 The *type* can be defined for individual keys.
 The *aggregators* can be defined seperately for individual values. Only configured aggregator functions will be executed on the value.
 
-1. **timeBuckets:** This can be used to specify the time bucket over which the aggregation should happen. Possibe values are ***"1m", "1h", "1d"***
+1. **timeBuckets:** This can be used to specify the time bucket over which aggregations should happen. Possible values are ***"1m", "1h", "1d"***
 
 1. **dimensions:** This section in schema configuration defines the various combinations of keys which are to be used for grouping the data for aggregate calculations. This can be mentioned in *combination* JSON key. *additionalValues* can be used for mentioning any additional aggregators for any *value*. For e.g. **impressions:MIN** means for given combination, also calculate "*MIN*" for value "*impression*".
 
-By default, round down time as per time bucket is always considered as one of the key.
+By default, rounded down time as per time bucket is always considered as one of the keys.
 
-#### Operator configurations
+#### Operator Configurations
 
 This is another set of configuration which will can be used to configure individual operators:
 
@@ -156,11 +155,11 @@ This is the name of the topic on which UI widgets will listen for the results.
 1. **dt.operator.Query.topic:**
 This is the name of the topic on which Query operator will listen for the queries.
 1. **dt.operator.QueryResult.numRetries**
-This property tell maximum number of time the QueryResult operator should retry to send the same data. This value is usually set to something high.
+This property tells the maximum number of times the QueryResult operator should retry to send the same data. This value is usually set to something high.
 
 ##### Attributes
 1. **dt.operator.DimensionsComputation.attr.PARTITIONER:**
-This tells how many partitions should be created for DimensionsComputation. Adding more partitions would process the data in parallel. If not provided, default single partition would be created. Refer [Partitioning](#partitioning) section for details on partitioning.
+This tells how many partitions should be created for DimensionsComputation. Adding more partitions would process the data in parallel. If not provided, default a single partition would be created. Refer to the [Partitioning](#partitioning) section for details on partitioning.
 1. **dt.operator.DimensionsComputation.attr.MEMORY_MB:**
 This tells how much memory should be assigned to DimensionsComputations operator. If not provided, it defaults to 1 GB.
 1. **dt.operator.Store.attr.MEMORY_MB:**
@@ -170,13 +169,13 @@ This tells how many number of tuples the buffer server can cache without blockin
 
 
 ## Visualization
-When application is launched, the visualization of aggregates over time can be seen by adding a widget to a visualization dashboard.
-Example of a Dashboard UI Widget is as follows:
+When an application is launched, the visualization of aggregates over time can be seen by adding a widget to a visualization dashboard.
+And xxample of a Dashboard UI Widget is as follows:
 
 ![Dashboard widgets](images/dimensions_computation_store/image001.png)
 
 
-## Tutorial to create an application
+## Tutorial to Create an Application
 
 Lets considering an example from Advertising Publisher. Let's trace through the steps of how a publisher can go from massive amounts of raw advertisement data to meaningful historical views of their advertisement events.
 
@@ -220,9 +219,9 @@ public class AdEvent
 }
 ```
 
-### Creating an application using Dimension Computation and Dimension Store operator
-Dimensions Computation application can be created using out-of-the-box operators from Megh and Malhar library.
-A sample application is shown as below:
+### Creating an Application Using the Dimension Computation and Dimension Store Operators
+The Dimensions Computation application can be created using out-of-the-box operators from Megh and Malhar library.
+A sample application is shown below:
 
 ```java
 @ApplicationAnnotation(name="AdEventDemo")
@@ -291,8 +290,8 @@ public class AdEventDemo implements StreamingApplication
 ```
 
 
-### Configuration for sample predefined use cases
-Following configuration can be used for a predefined usecase of Advertiser publisher application.
+### Configuration for Sample Predefined Use Cases
+The following configuration can be used for the predefined use case of an advertiser publisher application.
 
 #### Dimensions Schema Configuration
 ```json
@@ -312,7 +311,7 @@ Following configuration can be used for a predefined usecase of Advertiser publi
 }
 ```
 
-#### Operator configuration
+#### Operator Configuration
 ```xml
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <configuration>
@@ -339,16 +338,16 @@ Following configuration can be used for a predefined usecase of Advertiser publi
 </configuration>
 ```
 
-Above operator configuration is one to be used for highly loaded application where the input rate of quite high. To sustain the load, the Dimensions Computation operator is partitioned 8 times and the queue capacity is also increased.
+The above operator configuration is to be used for a highly loaded application where the input rate is quite high. To sustain the load, the Dimensions Computation operator is partitioned 8 times and the queue capacity is also increased.
 
 
-## Advanced concepts
+## Advanced Concepts
 
 <a link="partitioning">
 ### Partitioning
 
-Dimensions Computation operator can be statically partitioned for higher processing throughput.
-This can be done by adding following attributes for DimensionsComputation operator in properties xml.
+The Dimensions Computation operator can be statically partitioned for higher processing throughput.
+This can be done by adding following attributes for the DimensionsComputation operator in an application's properties.xml or in your dt-site.xml.
 
 ```xml
 <property>
@@ -356,7 +355,7 @@ This can be done by adding following attributes for DimensionsComputation operat
   <value>com.datatorrent.common.partitioner.StatelessPartitioner:8</value>
 </property>
 ```
-Attribute added is PARTITIONER. This attributes creates a StatelessPartitioner for DimensionsComputation operator. The parameter of ***8*** is going to partition the operator 8 times.
+This adds the PARTITIONER attribute. This attribute creates a StatelessPartitioner for the DimensionsComputation operator. The parameter of ***8*** is going to partition the operator 8 times.
 The StatelessPartitioner ensures that the operators are clones of each other. The tuples passed to individual clones of operators are decided based on the hashCode of the tuple.
 
 Along with partitioned DimensionsComputation, there also comes a unifier which combines all the intermediate results from individual DimensionsComputation operators into a single stream. This stream is then passed to Dimensions Store.
@@ -367,7 +366,7 @@ DimensionsComputationFlexibleSingleSchemaPOJO dimensions = dag.addOperator("Dime
 dimensions.setUnifier(new DimensionsComputationUnifierImpl<InputEvent, Aggregate>());
 ```
 
-Here the unifier used is *DimensionsComputationUnifierImpl* which is an out-of-the-box operator present in DataTorrent distribution.
+Here the unifier used is *DimensionsComputationUnifierImpl* which is an out-of-the-box operator present in the DataTorrent distribution.
 
 ## Conclusion
 Aggregating huge amounts of data in real time is a major challenge that many enterprises face today. Dimension Computation provides a valuable way in which to think about the problem of aggregating data, and Data Torrent provides an implementation of of Dimension Computation that allows users to integrate data aggregation with their applications with minimal effort.
