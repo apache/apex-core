@@ -58,12 +58,12 @@ Alternatively, you can do the above steps all within your IDE.  For
 example, in NetBeans, select File -\> New Project.  Then choose “Maven”
 and “Project from Archetype” in the dialog box, as shown.
 
-![](https://www.datatorrent.com/docs/guides/images/ApplicationConfigurationPackages.html-image01.png)
+![](images/AppConfig/ApplicationConfigurationPackages.html-image01.png)
 
 Then fill the Group ID, Artifact ID, Version and Repository entries as
 shown below.
 
-![](https://www.datatorrent.com/docs/guides/images/ApplicationConfigurationPackages.html-image02.png)
+![](images/AppConfig/ApplicationConfigurationPackages.html-image02.png)
 
 Group ID: com.datatorrent
 Artifact ID: apex-conf-archetype
@@ -77,7 +77,7 @@ Repository:
 Press Next and fill out the rest of the required information. For
 example:
 
-![](https://www.datatorrent.com/docs/guides/images/ApplicationConfigurationPackages.html-image00.png)
+![](images/AppConfig/ApplicationConfigurationPackages.html-image00.png)
 
 Click Finish, and now you have created your own Apex
 Configuration Package project.  The procedure for other IDEs, like

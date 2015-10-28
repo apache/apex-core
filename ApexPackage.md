@@ -103,11 +103,11 @@ Alternatively, you can do the above steps all within your IDE.  For
 example, in NetBeans, select File -\> New Project.  Then choose “Maven”
 and “Project from Archetype” in the dialog box, as shown.
 
-![](https://www.datatorrent.com/docs/guides/images/ApplicationPackages.html-image00.png)
+![](images/AppPackage/ApplicationPackages.html-image00.png)
 
 Then fill the Group ID, Artifact ID, Version and Repository entries as shown below.
 
-![](https://www.datatorrent.com/docs/guides/images/ApplicationPackages.html-image02.png)
+![](images/AppPackage/ApplicationPackages.html-image02.png)
 
 Group ID: com.datatorrent
 Artifact ID: apex-app-archetype
@@ -119,7 +119,7 @@ Repository:
 Press Next and fill out the rest of the required information. For
 example:
 
-![](https://www.datatorrent.com/docs/guides/images/ApplicationPackages.html-image01.png)
+![](images/AppPackage/ApplicationPackages.html-image01.png)
 
 Click Finish, and now you have created your own DataTorrent App Package
 project, with a default unit test.  You can run the unit test, make code
@@ -129,7 +129,7 @@ other IDEs, like Eclipse or IntelliJ, is similar.
 # 4. Writing Your Own App Package 
 
 
-Please refer to the [Application Developer Guide](https://www.datatorrent.com/docs/guides/ApplicationDeveloperGuide.html) on the basics on how to write a DataTorrent application.  In your AppPackage project, you can add custom operators (refer to [Operator Developer Guide](https://www.google.com/url?q=https://www.datatorrent.com/docs/guides/OperatorDeveloperGuide.html&sa=D&usg=AFQjCNHMFBKWyQlg6VtvBzuqlQSM78rTFw)), project dependencies, default and required configuration properties, pre-set configurations and other metadata.
+Please refer to the [Application Developer Guide](https://www.datatorrent.com/docs/guides/ApplicationDeveloperGuide.html) on the basics on how to write a DataTorrent application.  In your AppPackage project, you can add custom operators (refer to [Operator Developer Guide](https://www.datatorrent.com/docs/guides/OperatorDeveloperGuide.html)), project dependencies, default and required configuration properties, pre-set configurations and other metadata.
 
 ## Adding (and removing) project dependencies 
 
