@@ -290,13 +290,10 @@ setHost. The method is called using JAVA reflection and the property
 value is passed as an argument. In the above example the method setHost
 will be called on the “redis” operator with “127.0.0.1” as the argument.
 
-## Port attributes
-
+## Port attributes 
 Port attributes are used to specify the platform behavior for input and
-output ports. They can be specified using the parameter
-```dt.operator.<operator-name>.inputport.<port-name>.attr.<attribute>```
-for input port and
-```dt.operator.<operator-name>.outputport.<port-name>.attr.<attribute>```
+output ports. They can be specified using the parameter ```dt.operator.<operator-name>.inputport.<port-name>.attr.<attribute>```
+for input port and ```dt.operator.<operator-name>.outputport.<port-name>.attr.<attribute>```
 for output port. The keyword “inputport” is used to denote an input port
 and “outputport” to denote an output port. The rest of the specification
 follows the conventions described in other specifications above. An
@@ -402,7 +399,7 @@ project. The properties.xml may look like:
 
 The name of an application-specific property takes the form of:
 
-```dt.operator.{opName}.prop.{propName}```
+```dt.operator.{opName}.prop.{propName} ```
 
 The first represents the property with name propName of operator opName.
  Or you can set the application name at run time by setting this
@@ -677,8 +674,8 @@ You can launch an application within an Application Package.
 ```
 dt> launch [-D property-name=property-value, ...] [-conf config-name]
  [-apconf config-file-within-app-package] <app-package-file>
- [matching-app-name]
-```
+ [matching-app-name] 
+ ```
 Note that -conf expects a configuration file in the file system, while -apconf expects a configuration file within the app package.
 
 © 2014-2015 DataTorrent Inc.
