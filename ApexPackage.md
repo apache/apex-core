@@ -18,7 +18,7 @@ You will need have the following installed:
 You can create an Apex Application Package using your Linux command
 line, or using your favorite IDE.
 
-##Using Command Line
+## Using Command Line
 
 First, change to the directory where you put your projects, and create
 an Apex application project using Maven by running the following
@@ -379,7 +379,7 @@ also be used for operator name, stream name or application name. Regular
 expressions can also be used for names to specify attributes or
 properties for a specific set.
 
-##Adding configuration properties
+## Adding configuration properties
 
 It is common for applications to require configuration parameters to
 run.  For example, the address and port of the database, the location of
@@ -419,7 +419,7 @@ must be set at launch time, or it must be set by a pre-set configuration
 assigned with value some\_default\_value unless it is overridden at
 launch time.
 
-##Adding pre-set configurations
+## Adding pre-set configurations
 
 
 At build time, you can add pre-set configurations to the App Package by
@@ -428,7 +428,7 @@ project.  You can then specify which configuration to use at launch
 time.  The configuration XML is of the same format of the properties.xml
 file.
 
-##Application-specific properties file
+## Application-specific properties file
 
 You can also specify properties.xml per application in the application
 package.  Just create a file with the name properties-{appName}.xml and
@@ -519,7 +519,7 @@ There are four top level directories in an Application Package:
 The DT Gateway provides storing and retrieving Application Packages to
 and from your distributed file system, e.g. HDFS.
 
-##Storing an Application Package
+## Storing an Application Package
 
 You can store your Application Packages through DT Gateway using this
 REST call:
@@ -537,7 +537,7 @@ localhost:9090:
 $ curl -XPOST -T <app-package-file> http://localhost:9090/ws/v2/appPackages
 ```
 
-##Getting Meta Information on Application Packages
+## Getting Meta Information on Application Packages
 
 
 You can get the meta information on Application Packages stored through
@@ -644,7 +644,7 @@ do not want to deal with dtGateway, you can use the Apex
 Command Line Interface (dtcli).  Please refer to the [Gateway API reference](https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html)
 to see samples for these commands.
 
-##Getting Application Package Meta Information
+## Getting Application Package Meta Information
 
 You can get the meta information about the Application Package using
 this Apex CLI command.
@@ -671,7 +671,7 @@ Package using this command.
  dt> get-app-package-operator-properties <app-package-file> <operator-class>
 
 
-##Launching an Application Package
+## Launching an Application Package
 
 You can launch an application within an Application Package.
 ```
