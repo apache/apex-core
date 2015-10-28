@@ -97,10 +97,10 @@ import static java.lang.Thread.sleep;
 public class StreamingAppMasterService extends CompositeService
 {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingAppMasterService.class);
-  private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_KEY_UPDATE_INTERVAL_IN_MS = 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_MAX_LIFETIME = Long.MAX_VALUE / 2;
   private static final long DELEGATION_TOKEN_RENEW_INTERVAL = Long.MAX_VALUE / 2;
-  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL_IN_MS = 24 * 60 * 60 * 1000;
   private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private AMRMClient<ContainerRequest> amRmClient;
   private NMClientAsync nmClient;
@@ -522,7 +522,7 @@ public class StreamingAppMasterService extends CompositeService
 
     if (UserGroupInformation.isSecurityEnabled()) {
       // TODO :- Need to perform token renewal
-      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL, DELEGATION_TOKEN_MAX_LIFETIME, DELEGATION_TOKEN_RENEW_INTERVAL, DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
+      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL_IN_MS, DELEGATION_TOKEN_MAX_LIFETIME, DELEGATION_TOKEN_RENEW_INTERVAL, DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL_IN_MS);
     }
     this.nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
     addService(nmClient);
@@ -943,11 +943,24 @@ public class StreamingAppMasterService extends CompositeService
     finishApplication(finalStatus, numTotalContainers);
   }
 
+  /*
+   * Get a new instance of ResourceRequestHandler
+   * This method is introduced for unit testing with mocking
+   * @return A new instance of ResourceRequestHandler
+   */
   public ResourceRequestHandler createResourceRequestor()
   {
     return new ResourceRequestHandler();
   }
 
+  /*
+   * Performs setup of RM service
+   * This method is introduced for unit testing with mocking
+   * @param Hadoop Configuration object
+   * @param number of allocated containers- initially 0
+   * @param resource request handler object
+   * @return A boolean value indicating if the setup was successful
+   */
   public boolean setupRMService(final Configuration conf, int numTotalContainers, ResourceRequestHandler resourceRequestor)
   {
     YarnClient clientRMService = YarnClient.createYarnClient();
@@ -984,6 +997,11 @@ public class StreamingAppMasterService extends CompositeService
     return true;
   }
 
+  /*
+   * Create a new instance of Runnable Container
+   * This method is added for mocking in Unit tests
+   * @return A new instance of LaunchContainerRunnable
+   */
   public LaunchContainerRunnable createLaunchContainerRunnable(Container allocatedContainer, StreamingContainerAgent sca, ByteBuffer tokens)
   {
     return new LaunchContainerRunnable(allocatedContainer, nmClient, sca, tokens);

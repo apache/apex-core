@@ -486,7 +486,7 @@ public class StramAppLauncher
     dag.setAttribute(LogicalPlan.RM_TOKEN_LIFE_TIME, rmTokenMaxLifeTime);
     int maxNodeFailures = conf.getInt(StramClientUtils.DT_MAX_CONSECUTIVE_NODE_FAILURES, LogicalPlan.MAX_NODE_FAILURES);
     dag.setAttribute(LogicalPlan.MAX_CONSECUTIVE_CONTAINER_FAILURES, maxNodeFailures);
-    Long blacklistTime = conf.getLong(StramClientUtils.DT_NODE_BLACKLIST_TIME, LogicalPlan.NODE_BLACKLIST_REMOVAL_TIME);
+    Long blacklistTime = conf.getLong(StramClientUtils.DT_NODE_BLACKLIST_TIME, LogicalPlan.NODE_BLACKLIST_REMOVAL_TIME_IN_MS);
     dag.setAttribute(LogicalPlan.BLACKLIST_REMOVAL_TIME, blacklistTime);
     if (conf.get(StramClientUtils.KEY_TAB_FILE) != null) {
       dag.setAttribute(LogicalPlan.KEY_TAB_FILE, conf.get(StramClientUtils.KEY_TAB_FILE));

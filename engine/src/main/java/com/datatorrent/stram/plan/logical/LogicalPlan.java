@@ -80,7 +80,7 @@ public class LogicalPlan implements Serializable, DAG
   public static final String SER_FILE_NAME = "dt-conf.ser";
   public static final String LAUNCH_CONFIG_FILE_NAME = "dt-launch-config.xml";
   private static final transient AtomicInteger logicalOperatorSequencer = new AtomicInteger();
-  public static final long NODE_BLACKLIST_REMOVAL_TIME = 60 * 60 * 1000;
+  public static final long NODE_BLACKLIST_REMOVAL_TIME_IN_MS = 60 * 60 * 1000;
   public static final int MAX_NODE_FAILURES = 3;
 
   /**
@@ -110,7 +110,7 @@ public class LogicalPlan implements Serializable, DAG
   public static Attribute<String> KEY_TAB_FILE = new Attribute<String>((String) null, new StringCodec.String2String());
   public static Attribute<Double> TOKEN_REFRESH_ANTICIPATORY_FACTOR = new Attribute<Double>(0.7);
   public static Attribute<Integer> MAX_CONSECUTIVE_CONTAINER_FAILURES = new Attribute<Integer>(MAX_NODE_FAILURES);
-  public static Attribute<Long> BLACKLIST_REMOVAL_TIME = new Attribute<Long>(NODE_BLACKLIST_REMOVAL_TIME);
+  public static Attribute<Long> BLACKLIST_REMOVAL_TIME = new Attribute<Long>(NODE_BLACKLIST_REMOVAL_TIME_IN_MS);
 
   /**
    * Comma separated list of jar file dependencies to be deployed with the application.
