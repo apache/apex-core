@@ -1,25 +1,24 @@
-#Apex Application Packages
+#Apache Apex (incubating) Application Packages
 
-# 1. Introduction 
+# 1. Introduction
 
-An Apex Application Package is a zip file that contains all the
-necessary files to launch an application in Project Apex. It is the
-standard way for assembling and sharing an Apex application. 
+An Apache Apex Application Package is a zip file that contains all the
+necessary files to launch an application in Apache Apex. It is the
+standard way for assembling and sharing an Apache Apex application.
 
-# 2. Requirements 
+# 2. Requirements
 
 You will need have the following installed:
 
 1. Apache Maven 3.0 or later (for assembling the App Package)
-2. Apex 3.0.0 or later (for launching the App Package in your cluster)
+2. Apache Apex 3.0.0 or later (for launching the App Package in your cluster)
 
-#3. Creating Your First Apex App Package 
-
+#3. Creating Your First Apex App Package
 
 You can create an Apex Application Package using your Linux command
-line, or using your favorite IDE.  
+line, or using your favorite IDE.
 
-##Using Command Line 
+##Using Command Line
 
 First, change to the directory where you put your projects, and create
 an Apex application project using Maven by running the following
@@ -27,13 +26,13 @@ command.  Replace "com.example", "mydtapp" and "1.0-SNAPSHOT" with the
 appropriate values (make sure this is all on one line):
 
 ```
- $ mvn archetype:generate                                                
- -DarchetypeRepository=https://www.datatorrent.com/maven/content/reposito 
- ries/releases                                                            
- -DarchetypeGroupId=com.datatorrent                                       
- -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.0.0        
- -DgroupId=com.example -Dpackage=com.example.mydtapp -DartifactId=mydtapp 
- -Dversion=1.0-SNAPSHOT                                                   
+ $ mvn archetype:generate
+ -DarchetypeRepository=https://www.datatorrent.com/maven/content/reposito
+ ries/releases
+ -DarchetypeGroupId=com.datatorrent
+ -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.2.0
+ -DgroupId=com.example -Dpackage=com.example.mydtapp -DartifactId=mydtapp
+ -Dversion=1.0-SNAPSHOT
 ```
 
 This creates a Maven project named "mydtapp". Open it with your favorite
@@ -53,43 +52,31 @@ This builds the App Package runs the unit test of the DAG.  You should
 be getting test output similar to this:
 
 ```
- -------------------------------------------------------                  
-                                                                         
-  TESTS                                                               
-                                                                          
- -------------------------------------------------------                  
-                                                                          
- Running com.example.mydtapp.ApplicationTest                              
-                                                                          
- hello world: 0.8015370953286478                                        
-                                                                          
- hello world: 0.9785359225545481                                          
-                                                                          
- hello world: 0.6322611586644047                                          
-                                                                          
- hello world: 0.8460953663451775                                          
-                                                                          
- hello world: 0.5719372906929072                                          
-                                                                          
- hello world: 0.6361174312337172                                          
-                                                                          
- hello world: 0.14873007534816318                                         
-                                                                          
- hello world: 0.8866986277418261                                          
-                                                                          
- hello world: 0.6346526809866057                                          
-                                                                              hello world: 0.48587295703904465                                         
-                                                                          
- hello world: 0.6436832429676687                                          
-                                                                          
- ...                                                                      
-                                                                          
- Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.863   
- sec                                                                      
-                                                                          
- Results :                                                                
-                                                                          
- Tests run: 1, Failures: 0, Errors: 0, Skipped: 0                         
+ -------------------------------------------------------
+  TESTS
+ -------------------------------------------------------
+
+ Running com.example.mydtapp.ApplicationTest
+ hello world: 0.8015370953286478
+ hello world: 0.9785359225545481
+ hello world: 0.6322611586644047
+ hello world: 0.8460953663451775
+ hello world: 0.5719372906929072
+ hello world: 0.6361174312337172
+ hello world: 0.14873007534816318
+ hello world: 0.8866986277418261
+ hello world: 0.6346526809866057
+ hello world: 0.48587295703904465
+ hello world: 0.6436832429676687
+
+ ...
+
+ Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.863
+ sec
+
+ Results :
+
+ Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 The "mvn package" command creates the App Package file in target
@@ -126,12 +113,12 @@ project, with a default unit test.  You can run the unit test, make code
 changes or make dependency changes within your IDE.  The procedure for
 other IDEs, like Eclipse or IntelliJ, is similar.
 
-# 4. Writing Your Own App Package 
+# 4. Writing Your Own App Package
 
 
 Please refer to the [Application Developer Guide](https://www.datatorrent.com/docs/guides/ApplicationDeveloperGuide.html) on the basics on how to write a DataTorrent application.  In your AppPackage project, you can add custom operators (refer to [Operator Developer Guide](https://www.datatorrent.com/docs/guides/OperatorDeveloperGuide.html)), project dependencies, default and required configuration properties, pre-set configurations and other metadata.
 
-## Adding (and removing) project dependencies 
+## Adding (and removing) project dependencies
 
 Under the project, you can add project dependencies in pom.xml, or do it
 through your IDE.  Here’s the section that describes the dependencies in
@@ -147,7 +134,7 @@ the default pom.xml:
            If you know your application do not need the transitive dependencies that are pulled in by malhar-library,
            Uncomment the following to reduce the size of your app package.
       -->
-      <!--    
+      <!--
       <exclusions>
         <exclusion>
           <groupId>*</groupId>
@@ -168,7 +155,7 @@ the default pom.xml:
       <version>4.10</version>
       <scope>test</scope>
     </dependency>
-  </dependencies>                                                   
+  </dependencies>
 ```
 
 By default, as shown above, the default dependencies include
@@ -189,17 +176,17 @@ warnings similar to the following:
 
 ```
 
- [WARNING] 'dependencies.dependency.exclusions.exclusion.groupId' for     
- com.datatorrent:malhar-library:jar with value '*' does not match a      
- valid id pattern.                                                        
-                                                                          
- [WARNING]                                                              
- [WARNING] It is highly recommended to fix these problems because they    
- threaten the stability of your build.                                  
- [WARNING]                                                               
- [WARNING] For this reason, future Maven versions might no longer support 
- building such malformed projects.                                       
- [WARNING]                                                                
+ [WARNING] 'dependencies.dependency.exclusions.exclusion.groupId' for
+ com.datatorrent:malhar-library:jar with value '*' does not match a
+ valid id pattern.
+
+ [WARNING]
+ [WARNING] It is highly recommended to fix these problems because they
+ threaten the stability of your build.
+ [WARNING]
+ [WARNING] For this reason, future Maven versions might no longer support
+ building such malformed projects.
+ [WARNING]
 
 ```
 This is a bug in early versions of Maven 3.  The dependency exclusion is
@@ -224,7 +211,7 @@ as name value pairs, in XML format, like the following.
     <name>some_name_2</name>
     <value>some_default_value</value>
   </property>
-</configuration> 
+</configuration>
 ```
 
 ## Application attributes
@@ -249,7 +236,7 @@ identifying the attribute. The constants are defined in
 com.datatorrent.api.Context.DAGContext and the different attributes can
 be specified in the format described above.
 
-## Operator attributes 
+## Operator attributes
 
 Operator attributes are used to specify the platform behavior for the
 operator. They can be specified using the parameter
@@ -276,7 +263,7 @@ identifying the attribute. The constants are defined in
 com.datatorrent.api.Context.OperatorContext and the different attributes
 can be specified in the format described above.
 
-## Operator properties 
+## Operator properties
 
 Operators can be configured using operator specific properties. The
 properties can be specified using the parameter
@@ -303,7 +290,7 @@ setHost. The method is called using JAVA reflection and the property
 value is passed as an argument. In the above example the method setHost
 will be called on the “redis” operator with “127.0.0.1” as the argument.
 
-## Port attributes 
+## Port attributes
 
 Port attributes are used to specify the platform behavior for input and
 output ports. They can be specified using the parameter
@@ -319,7 +306,7 @@ be 4k.
 
 ```
 <property>
-<name>dt.operator.range.inputport.input.attr.QUEUE_CAPACITY</name>
+  <name>dt.operator.range.inputport.input.attr.QUEUE_CAPACITY</name>
   <value>4000</value>
 </property>
 ```
@@ -336,7 +323,7 @@ instead of “intputport”. A generic keyword “port” can be used to specify
 either an input or an output port. It is useful in the wildcard
 specification described below.
 
-## Stream properties 
+## Stream properties
 
 Streams can be configured using stream properties. The properties can be
 specified using the parameter
@@ -392,7 +379,7 @@ also be used for operator name, stream name or application name. Regular
 expressions can also be used for names to specify attributes or
 properties for a specific set.
 
-##Adding configuration properties 
+##Adding configuration properties
 
 It is common for applications to require configuration parameters to
 run.  For example, the address and port of the database, the location of
@@ -410,7 +397,7 @@ project. The properties.xml may look like:
     <name>some_name_2</name>
     <value>some_default_value</value>
   </property>
-</configuration> 
+</configuration>
 ```
 
 The name of an application-specific property takes the form of:
@@ -432,7 +419,7 @@ must be set at launch time, or it must be set by a pre-set configuration
 assigned with value some\_default\_value unless it is overridden at
 launch time.
 
-##Adding pre-set configurations 
+##Adding pre-set configurations
 
 
 At build time, you can add pre-set configurations to the App Package by
@@ -441,7 +428,7 @@ project.  You can then specify which configuration to use at launch
 time.  The configuration XML is of the same format of the properties.xml
 file.
 
-##Application-specific properties file 
+##Application-specific properties file
 
 You can also specify properties.xml per application in the application
 package.  Just create a file with the name properties-{appName}.xml and
@@ -474,13 +461,15 @@ etc), the precedence of sources, from highest to lowest, is as follows:
 7. dt-site.xml in local DT installation
 8. dt-site.xml stored in HDFS
 
-## Other meta-data 
+## Other meta-data
 
 In a Apex App Package project, the pom.xml file contains a
 section that looks like:
 
 ```
-<properties>                                                                 <datatorrent.version>3.0.0</datatorrent.version>                             <datatorrent.apppackage.classpath\>lib*.jar</datatorrent.apppackage.classpath>
+<properties>
+  <datatorrent.version>3.0.0</datatorrent.version>
+  <datatorrent.apppackage.classpath\>lib*.jar</datatorrent.apppackage.classpath>
 </properties>
 ```
 datatorrent.version is the DataTorrent RTS version that are to be used
@@ -492,17 +481,17 @@ lib/\*.jar, where lib is where all the dependency jars are kept within
 the Application Package.  One reason to change this field is when your
 Application Package needs the classpath in a specific order.
 
-## Logging configuration 
+## Logging configuration
 
 Just like other Java projects, you can change the logging configuration
 by having your log4j.properties under src/main/resources.  For example,
 if you have the following in src/main/resources/log4j.properties:
 ```
- log4j.rootLogger=WARN,CONSOLE                                           
- log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender                 
- log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout            
- log4j.appender.CONSOLE.layout.ConversionPattern=%d{ISO8601} [%t] %-5p    
- %c{2} %M - %m%n                                                          
+ log4j.rootLogger=WARN,CONSOLE
+ log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
+ log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
+ log4j.appender.CONSOLE.layout.ConversionPattern=%d{ISO8601} [%t] %-5p
+ %c{2} %M - %m%n
 ```
 
 The root logger’s level is set to WARN and the output is set to the console (stdout).
@@ -530,13 +519,13 @@ There are four top level directories in an Application Package:
 The DT Gateway provides storing and retrieving Application Packages to
 and from your distributed file system, e.g. HDFS.
 
-##Storing an Application Package 
+##Storing an Application Package
 
 You can store your Application Packages through DT Gateway using this
 REST call:
 
 ```
- POST /ws/v2/appPackages 
+ POST /ws/v2/appPackages
 ```
 
 The payload is the raw content of your Application Package.  For
@@ -545,10 +534,10 @@ line like this, assuming your DT Gateway is accepting requests at
 localhost:9090:
 
 ```
-$ curl -XPOST -T <app-package-file> http://localhost:9090/ws/v2/appPackages 
+$ curl -XPOST -T <app-package-file> http://localhost:9090/ws/v2/appPackages
 ```
 
-##Getting Meta Information on Application Packages 
+##Getting Meta Information on Application Packages
 
 
 You can get the meta information on Application Packages stored through
@@ -565,7 +554,7 @@ You can get the list of available operators in the Application Package
 using this call.
 
 ```
-GET /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/operators?parent={parent} 
+GET /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/operators?parent={parent}
 ```
 
 The parent parameter is optional.  If given, parent should be the fully
@@ -586,7 +575,7 @@ GET  /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/operators/{className}
 ## Getting List of Pre-Set Configurations in Application Package
 
 You can get a list of pre-set configurations within the Application
-Package using this call.  
+Package using this call.
 
 ```
 GET /ws/v2/appPackages/{owner}/{pkgName}/{packageVersion}/configs
@@ -596,7 +585,7 @@ You can also get the content of a specific pre-set configuration within
 the Application Package.
 
 ```
- GET /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/configs/{configName}  
+ GET /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/configs/{configName}
 ```
 
 ## Changing Pre-Set Configurations in Application Package
@@ -608,7 +597,7 @@ Package
 ```
 The payload of this PUT call is the XML file that represents the pre-set configuration.  The Content-Type of the payload is "application/xml" and you can delete a pre-set configuration within the Application Package.
 ```
- DELETE /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/configs/{configName}   
+ DELETE /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/configs/{configName}
 ```
 
 ## Retrieving an Application Package
@@ -625,7 +614,7 @@ since the pre-set configurations may have been modified.
 
 You can launch an application within an Application Package.
 ```
-POST /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/applications/{appName}/launch?config={configName}                                              
+POST /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/applications/{appName}/launch?config={configName}
 ```
 
 The config parameter is optional.  If given, it must be one of the
@@ -641,37 +630,37 @@ and should contain the properties to be launched with the application.
 Here is an example of launching an application through curl:
 
 ```
- $ curl -XPOST -d'{"dt.operator.console.prop.stringFormat":"xyz %s"}'    
- http://localhost:9090/ws/v2/appPackages/dtadmin/mydtapp/1.0-SNAPSHOT/app 
- lications/MyFirstApplication/launch                      
+ $ curl -XPOST -d'{"dt.operator.console.prop.stringFormat":"xyz %s"}'
+ http://localhost:9090/ws/v2/appPackages/dtadmin/mydtapp/1.0-SNAPSHOT/app
+ lications/MyFirstApplication/launch
 ```
 
 Please refer to the [Gateway API reference](https://www.google.com/url?q=https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html&sa=D&usg=AFQjCNEWfN7-e7fd6MoWZjmJUE3GW7UwdQ) for the complete specification of the REST API.
 
-# 7. Examining and Launching Application Packages Through DT CLI 
+# 7. Examining and Launching Application Packages Through Apex CLI
 
 If you are working with Application Packages in the local filesystem and
-do not want to deal with the DT Gateway, you can use the DataTorrent
-Command Line Interface (DT CLI).  Please refer to the [Gateway API reference](https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html) 
+do not want to deal with dtGateway, you can use the Apex
+Command Line Interface (dtcli).  Please refer to the [Gateway API reference](https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html)
 to see samples for these commands.
 
-##Getting Application Package Meta Information 
+##Getting Application Package Meta Information
 
 You can get the meta information about the Application Package using
-this DT CLI command.  
+this Apex CLI command.
 
 ```
  dt> get-app-package-info <app-package-file>
 ```
 
-## Getting Available Operators In Application Package 
+## Getting Available Operators In Application Package
 
 You can get the list of available operators in the Application Package
 using this command.
 
 ```
- dt> get-app-package-operators <app-package-file> <package-prefix> 
- [parent-class] 
+ dt> get-app-package-operators <app-package-file> <package-prefix>
+ [parent-class]
 ```
 
 ## Getting Properties of Operators in Application Package
@@ -686,9 +675,9 @@ Package using this command.
 
 You can launch an application within an Application Package.
 ```
-dt> launch [-D property-name=property-value, ...] [-conf config-name]   
- [-apconf config-file-within-app-package] <app-package-file>            
- [matching-app-name]                                                      
+dt> launch [-D property-name=property-value, ...] [-conf config-name]
+ [-apconf config-file-within-app-package] <app-package-file>
+ [matching-app-name]
 ```
 Note that -conf expects a configuration file in the file system, while -apconf expects a configuration file within the app package.
 
