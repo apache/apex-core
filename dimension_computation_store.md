@@ -93,7 +93,7 @@ This operator gets the result from the DimensionsStore operator for a given quer
 
 <a link="dag">
 ### DAG
-![DAG](images/dimensions_computation_store/image000.png)
+![DAG](images/image000.png)
 
 
 <a name="configuration">
@@ -172,7 +172,7 @@ This tells how many number of tuples the buffer server can cache without blockin
 When an application is launched, the visualization of aggregates over time can be seen by adding a widget to a visualization dashboard.
 And xxample of a Dashboard UI Widget is as follows:
 
-![Dashboard widgets](images/dimensions_computation_store/image001.png)
+![Dashboard widgets](images/image001.png)
 
 
 ## Tutorial to Create an Application
