@@ -174,8 +174,8 @@ as there are no other users in the system at this point. Any subsequent
 authenticated user that access the system starts with no roles. The
 admin user can then assign roles to these users. This behavior can be
 changed by configuring an external role mapping. Please refer to the
-[External Role Mapping](#h.ijx5fx5wv0nd) in the [Authorization using
-external roles](#h.v7j9m747yamt) section below for that.
+[External Role Mapping](#ExternalRoleMapping) in the [Authorization using
+external roles](#ExternalRoles) section below for that.
 
 This authentication can be enabled by performing the following general
 steps. The specific steps for a couple of authentication mechanisms LDAP
@@ -237,7 +237,7 @@ The following step shows how to do this
 
 ( when running Gateway in local mode use  `dtgateway restart` command)
 
-### LDAP
+### <a name="LDAP"></a>LDAP
 
 LDAP authentication is a directory based authentication mechanism used
 in many enterprises. To enable LDAP authentication following are the
@@ -267,7 +267,7 @@ authentication. The next settings are LDAP settings specific to your
 organization and could be different from ones shown above. The above
 settings are only provided as a reference example.
 
-### PAM
+### <a name="PAM"></a>PAM
 
 PAM is Pluggable Authentication Module. It is a Linux system equivalent
 of JAAS where applications call the generic PAM interface and the actual
@@ -327,7 +327,7 @@ example can be chosen.
 ### Groups
 
 For group support such as using LDAP groups for authorization refer to
-the [Authorization using external roles](#h.v7j9m747yamt) section below.
+the [Authorization using external roles](#ExternalRoles) section below.
 
 
 
@@ -346,71 +346,71 @@ Permissions
 
 The list of all possible permissions in the DT Gateway is as follow:
 
-### ACCESS\_RM\_PROXY
+###<a name="AccessRMProxy"></a> ACCESS\_RM\_PROXY
 
 Allow HTTP proxying requests to YARN’s Resource Manager REST API
 
-### EDIT\_GLOBAL\_CONFIG
+###<a name="EditGlobalSettings"></a> EDIT\_GLOBAL\_CONFIG
 
 Edit global settings
 
-### EDIT\_OTHER\_USERS\_CONFIG
+###<a name="EditOtherUsersConfig"></a> EDIT\_OTHER\_USERS\_CONFIG
 
 Edit other users’ settings
 
-### LAUNCH\_APPS
+###<a name="LaunchApps"></a> LAUNCH\_APPS
 
 Launch Apps
 
-### MANAGE\_LICENSES
+### <a name="ManageLicense"></a>MANAGE\_LICENSES
 
 Manage DataTorrent RTS licenses
 
-### MANAGE\_OTHER\_USERS\_APPS
+###<a name="ManageOtherUsersApps"></a> MANAGE\_OTHER\_USERS\_APPS
 
 Manage (e.g. edit, kill, etc) applications launched by other users
 
-### MANAGE\_OTHER\_USERS\_APP\_PACKAGES
+###<a name="ManageOtherUsersAppPackage"></a> MANAGE\_OTHER\_USERS\_APP\_PACKAGES
 
 Manage App Packages uploaded by other users
 
-### MANAGE\_ROLES
+###<a name="ManageRoles"></a> MANAGE\_ROLES
 
 Manage roles (create/delete roles, or assign permissions to roles)
 
-### MANAGE\_SYSTEM\_ALERTS
+### <a name="ManageSystemAlerts"></a>MANAGE\_SYSTEM\_ALERTS
 
 Manage system alerts
 
-### MANAGE\_USERS
+###<a name="ManageUsers"></a> MANAGE\_USERS
 
 Manage users (create/delete users, change password)
 
-### UPLOAD\_APP\_PACKAGES
+###<a name="UploadAppPackages"></a> UPLOAD\_APP\_PACKAGES
 
 Upload App Packages and use the app builder
 
-### VIEW\_GLOBAL\_CONFIG
+###<a name="ViewGlobalConfig"></a> VIEW\_GLOBAL\_CONFIG
 
 View global settings  
 
-### VIEW\_LICENSES
+###<a name="ViewLicenses"></a> VIEW\_LICENSES
 
 View DataTorrent RTS licenses
 
-### VIEW\_OTHER\_USERS\_APPS
+###<a name="ViewOtherUsersApps"></a> VIEW\_OTHER\_USERS\_APPS
 
 View applications launched by others
 
-### VIEW\_OTHER\_USERS\_APP\_PACKAGES
+###<a name="ViewOtherUsersAppPackages"></a> VIEW\_OTHER\_USERS\_APP\_PACKAGES
 
 View App Packages uploaded by other users
 
-### VIEW\_OTHER\_USERS\_CONFIG
+###<a name="ViewOtherUsersConfig"></a> VIEW\_OTHER\_USERS\_CONFIG
 
 Edit other users’ settings
 
-### VIEW\_SYSTEM\_ALERTS
+###<a name="ViewSystemAlerts"></a> VIEW\_SYSTEM\_ALERTS
 
 View system alerts
 
@@ -439,17 +439,17 @@ manage users.
 
 Here is the list of default permissions given to operators
 
-[MANAGE\_SYSTEM\_ALERTS](#h.pn7iwc10y8xy)
+[MANAGE\_SYSTEM\_ALERTS](#ManageSystemAlerts)
 
-[VIEW\_GLOBAL\_CONFIG](#h.tluh45mlsx72)
+[VIEW\_GLOBAL\_CONFIG](#ViewGlobalConfig)
 
-[VIEW\_LICENSES](#h.76u6h88s274s)
+[VIEW\_LICENSES](#ViewLicenses)
 
-[VIEW\_OTHER\_USERS\_APPS](#h.rfl0ve2p50ah)
+[VIEW\_OTHER\_USERS\_APPS](#ViewOtherUsersApps)
 
-[VIEW\_OTHER\_USERS\_APP\_PACKAGES](#h.lthaz1a2bs9g)
+[VIEW\_OTHER\_USERS\_APP\_PACKAGES](#ViewOtherUsersAppPackage)
 
-[VIEW\_SYSTEM\_ALERTS](#h.dmgh5z3fotop)
+[VIEW\_SYSTEM\_ALERTS](#ViewSystemAlerts)
 
 Note that VIEW\_OTHER\_USERS\_APPS and VIEW\_OTHER\_USERS\_APP\_PACKAGES
 are in the list.  This means all users in the “operator” role will have
@@ -465,19 +465,17 @@ system settings or manage licenses.
 
 Here is the list of default permissions given to developers
 
-[](#h.89bx5fr3fvg)
+[LAUNCH\_APPS](#LaunchApps)
 
-[LAUNCH\_APPS](#h.eyevjyuu3wvm)
+[UPLOAD\_APP\_PACKAGES](#UploadAppPackages)
 
-[UPLOAD\_APP\_PACKAGES](#h.pd46zl50kb2k)
+[MANAGE\_SYSTEM\_ALERTS](#ManageSystemAlerts)
 
-[MANAGE\_SYSTEM\_ALERTS](#h.pn7iwc10y8xy)
+[VIEW\_GLOBAL\_CONFIG](#ViewGlobalConfig)
 
-[VIEW\_GLOBAL\_CONFIG](#h.tluh45mlsx72)
+[VIEW\_LICENSES](#ViewLicenses)
 
-[VIEW\_LICENSES](#h.76u6h88s274s)
-
-[VIEW\_SYSTEM\_ALERTS](#h.dmgh5z3fotop)
+[VIEW\_SYSTEM\_ALERTS](#ViewSystemAlerts)
 
 App Permissions and App Package Permissions
 -------------------------------------------
@@ -497,7 +495,7 @@ Permissions or App Package Permissions.  But one can manage App
 Permissions and App Package Permissions using the Gateway REST API with
 URI’s /ws/v2/apps/{appid}/permissions and
 /ws/v2/appPackages/{user}/{name}/permissions respectively.  Please refer
-to the [DT Gateway REST API document](https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html) and [here](#h.zfqbod7fk3oc) for examples on how to use the REST API.
+to the [DT Gateway REST API document](https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html) and [here](#AdministeringUsingCommandLine) for examples on how to use the REST API.
 
 
 Viewing and Managing Auth in the Console
@@ -676,8 +674,7 @@ JettyJAASCallbackHandler
     gets back into the main source.
 
 The JAAS configuration file as described in
-[LDAP](#h.ki9ds3jmagv) section under [Enabling JAAS
-Auth](#JAAS) should be configured to specify the ldap settings
+[LDAP](#LDAP) section under [Enabling JAAS Auth](#JAAS) should be configured to specify the ldap settings
 for roles. A sample configuration  roles based parameters to the
 configuration shown before 
 
@@ -753,7 +750,7 @@ external role staff to the DataTorrent role developer.
 
 ( when running Gateway in local mode use  dtgateway restart command)
 
-Administering Using Command Line
+<a name="AdministeringUsingCommandLine"></a>Administering Using Command Line
 ================================
 
 You can also utilize the [Gateway REST
