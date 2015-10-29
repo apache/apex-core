@@ -201,7 +201,7 @@ mechanisms that have a JAAS plugin module can also be used.
 </configuration>
 ```
 
-The *dt.gateway.http.authentication.jaas.name* property specifies the
+The `dt.gateway.http.authentication.jaas.name` property specifies the
 plugin module to use with JAAS and the value should be the name of the
 plugin module.
 
@@ -211,8 +211,8 @@ plugin module.
     .java.login.config in the home directory of the user Gateway is
     running under. If DataTorrent RTS was installed as a superuser,
     Gateway would typically run as dtadmin and this file path would
-    typically be /home/dtadmin/.java.login.config, if running as a
-    normal user it would be \~/.java.login.config. The sample
+    typically be `/home/dtadmin/.java.login.config`, if running as a
+    normal user it would be `~/.java.login.config`. The sample
     configurations for LDAP and PAM are shown in the next sections.
 
 1.  The classes for the plugin module may need to be made available to
@@ -598,10 +598,9 @@ below. The property can be specified as follows
 ```
 <configuration>
 ...
-<property>                                                                            <name>dt.gateway.http.authentication.jaas.callback.class.name
-</name>
-        <value>full-class-name-of-callback</value>
- </property>
+<property>                                                                            <name>dt.gateway.http.authentication.jaas.callback.class.name</name>
+<value>full-class-name-of-callback</value>
+</property>
 ...
 </configuration>
 ```
