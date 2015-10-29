@@ -31,7 +31,7 @@
   <artifactId>apex-engine</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Apex Stream Processing Engine</name>
+  <name>Apache Apex (incubating) Stream Processing Engine</name>
 
   <build>
     <finalName>${project.artifactId}</finalName>
@@ -145,7 +145,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <configuration>
-          <maxAllowedViolations>2320</maxAllowedViolations>
+          <maxAllowedViolations>2159</maxAllowedViolations>
         </configuration>
       </plugin>
     </plugins>

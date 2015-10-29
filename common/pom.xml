@@ -29,7 +29,7 @@
   </parent>
 
   <artifactId>apex-common</artifactId>
-  <name>Apache Apex Common Library</name>
+  <name>Apache Apex (incubating) Common Library</name>
   <packaging>jar</packaging>
 
   <build>
@@ -74,7 +74,7 @@
       <groupId>org.apache.maven.plugins</groupId>
       <artifactId>maven-checkstyle-plugin</artifactId>
       <configuration>
-        <maxAllowedViolations>87</maxAllowedViolations>
+        <maxAllowedViolations>84</maxAllowedViolations>
       </configuration>
     </plugin>
   </plugins>

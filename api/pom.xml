@@ -30,7 +30,7 @@
   </parent>
 
   <artifactId>apex-api</artifactId>
-  <name>Apache Apex API</name>
+  <name>Apache Apex (incubating) API</name>
   <packaging>jar</packaging>
 
   <repositories>
@@ -89,7 +89,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <configuration>
-          <maxAllowedViolations>50</maxAllowedViolations>
+          <maxAllowedViolations>49</maxAllowedViolations>
         </configuration>
       </plugin>
     </plugins>
