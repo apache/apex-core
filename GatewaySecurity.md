@@ -93,8 +93,8 @@ users in the system at this point. Any subsequent authenticated user
 that access the system starts with no roles. The admin user can then
 assign roles to these users. This behavior can be changed by configuring
 an external role mapping. Please refer to the [External Role
-Mapping](#h.ijx5fx5wv0nd) in the [Authorization using external
-roles](#h.v7j9m747yamt) section below for that.
+Mapping](#ExternalRoleMapping) in the [Authorization using external
+roles](#ExternalRoles) section below for that.
 
 Additional configuration is needed to enable Kerberos authentication for
 the Console. A separate set of kerberos credentials are needed. These
@@ -534,31 +534,31 @@ except for admin.
 
 * * * * *
 
-Authorization using external roles
+<a name="ExternalRoles"></a> Authorization using external roles
 ==================================
 
 When using an external authentication mechanism such as Kerberos or
 JAAS, roles defined in these external systems can be used to control
 authorization in DataTorrent RTS. There are two steps involved. First
 support for external roles has to be configured in Gateway. This is
-described below in the sections [Kerberos roles](#h.26zwoj9ewq) and
-[JAAS roles](#h.6zd1el3ssyo). Then a mapping should be specified between
+described below in the sections [Kerberos roles](#Kerberos) and
+[JAAS roles](#JAAS). Then a mapping should be specified between
 the external roles and DataTorrent roles to specify which role should be
 used for a user when the user logs in. How to setup this mapping is
-described in the [External Role Mapping](#h.ijx5fx5wv0nd) section below.
+described in the [External Role Mapping](#ExternalRoleMapping) section below.
 When this mapping is setup only users with roles that have a mapping are
 allowed to login the rest are not. The next sections describe how to
 configure the system for handling external roles.
 
-Kerberos roles
+<a name="Kerberos">Kerberos roles
 --------------
 
 When Kerberos authentication is used the role for the user is derived
-from the principal. If the principal is of the form user/group@DOMAIN
+from the principal. If the principal is of the form *user/group@DOMAIN*
 the group portion is used as the external role and no additional
 configuration is necessary.
 
-JAAS roles
+<a name="JAAS">JAAS roles
 ----------
 
 To use JAAS roles the system should be configured first to recognize
@@ -677,7 +677,7 @@ JettyJAASCallbackHandler
 
 The JAAS configuration file as described in
 [LDAP](#h.ki9ds3jmagv) section under [Enabling JAAS
-Auth](#h.epnvaq6kfwz2) should be configured to specify the ldap settings
+Auth](#JAAS) should be configured to specify the ldap settings
 for roles. A sample configuration  roles based parameters to the
 configuration shown before 
 
@@ -726,7 +726,7 @@ make them available to Gateway
 
 ( when running Gateway in local mode use  dtgateway restart command)
 
-External Role Mapping
+<a name="ExternalRoleMapping"></a> External Role Mapping
 ---------------------
 
 External role mapping is specified to map the external roles to the
