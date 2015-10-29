@@ -436,7 +436,6 @@ Operators are not allowed however to develop or launch new applications.
 Operators are also not allowed to make system configuration changes or
 manage users.
 
- 
 
 Here is the list of default permissions given to operators
 
@@ -620,7 +619,7 @@ supporting roles should be used. Any LDAP module that supports roles can
 be used. Jetty implements one such login module. The steps to configure
 this module are as follows.
 
-1.  The Gateway service in DataTorrent RTS 2.0 is compatible with Jetty
+ The Gateway service in DataTorrent RTS 2.0 is compatible with Jetty
     8. The class name identifying the role principal is
     “org.eclipse.jetty.plus.jaas.JAASRole”. When using the Jetty LDAP
     login module a custom JAAS callback has to be handled by the caller.
@@ -666,7 +665,7 @@ handler used above can be found here
 
 JettyJAASCallbackHandler
 
-1.  An issue was discovered with the Jetty login module supplied with
+ An issue was discovered with the Jetty login module supplied with
     Jetty 8 that prevented LDAP authentication to be successful even
     when the user credentials were correct. DataTorrent has a fix for
     this and is providing the login module with the fix in a separate
@@ -713,18 +712,18 @@ Please follow the instructions in the above url to obtain the project
 jar files. After obtaining the jar files perform the following step to
 make them available to Gateway
 
-1.  Edit the custom-env.sh configuration file, typically located under
-    /opt/datatorrent/current/conf ( or \~/datatorrent/current/conf for
+ Edit the custom-env.sh configuration file, typically located under
+    `/opt/datatorrent/current/conf` ( or `~/datatorrent/current/conf` for
     local install) and append the list of jars obtained above to the
-    DT\_CLASSPATH variable. This needs to be added at the end of the
+    `DT\_CLASSPATH` variable. This needs to be added at the end of the
     file in the section for specifying local overrides to environment
     variables. The line would look like
 
-     export DT\_CLASSPATH=\${DT\_CLASSPATH}:path/to/jar1:path/to/jar2:..
+     `export DT\_CLASSPATH=\${DT\_CLASSPATH}:path/to/jar1:path/to/jar2:..`
 
-1.  Restart the Gateway by running
+ Restart the Gateway by running
 
-sudo service dtgateway restart
+`sudo service dtgateway restart`
 
 ( when running Gateway in local mode use  dtgateway restart command)
 
@@ -736,22 +735,22 @@ DataTorrent roles. For example users from an LDAP group called admins
 should have the admin role when using the Console. This can be specified
 by doing the following steps
 
-1.   In the configuration folder typically located under
-    /opt/datatorrent/current/conf ( or \~/datatorrent/current/conf for
+  In the configuration folder typically located under
+    `/opt/datatorrent/current/conf` ( or `~/datatorrent/current/conf` for
     local install) edit the file called external-roles or create the
     file if it not already present. In this file each line contains a
     mapping from an external role to a datatorrent role separated by a
     delimiter ‘:’ An example listing is
-
+`
         admins:admin
-        staff: developer
+        staff: developer`
 
 This maps the external role admins to the DataTorrent role admin and
 external role staff to the DataTorrent role developer.
 
-1.  Restart the Gateway by running
+ Restart the Gateway by running
 
-sudo service dtgateway restart
+`sudo service dtgateway restart`
 
 ( when running Gateway in local mode use  dtgateway restart command)
 
@@ -794,10 +793,9 @@ This command adds a user “john” with password “abc” with admin access.
 Adding a user in the developer role:
 ------------------------------------
 
-% curl -b \~/cookie-jar -XPUT -H "Content-Type: application/json" -d
-'{"password":"abc","roles": [ "developer["
-]](http://localhost:9090/ws/v1/login) }'
-http://localhost:9090/ws/v2/auth/users/jane
+```% curl -b \~/cookie-jar -XPUT -H "Content-Type: application/json" -d
+'{"password":"abc","roles": ["developer"] (http://localhost:9090/ws/v1/login) }'
+http://localhost:9090/ws/v2/auth/users/jane ```
 
 This command adds a user “jane” with password “abc” with the developer
 role.
@@ -827,13 +825,11 @@ Enabling HTTPS in Gateway
 
 HTTPS in the Gateway can be enabled by performing following two steps.
 
- 
-
-1.  Generate an SSL keystore if you don’t have one.  Instruction on how
+Generate an SSL keystore if you don’t have one.  Instruction on how
     to generate an SSL keystore is here:
     [http://docs.oracle.com/cd/E19509-01/820-3503/ggfen/index.html](http://docs.oracle.com/cd/E19509-01/820-3503/ggfen/index.html)
 
-1.  Add a property to dt-site.xml configuration file, typically located
+Add a property to dt-site.xml configuration file, typically located
     under `/opt/datatorrent/current/conf` ( or
     `~/datatorrent/current/conf` for local install).
 
@@ -856,7 +852,7 @@ HTTPS in the Gateway can be enabled by performing following two steps.
 \</configuration\>
 ```
 
-1.  Restart the Gateway by running
+Restart the Gateway by running
 
 sudo service dtgateway restart
 
