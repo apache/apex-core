@@ -18,7 +18,6 @@
  */
 package com.datatorrent.stram.engine;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.Thread.State;
 import java.lang.management.GarbageCollectorMXBean;
@@ -28,19 +27,24 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.config.BusConfiguration;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
@@ -52,14 +56,21 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.log4j.DTLoggerFactory;
 import org.apache.log4j.LogManager;
 
-import com.datatorrent.api.*;
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Component;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StatsListener.OperatorRequest;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
@@ -70,19 +81,45 @@ import com.datatorrent.stram.ComponentContextPair;
 import com.datatorrent.stram.RecoverableRpcProxy;
 import com.datatorrent.stram.StramUtils.YarnContainerMain;
 import com.datatorrent.stram.StringCodecs;
-import com.datatorrent.stram.api.*;
-import com.datatorrent.stram.api.ContainerEvent.*;
+import com.datatorrent.stram.api.Checkpoint;
+import com.datatorrent.stram.api.ContainerContext;
+import com.datatorrent.stram.api.ContainerEvent;
+import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
+import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
+import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
+import com.datatorrent.stram.api.ContainerEvent.StreamActivationEvent;
+import com.datatorrent.stram.api.ContainerEvent.StreamDeactivationEvent;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.OperatorDeployInfo.UnifierDeployInfo;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
+import com.datatorrent.stram.api.RequestFactory;
+import com.datatorrent.stram.api.StramToNodeChangeLoggersRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
 import com.datatorrent.stram.security.StramUserLogin;
-import com.datatorrent.stram.stream.*;
+import com.datatorrent.stram.stream.BufferServerPublisher;
+import com.datatorrent.stram.stream.BufferServerSubscriber;
+import com.datatorrent.stram.stream.FastPublisher;
+import com.datatorrent.stram.stream.FastSubscriber;
+import com.datatorrent.stram.stream.InlineStream;
+import com.datatorrent.stram.stream.MuxStream;
+import com.datatorrent.stram.stream.OiOStream;
+import com.datatorrent.stram.stream.PartitionAwareSink;
+import com.datatorrent.stram.stream.PartitionAwareSinkForPersistence;
+
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
 
 /**
  * Object which controls the container process launched by {@link com.datatorrent.stram.StreamingAppMaster}.
@@ -1042,7 +1079,7 @@ public class StreamingContainer extends YarnContainerMain
    */
   private void deployInputStreams(List<OperatorDeployInfo> operatorList,
                                   HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams) throws
-      UnknownHostException
+    UnknownHostException
   {
     /*
      * collect any input operators along with their smallest window id,
@@ -1132,10 +1169,10 @@ public class StreamingContainer extends YarnContainerMain
                             OperatorDeployInfo.InputDeployInfo nidi,
                             Map<Integer, Integer> oioNodes,
                             HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams) throws
-      UnknownHostException
+    UnknownHostException
   {
     String sourceIdentifier =
-        Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
+      Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
     Entry<Integer, StreamCodec<?>> codecMapEntry = nidi.streamCodecs.entrySet().iterator().next();
 
@@ -1155,7 +1192,7 @@ public class StreamingContainer extends YarnContainerMain
 
       /* we are still dealing with the MuxStream originating at the output of the source port */
       connectInputToLocalSink(operatorList, pair, node, ndi, nidi, codecMapEntry, checkpoint,
-          oioNodes, newStreams);
+        oioNodes, newStreams);
     }
   }
 
@@ -1177,7 +1214,7 @@ public class StreamingContainer extends YarnContainerMain
                                           Entry<Integer, StreamCodec<?>> codecMapEntry,
                                           Checkpoint checkpoint,
                                           HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams) throws
-      UnknownHostException
+    UnknownHostException
   {
     assert (nidi.locality != Locality.CONTAINER_LOCAL && nidi.locality != Locality.THREAD_LOCAL);
 
@@ -1185,7 +1222,7 @@ public class StreamingContainer extends YarnContainerMain
     StreamCodec<?> streamCodec = codecMapEntry.getValue();
 
     String sinkIdentifier =
-        Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
+      Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
     String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
@@ -1193,11 +1230,11 @@ public class StreamingContainer extends YarnContainerMain
 
     StreamContext context = new StreamContext(nidi.declaredStreamId);
     context.setBufferServerAddress(
-        InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
+      InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
     InetAddress inetAddress = context.getBufferServerAddress().getAddress();
     if (inetAddress != null && NetUtils.isLocalAddress(inetAddress)) {
       context.setBufferServerAddress(
-          new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
+        new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
     }
     context.put(StreamContext.BUFFER_SERVER_TOKEN, nidi.bufferServerToken);
     String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
@@ -1211,17 +1248,17 @@ public class StreamingContainer extends YarnContainerMain
     context.setFinishedWindowId(checkpoint.windowId);
 
     BufferServerSubscriber subscriber = fastPublisherSubscriber ? new FastSubscriber(
-        "tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier),
-        queueCapacity) : new BufferServerSubscriber(
-        "tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier),
-        queueCapacity);
+      "tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier),
+      queueCapacity) : new BufferServerSubscriber(
+      "tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier),
+      queueCapacity);
     if (streamCodec instanceof StreamCodecWrapperForPersistance) {
       subscriber.acquireReservoirForPersistStream(sinkIdentifier, queueCapacity, streamCodec);
     }
     SweepableReservoir reservoir = subscriber.acquireReservoir(sinkIdentifier, queueCapacity);
     if (checkpoint.windowId >= 0) {
       node.connectInputPort(nidi.portName,
-          new WindowIdActivatedReservoir(sinkIdentifier, reservoir, checkpoint.windowId));
+        new WindowIdActivatedReservoir(sinkIdentifier, reservoir, checkpoint.windowId));
     }
     node.connectInputPort(nidi.portName, reservoir);
 
@@ -1255,7 +1292,7 @@ public class StreamingContainer extends YarnContainerMain
     StreamCodec<?> streamCodec = codecMapEntry.getValue();
 
     String sinkIdentifier =
-        Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
+      Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
     String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
@@ -1266,12 +1303,12 @@ public class StreamingContainer extends YarnContainerMain
     inlineContext.setSinkId(sinkIdentifier);
 
     Stream stream =
-        getStream(operatorList, oioNodes, node, ndi, nidi, sinkIdentifier, queueCapacity,
-            checkpoint);
+      getStream(operatorList, oioNodes, node, ndi, nidi, sinkIdentifier, queueCapacity,
+        checkpoint);
 
     node.connectInputPort(nidi.portName, (SweepableReservoir)stream);
     newStreams.put(sinkIdentifier,
-        new ComponentContextPair<Stream, StreamContext>(stream, inlineContext));
+      new ComponentContextPair<Stream, StreamContext>(stream, inlineContext));
 
     if (!(pair.component instanceof Stream.MultiSinkCapableStream)) {
       pair = convertToMultiSink(pair, nidi, sourceIdentifier, checkpoint, newStreams);
@@ -1311,7 +1348,7 @@ public class StreamingContainer extends YarnContainerMain
     Node<?> sourceNode = nodes.get(nidi.sourceNodeId);
     sourceNode.connectOutputPort(nidi.sourcePortName, muxStream);
     newStreams.put(sourceIdentifier,
-        pair = new ComponentContextPair<Stream, StreamContext>(muxStream, muxContext));
+      pair = new ComponentContextPair<Stream, StreamContext>(muxStream, muxContext));
     return pair;
   }
 
@@ -1340,7 +1377,7 @@ public class StreamingContainer extends YarnContainerMain
     switch (nidi.locality) {
       case CONTAINER_LOCAL:
         int outputQueueCapacity =
-            getOutputQueueCapacity(operatorList, nidi.sourceNodeId, nidi.sourcePortName);
+          getOutputQueueCapacity(operatorList, nidi.sourceNodeId, nidi.sourcePortName);
         if (outputQueueCapacity > queueCapacity) {
           queueCapacity = outputQueueCapacity;
         }
@@ -1348,8 +1385,8 @@ public class StreamingContainer extends YarnContainerMain
         stream = new InlineStream(queueCapacity);
         if (checkpoint.windowId >= 0) {
           node.connectInputPort(nidi.portName,
-              new WindowIdActivatedReservoir(sinkIdentifier, (SweepableReservoir)stream,
-                  checkpoint.windowId));
+            new WindowIdActivatedReservoir(sinkIdentifier, (SweepableReservoir)stream,
+              checkpoint.windowId));
         }
         break;
 
@@ -1386,11 +1423,11 @@ public class StreamingContainer extends YarnContainerMain
 
       if (nidi.partitionKeys == null) {
         pas = new PartitionAwareSinkForPersistence(
-            (StreamCodecWrapperForPersistance<Object>)streamCodec, nidi.partitionMask, stream);
+          (StreamCodecWrapperForPersistance<Object>)streamCodec, nidi.partitionMask, stream);
       } else {
         pas = new PartitionAwareSinkForPersistence(
-            (StreamCodecWrapperForPersistance<Object>)streamCodec, nidi.partitionKeys,
-            nidi.partitionMask, stream);
+          (StreamCodecWrapperForPersistance<Object>)streamCodec, nidi.partitionKeys,
+          nidi.partitionMask, stream);
       }
 
       ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
@@ -1404,8 +1441,8 @@ public class StreamingContainer extends YarnContainerMain
        * streams.
        */
       PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(
-          streamCodec == null ? nonSerializingStreamCodec : (StreamCodec<Object>)streamCodec,
-          nidi.partitionKeys, nidi.partitionMask, stream);
+        streamCodec == null ? nonSerializingStreamCodec : (StreamCodec<Object>)streamCodec,
+        nidi.partitionKeys, nidi.partitionMask, stream);
 
       ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
     }
@@ -1434,11 +1471,11 @@ public class StreamingContainer extends YarnContainerMain
 
         Node<?> node = nodes.get(ndi.id);
         SweepableReservoir reservoir =
-            windowGenerator.acquireReservoir(String.valueOf(ndi.id), 1024);
+          windowGenerator.acquireReservoir(String.valueOf(ndi.id), 1024);
         if (ndi.checkpoint.windowId >= 0) {
           node.connectInputPort(Node.INPUT,
-              new WindowIdActivatedReservoir(Integer.toString(ndi.id), reservoir,
-                  ndi.checkpoint.windowId));
+            new WindowIdActivatedReservoir(Integer.toString(ndi.id), reservoir,
+              ndi.checkpoint.windowId));
         }
         node.connectInputPort(Node.INPUT, reservoir);
       }
