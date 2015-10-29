@@ -1,4 +1,4 @@
-DataTorrent Gateway Security
+# DataTorrent Gateway Security
 
 
 Introduction
@@ -30,9 +30,9 @@ presented with the login prompt before being able to use the DT Console.
 Password authentication can be enabled by performing following two
 steps.
 
-1.  Add a property to *dt-site.xml* configuration file, typically located
-    under */opt/datatorrent/current/conf* ( or
-    *~/datatorrent/current/conf* for local install).
+1.  Add a property to `dt-site.xml` configuration file, typically located
+    under `/opt/datatorrent/current/conf` ( or
+    `~/datatorrent/current/conf` for local install).
 
 ```
 <configuration>
@@ -47,7 +47,7 @@ steps.
 
 1.  Restart the Gateway by running
 
-*sudo service dtgateway restart*
+`sudo service dtgateway restart`
 
 ( when running Gateway in local mode use  dtgateway restart command)
 
@@ -105,9 +105,8 @@ same “dt-site.xml” configuration file as the DT Gateway authentication
 configuration described in the Operation and Installation Guide. This
 authentication can be set up using the following steps.
 
-1.  Add the following properties to *dt-site.xml* configuration file,
-    typically located under */opt/datatorrent/current/conf* ( or
-    *~/datatorrent/current/conf for local install*).
+1.  Add the following properties to `dt-site.xml` configuration file, typically located under `/opt/datatorrent/current/conf` ( or `~/datatorrent/current/conf` for local install)
+
 ```
 <configuration>
 ...
@@ -151,14 +150,14 @@ authentication can be set up using the following steps.
 HTTP/…)
 
 All the values for the properties above except for the property
-*dt.gateway.http.authentication.type* *emphasized text*should be replaced with the
+`dt.gateway.http.authentication.type` should be replaced with the
 appropriate values for your setup.
 
 1.  Restart the Gateway by running
 
 sudo service dtgateway restart
 
-( when running Gateway in local mode use  *dtgateway restart* command)
+( when running Gateway in local mode use  `dtgateway restart` command)
 
 Enabling JAAS Auth
 ------------------
@@ -183,9 +182,9 @@ steps. The specific steps for a couple of authentication mechanisms LDAP
 and PAM are shown in the next sections but other authentication
 mechanisms that have a JAAS plugin module can also be used.
 
-1.  Add a property to *dt-site.xml* configuration file, typically located
-    under */opt/datatorrent/current/conf* ( or
-    *~/datatorrent/current/conf* for local install).
+1.  Add a property to `dt-site.xml` configuration file, typically located
+    under `/opt/datatorrent/current/conf` ( or
+    `~/datatorrent/current/conf` for local install).
 
 ```
 <configuration>
@@ -223,20 +222,20 @@ plugin module.
 
 The following step shows how to do this
 
-1.  Edit the *custom-env.sh* configuration file, typically located under
-    */opt/datatorrent/current/conf* ( or \~/datatorrent/current/conf* for
+1.  Edit the `custom-env.sh` configuration file, typically located under
+    `/opt/datatorrent/current/conf` ( or `~/datatorrent/current/conf` for
     local install) and append the list of jars obtained above to the
     DT\_CLASSPATH variable. This needs to be added at the end of the
     file in the section for specifying local overrides to environment
     variables. The line would look like
 
-  *export DT\_CLASSPATH=\${DT\_CLASSPATH}:path/to/jar1:path/to/jar2:..*
+  `export DT\_CLASSPATH=\${DT\_CLASSPATH}:path/to/jar1:path/to/jar2:..`
 
 1.  Restart the Gateway by running
 
-*sudo service dtgateway restart*
+`sudo service dtgateway restart`
 
-( when running Gateway in local mode use  *dtgateway restart* command)
+( when running Gateway in local mode use  `dtgateway restart` command)
 
 ### LDAP
 
@@ -744,10 +743,7 @@ by doing the following steps
     mapping from an external role to a datatorrent role separated by a
     delimiter ‘:’ An example listing is
 
-        
-
         admins:admin
-
         staff: developer
 
 This maps the external role admins to the DataTorrent role admin and
@@ -838,46 +834,33 @@ HTTPS in the Gateway can be enabled by performing following two steps.
     [http://docs.oracle.com/cd/E19509-01/820-3503/ggfen/index.html](http://docs.oracle.com/cd/E19509-01/820-3503/ggfen/index.html)
 
 1.  Add a property to dt-site.xml configuration file, typically located
-    under /opt/datatorrent/current/conf ( or
-    \~/datatorrent/current/conf for local install).
+    under `/opt/datatorrent/current/conf` ( or
+    `~/datatorrent/current/conf` for local install).
 
-\<configuration\>
-
+```
+<configuration>
 ...
-
-  \<property\>
-
-                \<name\>dt.gateway.sslKeystorePath\</name\>
-
-          \<value\>{/path/to/keystore}\</value\>
-
-  \</property\>
-
-  \<property\>
-
-                \<name\>dt.gateway.sslKeystorePassword\</name\>
-
-          \<value\>{keystore-password}\</value\>
-
-  \</property\>
-
-  \<property\>
-
-                \<name\>dt.attr.GATEWAY\_USE\_SSL\</name\>
-
-          \<value\>true\</value\>
-
-  \</property\>
-
+  <property>
+           <name>dt.gateway.sslKeystorePath</name>
+           <value>{/path/to/keystore}</value>
+  </property>
+  <property>
+            <name>dt.gateway.sslKeystorePassword</name>
+             <value>{keystore-password}</value>
+  </property>
+  <property> 
+    <name>dt.attr.GATEWAY_USE_SSL</name>
+          <value>true</value>
+  </property>
 ...
-
 \</configuration\>
+```
 
 1.  Restart the Gateway by running
 
 sudo service dtgateway restart
 
-( when running Gateway in local mode use  dtgateway restart command)
+( when running Gateway in local mode use `dtgateway restart` command)
 
 © 2013-2015 DataTorrent Inc.
 
