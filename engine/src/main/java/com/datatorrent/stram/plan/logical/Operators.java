@@ -21,6 +21,7 @@ package com.datatorrent.stram.plan.logical;
 import com.datatorrent.common.experimental.AppData;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.ProxyInputPort;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Port;
@@ -28,7 +29,6 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.stram.ComponentContextPair;
 import java.lang.reflect.Field;
-
 import java.util.LinkedHashMap;
 
 /**

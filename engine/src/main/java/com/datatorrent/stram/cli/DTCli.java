@@ -37,6 +37,7 @@ import jline.console.completer.*;
 import jline.console.history.FileHistory;
 import jline.console.history.History;
 import jline.console.history.MemoryHistory;
+
 import org.apache.commons.cli.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -60,12 +61,14 @@ import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.tools.ant.DirectoryScanner;
+
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
@@ -76,7 +79,6 @@ import com.sun.jersey.api.client.WebResource;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
-
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.*;
 import com.datatorrent.stram.client.AppPackage.AppInfo;
@@ -94,12 +96,13 @@ import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.datatorrent.stram.webapp.TypeDiscoverer;
+
 import net.lingala.zip4j.exception.ZipException;
 
 /**
  * Provides command line interface for a streaming application on hadoop (yarn)
  * <p>
- *
+ * 
  * @since 0.3.2
  */
 @SuppressWarnings("UseOfSystemOutOrSystemErr")
@@ -220,13 +223,13 @@ public class DTCli
         boolean potentialEmptyArg = false;
         StringBuffer buf = new StringBuffer(commandLine.length());
 
-        for (@SuppressWarnings("AssignmentToForLoopParameter") int i = 0; i < len; ++i) {
+        for (@SuppressWarnings("AssignmentToForLoopParameter")
+        int i = 0; i < len; ++i) {
           char c = commandLine.charAt(i);
           if (c == '"') {
             potentialEmptyArg = true;
             insideQuotes = !insideQuotes;
-          }
-          else if (c == '\\') {
+          } else if (c == '\\') {
             if (len > i + 1) {
               switch (commandLine.charAt(i + 1)) {
                 case 'n':
@@ -249,12 +252,10 @@ public class DTCli
               }
               ++i;
             }
-          }
-          else {
+          } else {
             if (insideQuotes) {
               buf.append(c);
-            }
-            else {
+            } else {
 
               if (c == '$') {
                 StringBuilder variableName = new StringBuilder(32);
@@ -281,10 +282,10 @@ public class DTCli
                   } else {
                     while (len > i + 1) {
                       char ch = commandLine.charAt(i + 1);
-                      if ((variableName.length() > 0 && ch >= '0' && ch <= '9') || ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'))) {
+                      if ((variableName.length() > 0 && ch >= '0' && ch <= '9')
+                          || ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'))) {
                         variableName.append(ch);
-                      }
-                      else {
+                      } else {
                         break;
                       }
                       ++i;
@@ -292,30 +293,25 @@ public class DTCli
                   }
                   if (variableName.length() == 0) {
                     buf.append(c);
-                  }
-                  else {
+                  } else {
                     String value = variableMap.get(variableName.toString());
                     if (value != null) {
                       buf.append(value);
                     }
                   }
-                }
-                else {
+                } else {
                   buf.append(c);
                 }
-              }
-              else if (c == ';') {
+              } else if (c == ';') {
                 appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
                 commandBuffer = startNewCommand(resultBuffer);
-              }
-              else if (Character.isWhitespace(c)) {
+              } else if (Character.isWhitespace(c)) {
                 appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
                 potentialEmptyArg = false;
                 if (len > i + 1 && commandLine.charAt(i + 1) == '#') {
                   break;
                 }
-              }
-              else {
+              } else {
                 buf.append(c);
               }
             }
@@ -420,7 +416,8 @@ public class DTCli
   }
 
   @SuppressWarnings("unused")
-  private StramAppLauncher getStramAppLauncher(String jarfileUri, Configuration config, boolean ignorePom) throws Exception
+  private StramAppLauncher getStramAppLauncher(String jarfileUri, Configuration config, boolean ignorePom)
+      throws Exception
   {
     URI uri = new URI(jarfileUri);
     String scheme = uri.getScheme();
@@ -428,14 +425,12 @@ public class DTCli
     if (scheme == null || scheme.equals("file")) {
       File jf = new File(uri.getPath());
       appLauncher = new StramAppLauncher(jf, config);
-    }
-    else {
+    } else {
       FileSystem tmpFs = FileSystem.newInstance(uri, conf);
       try {
         Path path = new Path(uri.getPath());
         appLauncher = new StramAppLauncher(tmpFs, path, config);
-      }
-      finally {
+      } finally {
         tmpFs.close();
       }
     }
@@ -444,8 +439,7 @@ public class DTCli
         System.err.print(appLauncher.getMvnBuildClasspathOutput());
       }
       return appLauncher;
-    }
-    else {
+    } else {
       throw new CliException("Scheme " + scheme + " not supported.");
     }
   }
@@ -526,8 +520,7 @@ public class DTCli
       try {
         args = new PosixParser().parse(options, args).getArgs();
         super.verifyArguments(args);
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         throw new CliException("Command parameter error");
       }
     }
@@ -552,247 +545,153 @@ public class DTCli
     //
     // Global command specification starts here
     //
-    globalCommands.put("help", new CommandSpec(new HelpCommand(),
-      null,
-      new Arg[]{new CommandArg("command")},
-            "Show help"));
-    globalCommands.put("echo", new CommandSpec(new EchoCommand(),
-            null, new Arg[]{new VarArg("arg")},
-            "Echo the arguments"));
-    globalCommands.put("connect", new CommandSpec(new ConnectCommand(),
-      new Arg[]{new Arg("app-id")},
-      null,
-      "Connect to an app"));
-    globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(),
-      new Arg[]{new FileArg("jar-file/json-file/properties-file/app-package-file")},
-      new Arg[]{new Arg("matching-app-name")},
-      "Launch an app", LAUNCH_OPTIONS.options));
-    globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
-            new Arg[]{new Arg("app-id")},
-            new Arg[]{new VarArg("app-id")},
-            "Shutdown an app"));
-    globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(),
-      null,
-      new Arg[]{new Arg("pattern")},
-      "List applications"));
-    globalCommands.put("kill-app", new CommandSpec(new KillAppCommand(),
-            new Arg[]{new Arg("app-id")},
-            new Arg[]{new VarArg("app-id")},
-            "Kill an app"));
+    globalCommands.put("help", new CommandSpec(new HelpCommand(), null, new Arg[] { new CommandArg("command") },
+        "Show help"));
+    globalCommands.put("echo", new CommandSpec(new EchoCommand(), null, new Arg[] { new VarArg("arg") },
+        "Echo the arguments"));
+    globalCommands.put("connect", new CommandSpec(new ConnectCommand(), new Arg[] { new Arg("app-id") }, null,
+        "Connect to an app"));
+    globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(), new Arg[] { new FileArg(
+        "jar-file/json-file/properties-file/app-package-file") }, new Arg[] { new Arg("matching-app-name") },
+        "Launch an app", LAUNCH_OPTIONS.options));
+    globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(), new Arg[] { new Arg("app-id") },
+        new Arg[] { new VarArg("app-id") }, "Shutdown an app"));
+    globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(), null, new Arg[] { new Arg("pattern") },
+        "List applications"));
+    globalCommands.put("kill-app", new CommandSpec(new KillAppCommand(), new Arg[] { new Arg("app-id") },
+        new Arg[] { new VarArg("app-id") }, "Kill an app"));
     globalCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
-      new Arg[]{new FileArg("jar-file/app-package-file")},
-      new Arg[]{new Arg("class-name")},
-      "List apps in a jar or show logical plan of an app class",
-      getShowLogicalPlanCommandLineOptions()));
+        new Arg[] { new FileArg("jar-file/app-package-file") }, new Arg[] { new Arg("class-name") },
+        "List apps in a jar or show logical plan of an app class", getShowLogicalPlanCommandLineOptions()));
 
     globalCommands.put("get-jar-operator-classes", new OptionsCommandSpec(new GetJarOperatorClassesCommand(),
-      new Arg[]{new FileArg("jar-files-comma-separated")},
-      new Arg[]{new Arg("search-term")},
-      "List operators in a jar list",
-      GET_OPERATOR_CLASSES_OPTIONS.options));
+        new Arg[] { new FileArg("jar-files-comma-separated") }, new Arg[] { new Arg("search-term") },
+        "List operators in a jar list", GET_OPERATOR_CLASSES_OPTIONS.options));
 
-    globalCommands.put("get-jar-operator-properties", new CommandSpec(new GetJarOperatorPropertiesCommand(),
-      new Arg[]{new FileArg("jar-files-comma-separated"), new Arg("operator-class-name")},
-      null,
-      "List properties in specified operator"));
+    globalCommands.put("get-jar-operator-properties", new CommandSpec(new GetJarOperatorPropertiesCommand(), new Arg[] {
+        new FileArg("jar-files-comma-separated"), new Arg("operator-class-name") }, null,
+        "List properties in specified operator"));
 
-    globalCommands.put("alias", new CommandSpec(new AliasCommand(),
-      new Arg[]{new Arg("alias-name"), new CommandArg("command")},
-      null,
-      "Create a command alias"));
-    globalCommands.put("source", new CommandSpec(new SourceCommand(),
-      new Arg[]{new FileArg("file")},
-      null,
-      "Execute the commands in a file"));
-    globalCommands.put("exit", new CommandSpec(new ExitCommand(),
-      null,
-      null,
-      "Exit the CLI"));
-    globalCommands.put("begin-macro", new CommandSpec(new BeginMacroCommand(),
-      new Arg[]{new Arg("name")},
-      null,
-      "Begin Macro Definition ($1...$9 to access parameters and type 'end' to end the definition)"));
-    globalCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(),
-      new Arg[]{new FileArg("out-file"), new FileArg("jar-file"), new Arg("class-name")},
-      null,
-      "Dump the properties file of an app class"));
-    globalCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(),
-      new Arg[]{new Arg("app-id")},
-      null,
-      "Get the information of an app"));
-    globalCommands.put("set-pager", new CommandSpec(new SetPagerCommand(),
-      new Arg[]{new Arg("on/off")},
-      null,
-      "Set the pager program for output"));
-    globalCommands.put("get-config-parameter", new CommandSpec(new GetConfigParameterCommand(),
-      null,
-      new Arg[]{new FileArg("parameter-name")},
-      "Get the configuration parameter"));
-    globalCommands.put("get-app-package-info", new CommandSpec(new GetAppPackageInfoCommand(),
-      new Arg[]{new FileArg("app-package-file")},
-      null,
-      "Get info on the app package file"));
+    globalCommands.put("alias", new CommandSpec(new AliasCommand(), new Arg[] { new Arg("alias-name"),
+        new CommandArg("command") }, null, "Create a command alias"));
+    globalCommands.put("source", new CommandSpec(new SourceCommand(), new Arg[] { new FileArg("file") }, null,
+        "Execute the commands in a file"));
+    globalCommands.put("exit", new CommandSpec(new ExitCommand(), null, null, "Exit the CLI"));
+    globalCommands.put("begin-macro", new CommandSpec(new BeginMacroCommand(), new Arg[] { new Arg("name") }, null,
+        "Begin Macro Definition ($1...$9 to access parameters and type 'end' to end the definition)"));
+    globalCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(), new Arg[] {
+        new FileArg("out-file"), new FileArg("jar-file"), new Arg("class-name") }, null,
+        "Dump the properties file of an app class"));
+    globalCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(), new Arg[] { new Arg("app-id") }, null,
+        "Get the information of an app"));
+    globalCommands.put("set-pager", new CommandSpec(new SetPagerCommand(), new Arg[] { new Arg("on/off") }, null,
+        "Set the pager program for output"));
+    globalCommands.put("get-config-parameter", new CommandSpec(new GetConfigParameterCommand(), null,
+        new Arg[] { new FileArg("parameter-name") }, "Get the configuration parameter"));
+    globalCommands.put("get-app-package-info", new CommandSpec(new GetAppPackageInfoCommand(), new Arg[] { new FileArg(
+        "app-package-file") }, null, "Get info on the app package file"));
     globalCommands.put("get-app-package-operators", new OptionsCommandSpec(new GetAppPackageOperatorsCommand(),
-      new Arg[]{new FileArg("app-package-file")},
-      new Arg[]{new Arg("search-term")},
-      "Get operators within the given app package",
-      GET_OPERATOR_CLASSES_OPTIONS.options));
-    globalCommands.put("get-app-package-operator-properties", new CommandSpec(new GetAppPackageOperatorPropertiesCommand(),
-      new Arg[]{new FileArg("app-package-file"), new Arg("operator-class")},
-      null,
-      "Get operator properties within the given app package"));
-    globalCommands.put("list-application-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.APPLICATION),
-      null, null, "Lists the application attributes"));
+        new Arg[] { new FileArg("app-package-file") }, new Arg[] { new Arg("search-term") },
+        "Get operators within the given app package", GET_OPERATOR_CLASSES_OPTIONS.options));
+    globalCommands.put("get-app-package-operator-properties", new CommandSpec(
+        new GetAppPackageOperatorPropertiesCommand(), new Arg[] { new FileArg("app-package-file"),
+            new Arg("operator-class") }, null, "Get operator properties within the given app package"));
+    globalCommands.put("list-application-attributes", new CommandSpec(new ListAttributesCommand(
+        AttributesType.APPLICATION), null, null, "Lists the application attributes"));
     globalCommands.put("list-operator-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.OPERATOR),
-      null, null, "Lists the operator attributes"));
-    globalCommands.put("list-port-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.PORT), null, null,
-      "Lists the port attributes"));
+        null, null, "Lists the operator attributes"));
+    globalCommands.put("list-port-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.PORT), null,
+        null, "Lists the port attributes"));
 
     //
     // Connected command specification starts here
     //
-    connectedCommands.put("list-containers", new CommandSpec(new ListContainersCommand(),
-      null,
-      null,
-      "List containers"));
-    connectedCommands.put("list-operators", new CommandSpec(new ListOperatorsCommand(),
-      null,
-      new Arg[]{new Arg("pattern")},
-      "List operators"));
-    connectedCommands.put("show-physical-plan", new CommandSpec(new ShowPhysicalPlanCommand(),
-      null,
-      null,
-      "Show physical plan"));
-    connectedCommands.put("kill-container", new CommandSpec(new KillContainerCommand(),
-            new Arg[]{new Arg("container-id")},
-            new Arg[]{new VarArg("container-id")},
-            "Kill a container"));
-    connectedCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
-            null,
-            new Arg[]{new VarArg("app-id")},
-            "Shutdown an app"));
-    connectedCommands.put("kill-app", new CommandSpec(new KillAppCommand(),
-            null,
-            new Arg[]{new VarArg("app-id")},
-            "Kill an app"));
-    connectedCommands.put("wait", new CommandSpec(new WaitCommand(),
-      new Arg[]{new Arg("timeout")},
-      null,
-      "Wait for completion of current application"));
-    connectedCommands.put("start-recording", new CommandSpec(new StartRecordingCommand(),
-      new Arg[]{new Arg("operator-id")},
-      new Arg[]{new Arg("port-name"), new Arg("num-windows")},
-      "Start recording"));
-    connectedCommands.put("stop-recording", new CommandSpec(new StopRecordingCommand(),
-      new Arg[]{new Arg("operator-id")},
-      new Arg[]{new Arg("port-name")},
-      "Stop recording"));
+    connectedCommands.put("list-containers",
+        new CommandSpec(new ListContainersCommand(), null, null, "List containers"));
+    connectedCommands.put("list-operators", new CommandSpec(new ListOperatorsCommand(), null, new Arg[] { new Arg(
+        "pattern") }, "List operators"));
+    connectedCommands.put("show-physical-plan", new CommandSpec(new ShowPhysicalPlanCommand(), null, null,
+        "Show physical plan"));
+    connectedCommands.put("kill-container", new CommandSpec(new KillContainerCommand(), new Arg[] { new Arg(
+        "container-id") }, new Arg[] { new VarArg("container-id") }, "Kill a container"));
+    connectedCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(), null, new Arg[] { new VarArg(
+        "app-id") }, "Shutdown an app"));
+    connectedCommands.put("kill-app", new CommandSpec(new KillAppCommand(), null, new Arg[] { new VarArg("app-id") },
+        "Kill an app"));
+    connectedCommands.put("wait", new CommandSpec(new WaitCommand(), new Arg[] { new Arg("timeout") }, null,
+        "Wait for completion of current application"));
+    connectedCommands.put("start-recording", new CommandSpec(new StartRecordingCommand(), new Arg[] { new Arg(
+        "operator-id") }, new Arg[] { new Arg("port-name"), new Arg("num-windows") }, "Start recording"));
+    connectedCommands.put("stop-recording", new CommandSpec(new StopRecordingCommand(), new Arg[] { new Arg(
+        "operator-id") }, new Arg[] { new Arg("port-name") }, "Stop recording"));
     connectedCommands.put("get-operator-attributes", new CommandSpec(new GetOperatorAttributesCommand(),
-      new Arg[]{new Arg("operator-name")},
-      new Arg[]{new Arg("attribute-name")},
-      "Get attributes of an operator"));
+        new Arg[] { new Arg("operator-name") }, new Arg[] { new Arg("attribute-name") },
+        "Get attributes of an operator"));
     connectedCommands.put("get-operator-properties", new CommandSpec(new GetOperatorPropertiesCommand(),
-      new Arg[]{new Arg("operator-name")},
-      new Arg[]{new Arg("property-name")},
-      "Get properties of a logical operator"));
-    connectedCommands.put("get-physical-operator-properties", new OptionsCommandSpec(new GetPhysicalOperatorPropertiesCommand(),
-      new Arg[]{new Arg("operator-id")},
-      null,
-      "Get properties of a physical operator", GET_PHYSICAL_PROPERTY_OPTIONS.options));
+        new Arg[] { new Arg("operator-name") }, new Arg[] { new Arg("property-name") },
+        "Get properties of a logical operator"));
+    connectedCommands.put("get-physical-operator-properties", new OptionsCommandSpec(
+        new GetPhysicalOperatorPropertiesCommand(), new Arg[] { new Arg("operator-id") }, null,
+        "Get properties of a physical operator", GET_PHYSICAL_PROPERTY_OPTIONS.options));
 
-    connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(),
-      new Arg[]{new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
-      null,
-      "Set a property of an operator"));
+    connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(), new Arg[] {
+        new Arg("operator-name"), new Arg("property-name"), new Arg("property-value") }, null,
+        "Set a property of an operator"));
     connectedCommands.put("set-physical-operator-property", new CommandSpec(new SetPhysicalOperatorPropertyCommand(),
-      new Arg[]{new Arg("operator-id"), new Arg("property-name"), new Arg("property-value")},
-      null,
-      "Set a property of an operator"));
-    connectedCommands.put("get-app-attributes", new CommandSpec(new GetAppAttributesCommand(),
-      null,
-      new Arg[]{new Arg("attribute-name")},
-      "Get attributes of the connected app"));
-    connectedCommands.put("get-port-attributes", new CommandSpec(new GetPortAttributesCommand(),
-      new Arg[]{new Arg("operator-name"), new Arg("port-name")},
-      new Arg[]{new Arg("attribute-name")},
-      "Get attributes of a port"));
-    connectedCommands.put("begin-logical-plan-change", new CommandSpec(new BeginLogicalPlanChangeCommand(),
-      null,
-      null,
-      "Begin Logical Plan Change"));
-    connectedCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
-      null,
-      new Arg[]{new FileArg("jar-file/app-package-file"), new Arg("class-name")},
-      "Show logical plan of an app class",
-      getShowLogicalPlanCommandLineOptions()));
+        new Arg[] { new Arg("operator-id"), new Arg("property-name"), new Arg("property-value") }, null,
+        "Set a property of an operator"));
+    connectedCommands.put("get-app-attributes", new CommandSpec(new GetAppAttributesCommand(), null,
+        new Arg[] { new Arg("attribute-name") }, "Get attributes of the connected app"));
+    connectedCommands.put("get-port-attributes", new CommandSpec(new GetPortAttributesCommand(), new Arg[] {
+        new Arg("operator-name"), new Arg("port-name") }, new Arg[] { new Arg("attribute-name") },
+        "Get attributes of a port"));
+    connectedCommands.put("begin-logical-plan-change", new CommandSpec(new BeginLogicalPlanChangeCommand(), null, null,
+        "Begin Logical Plan Change"));
+    connectedCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(), null, new Arg[] {
+        new FileArg("jar-file/app-package-file"), new Arg("class-name") }, "Show logical plan of an app class",
+        getShowLogicalPlanCommandLineOptions()));
     connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(),
-      new Arg[]{new FileArg("out-file")},
-      new Arg[]{new FileArg("jar-file"), new Arg("class-name")},
-      "Dump the properties file of an app class"));
-    connectedCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(),
-      null,
-      new Arg[]{new Arg("app-id")},
-      "Get the information of an app"));
-    connectedCommands.put("get-recording-info", new CommandSpec(new GetRecordingInfoCommand(),
-      null,
-      new Arg[]{new Arg("operator-id"), new Arg("start-time")},
-      "Get tuple recording info"));
+        new Arg[] { new FileArg("out-file") }, new Arg[] { new FileArg("jar-file"), new Arg("class-name") },
+        "Dump the properties file of an app class"));
+    connectedCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(), null,
+        new Arg[] { new Arg("app-id") }, "Get the information of an app"));
+    connectedCommands.put("get-recording-info", new CommandSpec(new GetRecordingInfoCommand(), null, new Arg[] {
+        new Arg("operator-id"), new Arg("start-time") }, "Get tuple recording info"));
+    connectedCommands.put("list-modules", new OptionsCommandSpec(new ListModulesCommand(), null, new Arg[] { new Arg(
+        "pattern") }, "List modules", getListModulesCommandLineOptions()));
 
     //
     // Logical plan change command specification starts here
     //
-    logicalPlanChangeCommands.put("help", new CommandSpec(new HelpCommand(),
-      null,
-      new Arg[]{new Arg("command")},
-      "Show help"));
-    logicalPlanChangeCommands.put("create-operator", new CommandSpec(new CreateOperatorCommand(),
-      new Arg[]{new Arg("operator-name"), new Arg("class-name")},
-      null,
-      "Create an operator"));
-    logicalPlanChangeCommands.put("create-stream", new CommandSpec(new CreateStreamCommand(),
-      new Arg[]{new Arg("stream-name"), new Arg("from-operator-name"), new Arg("from-port-name"), new Arg("to-operator-name"), new Arg("to-port-name")},
-      null,
-      "Create a stream"));
-    logicalPlanChangeCommands.put("add-stream-sink", new CommandSpec(new AddStreamSinkCommand(),
-      new Arg[]{new Arg("stream-name"), new Arg("to-operator-name"), new Arg("to-port-name")},
-      null,
-      "Add a sink to an existing stream"));
-    logicalPlanChangeCommands.put("remove-operator", new CommandSpec(new RemoveOperatorCommand(),
-      new Arg[]{new Arg("operator-name")},
-      null,
-      "Remove an operator"));
-    logicalPlanChangeCommands.put("remove-stream", new CommandSpec(new RemoveStreamCommand(),
-      new Arg[]{new Arg("stream-name")},
-      null,
-      "Remove a stream"));
-    logicalPlanChangeCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(),
-      new Arg[]{new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
-      null,
-      "Set a property of an operator"));
+    logicalPlanChangeCommands.put("help", new CommandSpec(new HelpCommand(), null, new Arg[] { new Arg("command") },
+        "Show help"));
+    logicalPlanChangeCommands.put("create-operator", new CommandSpec(new CreateOperatorCommand(), new Arg[] {
+        new Arg("operator-name"), new Arg("class-name") }, null, "Create an operator"));
+    logicalPlanChangeCommands.put("create-stream", new CommandSpec(new CreateStreamCommand(), new Arg[] {
+        new Arg("stream-name"), new Arg("from-operator-name"), new Arg("from-port-name"), new Arg("to-operator-name"),
+        new Arg("to-port-name") }, null, "Create a stream"));
+    logicalPlanChangeCommands.put("add-stream-sink", new CommandSpec(new AddStreamSinkCommand(), new Arg[] {
+        new Arg("stream-name"), new Arg("to-operator-name"), new Arg("to-port-name") }, null,
+        "Add a sink to an existing stream"));
+    logicalPlanChangeCommands.put("remove-operator", new CommandSpec(new RemoveOperatorCommand(), new Arg[] { new Arg(
+        "operator-name") }, null, "Remove an operator"));
+    logicalPlanChangeCommands.put("remove-stream", new CommandSpec(new RemoveStreamCommand(), new Arg[] { new Arg(
+        "stream-name") }, null, "Remove a stream"));
+    logicalPlanChangeCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(), new Arg[] {
+        new Arg("operator-name"), new Arg("property-name"), new Arg("property-value") }, null,
+        "Set a property of an operator"));
     logicalPlanChangeCommands.put("set-operator-attribute", new CommandSpec(new SetOperatorAttributeCommand(),
-      new Arg[]{new Arg("operator-name"), new Arg("attr-name"), new Arg("attr-value")},
-      null,
-      "Set an attribute of an operator"));
-    logicalPlanChangeCommands.put("set-port-attribute", new CommandSpec(new SetPortAttributeCommand(),
-      new Arg[]{new Arg("operator-name"), new Arg("port-name"), new Arg("attr-name"), new Arg("attr-value")},
-      null,
-      "Set an attribute of a port"));
-    logicalPlanChangeCommands.put("set-stream-attribute", new CommandSpec(new SetStreamAttributeCommand(),
-      new Arg[]{new Arg("stream-name"), new Arg("attr-name"), new Arg("attr-value")},
-      null,
-      "Set an attribute of a stream"));
-    logicalPlanChangeCommands.put("show-queue", new CommandSpec(new ShowQueueCommand(),
-      null,
-      null,
-      "Show the queue of the plan change"));
-    logicalPlanChangeCommands.put("submit", new CommandSpec(new SubmitCommand(),
-      null,
-      null,
-      "Submit the plan change"));
-    logicalPlanChangeCommands.put("abort", new CommandSpec(new AbortCommand(),
-      null,
-      null,
-      "Abort the plan change"));
+        new Arg[] { new Arg("operator-name"), new Arg("attr-name"), new Arg("attr-value") }, null,
+        "Set an attribute of an operator"));
+    logicalPlanChangeCommands.put("set-port-attribute", new CommandSpec(new SetPortAttributeCommand(), new Arg[] {
+        new Arg("operator-name"), new Arg("port-name"), new Arg("attr-name"), new Arg("attr-value") }, null,
+        "Set an attribute of a port"));
+    logicalPlanChangeCommands.put("set-stream-attribute", new CommandSpec(new SetStreamAttributeCommand(), new Arg[] {
+        new Arg("stream-name"), new Arg("attr-name"), new Arg("attr-value") }, null, "Set an attribute of a stream"));
+    logicalPlanChangeCommands.put("show-queue", new CommandSpec(new ShowQueueCommand(), null, null,
+        "Show the queue of the plan change"));
+    logicalPlanChangeCommands.put("submit", new CommandSpec(new SubmitCommand(), null, null, "Submit the plan change"));
+    logicalPlanChangeCommands.put("abort", new CommandSpec(new AbortCommand(), null, null, "Abort the plan change"));
   }
 
   private void printJson(String json) throws IOException
@@ -801,8 +700,7 @@ public class DTCli
 
     if (jsonp != null) {
       os.println(jsonp + "(" + json + ");");
-    }
-    else {
+    } else {
       os.println(json);
     }
     os.flush();
@@ -836,10 +734,8 @@ public class DTCli
     if (pagerCommand == null) {
       pagerProcess = null;
       return System.out;
-    }
-    else {
-      pagerProcess = Runtime.getRuntime().exec(new String[]{"sh", "-c",
-        pagerCommand + " >/dev/tty"});
+    } else {
+      pagerProcess = Runtime.getRuntime().exec(new String[] { "sh", "-c", pagerCommand + " >/dev/tty" });
       return new PrintStream(pagerProcess.getOutputStream());
     }
   }
@@ -850,8 +746,7 @@ public class DTCli
       os.close();
       try {
         pagerProcess.waitFor();
-      }
-      catch (InterruptedException ex) {
+      } catch (InterruptedException ex) {
         LOG.debug("Interrupted");
       }
     }
@@ -872,19 +767,17 @@ public class DTCli
     //LOG.debug("Canonical path: {}", fileName);
     if (expandWildCard) {
       DirectoryScanner scanner = new DirectoryScanner();
-      scanner.setIncludes(new String[]{fileName});
+      scanner.setIncludes(new String[] { fileName });
       scanner.scan();
       String[] files = scanner.getIncludedFiles();
 
       if (files.length == 0) {
         throw new CliException(fileName + " does not match any file");
-      }
-      else if (files.length > 1) {
+      } else if (files.length > 1) {
         throw new CliException(fileName + " matches more than one file");
       }
       return files[0];
-    }
-    else {
+    } else {
       return fileName;
     }
   }
@@ -894,7 +787,7 @@ public class DTCli
     // TODO: need to work with other users
     if (fileName.matches("^[a-zA-Z]+:.*")) {
       // it's a URL
-      return new String[]{fileName};
+      return new String[] { fileName };
     }
     if (fileName.startsWith("~" + File.separator)) {
       fileName = System.getProperty("user.home") + fileName.substring(1);
@@ -902,7 +795,7 @@ public class DTCli
     fileName = new File(fileName).getCanonicalPath();
     LOG.debug("Canonical path: {}", fileName);
     DirectoryScanner scanner = new DirectoryScanner();
-    scanner.setIncludes(new String[]{fileName});
+    scanner.setIncludes(new String[] { fileName });
     scanner.scan();
     return scanner.getIncludedFiles();
   }
@@ -935,8 +828,7 @@ public class DTCli
           return ar;
         }
       }
-    }
-    else {
+    } else {
       for (ApplicationReport ar : appList) {
         if (ar.getApplicationId().toString().equals(appId)) {
           return ar;
@@ -973,8 +865,7 @@ public class DTCli
         if (commandThread != null) {
           commandThread.interrupt();
           mainThread.interrupt();
-        }
-        else {
+        } else {
           System.out.print(prompt);
           System.out.flush();
         }
@@ -1033,18 +924,19 @@ public class DTCli
       if (cmd.hasOption("kt")) {
         kerberosKeyTab = cmd.getOptionValue("kt");
       }
-    }
-    catch (ParseException ex) {
+    } catch (ParseException ex) {
       System.err.println("Invalid argument: " + ex);
       System.exit(1);
     }
 
     if (kerberosPrincipal == null && kerberosKeyTab != null) {
-      System.err.println("Kerberos key tab is specified but not the kerberos principal. Please specify it using the -kp option.");
+      System.err
+          .println("Kerberos key tab is specified but not the kerberos principal. Please specify it using the -kp option.");
       System.exit(1);
     }
     if (kerberosPrincipal != null && kerberosKeyTab == null) {
-      System.err.println("Kerberos principal is specified but not the kerberos key tab. Please specify it using the -kt option.");
+      System.err
+          .println("Kerberos principal is specified but not the kerberos key tab. Please specify it using the -kt option.");
       System.exit(1);
     }
 
@@ -1067,14 +959,14 @@ public class DTCli
         break;
     }
 
-    for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[]{org.apache.log4j.Logger.getRootLogger(),
-      org.apache.log4j.Logger.getLogger(DTCli.class)}) {
+    for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[] { org.apache.log4j.Logger.getRootLogger(),
+        org.apache.log4j.Logger.getLogger(DTCli.class) }) {
       @SuppressWarnings("unchecked")
       Enumeration<Appender> allAppenders = logger.getAllAppenders();
       while (allAppenders.hasMoreElements()) {
         Appender appender = allAppenders.nextElement();
         if (appender instanceof ConsoleAppender) {
-          ((ConsoleAppender) appender).setThreshold(logLevel);
+          ((ConsoleAppender)appender).setThreshold(logLevel);
         }
       }
     }
@@ -1126,8 +1018,7 @@ public class DTCli
       while ((line = fr.readLine("")) != null) {
         processLine(line, fr, true);
       }
-    }
-    finally {
+    } finally {
       consolePresent = consolePresentSaved;
       if (fr != null) {
         fr.close();
@@ -1177,7 +1068,7 @@ public class DTCli
       CommandSpec cs = entry.getValue();
       List<Completer> argCompleters = new LinkedList<Completer>();
       argCompleters.add(new StringsCompleter(command));
-      Arg[] args = (Arg[]) ArrayUtils.addAll(cs.requiredArgs, cs.optionalArgs);
+      Arg[] args = (Arg[])ArrayUtils.addAll(cs.requiredArgs, cs.optionalArgs);
       if (args != null) {
         if (cs instanceof OptionsCommandSpec) {
           // ugly hack because jline cannot dynamically change completer while user types
@@ -1186,16 +1077,13 @@ public class DTCli
               argCompleters.add(new MyFileNameCompleter());
             }
           }
-        }
-        else {
+        } else {
           for (Arg arg : args) {
             if (arg instanceof FileArg || arg instanceof VarArg) {
               argCompleters.add(new MyFileNameCompleter());
-            }
-            else if (arg instanceof CommandArg) {
-              argCompleters.add(new StringsCompleter(commands.keySet().toArray(new String[]{})));
-            }
-            else {
+            } else if (arg instanceof CommandArg) {
+              argCompleters.add(new StringsCompleter(commands.keySet().toArray(new String[] {})));
+            } else {
               argCompleters.add(MyNullCompleter.INSTANCE);
             }
           }
@@ -1209,7 +1097,7 @@ public class DTCli
     Set<String> set = new TreeSet<String>();
     set.addAll(aliases.keySet());
     set.addAll(macros.keySet());
-    argCompleters.add(new StringsCompleter(set.toArray(new String[]{})));
+    argCompleters.add(new StringsCompleter(set.toArray(new String[] {})));
     for (int i = 0; i < 10; i++) {
       argCompleters.add(new MyFileNameCompleter());
     }
@@ -1240,8 +1128,7 @@ public class DTCli
       reader.setHistory(topLevelHistory);
       historyFile = new File(StramClientUtils.getUserDTDirectory(), "cli_history_clp");
       changingLogicalPlanHistory = new FileHistory(historyFile);
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       System.err.printf("Unable to open %s for writing.", historyFile);
     }
   }
@@ -1258,14 +1145,12 @@ public class DTCli
     reader.setBellEnabled(false);
     try {
       processSourceFile(StramClientUtils.getConfigDir() + "/clirc_system", reader);
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       // ignore
     }
     try {
       processSourceFile(StramClientUtils.getUserDTDirectory() + "/clirc", reader);
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       // ignore
     }
     if (consolePresent) {
@@ -1273,9 +1158,8 @@ public class DTCli
       setupCompleter(reader);
       setupHistory(reader);
       //reader.setHandleUserInterrupt(true);
-    }
-    else {
-      reader.setEchoCharacter((char) 0);
+    } else {
+      reader.setEchoCharacter((char)0);
     }
     setupAgents();
     String line;
@@ -1287,8 +1171,7 @@ public class DTCli
           break;
         }
         line = commandsToExecute[i++];
-      }
-      else {
+      } else {
         line = readLine(reader);
         if (line == null) {
           break;
@@ -1331,18 +1214,15 @@ public class DTCli
           if (args.length > argIndex && argIndex >= 0) {
             // Replace $0 with macro name or $1..$9 with input arguments
             expandedLine.append(line.substring(previousIndex, currentIndex)).append(args[argIndex]);
-          }
-          else if (argIndex >= 0 && argIndex <= 9) {
+          } else if (argIndex >= 0 && argIndex <= 9) {
             // Arguments for $1..$9 were not supplied - replace with empty strings
             expandedLine.append(line.substring(previousIndex, currentIndex));
-          }
-          else {
+          } else {
             // Outside valid arguments range - ignore and do not replace
             expandedLine.append(line.substring(previousIndex, currentIndex + 2));
           }
           currentIndex += 2;
-        }
-        else {
+        } else {
           expandedLine.append(line.substring(previousIndex));
           expandedLines.add(expandedLine.toString());
           break;
@@ -1371,9 +1251,8 @@ public class DTCli
         History history = reader.getHistory();
         if (history instanceof FileHistory) {
           try {
-            ((FileHistory) history).flush();
-          }
-          catch (IOException ex) {
+            ((FileHistory)history).flush();
+          } catch (IOException ex) {
             // ignore
           }
         }
@@ -1408,8 +1287,7 @@ public class DTCli
         CommandSpec cs = null;
         if (changingLogicalPlan) {
           cs = logicalPlanChangeCommands.get(args[0]);
-        }
-        else {
+        } else {
           if (currentApp != null) {
             cs = connectedCommands.get(args[0]);
           }
@@ -1419,23 +1297,25 @@ public class DTCli
         }
         if (cs == null) {
           if (connectedCommands.get(args[0]) != null) {
-            System.err.println("\"" + args[0] + "\" is valid only when connected to an application. Type \"connect <appid>\" to connect to an application.");
+            System.err
+                .println("\""
+                    + args[0]
+                    + "\" is valid only when connected to an application. Type \"connect <appid>\" to connect to an application.");
             lastCommandError = true;
-          }
-          else if (logicalPlanChangeCommands.get(args[0]) != null) {
-            System.err.println("\"" + args[0] + "\" is valid only when changing a logical plan.  Type \"begin-logical-plan-change\" to change a logical plan");
+          } else if (logicalPlanChangeCommands.get(args[0]) != null) {
+            System.err
+                .println("\""
+                    + args[0]
+                    + "\" is valid only when changing a logical plan.  Type \"begin-logical-plan-change\" to change a logical plan");
             lastCommandError = true;
-          }
-          else {
+          } else {
             System.err.println("Invalid command '" + args[0] + "'. Type \"help\" for list of commands");
             lastCommandError = true;
           }
-        }
-        else {
+        } else {
           try {
             cs.verifyArguments(args);
-          }
-          catch (CliException ex) {
+          } catch (CliException ex) {
             cs.printUsage(args[0]);
             throw ex;
           }
@@ -1482,7 +1362,8 @@ public class DTCli
 
   private void printWelcomeMessage()
   {
-    System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
+    System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " "
+        + VersionInfo.getRevision());
   }
 
   private void printHelp(String command, CommandSpec commandSpec, PrintStream os)
@@ -1491,12 +1372,11 @@ public class DTCli
       os.print("\033[0;93m");
       os.print(command);
       os.print("\033[0m");
-    }
-    else {
+    } else {
       os.print(command);
     }
     if (commandSpec instanceof OptionsCommandSpec) {
-      OptionsCommandSpec ocs = (OptionsCommandSpec) commandSpec;
+      OptionsCommandSpec ocs = (OptionsCommandSpec)commandSpec;
       if (ocs.options != null) {
         os.print(" [options]");
       }
@@ -1505,8 +1385,7 @@ public class DTCli
       for (Arg arg : commandSpec.requiredArgs) {
         if (consolePresent) {
           os.print(" \033[3m" + arg + "\033[0m");
-        }
-        else {
+        } else {
           os.print(" <" + arg + ">");
         }
       }
@@ -1515,8 +1394,7 @@ public class DTCli
       for (Arg arg : commandSpec.optionalArgs) {
         if (consolePresent) {
           os.print(" [\033[3m" + arg + "\033[0m");
-        }
-        else {
+        } else {
           os.print(" [<" + arg + ">");
         }
         if (arg instanceof VarArg) {
@@ -1527,7 +1405,7 @@ public class DTCli
     }
     os.println("\n\t" + commandSpec.description);
     if (commandSpec instanceof OptionsCommandSpec) {
-      OptionsCommandSpec ocs = (OptionsCommandSpec) commandSpec;
+      OptionsCommandSpec ocs = (OptionsCommandSpec)commandSpec;
       if (ocs.options != null) {
         os.println("\tOptions:");
         HelpFormatter formatter = new HelpFormatter();
@@ -1545,16 +1423,14 @@ public class DTCli
     }
   }
 
-  private String readLine(ConsoleReader reader)
-    throws IOException
+  private String readLine(ConsoleReader reader) throws IOException
   {
     if (forcePrompt == null) {
       prompt = "";
       if (consolePresent) {
         if (changingLogicalPlan) {
           prompt = "logical-plan-change";
-        }
-        else {
+        } else {
           prompt = "dt";
         }
         if (currentApp != null) {
@@ -1564,11 +1440,10 @@ public class DTCli
         }
         prompt += "> ";
       }
-    }
-    else {
+    } else {
       prompt = forcePrompt;
     }
-    String line = reader.readLine(prompt, consolePresent ? null : (char) 0);
+    String line = reader.readLine(prompt, consolePresent ? null : (char)0);
     if (line == null) {
       return null;
     }
@@ -1579,8 +1454,7 @@ public class DTCli
   {
     try {
       return yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       throw new CliException("Error getting application list from resource manager", e);
     }
   }
@@ -1596,14 +1470,13 @@ public class DTCli
       Object containersObj = json.get("containers");
       JSONArray containers;
       if (containersObj instanceof JSONArray) {
-        containers = (JSONArray) containersObj;
-      }
-      else {
+        containers = (JSONArray)containersObj;
+      } else {
         containers = new JSONArray();
         containers.put(containersObj);
       }
       if (containersObj != null) {
-        for (int o = containers.length(); o-- > 0; ) {
+        for (int o = containers.length(); o-- > 0;) {
           JSONObject container = containers.getJSONObject(o);
           String id = container.getString("id");
           if (id.equals(containerId) || (shortId != 0 && (id.endsWith("_" + shortId) || id.endsWith("0" + shortId)))) {
@@ -1611,8 +1484,7 @@ public class DTCli
           }
         }
       }
-    }
-    catch (JSONException ex) {
+    } catch (JSONException ex) {
     }
     return null;
   }
@@ -1623,15 +1495,13 @@ public class DTCli
     try {
       r = yarnClient.getApplicationReport(app.getApplicationId());
       if (r.getYarnApplicationState() != YarnApplicationState.RUNNING) {
-        String msg = String.format("Application %s not running (status %s)",
-          r.getApplicationId().getId(), r.getYarnApplicationState());
+        String msg = String.format("Application %s not running (status %s)", r.getApplicationId().getId(),
+            r.getYarnApplicationState());
         throw new CliException(msg);
       }
-    }
-    catch (YarnException rmExc) {
+    } catch (YarnException rmExc) {
       throw new CliException("Unable to determine application status", rmExc);
-    }
-    catch (IOException rmExc) {
+    } catch (IOException rmExc) {
       throw new CliException("Unable to determine application status", rmExc);
     }
     return r;
@@ -1639,7 +1509,8 @@ public class DTCli
 
   private JSONObject getResource(String resourcePath, ApplicationReport appReport)
   {
-    return getResource(new StramAgent.StramUriSpec().path(resourcePath), appReport, new WebServicesClient.GetWebServicesHandler<JSONObject>());
+    return getResource(new StramAgent.StramUriSpec().path(resourcePath), appReport,
+        new WebServicesClient.GetWebServicesHandler<JSONObject>());
   }
 
   private JSONObject getResource(StramAgent.StramUriSpec uriSpec, ApplicationReport appReport)
@@ -1647,14 +1518,16 @@ public class DTCli
     return getResource(uriSpec, appReport, new WebServicesClient.GetWebServicesHandler<JSONObject>());
   }
 
-  private JSONObject getResource(StramAgent.StramUriSpec uriSpec, ApplicationReport appReport, WebServicesClient.WebServicesHandler handler)
+  private JSONObject getResource(StramAgent.StramUriSpec uriSpec, ApplicationReport appReport,
+      WebServicesClient.WebServicesHandler handler)
   {
 
     if (appReport == null) {
       throw new CliException("No application selected");
     }
 
-    if (StringUtils.isEmpty(appReport.getTrackingUrl()) || appReport.getFinalApplicationStatus() != FinalApplicationStatus.UNDEFINED) {
+    if (StringUtils.isEmpty(appReport.getTrackingUrl())
+        || appReport.getFinalApplicationStatus() != FinalApplicationStatus.UNDEFINED) {
       appReport = null;
       throw new CliException("Application terminated");
     }
@@ -1678,11 +1551,9 @@ public class DTCli
 
       if (cfgList.isEmpty()) {
         return null;
-      }
-      else if (matchString == null) {
+      } else if (matchString == null) {
         return cfgList;
-      }
-      else {
+      } else {
         List<AppFactory> result = new ArrayList<AppFactory>();
         if (!exactMatch) {
           matchString = matchString.toLowerCase();
@@ -1694,15 +1565,14 @@ public class DTCli
             if (matchString.equals(appName) || matchString.equals(appAlias)) {
               result.add(ac);
             }
-          }
-          else if (appName.toLowerCase().contains(matchString) || (appAlias != null && appAlias.toLowerCase().contains(matchString))) {
+          } else if (appName.toLowerCase().contains(matchString)
+              || (appAlias != null && appAlias.toLowerCase().contains(matchString))) {
             result.add(ac);
           }
         }
         return result;
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Caught Exception: ", ex);
       return null;
     }
@@ -1727,12 +1597,10 @@ public class DTCli
         os.println("COMMANDS WHEN CHANGING LOGICAL PLAN (via begin-logical-plan-change):\n");
         printHelp(logicalPlanChangeCommands, os);
         os.println();
-      }
-      else {
+      } else {
         if (args[1].equals("help")) {
           printHelp("help", globalCommands.get("help"), os);
-        }
-        else {
+        } else {
           boolean valid = false;
           CommandSpec cs = globalCommands.get(args[1]);
           if (cs != null) {
@@ -1795,8 +1663,7 @@ public class DTCli
         if (consolePresent) {
           System.out.println("Connected to application " + currentApp.getApplicationId());
         }
-      }
-      catch (CliException e) {
+      } catch (CliException e) {
         throw e; // pass on
       }
     }
@@ -1830,7 +1697,8 @@ public class DTCli
         Configuration config;
         String configFile = cp == null ? commandLineInfo.configFile : null;
         try {
-          config = StramAppLauncher.getOverriddenConfig(StramClientUtils.addDTSiteResources(new Configuration()), configFile, commandLineInfo.overrideProperties);
+          config = StramAppLauncher.getOverriddenConfig(StramClientUtils.addDTSiteResources(new Configuration()),
+              configFile, commandLineInfo.overrideProperties);
           if (commandLineInfo.libjars != null) {
             commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
             if (commandLineInfo.libjars != null) {
@@ -1872,7 +1740,8 @@ public class DTCli
           submitApp = new StramAppLauncher(file.getName(), config);
           appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
           if (matchString != null) {
-            LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file", matchString);
+            LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file",
+                matchString);
           }
         } else {
           // see if it's an app package
@@ -1882,7 +1751,8 @@ public class DTCli
           } catch (Exception ex) {
             // It's not an app package
             if (requiredAppPackageName != null) {
-              throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName + "\"");
+              throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName
+                  + "\"");
             }
           }
 
@@ -1901,7 +1771,7 @@ public class DTCli
           submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
         }
         submitApp.loadDependencies();
-        
+
         if (commandLineInfo.origAppId != null) {
           // ensure app is not running
           ApplicationReport ar = null;
@@ -1909,15 +1779,18 @@ public class DTCli
             ar = getApplication(commandLineInfo.origAppId);
           } catch (Exception e) {
             // application (no longer) in the RM history, does not prevent restart from state in DFS
-            LOG.debug("Cannot determine status of application {} {}", commandLineInfo.origAppId, ExceptionUtils.getMessage(e));
+            LOG.debug("Cannot determine status of application {} {}", commandLineInfo.origAppId,
+                ExceptionUtils.getMessage(e));
           }
           if (ar != null) {
             if (ar.getFinalApplicationStatus() == FinalApplicationStatus.UNDEFINED) {
-              throw new CliException("Cannot relaunch non-terminated application: " + commandLineInfo.origAppId + " " + ar.getYarnApplicationState());
+              throw new CliException("Cannot relaunch non-terminated application: " + commandLineInfo.origAppId + " "
+                  + ar.getYarnApplicationState());
             }
             if (appFactory == null && matchString == null) {
               // skip selection if we can match application name from previous run
-              List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, ar.getName(), commandLineInfo.exactMatch);
+              List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, ar.getName(),
+                  commandLineInfo.exactMatch);
               for (AppFactory af : matchingAppFactories) {
                 String appName = submitApp.getLogicalPlanConfiguration().getAppAlias(af.getName());
                 if (appName == null) {
@@ -1932,7 +1805,7 @@ public class DTCli
             }
           }
         }
-        
+
         if (appFactory == null && matchString != null) {
           // attempt to interpret argument as property file - do we still need it?
           try {
@@ -1948,9 +1821,10 @@ public class DTCli
             // ignore
           }
         }
-        
+
         if (appFactory == null) {
-          List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, matchString, commandLineInfo.exactMatch);
+          List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, matchString,
+              commandLineInfo.exactMatch);
           if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
             throw new CliException("No applications matching \"" + matchString + "\" bundled in jar.");
           } else if (matchingAppFactories.size() == 1) {
@@ -1984,7 +1858,7 @@ public class DTCli
             if (!consolePresent) {
               throw new CliException("More than one application in jar file match '" + matchString + "'");
             } else {
-              
+
               boolean useHistory = reader.isHistoryEnabled();
               reader.setHistoryEnabled(false);
               History previousHistory = reader.getHistory();
@@ -2017,18 +1891,22 @@ public class DTCli
               }
             }
           }
-          
+
         }
-        
+
         if (appFactory != null) {
           if (!commandLineInfo.localMode) {
 
             // see whether there is an app with the same name and user name running
-            String appNameAttributeName = StreamingApplication.DT_PREFIX + Context.DAGContext.APPLICATION_NAME.getName();
+            String appNameAttributeName = StreamingApplication.DT_PREFIX
+                + Context.DAGContext.APPLICATION_NAME.getName();
             String appName = config.get(appNameAttributeName, appFactory.getName());
-            ApplicationReport duplicateApp = StramClientUtils.getStartedAppInstanceByName(yarnClient, appName, UserGroupInformation.getLoginUser().getUserName(), null);
+            ApplicationReport duplicateApp = StramClientUtils.getStartedAppInstanceByName(yarnClient, appName,
+                UserGroupInformation.getLoginUser().getUserName(), null);
             if (duplicateApp != null) {
-              throw new CliException("Application with the name \"" + duplicateApp.getName() + "\" already running under the current user \"" + duplicateApp.getUser() + "\". Please choose another name. You can change the name by setting " + appNameAttributeName);
+              throw new CliException("Application with the name \"" + duplicateApp.getName()
+                  + "\" already running under the current user \"" + duplicateApp.getUser()
+                  + "\". Please choose another name. You can change the name by setting " + appNameAttributeName);
             }
 
             // This is for suppressing System.out printouts from applications so that the user of CLI will not be confused by those printouts
@@ -2043,7 +1921,7 @@ public class DTCli
                   {
                     // no-op
                   }
-                  
+
                 });
                 System.setOut(dummyStream);
               }
@@ -2061,7 +1939,7 @@ public class DTCli
         } else {
           System.err.println("No application specified.");
         }
-        
+
       } finally {
         IOUtils.closeQuietly(cp);
       }
@@ -2083,8 +1961,7 @@ public class DTCli
         for (Map.Entry<String, String> entry : sortedMap.entrySet()) {
           os.println(entry.getKey() + "=" + entry.getValue());
         }
-      }
-      else {
+      } else {
         String value = conf.get(args[1]);
         if (value != null) {
           os.println(value);
@@ -2105,12 +1982,10 @@ public class DTCli
       if (args.length == 1) {
         if (currentApp == null) {
           throw new CliException("No application selected");
+        } else {
+          apps = new ApplicationReport[] { currentApp };
         }
-        else {
-          apps = new ApplicationReport[]{currentApp};
-        }
-      }
-      else {
+      } else {
         apps = new ApplicationReport[args.length - 1];
         for (int i = 1; i < args.length; i++) {
           apps[i - 1] = getApplication(args[i]);
@@ -2122,15 +1997,16 @@ public class DTCli
 
       for (ApplicationReport app : apps) {
         try {
-          JSONObject response = getResource(new StramAgent.StramUriSpec().path(StramWebServices.PATH_SHUTDOWN), app, new WebServicesClient.WebServicesHandler<JSONObject>()
-          {
-            @Override
-            public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-            {
-              return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
-            }
+          JSONObject response = getResource(new StramAgent.StramUriSpec().path(StramWebServices.PATH_SHUTDOWN), app,
+              new WebServicesClient.WebServicesHandler<JSONObject>()
+              {
+                @Override
+                public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+                {
+                  return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
+                }
 
-          });
+              });
           if (consolePresent) {
             System.out.println("Shutdown requested: " + response);
           }
@@ -2188,8 +2064,7 @@ public class DTCli
                 jsonArray.put(jsonObj);
                 break;
               }
-            }
-            else {
+            } else {
               @SuppressWarnings("unchecked")
               Iterator<String> keys = jsonObj.keys();
               while (keys.hasNext()) {
@@ -2199,8 +2074,7 @@ public class DTCli
                 }
               }
             }
-          }
-          else {
+          } else {
             jsonArray.put(jsonObj);
           }
         }
@@ -2208,8 +2082,7 @@ public class DTCli
         if (consolePresent) {
           System.out.println(runningCnt + " active, total " + totalCnt + " applications.");
         }
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         throw new CliException("Failed to retrieve application list", ex);
       }
     }
@@ -2224,13 +2097,11 @@ public class DTCli
       if (args.length == 1) {
         if (currentApp == null) {
           throw new CliException("No application selected");
-        }
-        else {
+        } else {
           try {
             yarnClient.killApplication(currentApp.getApplicationId());
             currentApp = null;
-          }
-          catch (YarnException e) {
+          } catch (YarnException e) {
             throw new CliException("Failed to kill " + currentApp.getApplicationId(), e);
           }
         }
@@ -2256,11 +2127,11 @@ public class DTCli
         if (consolePresent) {
           System.out.println("Kill app requested");
         }
-      }
-      catch (YarnException e) {
-        throw new CliException("Failed to kill " + ((app == null || app.getApplicationId() == null) ? "unknown application" : app.getApplicationId()) + ". Aborting killing of any additional applications.", e);
-      }
-      catch (NumberFormatException nfe) {
+      } catch (YarnException e) {
+        throw new CliException("Failed to kill "
+            + ((app == null || app.getApplicationId() == null) ? "unknown application" : app.getApplicationId())
+            + ". Aborting killing of any additional applications.", e);
+      } catch (NumberFormatException nfe) {
         throw new CliException("Invalid application Id " + args[i], nfe);
       }
     }
@@ -2329,27 +2200,24 @@ public class DTCli
       JSONObject json = getResource(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS, currentApp);
       if (args.length == 1) {
         printJson(json);
-      }
-      else {
+      } else {
         Object containersObj = json.get("containers");
         JSONArray containers;
         if (containersObj instanceof JSONArray) {
-          containers = (JSONArray) containersObj;
-        }
-        else {
+          containers = (JSONArray)containersObj;
+        } else {
           containers = new JSONArray();
           containers.put(containersObj);
         }
         if (containersObj == null) {
           System.out.println("No containers found!");
-        }
-        else {
+        } else {
           JSONArray resultContainers = new JSONArray();
-          for (int o = containers.length(); o-- > 0; ) {
+          for (int o = containers.length(); o-- > 0;) {
             JSONObject container = containers.getJSONObject(o);
             String id = container.getString("id");
             if (id != null && !id.isEmpty()) {
-              for (int argc = args.length; argc-- > 1; ) {
+              for (int argc = args.length; argc-- > 1;) {
                 String s1 = "0" + args[argc];
                 String s2 = "_" + args[argc];
                 if (id.equals(args[argc]) || id.endsWith(s1) || id.endsWith(s2)) {
@@ -2379,9 +2247,8 @@ public class DTCli
         JSONArray arr;
         Object obj = json.get(singleKey);
         if (obj instanceof JSONArray) {
-          arr = (JSONArray) obj;
-        }
-        else {
+          arr = (JSONArray)obj;
+        } else {
           arr = new JSONArray();
           arr.put(obj);
         }
@@ -2392,12 +2259,67 @@ public class DTCli
               matches.put(oper);
               break;
             }
-          }
-          else {
+          } else {
             @SuppressWarnings("unchecked")
             Iterator<String> keys = oper.keys();
             while (keys.hasNext()) {
               if (oper.get(keys.next()).toString().toLowerCase().contains(args[1].toLowerCase())) {
+                matches.put(oper);
+                break;
+              }
+            }
+          }
+        }
+        json.put(singleKey, matches);
+      }
+
+      printJson(json);
+    }
+
+  }
+
+  private class ListModulesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String[] newArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+      CommandLineParser parser = new PosixParser();
+      CommandLine line = parser.parse(getListModulesCommandLineOptions(), newArgs);
+      boolean flatten = line.hasOption("r");
+      JSONObject json;
+      if (flatten) {
+        json = getResource(StramWebServices.PATH_LOGICAL_PLAN_MODULES + "/flatten", currentApp);
+      } else {
+        json = getResource(StramWebServices.PATH_LOGICAL_PLAN_MODULES, currentApp);
+      }
+
+      String[] arguments = line.getArgs();
+      if (arguments.length > 1) {
+        String singleKey = "" + json.keys().next();
+        JSONArray matches = new JSONArray();
+        // filter operators
+        JSONArray arr;
+        Object obj = json.get(singleKey);
+        if (obj instanceof JSONArray) {
+          arr = (JSONArray)obj;
+        } else {
+          arr = new JSONArray();
+          arr.put(obj);
+        }
+        for (int i = 0; i < arr.length(); i++) {
+          JSONObject oper = arr.getJSONObject(i);
+          if (StringUtils.isNumeric(arguments[1])) {
+            if (oper.getString("id").equals(arguments[1])) {
+              matches.put(oper);
+              break;
+            }
+          } else {
+            @SuppressWarnings("unchecked")
+            Iterator<String> keys = oper.keys();
+            while (keys.hasNext()) {
+              if (oper.get(keys.next()).toString().toLowerCase().contains(arguments[1].toLowerCase())) {
                 matches.put(oper);
                 break;
               }
@@ -2438,7 +2360,8 @@ public class DTCli
         }
         try {
           StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
-          uriSpec = uriSpec.path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(URLEncoder.encode(containerLongId, "UTF-8")).path("kill");
+          uriSpec = uriSpec.path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS)
+              .path(URLEncoder.encode(containerLongId, "UTF-8")).path("kill");
           JSONObject response = getResource(uriSpec, currentApp, new WebServicesClient.WebServicesHandler<JSONObject>()
           {
             @Override
@@ -2479,8 +2402,7 @@ public class DTCli
             if (reader.getInput().available() > 0) {
               return true;
             }
-          }
-          catch (IOException e) {
+          } catch (IOException e) {
             LOG.error("Error checking for input.", e);
           }
           return false;
@@ -2494,8 +2416,7 @@ public class DTCli
         if (!result) {
           System.err.println("Application terminated unsuccessfully.");
         }
-      }
-      catch (YarnException e) {
+      } catch (YarnException e) {
         throw new CliException("Failed to kill " + currentApp.getApplicationId(), e);
       }
     }
@@ -2544,16 +2465,16 @@ public class DTCli
       if (args.length <= 1) {
         List<RecordingInfo> recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString());
         printJson(recordingInfo, "recordings");
-      }
-      else if (args.length <= 2) {
+      } else if (args.length <= 2) {
         String opId = args[1];
-        List<RecordingInfo> recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString(), opId);
+        List<RecordingInfo> recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString(),
+            opId);
         printJson(recordingInfo, "recordings");
-      }
-      else {
+      } else {
         String opId = args[1];
         String id = args[2];
-        RecordingInfo recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString(), opId, id);
+        RecordingInfo recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString(), opId,
+            id);
         printJson(new JSONObject(mapper.writeValueAsString(recordingInfo)));
       }
     }
@@ -2592,7 +2513,8 @@ public class DTCli
         throw new CliException("No application selected");
       }
       StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
-      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("attributes");
+      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8"))
+          .path("attributes");
       if (args.length > 2) {
         uriSpec = uriSpec.queryParam("attributeName", args[2]);
       }
@@ -2615,7 +2537,8 @@ public class DTCli
         throw new CliException("No application selected");
       }
       StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
-      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("ports").path(URLEncoder.encode(args[2], "UTF-8")).path("attributes");
+      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8"))
+          .path("ports").path(URLEncoder.encode(args[2], "UTF-8")).path("attributes");
       if (args.length > 3) {
         uriSpec = uriSpec.queryParam("attributeName", args[3]);
       }
@@ -2638,7 +2561,8 @@ public class DTCli
         throw new CliException("No application selected");
       }
       StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
-      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("properties");
+      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8"))
+          .path("properties");
       if (args.length > 2) {
         uriSpec = uriSpec.queryParam("propertyName", args[2]);
       }
@@ -2705,10 +2629,10 @@ public class DTCli
         request.setPropertyName(propertyName);
         request.setPropertyValue(propertyValue);
         logicalPlanRequestQueue.add(request);
-      }
-      else {
+      } else {
         StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
-        uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("properties");
+        uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8"))
+            .path("properties");
         final JSONObject request = new JSONObject();
         request.put(args[2], args[3]);
         JSONObject response = getResource(uriSpec, currentApp, new WebServicesClient.WebServicesHandler<JSONObject>()
@@ -2800,7 +2724,8 @@ public class DTCli
           String appName = commandLineInfo.args[1];
           StramAppLauncher submitApp = getStramAppLauncher(filename, config, commandLineInfo.ignorePom);
           submitApp.loadDependencies();
-          List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName, commandLineInfo.exactMatch);
+          List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName,
+              commandLineInfo.exactMatch);
           if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
             throw new CliException("No application in jar file matches '" + appName + "'");
           } else if (matchingAppFactories.size() > 1) {
@@ -2824,7 +2749,7 @@ public class DTCli
               }
               LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
               map.put("applicationName", appFactory.getName());
-              map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+              map.put("logicalPlan", LogicalPlanSerializer.convertToMapV2(logicalPlan, commandLineInfo.flatten));
             } finally {
               if (raw) {
                 System.setOut(originalStream);
@@ -2840,7 +2765,7 @@ public class DTCli
             LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
             Map<String, Object> map = new HashMap<String, Object>();
             map.put("applicationName", appFactory.getName());
-            map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+            map.put("logicalPlan", LogicalPlanSerializer.convertToMapV2(logicalPlan, commandLineInfo.flatten));
             printJson(map);
           } else if (filename.endsWith(".properties")) {
             File file = new File(filename);
@@ -2849,7 +2774,7 @@ public class DTCli
             LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
             Map<String, Object> map = new HashMap<String, Object>();
             map.put("applicationName", appFactory.getName());
-            map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+            map.put("logicalPlan", LogicalPlanSerializer.convertToMapV2(logicalPlan, commandLineInfo.flatten));
             printJson(map);
           } else {
             StramAppLauncher submitApp = getStramAppLauncher(filename, config, commandLineInfo.ignorePom);
@@ -2868,11 +2793,15 @@ public class DTCli
         if (currentApp == null) {
           throw new CliException("No application selected");
         }
-        JSONObject response = getResource(StramWebServices.PATH_LOGICAL_PLAN, currentApp);
+        JSONObject response;
+        if (commandLineInfo.flatten) {
+          response = getResource(StramWebServices.PATH_LOGICAL_PLAN + "/flatten", currentApp);
+        } else {
+          response = getResource(StramWebServices.PATH_LOGICAL_PLAN, currentApp);
+        }
         printJson(response);
       }
     }
-
   }
 
   private class ShowLogicalPlanAppPackageCommand implements Command
@@ -2880,20 +2809,23 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String jarfile = expandFileName(args[1], true);
+      String[] newArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+      ShowLogicalPlanCommandLineInfo commandLineInfo = getShowLogicalPlanCommandLineInfo(newArgs);
+      String jarfile = expandFileName(commandLineInfo.args[0], true);
       AppPackage ap = null;
       try {
         ap = newAppPackageInstance(new File(jarfile));
 
         List<AppInfo> applications = ap.getApplications();
 
-        if (args.length >= 3) {
+        if (commandLineInfo.args.length >= 2) {
           for (AppInfo appInfo : applications) {
-            if (args[2].equals(appInfo.name)) {
+            if (commandLineInfo.args[1].equals(appInfo.name)) {
               Map<String, Object> map = new HashMap<String, Object>();
               map.put("applicationName", appInfo.name);
               if (appInfo.dag != null) {
-                map.put("logicalPlan", LogicalPlanSerializer.convertToMap(appInfo.dag));
+                map.put("logicalPlan", LogicalPlanSerializer.convertToMapV2(appInfo.dag, commandLineInfo.flatten));
               }
               if (appInfo.error != null) {
                 map.put("error", appInfo.error);
@@ -2915,7 +2847,6 @@ public class DTCli
         IOUtils.closeQuietly(ap);
       }
     }
-
   }
 
   private File copyToLocal(String[] files) throws IOException
@@ -2928,21 +2859,18 @@ public class DTCli
         String scheme = uri.getScheme();
         if (scheme == null || scheme.equals("file")) {
           files[i] = uri.getPath();
-        }
-        else {
+        } else {
           FileSystem tmpFs = FileSystem.newInstance(uri, conf);
           try {
             Path srcPath = new Path(uri.getPath());
             Path dstPath = new Path(tmpDir.getAbsolutePath(), String.valueOf(i) + srcPath.getName());
             tmpFs.copyToLocalFile(srcPath, dstPath);
             files[i] = dstPath.toUri().getPath();
-          }
-          finally {
+          } finally {
             tmpFs.close();
           }
         }
-      }
-      catch (URISyntaxException ex) {
+      } catch (URISyntaxException ex) {
         throw new RuntimeException(ex);
       }
     }
@@ -2971,7 +2899,8 @@ public class DTCli
     String[] args;
   }
 
-  private static GetOperatorClassesCommandLineInfo getGetOperatorClassesCommandLineInfo(String[] args) throws ParseException
+  private static GetOperatorClassesCommandLineInfo getGetOperatorClassesCommandLineInfo(String[] args)
+      throws ParseException
   {
     CommandLineParser parser = new PosixParser();
     GetOperatorClassesCommandLineInfo result = new GetOperatorClassesCommandLineInfo();
@@ -3013,13 +2942,13 @@ public class DTCli
 
             // add default value
             operatorDiscoverer.addDefaultValue(clazz, oper);
-            
+
             // add class hierarchy info to portClassHier and fetch port types with schema classes
             operatorDiscoverer.buildAdditionalPortInfo(oper, portClassHier, portTypesWithSchemaClasses);
 
             Iterator portTypesIter = portTypesWithSchemaClasses.keys();
             while (portTypesIter.hasNext()) {
-              if (!portTypesWithSchemaClasses.getBoolean((String) portTypesIter.next())) {
+              if (!portTypesWithSchemaClasses.getBoolean((String)portTypesIter.next())) {
                 portTypesIter.remove();
               }
             }
@@ -3039,8 +2968,7 @@ public class DTCli
           json.put("failedOperators", failed);
         }
         printJson(json);
-      }
-      finally {
+      } finally {
         FileUtils.deleteDirectory(tmpDir);
       }
     }
@@ -3084,11 +3012,9 @@ public class DTCli
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName, true);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
           throw new CliException("No application in jar file matches '" + appName + "'");
-        }
-        else if (matchingAppFactories.size() > 1) {
+        } else if (matchingAppFactories.size() > 1) {
           throw new CliException("More than one application in jar file match '" + appName + "'");
-        }
-        else {
+        } else {
           AppFactory appFactory = matchingAppFactories.get(0);
           LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
           File file = new File(outfilename);
@@ -3097,8 +3023,7 @@ public class DTCli
           }
           LogicalPlanSerializer.convertToProperties(logicalPlan).save(file);
         }
-      }
-      else {
+      } else {
         if (currentApp == null) {
           throw new CliException("No application selected");
         }
@@ -3282,8 +3207,7 @@ public class DTCli
 
         });
         printJson(response);
-      }
-      catch (Exception e) {
+      } catch (Exception e) {
         throw new CliException("Failed web service request for appid " + currentApp.getApplicationId().toString(), e);
       }
       logicalPlanRequestQueue.clear();
@@ -3322,9 +3246,8 @@ public class DTCli
           String line;
           if (consolePresent) {
             line = reader.readLine("macro def (" + name + ") > ");
-          }
-          else {
-            line = reader.readLine("", (char) 0);
+          } else {
+            line = reader.readLine("", (char)0);
           }
           if (line.equals("end")) {
             macros.put(name, commands);
@@ -3333,17 +3256,14 @@ public class DTCli
               System.out.println("Macro '" + name + "' created.");
             }
             return;
-          }
-          else if (line.equals("abort")) {
+          } else if (line.equals("abort")) {
             System.err.println("Aborted");
             return;
-          }
-          else {
+          } else {
             commands.add(line);
           }
         }
-      }
-      catch (IOException ex) {
+      } catch (IOException ex) {
         System.err.println("Aborted");
       }
     }
@@ -3357,13 +3277,11 @@ public class DTCli
     {
       if (args[1].equals("off")) {
         pagerCommand = null;
-      }
-      else if (args[1].equals("on")) {
+      } else if (args[1].equals("on")) {
         if (consolePresent) {
           pagerCommand = "less -F -X -r";
         }
-      }
-      else {
+      } else {
         throw new CliException("set-pager parameter is either on or off.");
       }
     }
@@ -3381,8 +3299,7 @@ public class DTCli
         if (appReport == null) {
           throw new CliException("Streaming application with id " + args[1] + " is not found.");
         }
-      }
-      else {
+      } else {
         if (currentApp == null) {
           throw new CliException("No application selected");
         }
@@ -3393,8 +3310,7 @@ public class DTCli
       JSONObject response;
       try {
         response = getResource(StramWebServices.PATH_INFO, currentApp);
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         response = new JSONObject();
         response.put("startTime", appReport.getStartTime());
         response.put("id", appReport.getApplicationId().toString());
@@ -3421,8 +3337,7 @@ public class DTCli
         JSONObject apInfo = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
         apInfo.remove("name");
         printJson(apInfo);
-      }
-      finally {
+      } finally {
         IOUtils.closeQuietly(ap);
       }
     }
@@ -3436,15 +3351,22 @@ public class DTCli
     }
     String requiredAppPackageName = cp.getAppPackageName();
     if (requiredAppPackageName != null && !requiredAppPackageName.equals(ap.getAppPackageName())) {
-      throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName + "\". The app package given has the name of \"" + ap.getAppPackageName() + "\"");
+      throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName
+          + "\". The app package given has the name of \"" + ap.getAppPackageName() + "\"");
     }
     String requiredAppPackageMinVersion = cp.getAppPackageMinVersion();
-    if (requiredAppPackageMinVersion != null && VersionInfo.compare(requiredAppPackageMinVersion, ap.getAppPackageVersion()) > 0) {
-      throw new CliException("Config package requires an app package minimum version of \"" + requiredAppPackageMinVersion + "\". The app package given is of version \"" + ap.getAppPackageVersion() + "\"");
+    if (requiredAppPackageMinVersion != null
+        && VersionInfo.compare(requiredAppPackageMinVersion, ap.getAppPackageVersion()) > 0) {
+      throw new CliException("Config package requires an app package minimum version of \""
+          + requiredAppPackageMinVersion + "\". The app package given is of version \"" + ap.getAppPackageVersion()
+          + "\"");
     }
     String requiredAppPackageMaxVersion = cp.getAppPackageMaxVersion();
-    if (requiredAppPackageMaxVersion != null && VersionInfo.compare(requiredAppPackageMaxVersion, ap.getAppPackageVersion()) < 0) {
-      throw new CliException("Config package requires an app package maximum version of \"" + requiredAppPackageMaxVersion + "\". The app package given is of version \"" + ap.getAppPackageVersion() + "\"");
+    if (requiredAppPackageMaxVersion != null
+        && VersionInfo.compare(requiredAppPackageMaxVersion, ap.getAppPackageVersion()) < 0) {
+      throw new CliException("Config package requires an app package maximum version of \""
+          + requiredAppPackageMaxVersion + "\". The app package given is of version \"" + ap.getAppPackageVersion()
+          + "\"");
     }
   }
 
@@ -3461,7 +3383,8 @@ public class DTCli
     new LaunchCommand().execute(getLaunchAppPackageArgs(ap, cp, commandLineInfo, reader), reader);
   }
 
-  String[] getLaunchAppPackageArgs(AppPackage ap, ConfigPackage cp, LaunchCommandLineInfo commandLineInfo, ConsoleReader reader) throws Exception
+  String[] getLaunchAppPackageArgs(AppPackage ap, ConfigPackage cp, LaunchCommandLineInfo commandLineInfo,
+      ConsoleReader reader) throws Exception
   {
     String matchAppName = null;
     if (commandLineInfo.args.length > 1) {
@@ -3475,7 +3398,7 @@ public class DTCli
       while (it.hasNext()) {
         AppInfo ai = it.next();
         if ((commandLineInfo.exactMatch && !ai.name.equals(matchAppName))
-                || !ai.name.toLowerCase().matches(".*" + matchAppName.toLowerCase() + ".*")) {
+            || !ai.name.toLowerCase().matches(".*" + matchAppName.toLowerCase() + ".*")) {
           it.remove();
         }
       }
@@ -3484,7 +3407,8 @@ public class DTCli
     AppInfo selectedApp = null;
 
     if (applications.isEmpty()) {
-      throw new CliException("No applications in Application Package" + (matchAppName != null ? " matching \"" + matchAppName + "\"" : ""));
+      throw new CliException("No applications in Application Package"
+          + (matchAppName != null ? " matching \"" + matchAppName + "\"" : ""));
     } else if (applications.size() == 1) {
       selectedApp = applications.get(0);
     } else {
@@ -3647,11 +3571,11 @@ public class DTCli
     }
 
     LOG.debug("Launch command: {}", StringUtils.join(launchArgs, " "));
-    return launchArgs.toArray(new String[]{});
+    return launchArgs.toArray(new String[] {});
   }
 
-
-  DTConfiguration getLaunchAppPackageProperties(AppPackage ap, ConfigPackage cp, LaunchCommandLineInfo commandLineInfo, String appName) throws Exception
+  DTConfiguration getLaunchAppPackageProperties(AppPackage ap, ConfigPackage cp, LaunchCommandLineInfo commandLineInfo,
+      String appName) throws Exception
   {
     DTConfiguration launchProperties = new DTConfiguration();
     List<AppInfo> applications = ap.getApplications();
@@ -3662,15 +3586,17 @@ public class DTCli
         break;
       }
     }
-    Map<String, String> defaultProperties = selectedApp == null ? ap.getDefaultProperties() : selectedApp.defaultProperties;
-    Set<String> requiredProperties = new TreeSet<String>(selectedApp == null ? ap.getRequiredProperties() : selectedApp.requiredProperties);
+    Map<String, String> defaultProperties = selectedApp == null ? ap.getDefaultProperties()
+        : selectedApp.defaultProperties;
+    Set<String> requiredProperties = new TreeSet<String>(selectedApp == null ? ap.getRequiredProperties()
+        : selectedApp.requiredProperties);
 
     for (Map.Entry<String, String> entry : defaultProperties.entrySet()) {
       launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
       requiredProperties.remove(entry.getKey());
     }
 
-      // settings specified in the user's environment take precedence over defaults in package.
+    // settings specified in the user's environment take precedence over defaults in package.
     // since both are merged into a single -conf option below, apply them on top of the defaults here.
     File confFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE);
     if (confFile.exists()) {
@@ -3759,10 +3685,9 @@ public class DTCli
           newArgs.add(commandLineInfo.args[i]);
         }
         LOG.debug("Executing: " + newArgs);
-        new GetJarOperatorClassesCommand().execute(newArgs.toArray(new String[]{}), reader);
+        new GetJarOperatorClassesCommand().execute(newArgs.toArray(new String[] {}), reader);
 
-      }
-      finally {
+      } finally {
         IOUtils.closeQuietly(ap);
       }
     }
@@ -3788,9 +3713,8 @@ public class DTCli
         newArgs.add("get-jar-operator-properties");
         newArgs.add(StringUtils.join(jars, ","));
         newArgs.add(args[2]);
-        new GetJarOperatorPropertiesCommand().execute(newArgs.toArray(new String[]{}), reader);
-      }
-      finally {
+        new GetJarOperatorPropertiesCommand().execute(newArgs.toArray(new String[] {}), reader);
+      } finally {
         IOUtils.closeQuietly(ap);
       }
     }
@@ -3817,11 +3741,9 @@ public class DTCli
       JSONObject result;
       if (type == AttributesType.APPLICATION) {
         result = TypeDiscoverer.getAppAttributes();
-      }
-      else if (type == AttributesType.OPERATOR) {
+      } else if (type == AttributesType.OPERATOR) {
         result = TypeDiscoverer.getOperatorAttributes();
-      }
-      else {
+      } else {
         //get port attributes
         result = TypeDiscoverer.getPortAttributes();
       }
@@ -3833,8 +3755,11 @@ public class DTCli
   public static class GetPhysicalPropertiesCommandLineOptions
   {
     final Options options = new Options();
-    final Option propertyName = add(OptionBuilder.withArgName("property name").hasArg().withDescription("The name of the property whose value needs to be retrieved").create("propertyName"));
-    final Option waitTime = add (OptionBuilder.withArgName("wait time").hasArg().withDescription("How long to wait to get the result").create("waitTime"));
+    final Option propertyName = add(OptionBuilder.withArgName("property name").hasArg()
+        .withDescription("The name of the property whose value needs to be retrieved").create("propertyName"));
+    final Option waitTime = add(OptionBuilder.withArgName("wait time").hasArg()
+        .withDescription("How long to wait to get the result").create("waitTime"));
+
     private Option add(Option opt)
     {
       this.options.addOption(opt);
@@ -3849,14 +3774,27 @@ public class DTCli
   {
     final Options options = new Options();
     final Option local = add(new Option("local", "Run application in local mode."));
-    final Option configFile = add(OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf"));
-    final Option apConfigFile = add(OptionBuilder.withArgName("app package configuration file").hasArg().withDescription("Specify an application configuration file within the app package if launching an app package.").create("apconf"));
-    final Option defProperty = add(OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D"));
-    final Option libjars = add(OptionBuilder.withArgName("comma separated list of libjars").hasArg().withDescription("Specify comma separated jar files or other resource files to include in the classpath.").create("libjars"));
-    final Option files = add(OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied on the compute machines.").create("files"));
-    final Option archives = add(OptionBuilder.withArgName("comma separated list of archives").hasArg().withDescription("Specify comma separated archives to be unarchived on the compute machines.").create("archives"));
+    final Option configFile = add(OptionBuilder.withArgName("configuration file").hasArg()
+        .withDescription("Specify an application configuration file.").create("conf"));
+    final Option apConfigFile = add(OptionBuilder
+        .withArgName("app package configuration file")
+        .hasArg()
+        .withDescription(
+            "Specify an application configuration file within the app package if launching an app package.")
+        .create("apconf"));
+    final Option defProperty = add(OptionBuilder.withArgName("property=value").hasArg()
+        .withDescription("Use value for given property.").create("D"));
+    final Option libjars = add(OptionBuilder.withArgName("comma separated list of libjars").hasArg()
+        .withDescription("Specify comma separated jar files or other resource files to include in the classpath.")
+        .create("libjars"));
+    final Option files = add(OptionBuilder.withArgName("comma separated list of files").hasArg()
+        .withDescription("Specify comma separated files to be copied on the compute machines.").create("files"));
+    final Option archives = add(OptionBuilder.withArgName("comma separated list of archives").hasArg()
+        .withDescription("Specify comma separated archives to be unarchived on the compute machines.")
+        .create("archives"));
     final Option ignorePom = add(new Option("ignorepom", "Do not run maven to find the dependency"));
-    final Option originalAppID = add(OptionBuilder.withArgName("application id").hasArg().withDescription("Specify original application identifier for restart.").create("originalAppId"));
+    final Option originalAppID = add(OptionBuilder.withArgName("application id").hasArg()
+        .withDescription("Specify original application identifier for restart.").create("originalAppId"));
     final Option exactMatch = add(new Option("exactMatch", "Only consider applications with exact app name"));
     final Option queue = add(OptionBuilder.withArgName("queue name").hasArg().withDescription("Specify the queue to launch the application").create("queue"));
     final Option force = add(new Option("force", "Force launch the application. Do not check for compatibility"));
@@ -3887,8 +3825,7 @@ public class DTCli
         int equal = def.indexOf('=');
         if (equal < 0) {
           result.overrideProperties.put(def, null);
-        }
-        else {
+        } else {
           result.overrideProperties.put(def.substring(0, equal), def.substring(equal + 1));
         }
       }
@@ -3925,12 +3862,23 @@ public class DTCli
   public static Options getShowLogicalPlanCommandLineOptions()
   {
     Options options = new Options();
-    Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar/resource files to include in the classpath.").create("libjars");
+    Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg()
+        .withDescription("Specify comma separated jar/resource files to include in the classpath.").create("libjars");
     Option ignorePom = new Option("ignorepom", "Do not run maven to find the dependency");
     Option exactMatch = new Option("exactMatch", "Only consider exact match for app name");
+    Option flatten = new Option("r", "Flatten the logical plan to display inner modules ( if present ),operators and streams");
     options.addOption(libjars);
     options.addOption(ignorePom);
     options.addOption(exactMatch);
+    options.addOption(flatten);
+    return options;
+  }
+
+  public static Options getListModulesCommandLineOptions()
+  {
+    Options options = new Options();
+    Option flatten = new Option("r", "Flatten the modules to display inner modules,operators and streams");
+    options.addOption(flatten);
     return options;
   }
 
@@ -3943,6 +3891,7 @@ public class DTCli
     result.ignorePom = line.hasOption("ignorepom");
     result.args = line.getArgs();
     result.exactMatch = line.hasOption("exactMatch");
+    result.flatten = line.hasOption("r");
     return result;
   }
 
@@ -3952,6 +3901,7 @@ public class DTCli
     boolean ignorePom;
     String[] args;
     boolean exactMatch;
+    boolean flatten;
   }
 
   public void mainHelper() throws Exception
@@ -3966,12 +3916,11 @@ public class DTCli
     final DTCli shell = new DTCli();
     shell.preImpersonationInit(args);
     String hadoopUserName = System.getenv("HADOOP_USER_NAME");
-    if (UserGroupInformation.isSecurityEnabled()
-            && StringUtils.isNotBlank(hadoopUserName)
-            && !hadoopUserName.equals(UserGroupInformation.getLoginUser().getUserName())) {
+    if (UserGroupInformation.isSecurityEnabled() && StringUtils.isNotBlank(hadoopUserName)
+        && !hadoopUserName.equals(UserGroupInformation.getLoginUser().getUserName())) {
       LOG.info("You ({}) are running as user {}", UserGroupInformation.getLoginUser().getUserName(), hadoopUserName);
-      UserGroupInformation ugi
-              = UserGroupInformation.createProxyUser(hadoopUserName, UserGroupInformation.getLoginUser());
+      UserGroupInformation ugi = UserGroupInformation.createProxyUser(hadoopUserName,
+          UserGroupInformation.getLoginUser());
       ugi.doAs(new PrivilegedExceptionAction<Void>()
       {
         @Override
@@ -3981,8 +3930,7 @@ public class DTCli
           return null;
         }
       });
-    }
-    else {
+    } else {
       shell.mainHelper();
     }
   }

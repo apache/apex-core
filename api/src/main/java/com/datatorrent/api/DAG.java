@@ -20,6 +20,8 @@ package com.datatorrent.api;
 
 import java.io.Serializable;
 
+import org.apache.hadoop.classification.InterfaceStability;
+
 import com.datatorrent.api.Context.DAGContext;
 
 /**
@@ -157,6 +159,18 @@ public interface DAG extends DAGContext, Serializable
     public OutputPortMeta getMeta(Operator.OutputPort<?> port);
   }
 
+  @InterfaceStability.Evolving
+  interface ModuleMeta extends Serializable, Context
+  {
+    String getName();
+
+    Module getModule();
+
+    InputPortMeta getMeta(Operator.InputPort<?> port);
+
+    OutputPortMeta getMeta(Operator.OutputPort<?> port);
+  }
+
   /**
    * Add new instance of operator under given name to the DAG.
    * The operator class must have a default constructor.
@@ -178,6 +192,12 @@ public interface DAG extends DAGContext, Serializable
    * @return Instance of the operator that has been added to the DAG.
    */
   public abstract <T extends Operator> T addOperator(String name, T operator);
+
+  @InterfaceStability.Evolving
+  <T extends Module> T addModule(String name, Class<T> moduleClass);
+
+  @InterfaceStability.Evolving
+  <T extends Module> T addModule(String name, T module);
 
   /**
    * <p>addStream.</p>
@@ -256,9 +276,15 @@ public interface DAG extends DAGContext, Serializable
    */
   public abstract OperatorMeta getOperatorMeta(String operatorId);
 
+  @InterfaceStability.Evolving
+  ModuleMeta getModuleMeta(String moduleId);
+
   /**
    * <p>getMeta.</p>
    */
   public abstract OperatorMeta getMeta(Operator operator);
+
+  @InterfaceStability.Evolving
+  ModuleMeta getMeta(Module module);
 
 }
