@@ -95,9 +95,29 @@ There are two issues that should be addressed in order to make the operator faul
 
 1. The operator flushes data to filesystem every application window. This implies that after a failure when the operator is re-deployed and tuples of a window are replayed, then duplicate data will be saved to the files. This is handled by recording how much the operator has written to each file every window in a state that is checkpointed and truncating files after deployment. 
 
-2. While writing to HDFS, if the operator gets killed and didn't have the opportunity to close a file, then later when it is redeployed it will attempt to truncate/restore that file. Restoring a file may fail because the lease that the previous process (operator instance before failure) had acquired from namenode to write to a file may still linger and therefore there can be exceptions in acquiring the lease again by the new process (operator instance after failure). This is handled by always writing data to temporary files and renaming these files to actual files when a file is ensured to be closed for writing, that is, no more data will be written to it.
+2. While writing to HDFS, if the operator gets killed and didn't have the opportunity to close a file, then later when it is redeployed it will attempt to truncate/restore that file. Restoring a file may fail because the lease that the previous process (operator instance before failure) had acquired from namenode to write to a file may still linger and therefore there can be exceptions in acquiring the lease again by the new process (operator instance after failure). This is handled by always writing data to temporary files and renaming these files to actual files when a file is ensured to be finalized (closed) for writing, that is, no more data will be written to it.   
+  - **alwaysWriteToTmp**: enables/disables writing to a temporary file. *Default*: true.
+   
+Most of the complexity in the code comes from making this operator fault-tolerant.
 
-Most of the complexity in the code comes from making this operator fault-tolerant. 
+### Checkpointed states needed for fault-tolerance
+
+- `endOffsets` : `Map<String, MutableLong>`   
+This contains the size of each file as it is being updated by the operator. It helps the operator to restore a file during recovery in operator `setup(...)` and is also used while loading a stream to find out if the operator has seen a file before.
+
+- `fileNameToTmpName` : `Map<String, String>`  
+This contains the name of the temporary file per actual file. It is needed because the name of a temporary file is random. They are named based on the timestamp when the stream is created. During recovery the operator need to know the temp file which it was writing to and if it needs restoration then it creates a new temp file and updates this mapping.
+
+- `finalizedFiles` : `Map<Long, Set<String>>`  
+This contains set of files which were requested to be finalized per window id.
+
+- `finalizedPart` : `Map<String, MutableInt>`  
+This contains the latest `part` of each file which was requested to be finalized.
+
+The use of `finalizedFiles` and `finalizedPart` are explained in detail under [`requestFinalize(...)`](#requestFinalize) method. 
+
+### <a name="requestFinalize"></a>`requestFinalize(String fileName)`
+
 
 
 
