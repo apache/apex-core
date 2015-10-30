@@ -73,6 +73,7 @@
     <maven.deploy.repo.classifier/>
     <license.skip>true</license.skip>
     <checkstyle.console>false</checkstyle.console>
+    <postNoticeText>The initial developer of the original code is&#xA;DataTorrent, Inc. (http://www.datatorrent.com)&#xA;Copyright (c) 2012 - 2015. All Rights Reserved.</postNoticeText>
   </properties>
 
   <dependencies>
@@ -363,7 +364,6 @@
         <sourceReleaseAssemblyDescriptor>source-release-zip-tar</sourceReleaseAssemblyDescriptor>
         <package.prefix>/opt/datatorrent</package.prefix>
         <package.groupname>dtorrent</package.groupname>
-        <postNoticeText>The initial developer of the original code is&#xA;DataTorrent, Inc. (http://www.datatorrent.com)&#xA;Copyright (c) 2012 - 2015. All Rights Reserved.</postNoticeText>
       </properties>
       <distributionManagement>
         <repository>
