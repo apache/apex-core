@@ -1,6 +1,5 @@
-#Apache Apex (incubating) Application Packages
-
-# Introduction
+Apache Apex Application Packages
+================================
 
 An Apache Apex Application Package is a zip file that contains all the
 necessary files to launch an application in Apache Apex. It is the

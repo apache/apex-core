@@ -1,8 +1,7 @@
-#Application Configuration Packages
+Apache Apex Configuration Packages
+==================================
 
-# Introduction 
-
-An Apex Application Configuration Package is a zip file that contains
+An Apache Apex Application Configuration Package is a zip file that contains
 configuration files and additional files to be launched with an
 [Application Package](https://www.datatorrent.com/docs/guides/ApplicationPackages.html) using 
 DTCLI or REST API.  This guide assumes the reader’s familiarity of
@@ -116,14 +115,11 @@ Example:
   </properties> 
 
 ```
-In pom.xml, you can change the values of  ```<groupId>, <version>,
-<artifactId>, <name> ```and ```<description>``` to your desired values.  
+In pom.xml, you can change the values of  ```<groupId>, <version>, <artifactId>, <name> ```and ```<description>``` to your desired values.  
 
 You can also change the values of ```<datatorrent.apppackage.name>, <datatorrent.apppackage.minversion> <datatorrent.apppackage.maxversion>```
-to reflect what app packages should be used with this configuration
-package.  Apex will use this information to check whether a
-configuration package is compatible with the application package when
-you issue a launch command.
+to reflect what app packages should be used with this configuration package.  Apex will use this information to check whether a
+configuration package is compatible with the application package when you issue a launch command.
 
 ## ./src/main/resources/classpath 
 
@@ -156,10 +152,9 @@ Example:
 ```
 Names of properties XML file:
 
-  **properties.xml:** Properties that are global to the Configuration
+*  **properties.xml:** Properties that are global to the Configuration
 Package
-
-  **properties-{appName}.xml:** Properties that are specific when launching
+*  **properties-{appName}.xml:** Properties that are specific when launching
 an application with the specified appName within the Application
 Package.
 
@@ -186,39 +181,35 @@ files
 
 #Launching with CLI 
 
--conf of the launch command in CLI supports specifying configuration
-package in the local filesystem.  Example:
+`-conf` option of the launch command in CLI supports specifying configuration package in the local filesystem.  Example:
 
-dt\> launch DTApp-mydtapp-1.0.0.jar -conf DTConfig-mydtconfig-1.0.0.jar
+    dt\> launch DTApp-mydtapp-1.0.0.jar -conf DTConfig-mydtconfig-1.0.0.jar
 
-This command expects both the application package and the configuration
-package to be in the local file system.
+This command expects both the application package and the configuration package to be in the local file system.
 
 #Related REST API 
 
 ##POST /ws/v2/configPackages
 
 Payload: Raw content of configuration package zip
+
 Function: Creates or replace a configuration package zip file in HDFS
 
 Curl example:
-$ curl -XPOST -T DTConfig-{name}.jar http://{yourhost:port}/ws/v2/configPackages
+
+    $ curl -XPOST -T DTConfig-{name}.jar http://{yourhost:port}/ws/v2/configPackages
 
 ## GET /ws/v2/configPackages?appPackageName=...&appPackageVersion=... 
 
 All query parameters are optional
 
-Function: Returns the configuration packages that the user is authorized
-to use and that are compatible with the specified appPackageName,
-appPackageVersion and appName.
+Function: Returns the configuration packages that the user is authorized to use and that are compatible with the specified appPackageName, appPackageVersion and appName. 
 
 ## GET /ws/v2/configPackages/``<user>``?appPackageName=...&appPackageVersion=... 
 
 All query parameters are optional
 
-Function: Returns the configuration packages under the specified user
-and that are compatible with the specified appPackageName,
-appPackageVersion and appName.
+Function: Returns the configuration packages under the specified user and that are compatible with the specified appPackageName, appPackageVersion and appName.
 
 ## GET /ws/v2/configPackages/```<user>```/```<name>``` 
 
@@ -229,18 +220,18 @@ Function: Returns the information of the specified configuration package
 Function: Returns the raw config package file
 
 Curl example:
-$ curl http://{yourhost:port}/ws/v2/configPackages/{user}/{name}/download \> DTConfig-xyz.jar
 
-\$ unzip -t DTConfig-xyz.jar
+```sh
+$ curl http://{yourhost:port}/ws/v2/configPackages/{user}/{name}/download \> DTConfig-xyz.jar
+$ unzip -t DTConfig-xyz.jar
+```
 
 ## POST /ws/v2/appPackages/```<user>```/```<app-pkg-name>```/```<app-pkg-version>```/applications/{app-name}/launch?configPackage=```<user>```/```<confpkgname>```
 
-Function: Launches the app package with the specified configuration
-package stored in HDFS.
+Function: Launches the app package with the specified configuration package stored in HDFS.
 
 Curl example:
 
+```sh
 $ curl -XPOST -d ’{}’ http://{yourhost:port}/ws/v2/appPackages/{user}/{app-pkg-name}/{app-pkg-version}/applications/{app-name}/launch?configPackage={user}/{confpkgname}
-
-© 2014-2015 DataTorrent Inc.
-
+```
