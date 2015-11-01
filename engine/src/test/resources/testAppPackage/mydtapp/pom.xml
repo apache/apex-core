@@ -33,29 +33,9 @@
 
   <properties>
     <!-- change this if you desire to use a different version of DataTorrent -->
-    <datatorrent.version>3.3.0-incubating-SNAPSHOT</datatorrent.version>
+    <datatorrent.version>3.2.0-incubating</datatorrent.version>
     <datatorrent.apppackage.classpath>lib/*.jar</datatorrent.apppackage.classpath>
   </properties>
-
-  <!-- repository to provide the DataTorrent artifacts -->
-  <repositories>
-    <repository>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-      <id>Datatorrent-Releases</id>
-      <name>DataTorrent Release Repository</name>
-      <url>https://www.datatorrent.com/maven/content/repositories/releases/</url>
-    </repository>
-    <repository>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <id>DataTorrent-Snapshots</id>
-      <name>DataTorrent Early Access Program Snapshot Repository</name>
-      <url>https://www.datatorrent.com/maven/content/repositories/snapshots/</url>
-    </repository>
-  </repositories>
 
   <build>
     <plugins>
