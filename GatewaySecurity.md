@@ -725,9 +725,9 @@ API](https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html) (un
 Log in as admin:
 ----------------
 
-% curl -c ~/cookie-jar -XPOST -H "Content-Type: application/json" -d
+```% curl -c ~/cookie-jar -XPOST -H "Content-Type: application/json" -d
 '{"userName":"admin","password":"admin"}'
-http://localhost:9090/ws/v2/login
+http://localhost:9090/ws/v2/login```
 
 This curl command logs in as user “admin” (with the default password
 “admin”) and stores the cookie in ~/cookie-jar
@@ -735,8 +735,8 @@ This curl command logs in as user “admin” (with the default password
 Changing the admin password:
 ----------------------------
 
-% curl -b ~/cookie-jar -XPOST -H "Content-Type: application/json" -d
-'{"newPassword":"xyz"}' http://localhost:9090/ws/v2/auth/users/admin
+```% curl -b ~/cookie-jar -XPOST -H "Content-Type: application/json" -d
+'{"newPassword":"xyz"}' http://localhost:9090/ws/v2/auth/users/admin```
 
 This uses the “admin” credential from the cookie jar to change the
 password to “xyz” for user “admin”.
@@ -744,8 +744,8 @@ password to “xyz” for user “admin”.
 Adding a second admin user:
 ---------------------------
 
-% curl -b ~/cookie-jar -XPUT -H "Content-Type: application/json" -d
-'{"password":"abc","roles": [ "admin" ] }'
+```% curl -b ~/cookie-jar -XPUT -H "Content-Type: application/json" -d
+'{"password":"abc","roles": [ "admin" ] }'```
 http://localhost:9090/ws/v2/auth/users/john
 
 This command adds a user “john” with password “abc” with admin access.
@@ -753,8 +753,8 @@ This command adds a user “john” with password “abc” with admin access.
 Adding a user in the developer role:
 ------------------------------------
 
-	% curl -b \~/cookie-jar -XPUT -H "Content-Type: application/json" -d
-	'{"password":"abc","roles": ["developer"] (http://localhost:9090/ws/v1/login) }'
+```% curl -b \~/cookie-jar -XPUT -H "Content-Type: application/json" -d
+	'{"password":"abc","roles": ["developer"] (http://localhost:9090/ws/v1/login) }'```
 	http://localhost:9090/ws/v2/auth/users/jane
 
 This command adds a user “jane” with password “abc” with the developer
@@ -763,20 +763,20 @@ role.
 Listing all users:
 ------------------
 
-% curl -b ~/cookie-jar http://localhost:9090/ws/v2/auth/users
+```% curl -b ~/cookie-jar http://localhost:9090/ws/v2/auth/users```
 
 Getting info for a specific user:
 ---------------------------------
 
-% curl -b ~/cookie-jar http://localhost:9090/ws/v2/auth/users/john
+```% curl -b ~/cookie-jar http://localhost:9090/ws/v2/auth/users/john```
 
 This command returns the information about the user “john”.
 
 Removing a user:
 ----------------
 
-% curl -b ~/cookie-jar -XDELETE
-http://localhost:9090/ws/v2/auth/users/jane
+```% curl -b ~/cookie-jar -XDELETE
+http://localhost:9090/ws/v2/auth/users/jane```
 
 This command removes the user “jane”.
 
