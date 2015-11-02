@@ -34,7 +34,6 @@
   <name>Apache Apex (incubating) Stream Processing Engine</name>
 
   <build>
-    <finalName>${project.artifactId}</finalName>
     <plugins>
       <!-- Publish tests jar -->
       <plugin>
