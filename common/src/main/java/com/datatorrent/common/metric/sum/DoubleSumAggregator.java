@@ -25,6 +25,11 @@ import com.datatorrent.api.annotation.Name;
 
 import com.datatorrent.common.metric.SingleMetricAggregator;
 
+/**
+ * <p>DoubleSumAggregator class.</p>
+ *
+ * @since 3.2.0
+ */
 @Name("sum")
 public class DoubleSumAggregator implements SingleMetricAggregator, Serializable
 {

@@ -23,7 +23,11 @@ import java.util.Set;
 
 import com.datatorrent.api.Sink;
 import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
-
+/**
+ * <p>PartitionAwareSinkForPersistence class.</p>
+ *
+ * @since 3.2.0
+ */
 public class PartitionAwareSinkForPersistence extends PartitionAwareSink<Object>
 {
   StreamCodecWrapperForPersistance<Object> serdeForPersistence;

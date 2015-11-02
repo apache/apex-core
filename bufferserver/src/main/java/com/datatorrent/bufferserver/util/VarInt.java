@@ -17,6 +17,11 @@
  * under the License.
  */
 package com.datatorrent.bufferserver.util;
+/**
+ * <p>VarInt class.</p>
+ *
+ * @since 3.2.0
+ */
 public class VarInt extends com.datatorrent.netlet.util.VarInt
 {
   public static void read(SerializedData current)

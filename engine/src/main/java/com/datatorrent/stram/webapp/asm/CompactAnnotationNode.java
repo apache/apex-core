@@ -19,6 +19,11 @@
 package com.datatorrent.stram.webapp.asm;
 
 import java.util.Map;
+/**
+ * <p>CompactAnnotationNode class.</p>
+ *
+ * @since 3.2.0
+ */
 public class CompactAnnotationNode {
 
   private String desc;

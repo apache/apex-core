@@ -3451,7 +3451,7 @@ public class DTCli
   private void checkPlatformCompatible(AppPackage ap)
   {
     String apVersion = ap.getDtEngineVersion();
-    if (!VersionInfo.isCompatible(apVersion, VersionInfo.getVersion())) {
+    if (!VersionInfo.isCompatible(VersionInfo.getVersion(), apVersion)) {
       throw new CliException("This App Package is compiled with Apache Apex Core API version " + apVersion + ", which is incompatible with this Apex Core version " + VersionInfo.getVersion());
     }
   }

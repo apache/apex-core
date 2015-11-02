@@ -173,7 +173,7 @@ public class Server implements ServerListener
   private final int blockSize;
   private final int numberOfCacheBlocks;
 
-  public void handlePurgeRequest(PurgeRequestTuple request, final AbstractLengthPrependerClient ctx) throws IOException
+  private void handlePurgeRequest(PurgeRequestTuple request, final AbstractLengthPrependerClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBuffers.get(request.getIdentifier());
@@ -188,16 +188,7 @@ public class Server implements ServerListener
 
     final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
     System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    serverHelperExecutor.submit(new Runnable()
-    {
-      @Override
-      public void run()
-      {
-        ctx.write(tuple);
-        eventloop.disconnect(ctx);
-      }
-
-    });
+    ctx.write(tuple);
   }
 
   private void handleResetRequest(ResetRequestTuple request, final AbstractLengthPrependerClient ctx) throws IOException
@@ -219,16 +210,7 @@ public class Server implements ServerListener
 
     final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
     System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    serverHelperExecutor.submit(new Runnable()
-    {
-      @Override
-      public void run()
-      {
-        ctx.write(tuple);
-        eventloop.disconnect(ctx);
-      }
-
-    });
+    ctx.write(tuple);
   }
 
   /**

@@ -36,6 +36,8 @@ import com.datatorrent.netlet.util.Slice;
 /**
  * This codec is used for serializing the objects of class which are Kryo
  * serializable. Used for stream codec wrapper used for persistence
+ *
+ * @since 3.2.0
  */
 public class DefaultKryoStreamCodec<T> extends SerializableObject implements StreamCodec<T>
 {

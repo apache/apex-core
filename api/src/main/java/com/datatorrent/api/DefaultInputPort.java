@@ -55,6 +55,15 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
     this.connected = connected;
   }
 
+  /**
+   * Returns true if this port is connected and false otherwise.
+   * @return true if this port is connected and false otherwise.
+   */
+  public boolean isConnected()
+  {
+    return connected;
+  }
+
   /** {@inheritDoc} */
   @Override
   public StreamCodec<T> getStreamCodec()

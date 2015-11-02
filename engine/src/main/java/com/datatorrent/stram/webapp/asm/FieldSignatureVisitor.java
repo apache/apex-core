@@ -20,6 +20,11 @@ package com.datatorrent.stram.webapp.asm;
 
 
 import org.apache.xbean.asm5.signature.SignatureVisitor;
+/**
+ * <p>FieldSignatureVisitor class.</p>
+ *
+ * @since 3.2.0
+ */
 public class FieldSignatureVisitor extends BaseSignatureVisitor{
 
   private Type fieldType;
