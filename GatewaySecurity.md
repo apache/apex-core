@@ -33,23 +33,23 @@ steps.
 1.  Add a property to `dt-site.xml` configuration file, typically located
     under `/opt/datatorrent/current/conf` ( or
     `~/datatorrent/current/conf` for local install).
+	
+	```
+	<configuration>
+	...
+	<property>
+	          <name>dt.gateway.http.authentication.type</name>
+	          <value>password</value>
+	</property>
+	...
+	</configuration>
+	```
 
-```
-<configuration>
-...
-<property>
-          <name>dt.gateway.http.authentication.type</name>
-          <value>password</value>
-</property>
-...
-</configuration>
-```
+2.  Restart the Gateway by running
 
-1.  Restart the Gateway by running
+	`sudo service dtgateway restart`
 
-`sudo service dtgateway restart`
-
-( when running Gateway in local mode use  dtgateway restart command)
+	( when running Gateway in local mode use  dtgateway restart command)
 
 Open the Gateway URL in your browser, and you should be prompted for
 user name and password.  Starting with DataTorrent RTS 2.0.0, the
@@ -92,9 +92,7 @@ accesses the system is assigned the admin role as there are no other
 users in the system at this point. Any subsequent authenticated user
 that access the system starts with no roles. The admin user can then
 assign roles to these users. This behavior can be changed by configuring
-an external role mapping. Please refer to the [External Role
-Mapping](#ExternalRoleMapping) in the [Authorization using external
-roles](#ExternalRoles) section below for that.
+an external role mapping. Please refer to the [External Role Mapping](#ExternalRoleMapping) in the [Authorization using external roles](#ExternalRoles) section below for that.
 
 Additional configuration is needed to enable Kerberos authentication for
 the Console. A separate set of kerberos credentials are needed. These
@@ -106,58 +104,57 @@ configuration described in the Operation and Installation Guide. This
 authentication can be set up using the following steps.
 
 1.  Add the following properties to `dt-site.xml` configuration file, typically located under `/opt/datatorrent/current/conf` ( or `~/datatorrent/current/conf` for local install)
+	
+	```
+	<configuration>
+	...
+	   <property>
+	             <name>dt.gateway.http.authentication.type</name>
+	             <value>kerberos</value>
+	   </property>
+	   
+	   <property>
+	          <name>dt.gateway.http.authentication.kerberos.principal</name>
+	          <value>{kerberos-principal-of-web-service}</value>
+	   </property>
+	   
+	   <property>
+		 <name>dt.gateway.http.authentication.kerberos.keytab</name>
+	         <value>{absolute-path-to-keytab-file}</value>
+	   </property>
+	
+	   <property>
+	         <name>dt.gateway.http.authentication.token.validity</name>
+	         <value>{authentication-token-validity-in-seconds}</value>
+	   </property>
+	   
+	    <property>
+	         <name\>dt.gateway.http.authentication.cookie.domain</name>
+	         <value\>{http-cookie-domain-for-authentication-token}</value>
+	
+	    <property>
+	          <name\>dt.gateway.http.authentication.cookie.path</name>
+	                   <value>{http-cookie-path}</value>
+	    </property>
+	    
+	    <property>
+	           <name\>dt.gateway.http.authentication.signature.secret</name>
+			          <value>{absolute-path-of-secret-file-for-signing-authentication-tokens} </value>
+	    </property>
+	...
+	</configuration>
+	```
+	(Note that the kerberos principal for web service should begin with
+	HTTP/…)
+	
+	All the values for the properties above except for the property
+	`dt.gateway.http.authentication.type` should be replaced with the
+	appropriate values for your setup.
 
-```
-<configuration>
-...
-   <property>
-             <name>dt.gateway.http.authentication.type</name>
-             <value>kerberos</value>
-   </property>
-   
-   <property>
-          <name>dt.gateway.http.authentication.kerberos.principal</name>
-          <value>{kerberos-principal-of-web-service}</value>
-   </property>
-   
-   <property>
-	 <name>dt.gateway.http.authentication.kerberos.keytab</name>
-         <value>{absolute-path-to-keytab-file}</value>
-   </property>
+2.  Restart the Gateway by running
 
-   <property>
-         <name>dt.gateway.http.authentication.token.validity</name>
-         <value>{authentication-token-validity-in-seconds}</value>
-   </property>
-   
-    <property>
-         <name\>dt.gateway.http.authentication.cookie.domain</name>
-         <value\>{http-cookie-domain-for-authentication-token}</value>
-
-    <property>
-          <name\>dt.gateway.http.authentication.cookie.path</name>
-                   <value>{http-cookie-path}</value>
-    </property>
-    
-    <property>
-           <name\>dt.gateway.http.authentication.signature.secret</name>
-		          <value>{absolute-path-of-secret-file-for-signing-authentication-tokens} </value>
-    </property>
-...
-</configuration>
-```
-(Note that the kerberos principal for web service should begin with
-HTTP/…)
-
-All the values for the properties above except for the property
-`dt.gateway.http.authentication.type` should be replaced with the
-appropriate values for your setup.
-
-1.  Restart the Gateway by running
-
-sudo service dtgateway restart
-
-( when running Gateway in local mode use  `dtgateway restart` command)
+	```sudo service dtgateway restart```
+	( when running Gateway in local mode use  `dtgateway restart` command)
 
 Enabling JAAS Auth
 ------------------
@@ -174,8 +171,7 @@ as there are no other users in the system at this point. Any subsequent
 authenticated user that access the system starts with no roles. The
 admin user can then assign roles to these users. This behavior can be
 changed by configuring an external role mapping. Please refer to the
-[External Role Mapping](#ExternalRoleMapping) in the [Authorization using
-external roles](#ExternalRoles) section below for that.
+[External Role Mapping](#ExternalRoleMapping) in the [Authorization using external roles](#ExternalRoles) section below for that.
 
 This authentication can be enabled by performing the following general
 steps. The specific steps for a couple of authentication mechanisms LDAP
@@ -185,27 +181,27 @@ mechanisms that have a JAAS plugin module can also be used.
 1.  Add a property to `dt-site.xml` configuration file, typically located
     under `/opt/datatorrent/current/conf` ( or
     `~/datatorrent/current/conf` for local install).
+	
+	```
+	<configuration>
+	...
+	     <property>
+	          <name>dt.gateway.http.authentication.type</name>
+	          <value>jaas</value>
+	     </property>
+	     <property\>
+	          <name>dt.gateway.http.authentication.jaas.name</name>
+	          <value>name-of-jaas-module</value>
+	     </property>
+	...
+	</configuration>
+	```
+	
+	The `dt.gateway.http.authentication.jaas.name` property specifies the
+	plugin module to use with JAAS and the value should be the name of the
+	plugin module.
 
-```
-<configuration>
-...
-     <property>
-          <name>dt.gateway.http.authentication.type</name>
-          <value>jaas</value>
-     </property>
-     <property\>
-          <name>dt.gateway.http.authentication.jaas.name</name>
-          <value>name-of-jaas-module</value>
-     </property>
-...
-</configuration>
-```
-
-The `dt.gateway.http.authentication.jaas.name` property specifies the
-plugin module to use with JAAS and the value should be the name of the
-plugin module.
-
-1.  The name of the plugin module specified above should be configured
+2.  The name of the plugin module specified above should be configured
     with the appropriate settings for the plugin. This is module
     specific configuration. This can be done in a file named
     .java.login.config in the home directory of the user Gateway is
@@ -215,27 +211,26 @@ plugin module.
     normal user it would be `~/.java.login.config`. The sample
     configurations for LDAP and PAM are shown in the next sections.
 
-1.  The classes for the plugin module may need to be made available to
+3.  The classes for the plugin module may need to be made available to
     Gateway if they are not available in the default classpath. This can
     be done by specifying the jars containing these classes in a
     classpath variable that is used by Gateway.
 
-The following step shows how to do this
+	The following step shows how to do this
+	
+	a.  Edit the `custom-env.sh` configuration file, typically located under
+	    `/opt/datatorrent/current/conf` ( or `~/datatorrent/current/conf` for
+	    local install) and append the list of jars obtained above to the
+	    DT\_CLASSPATH variable. This needs to be added at the end of the
+	    file in the section for specifying local overrides to environment
+	    variables. The line would look like
+	
+	  `export DT\_CLASSPATH=\${DT\_CLASSPATH}:path/to/jar1:path/to/jar2:..`
 
-1.  Edit the `custom-env.sh` configuration file, typically located under
-    `/opt/datatorrent/current/conf` ( or `~/datatorrent/current/conf` for
-    local install) and append the list of jars obtained above to the
-    DT\_CLASSPATH variable. This needs to be added at the end of the
-    file in the section for specifying local overrides to environment
-    variables. The line would look like
+4.  Restart the Gateway by running
 
-  `export DT\_CLASSPATH=\${DT\_CLASSPATH}:path/to/jar1:path/to/jar2:..`
-
-1.  Restart the Gateway by running
-
-`sudo service dtgateway restart`
-
-( when running Gateway in local mode use  `dtgateway restart` command)
+	`sudo service dtgateway restart`
+	( when running Gateway in local mode use  `dtgateway restart` command)
 
 ### <a name="LDAP"></a>LDAP
 
@@ -253,13 +248,13 @@ specifics for the configuration steps described above.
     the appropriate LDAP settings in the .java.login.config file. A
     sample configuration is shown below
 
-```ldap {
-   com.sun.security.auth.module.LdapLoginModule required
-userProvider="ldap://ldap-server-hostname"
-authIdentity="uid={USERNAME},ou=users,dc=domain,dc=com";
-}; ```
+	```ldap {
+	   com.sun.security.auth.module.LdapLoginModule required
+	userProvider="ldap://ldap-server-hostname"
+	authIdentity="uid={USERNAME},ou=users,dc=domain,dc=com";
+	}; ```
 
-  Note that the first string before the open brace, in this case
+Note that the first string before the open brace, in this case
 “ldap” must match the jaas name specified in step 1. The first property
 within the braces ```com.sun.security.auth.module.LdapLoginModule``` specifies
 the actual JAAS plugin implementation class providing the LDAP
@@ -298,11 +293,11 @@ to enable JAAS authentication described above.
     the appropriate JPAM settings in the .java.login.config file. A
     sample configuration is shown below
 
-net-sf-jpam {
-
-   net.sf.jpam.jaas.JpamLoginModule required serviceName="net-sf-jpam";
-
-}; 
+		net-sf-jpam {
+		
+		   net.sf.jpam.jaas.JpamLoginModule required serviceName="net-sf-jpam";
+		
+		}; 
 
 
 Note that the first string before the open brace, in this case
@@ -330,9 +325,7 @@ For group support such as using LDAP groups for authorization refer to
 the [Authorization using external roles](#ExternalRoles) section below.
 
 
-
-Configuring Authorization
-=========================
+# Configuring Authorization
 
 When any authentication method is enabled, authorization will also be
 enabled.  DT Gateway uses roles and permissions for authorization.
@@ -341,8 +334,7 @@ e.g. to launch apps, or to add users.  Roles have a collection of
 permissions and individual users are assigned to one or more roles.
  What roles the user is in dictates what permissions the user has.
 
-Permissions
------------
+## Permissions
 
 The list of all possible permissions in the DT Gateway is as follow:
 
@@ -360,62 +352,60 @@ Edit other users’ settings
 
 ###<a name="LaunchApps"></a> LAUNCH\_APPS
 
-Launch Apps
-
+Launch Apps 
 ### <a name="ManageLicense"></a>MANAGE\_LICENSES
 
-Manage DataTorrent RTS licenses
+Manage DataTorrent RTS licenses 
 
 ###<a name="ManageOtherUsersApps"></a> MANAGE\_OTHER\_USERS\_APPS
 
-Manage (e.g. edit, kill, etc) applications launched by other users
+Manage (e.g. edit, kill, etc) applications launched by other users 
 
 ###<a name="ManageOtherUsersAppPackage"></a> MANAGE\_OTHER\_USERS\_APP\_PACKAGES
 
-Manage App Packages uploaded by other users
+Manage App Packages uploaded by other users  
 
 ###<a name="ManageRoles"></a> MANAGE\_ROLES
 
-Manage roles (create/delete roles, or assign permissions to roles)
+Manage roles (create/delete roles, or assign permissions to roles) 
 
 ### <a name="ManageSystemAlerts"></a>MANAGE\_SYSTEM\_ALERTS
 
-Manage system alerts
+Manage system alerts 
 
 ###<a name="ManageUsers"></a> MANAGE\_USERS
 
-Manage users (create/delete users, change password)
+Manage users (create/delete users, change password) 
 
 ###<a name="UploadAppPackages"></a> UPLOAD\_APP\_PACKAGES
 
-Upload App Packages and use the app builder
+Upload App Packages and use the app builder 
 
 ###<a name="ViewGlobalConfig"></a> VIEW\_GLOBAL\_CONFIG
 
-View global settings  
+View global settings   
 
-###<a name="ViewLicenses"></a> VIEW\_LICENSES
+###<a name="ViewLicenses"></a> VIEW\_LICENSES 
 
 View DataTorrent RTS licenses
 
 ###<a name="ViewOtherUsersApps"></a> VIEW\_OTHER\_USERS\_APPS
 
-View applications launched by others
+View applications launched by others 
 
 ###<a name="ViewOtherUsersAppPackages"></a> VIEW\_OTHER\_USERS\_APP\_PACKAGES
 
-View App Packages uploaded by other users
+View App Packages uploaded by other users 
 
 ###<a name="ViewOtherUsersConfig"></a> VIEW\_OTHER\_USERS\_CONFIG
 
-Edit other users’ settings
+Edit other users’ settings 
 
 ###<a name="ViewSystemAlerts"></a> VIEW\_SYSTEM\_ALERTS
 
-View system alerts
+View system alerts 
 
-Default Roles
--------------
+## Default Roles
 
 DataTorrent RTS ships with three roles by default. The permissions for
 these roles have been set accordingly but can be customized if needed.
@@ -424,7 +414,7 @@ these roles have been set accordingly but can be customized if needed.
 
 An administrator of DataTorrent RTS is intended to be able to install,
 manage & modify DataTorrent RTS as well as all the applications running
-on it. They have ALL the permissions.
+on it. They have ALL the permissions. 
 
 ### Operator
 
@@ -455,10 +445,9 @@ Note that VIEW\_OTHER\_USERS\_APPS and VIEW\_OTHER\_USERS\_APP\_PACKAGES
 are in the list.  This means all users in the “operator” role will have
 read access to all apps and all app packages in the system.  You can
 remove those permissions from the “operator” role using the Console if
-this is not desirable.
+this is not desirable.  
 
-### Developer
-
+### Developer 
 Developers need to have to ability to develop, manage and run
 applications on DataTorrent RTS. They are not allowed to change any
 system settings or manage licenses.
@@ -479,7 +468,6 @@ Here is the list of default permissions given to developers
 
 App Permissions and App Package Permissions
 -------------------------------------------
-
 Users can share their running application instances and their
 application packages with certain roles or certain users on a
 per-instance or per-package basis.  Users can specify which users or
@@ -500,20 +488,15 @@ to the [DT Gateway REST API document](https://www.datatorrent.com/docs/guides/DT
 
 Viewing and Managing Auth in the Console
 ========================================
-
 Viewing User Profile
 --------------------
-
 After you are logged in on the Console, click on the Configuration tab
 on the left, and select “User Profile”.  This gives you the information
 of the logged in user, including what roles the user is in, and what
 permissions the user has.
-
 ![](images/GatewaySecurity/image01.png)
-
 Administering Auth
 ------------------
-
 From the Configuration tab, click on “Auth Management”.  On this page,
 you can perform the following tasks:
 
@@ -530,11 +513,8 @@ DataTorrent RTS installation comes with three preset roles (admin,
 operator, and developer).  You can edit the permissions for those roles
 except for admin.
 
-* * * * *
-
 <a name="ExternalRoles"></a> Authorization using external roles
 ==================================
-
 When using an external authentication mechanism such as Kerberos or
 JAAS, roles defined in these external systems can be used to control
 authorization in DataTorrent RTS. There are two steps involved. First
@@ -547,18 +527,14 @@ described in the [External Role Mapping](#ExternalRoleMapping) section below.
 When this mapping is setup only users with roles that have a mapping are
 allowed to login the rest are not. The next sections describe how to
 configure the system for handling external roles.
-
 <a name="Kerberos">Kerberos roles
 --------------
-
 When Kerberos authentication is used the role for the user is derived
 from the principal. If the principal is of the form *user/group@DOMAIN*
 the group portion is used as the external role and no additional
 configuration is necessary.
-
 <a name="JAAS">JAAS roles
 ----------
-
 To use JAAS roles the system should be configured first to recognize
 these roles. When a user is authenticated with JAAS a list of principals
 is returned for the user by the implementing JAAS authentication module.
@@ -579,10 +555,8 @@ configuration file as shown below
  </property>
 ...
 </configuration>
-```
-
+``` 
 ### Callback Handlers
-
 In JAAS authentication, a login module may need a custom callback to be
 handled by the caller. The callbacks are typically used to provide
 authentication credentials to the login module. DataTorrent RTS supports
@@ -602,6 +576,7 @@ below. The property can be specified as follows
 ...
 </configuration>
 ```
+
 Custom callback handlers can be implemented by extending the default
 callback handler so they can build upon it or they can be built from
 scratch. The LDAP callback handler described below also extends the
@@ -610,114 +585,105 @@ can be found here *DefaultCallbackHandler* can be used as a reference when
 implementing new callback handlers.
 
 ### LDAP
-
 When using LDAP with JAAS, to use LDAP roles, a  LDAP login module
 supporting roles should be used. Any LDAP module that supports roles can
 be used. Jetty implements one such login module. The steps to configure
 this module are as follows.
 
- The Gateway service in DataTorrent RTS 2.0 is compatible with Jetty
-    8. The class name identifying the role principal is
-    “org.eclipse.jetty.plus.jaas.JAASRole”. When using the Jetty LDAP
+1. The Gateway service in DataTorrent RTS 2.0 is compatible with Jetty 8. The class name identifying the  role principal is ``` “org.eclipse.jetty.plus.jaas.JAASRole”```. When using the Jetty LDAP
     login module a custom JAAS callback has to be handled by the caller.
     This has been implemented by DataTorrent in a callback handler. The
     class name for the callback handler implementation should be
     specified as a property. The property name is
-    “dt.gateway.http.authentication.jaas.callback.class.name”. The class
+    ```“dt.gateway.http.authentication.jaas.callback.class.name”```. The class
     name of the callback handler is
-    “com.datatorrent.contrib.security.jetty.JettyJAASCallbackHandler”.
+    ```“com.datatorrent.contrib.security.jetty.JettyJAASCallbackHandler”```.
     This property should be specified along with the class name
     identifying the role principal for the Jetty login module as
     described in the section above. The configuration file with all the
     JAAS properties including these looks as follows
+	
+	``` <configuration>
+	...
+	  <property>
+	          <name>dt.gateway.http.authentication.type</name>
+	          <value>jaas</value>
+	  </property>
+	  <property>
+	         <name>dt.gateway.http.authentication.jaas.name</name>
+	         <value>ldap</value>
+	  </property>
+	  <property>  
+	        <name>dt.gateway.http.authentication.jaas.role.class.name</name>
+	         <value>org.eclipse.jetty.plus.jaas.JAASRole</value>
+	  </property>
+	  </property>
+	<name>
+		dt.gateway.http.authentication.jaas.callback.class.name </name>            
+	<value>
+		com.datatorrent.contrib.security.jetty.JettyJAASCallbackHandler
+	</value>
+	  </property>
+	...
+	</configuration>``` 
 
-```
-<configuration>
-...
-  <property>
-          <name>dt.gateway.http.authentication.type</name>
-          <value>jaas</value>
-  </property>
-  <property>
-         <name>dt.gateway.http.authentication.jaas.name</name>
-         <value>ldap</value>
-  </property>
-  <property>  
-        <name>dt.gateway.http.authentication.jaas.role.class.name</name>
-         <value>org.eclipse.jetty.plus.jaas.JAASRole</value>
-  </property>
-  </property>
-<name>
-	dt.gateway.http.authentication.jaas.callback.class.name </name>            
-<value>
-	com.datatorrent.contrib.security.jetty.JettyJAASCallbackHandler
-</value>
-  </property>
-...
-</configuration>
-```
 Note that the JAAS callback handler property can be used to specify a
 custom callback handler. The source for the Jetty custom callback
-handler used above can be found here
+handler used above can be found here JettyJAASCallbackHandler
 
-JettyJAASCallbackHandler
+2. An issue was discovered with the Jetty login module supplied with
+   Jetty 8 that prevented LDAP authentication to be successful even
+   when the user credentials were correct. DataTorrent has a fix for
+   this and is providing the login module with the fix in a separate
+   package called dt-auth. The classname for the module is
+   “com.datatorrent.auth.jetty.JettyLdapLoginModule”. The dt-auth
+   project along with the source can be found here [Auth](https://github.com/DataTorrent/Auth). DataTorrent
+   is working on submitting this fix back to Jetty project so that it
+   gets back into the main source.
 
- An issue was discovered with the Jetty login module supplied with
-    Jetty 8 that prevented LDAP authentication to be successful even
-    when the user credentials were correct. DataTorrent has a fix for
-    this and is providing the login module with the fix in a separate
-    package called dt-auth. The classname for the module is
-    “com.datatorrent.auth.jetty.JettyLdapLoginModule”. The dt-auth
-    project along with the source can be found here
-    [Auth](https://github.com/DataTorrent/Auth). DataTorrent
-    is working on submitting this fix back to Jetty project so that it
-    gets back into the main source.
+	The JAAS configuration file as described in
+	[LDAP](#LDAP) section under [Enabling JAAS Auth](#JAAS) should be configured to specify the ldap settings
+	for roles. A sample configuration  roles based parameters to the
+	configuration shown before 
+		```ldap {
+			   com.datatorrent.auth.jetty.JettyLdapLoginModule required
+			hostname="ldap-server-hostname" authenticationMethod="simple"
+			userBaseDn="ou=users,dc=domain,dc=com" userIdAttribute="uid"
+			userRdnAttribute="uid" roleBaseDn="ou=groups,dc=domain,dc=com"
+			roleNameAttribute=”cn”
+			contextFactory=”com.sun.jndi.ldap.LdapCtxFactory”;
+		};```
+	
+	For more ldap settings refer to the java documentation of the login
 
-The JAAS configuration file as described in
-[LDAP](#LDAP) section under [Enabling JAAS Auth](#JAAS) should be configured to specify the ldap settings
-for roles. A sample configuration  roles based parameters to the
-configuration shown before 
 
-ldap {
-   com.datatorrent.auth.jetty.JettyLdapLoginModule required
-hostname="ldap-server-hostname" authenticationMethod="simple"
-userBaseDn="ou=users,dc=domain,dc=com" userIdAttribute="uid"
-userRdnAttribute="uid" roleBaseDn="ou=groups,dc=domain,dc=com"
-roleNameAttribute=”cn”
-contextFactory=”com.sun.jndi.ldap.LdapCtxFactory”;
+3.  After the above configuration changes are made the gateway service
+ needs to be restarted. Before restarting however the different
+ classes specified in the configuration files above namely the
+ DataTorrent Jetty callback handler, the Jetty login module with the
+ DataTorrent fix and the Jetty dependencies containing the role class
+ should all be available for Gateway. This can be done by specifying
+ the jars containing these classes in a classpath variable that is
+ used by Gateway.
 
-};
+	 The jars can be obtained from the following project
+	
+	[https://github.com/DataTorrent/Auth](https://github.com/DataTorrent/Auth)
+	
+	Please follow the instructions in the above url to obtain the project
+	jar files. After obtaining the jar files perform the following step to
+	make them available to Gateway
+	
+	Edit the custom-env.sh configuration file, typically located under
+	 `/opt/datatorrent/current/conf` ( or `~/datatorrent/current/conf` for
+	 local install) and append the list of jars obtained above to the
+	 `DT\_CLASSPATH` variable. This needs to be added at the end of the
+	 file in the section for specifying local overrides to environment
+	 variables. The line would look like
+	
+	  `export DT\_CLASSPATH=\${DT\_CLASSPATH}:path/to/jar1:path/to/jar2:..`
 
-For more ldap settings refer to the java documentation of the login
-module.
-
-1.  After the above configuration changes are made the gateway service
-    needs to be restarted. Before restarting however the different
-    classes specified in the configuration files above namely the
-    DataTorrent Jetty callback handler, the Jetty login module with the
-    DataTorrent fix and the Jetty dependencies containing the role class
-    should all be available for Gateway. This can be done by specifying
-    the jars containing these classes in a classpath variable that is
-    used by Gateway.
-
-        The jars can be obtained from the following project
-
-[https://github.com/DataTorrent/Auth](https://github.com/DataTorrent/Auth)
-
-Please follow the instructions in the above url to obtain the project
-jar files. After obtaining the jar files perform the following step to
-make them available to Gateway
-
- Edit the custom-env.sh configuration file, typically located under
-    `/opt/datatorrent/current/conf` ( or `~/datatorrent/current/conf` for
-    local install) and append the list of jars obtained above to the
-    `DT\_CLASSPATH` variable. This needs to be added at the end of the
-    file in the section for specifying local overrides to environment
-    variables. The line would look like
-
-     `export DT\_CLASSPATH=\${DT\_CLASSPATH}:path/to/jar1:path/to/jar2:..`
-
- Restart the Gateway by running
+4. Restart the Gateway by running
 
 `sudo service dtgateway restart`
 
@@ -731,7 +697,7 @@ DataTorrent roles. For example users from an LDAP group called admins
 should have the admin role when using the Console. This can be specified
 by doing the following steps
 
-  In the configuration folder typically located under
+1.  In the configuration folder typically located under
     `/opt/datatorrent/current/conf` ( or `~/datatorrent/current/conf` for
     local install) edit the file called external-roles or create the
     file if it not already present. In this file each line contains a
@@ -740,38 +706,36 @@ by doing the following steps
 `
         admins:admin
         staff: developer`
+	
+	This maps the external role admins to the DataTorrent role admin and
+	external role staff to the DataTorrent role developer.
+2. Restart the Gateway by running
+	
+	`sudo service dtgateway restart`
+	( when running Gateway in local mode use  dtgateway restart command)
 
-This maps the external role admins to the DataTorrent role admin and
-external role staff to the DataTorrent role developer.
-
- Restart the Gateway by running
-
-`sudo service dtgateway restart`
-
-( when running Gateway in local mode use  dtgateway restart command)
 
 <a name="AdministeringUsingCommandLine"></a>Administering Using Command Line
 ================================
 
 You can also utilize the [Gateway REST
-API](https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html) (under
-/ws/v2/auth) to add or remove users and to change roles and passwords.
+API](https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html) (under /ws/v2/auth) to add or remove users and to change roles and passwords.
  Here are the examples with password authentication.
 
 Log in as admin:
 ----------------
 
-% curl -c \~/cookie-jar -XPOST -H "Content-Type: application/json" -d
+% curl -c ~/cookie-jar -XPOST -H "Content-Type: application/json" -d
 '{"userName":"admin","password":"admin"}'
 http://localhost:9090/ws/v2/login
 
 This curl command logs in as user “admin” (with the default password
-“admin”) and stores the cookie in \~/cookie-jar
+“admin”) and stores the cookie in ~/cookie-jar
 
 Changing the admin password:
 ----------------------------
 
-% curl -b \~/cookie-jar -XPOST -H "Content-Type: application/json" -d
+% curl -b ~/cookie-jar -XPOST -H "Content-Type: application/json" -d
 '{"newPassword":"xyz"}' http://localhost:9090/ws/v2/auth/users/admin
 
 This uses the “admin” credential from the cookie jar to change the
@@ -780,7 +744,7 @@ password to “xyz” for user “admin”.
 Adding a second admin user:
 ---------------------------
 
-% curl -b \~/cookie-jar -XPUT -H "Content-Type: application/json" -d
+% curl -b ~/cookie-jar -XPUT -H "Content-Type: application/json" -d
 '{"password":"abc","roles": [ "admin" ] }'
 http://localhost:9090/ws/v2/auth/users/john
 
@@ -789,9 +753,9 @@ This command adds a user “john” with password “abc” with admin access.
 Adding a user in the developer role:
 ------------------------------------
 
-```% curl -b \~/cookie-jar -XPUT -H "Content-Type: application/json" -d
-'{"password":"abc","roles": ["developer"] (http://localhost:9090/ws/v1/login) }'
-http://localhost:9090/ws/v2/auth/users/jane ```
+	% curl -b \~/cookie-jar -XPUT -H "Content-Type: application/json" -d
+	'{"password":"abc","roles": ["developer"] (http://localhost:9090/ws/v1/login) }'
+	http://localhost:9090/ws/v2/auth/users/jane
 
 This command adds a user “jane” with password “abc” with the developer
 role.
@@ -799,60 +763,58 @@ role.
 Listing all users:
 ------------------
 
-% curl -b \~/cookie-jar http://localhost:9090/ws/v2/auth/users
+% curl -b ~/cookie-jar http://localhost:9090/ws/v2/auth/users
 
 Getting info for a specific user:
 ---------------------------------
 
-% curl -b \~/cookie-jar http://localhost:9090/ws/v2/auth/users/john
+% curl -b ~/cookie-jar http://localhost:9090/ws/v2/auth/users/john
 
 This command returns the information about the user “john”.
 
 Removing a user:
 ----------------
 
-% curl -b \~/cookie-jar -XDELETE
+% curl -b ~/cookie-jar -XDELETE
 http://localhost:9090/ws/v2/auth/users/jane
 
 This command removes the user “jane”.
+
 
 Enabling HTTPS in Gateway
 =========================
 
 HTTPS in the Gateway can be enabled by performing following two steps.
 
-Generate an SSL keystore if you don’t have one.  Instruction on how
+1. Generate an SSL keystore if you don’t have one.  Instruction on how
     to generate an SSL keystore is here:
     [http://docs.oracle.com/cd/E19509-01/820-3503/ggfen/index.html](http://docs.oracle.com/cd/E19509-01/820-3503/ggfen/index.html)
 
-Add a property to dt-site.xml configuration file, typically located
+2. Add a property to dt-site.xml configuration file, typically located
     under `/opt/datatorrent/current/conf` ( or
     `~/datatorrent/current/conf` for local install).
 
-```
-<configuration>
-...
-  <property>
-           <name>dt.gateway.sslKeystorePath</name>
-           <value>{/path/to/keystore}</value>
-  </property>
-  <property>
-            <name>dt.gateway.sslKeystorePassword</name>
-             <value>{keystore-password}</value>
-  </property>
-  <property> 
-    <name>dt.attr.GATEWAY_USE_SSL</name>
-          <value>true</value>
-  </property>
-...
-\</configuration\>
-```
+	```
+	<configuration>
+	...
+	  <property>
+	           <name>dt.gateway.sslKeystorePath</name>
+	           <value>{/path/to/keystore}</value>
+	  </property>
+	  <property>
+	            <name>dt.gateway.sslKeystorePassword</name>
+	             <value>{keystore-password}</value>
+	  </property>
+	  <property> 
+	    <name>dt.attr.GATEWAY_USE_SSL</name>
+	          <value>true</value>
+	  </property>
+	...
+	\</configuration>
+	```
 
-Restart the Gateway by running
-
-sudo service dtgateway restart
-
-( when running Gateway in local mode use `dtgateway restart` command)
+3. Restart the Gateway by running
+	```sudo service dtgateway restart```
+		( when running Gateway in local mode use `dtgateway restart` command)
 
 © 2013-2015 DataTorrent Inc.
-
