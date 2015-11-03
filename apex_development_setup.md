@@ -9,15 +9,15 @@ Microsoft Windows
 
 There are a few tools that will be helpful when developing Apache Apex applications, some required and some optional:
 
-1.  *git* -- A revision control system (version 1.7.1 or later). There are multiple git clients available for Windows ([git-scm][1] for example), so download and install a client of your choice.
+1.  *git* -- A revision control system (version 1.7.1 or later). There are multiple git clients available for Windows (<http://git-scm.com/download/win> for example), so download and install a client of your choice.
 
 2.  *java JDK* (not JRE). Includes the Java Runtime Environment as well as the Java compiler and a variety of tools (version 1.7.0\_79 or later). Can be downloaded from the Oracle website.
 
-3.  *maven* -- Apache Maven is a build system for Java projects (version 3.0.5 or later). It can be downloaded from [Apache Maven][2].
+3.  *maven* -- Apache Maven is a build system for Java projects (version 3.0.5 or later). It can be downloaded from <https://maven.apache.org/download.cgi>.
 
-4.  *VirtualBox* -- Oracle VirtualBox is a virtual machine manager (version 4.3 or later) and can be downloaded from [VirtualBox][3]. It is needed to run the Data Torrent Sandbox.
+4.  *VirtualBox* -- Oracle VirtualBox is a virtual machine manager (version 4.3 or later) and can be downloaded from <https://www.virtualbox.org/wiki/Downloads>. It is needed to run the Data Torrent Sandbox.
 
-5.  *DataTorrent Sandbox* -- The sandbox can be downloaded from [Sandbox][4]. It is useful for testing simple applications since it contains Apache Hadoop and Data Torrent RTS 3.1.1 pre-installed with a time-limited Enterprise License. If you already installed the RTS Enterprise Edition (evaluation or production license) on a cluster, you can use that setup for deployment and testing instead of the sandbox.
+5.  *DataTorrent Sandbox* -- The sandbox can be downloaded from <https://www.datatorrent.com/download>. It is useful for testing simple applications since it contains Apache Hadoop and Data Torrent RTS 3.1.1 pre-installed with a time-limited Enterprise License. If you already installed the RTS Enterprise Edition (evaluation or production license) on a cluster, you can use that setup for deployment and testing instead of the sandbox.
 
 6.  (Optional) If you prefer to use an IDE (Integrated Development Environment) such as *NetBeans*, *Eclipse* or *IntelliJ*, install that as well.
 
@@ -69,7 +69,7 @@ Now run the following commands and ensure that the output is something similar t
 </table>
 
 
-To install the sandbox, first download it from [Sandbox][4] and import the downloaded file into VirtualBox. Once the import completes, you can select it and click the  Start button to start the sandbox.
+To install the sandbox, first download it from <https://www.datatorrent.com/download> and import the downloaded file into VirtualBox. Once the import completes, you can select it and click the  Start button to start the sandbox.
 
 
 The sandbox is configured with 6GB RAM; if your development machine has 16GB or more, you can increase the sandbox RAM to 8GB or more using the VirtualBox console. This will yield better performance and support larger applications. Additionally, you can change the network adapter from **NAT** to **Bridged Adapter**; this will allow you to login to the sandbox from your host machine using an _ssh_ tool like **PuTTY** and also to transfer files to and from the host using `pscp` on Windows. Of course all such configuration must be done when when the sandbox is not running.
@@ -110,7 +110,7 @@ You can also, if you prefer, use an IDE to generate the project as described in 
 
 When the run completes successfully, you should see a new directory named `myapexapp` containing a maven project for building a basic Apache Apex application. It includes 3 source files:**Application.java**,  **RandomNumberGenerator.java** and **ApplicationTest.java**. You can now build the application by stepping into the new directory and running the appropriate maven command:
 
-    cd myapexapp  
+    cd myapexapp
     mvn clean package -DskipTests
 
 The build should create the application package file `myapexapp\target\myapexapp-1.0-SNAPSHOT.apa`. This file can then be uploaded to the Data Torrent GUI tool on the sandbox (called **dtManage**) and launched  from there. It generates a stream of random numbers and prints them out, each prefixed by the string  `hello world: `.  If you built this package on the host, you can transfer it to the sandbox using the `pscp` tool bundled with **PuTTY** mentioned earlier.
@@ -149,8 +149,3 @@ The pre-requisites (such as _git_, _maven_, etc.) are the same as for Windows de
 
 
 The maven archetype command is the same except that continuation lines use a backslash (``\``) instead of caret (``^``); the script for it is available in the same location and is named `newapp` (without the `.cmd` extension). The script to checkout and build the Apache Apex repositories is named `build-apex`.
-
-  [1]: http://git-scm.com/download/win
-  [2]: https://maven.apache.org/download.cgi
-  [3]: https://www.virtualbox.org/wiki/Downloads
-  [4]: https://www.datatorrent.com/download
