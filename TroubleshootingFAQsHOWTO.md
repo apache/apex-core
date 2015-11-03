@@ -522,40 +522,42 @@ automatically scroll to bottom when new events come in.
   13. Difference between exactly once, at least once and at most once
   14. Thread local vs container local vs node local
   15. Setting operator memory
-  
     a.  Bufferserver memory
-
     b.  Stram memory
     
   
-  1.  Cluster nodes not able to access edge node where Gateway is running
-  2.  Developers not sure when to process incoming tuples in end window or
-      when to do it in process function of operator
-  3.  How partitioning works
-  
-    a.  How the data is partitioned between different partitions.
+a.  Cluster nodes not able to access edge node where Gateway is running
+b.  Developers not sure when to process incoming tuples in end window or
+    when to do it in process function of operator
+c.  How partitioning works
 
-    b.  How to use stream-codec
+  1.  How the data is partitioned between different partitions.
+
+  2.  How to use stream-codec
+  
+  3.  Data on which ports is partitioned? By default default partitioner partitions data on first port.
+
+  4.  How to enable stream-codec on multiple ports. (Join operator?? where both input-ports needs to receive same set of keys).
+      
+d.  pom dependency management, exclusions etc. eg: Malhar library and
+    contrib, Hive (includes hadoop dependencies, we need to explicitly
+    exclude), Jersey(we work only with 1.9 version) etc
+
+e.  All non-transient members of the operator object need to be
+    serializable. All members that are not serializable cannot be saved
+    during checkpoint and must be declared transient (e.g. connection
+    objects). This is such a common problem that we need to dedicate a
+    section to it.
     
-    c.  Data on which ports is partitioned? By default default partitioner
-        partitions data on first port.
-        
-    d.  How to enable stream-codec on multiple ports. (Join operator?? where
-        both input-ports needs to receive same set of keys).
-        
-  1.  pom dependency management, exclusions etc. eg: Malhar library and
-      contrib, Hive (includes hadoop dependencies, we need to explicitly
-      exclude), Jersey(we work only with 1.9 version) etc
-  2.  All non-transient members of the operator object need to be
-      serializable. All members that are not serializable cannot be saved
-      during checkpoint and must be declared transient (e.g. connection
-      objects). This is such a common problem that we need to dedicate a
-      section to it.
-  3.  Exactly once processing mode. Commit operation is supposed to be
-      done at endWindow. This is only best-effort exactly once and not
-      100% guaranteed exactly once because operators may go down after
-      endWindow and before checkpointing finishes.
-  4.  How to check checkpoint size. (large checkpoint size cause
-      instability in the DAG).
-  5.  How to add custom metrics and metric aggregator.
-  6.  Example of how to implement dynamic partitioning.
+f.  Exactly once processing mode. Commit operation is supposed to be
+    done at endWindow. This is only best-effort exactly once and not
+    100% guaranteed exactly once because operators may go down after
+    endWindow and before checkpointing finishes.
+    
+g.  How to check checkpoint size. (large checkpoint size cause
+    instability in the DAG).
+    
+h.  How to add custom metrics and metric aggregator.
+
+i.  Example of how to implement dynamic partitioning.
+
