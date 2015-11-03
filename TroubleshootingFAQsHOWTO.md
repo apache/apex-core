@@ -418,22 +418,22 @@ it to run successfully.
   
     ![RetrieveKilled.gif](images/TroubleshootingFAQsHOWTO/image03.gif)
 
-1. How to search for particular any application or container?
+### How to search for particular any application or container?
 
   In applications or containers table there is search text box. You can
   type in application name or container number to locate particular
   application or container.
 
-1. Difference between stdout vs stderr vs dt.log files
+### Difference between stdout vs stderr vs dt.log files
 
-2. I am unable to see logs what should I do?  
-    - Check license?
+###  I am unable to see logs what should I do?  
+  - Check license?
 
-3.How do I search within logs?
-    Once you navigate to logs page,  
-    1. Download log file to search using your preferred editor  
-    2. use “grep” option and provide the search range “within specified
-    range” or “over entire log”
+### How do I search within logs?
+  Once you navigate to logs page,  
+  1. Download log file to search using your preferred editor  
+  2. use “grep” option and provide the search range “within specified
+  range” or “over entire log”
 
 # Application Launch
 
