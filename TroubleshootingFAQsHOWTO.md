@@ -332,9 +332,9 @@
     - Specified directory does not exist on DFS
     - Specified directory does not have permissions to user with which DataTorrent is installed or dtGateway is running.
 
-      $ hadoop dfs -ls /user\<USER>/datatorrent
-      $ hadoop dfs -mkdir /user\<USER>/datatorrent
-      $ hadoop dfs -chown <USER> /user/<USER>/datatorrent
+     ```$ hadoop dfs -ls /user/<USER>/datatorrent 
+        $ hadoop dfs -mkdir /user/<USER>/datatorrent  
+        $ hadoop dfs -chown <USER> /user/<USER>/datatorrent```
 
 #Upgrade
 
@@ -345,9 +345,8 @@
  
 #Programming
 
-    1.  Scope of hadoop dependencies (use provided scope, don’t bundle any
-        hadoop jar)
-    2.  I am getting this message in STRAM logs. Is anything wrong in my
+  1.  Scope of hadoop dependencies (use provided scope, don’t bundle any hadoop jar)
+  2.  I am getting this message in STRAM logs. Is anything wrong in my
         code?
 
       ``` 2015-10-09 04:31:06,749 INFO
@@ -366,22 +365,23 @@
 1.  How to setup DEBUG level while running an application
 
 Solution: Add the property :
+
             <property\>
-             \<name\>dt.application.\<APP-NAME\>.attr.DEBUG\</name\>
-             \<value\>true\</value\> 
-             </property\>
+             <name>dt.application.<APP-NAME>.attr.DEBUG</name>
+             <value>true</value> 
+            </property>
 
 1.  My gateway is throwing following exception. How should I solve it.
 
-ERROR YARN Resource Manager has problem: java.net.ConnectException: Call
-From myexample.com/192.168.3.21 to 0.0.0.0:8032 failed on connection
-exception: java.net.ConnectException: Connection refused; For more
-details
-see:[http://wiki.apache.org/hadoop/ConnectionRefused](http://wiki.apache.org/hadoop/ConnectionRefused) at
-sun.reflect.GeneratedConstructorAccessor27.newInstance(Unknown Source)
-at
-sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
-at
+          ERROR YARN Resource Manager has problem: java.net.ConnectException: Call
+          From myexample.com/192.168.3.21 to 0.0.0.0:8032 failed on connection
+          exception: java.net.ConnectException: Connection refused; For more
+          details
+          see:[http://wiki.apache.org/hadoop/ConnectionRefused](http://wiki.apache.org/hadoop/ConnectionRefused) at
+          sun.reflect.GeneratedConstructorAccessor27.newInstance(Unknown Source)
+          at
+          sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+          at
 
 Check if the host where gateway is running has yarn-site.xml file. You
 need to have all hadoop configuration files accessible to dtgateway for
@@ -393,113 +393,112 @@ it to run successfully.
 
 ### How to check stram logs
 
-    You can get stram logs from yarn logs or from DT Console.  
-    1. use command ‘yarn logs -applicationId \<applicationId\>’, first
-    container logs  are stram logs.  
-     2. On dt console, select first container from the Containers List
-    widget (default location of this widget is in the “physical” dashboard).
-    The first container is numbered 000001. Then click the logs dropdown and
-    select the log you want to look at.  
+  You can get stram logs from yarn logs or from DT Console.  
+  1. use command ```yarn logs -applicationId <applicationId>```, first
+  container logs  are stram logs.  
+   2. On dt console, select first container from the Containers List
+  widget (default location of this widget is in the “physical” dashboard).
+  The first container is numbered 000001. Then click the logs dropdown and
+  select the log you want to look at.  
 
 ### How to check application logs
 
-    On dt console, select a container from the Containers List widget
-    (default location of this widget is in the “physical” dashboard). Then
-    click the logs dropdown and select the log you want to look at.
-    
-    ![console-log-viewing.gif](images/TroubleshootingFAQsHOWTO/image00.gif)
+  On dt console, select a container from the Containers List widget
+  (default location of this widget is in the “physical” dashboard). Then
+  click the logs dropdown and select the log you want to look at.
+  
+  ![console-log-viewing.gif](images/TroubleshootingFAQsHOWTO/image00.gif)
 
 ### How to check killed operator’s state
 
-    1. On dt console, click on “retrieve killed” button of container List.
-    Containers List widget’s default location is on the “physical”
-    dashboard. Then select the appropriate container of killed operator and
-    check the state.
-    
+  1. On dt console, click on “retrieve killed” button of container List.
+  Containers List widget’s default location is on the “physical”
+  dashboard. Then select the appropriate container of killed operator and
+  check the state.
+  
     ![RetrieveKilled.gif](images/TroubleshootingFAQsHOWTO/image03.gif)
 
-1.  #### How to search for particular any application or container?
+1. How to search for particular any application or container?
 
-In applications or containers table there is search text box. You can
-type in application name or container number to locate particular
-application or container.
+  In applications or containers table there is search text box. You can
+  type in application name or container number to locate particular
+  application or container.
 
-1.  ##### Difference between stdout vs stderr vs dt.log files
+1. Difference between stdout vs stderr vs dt.log files
 
-2.  ##### I am unable to see logs what should I do?  
+2. I am unable to see logs what should I do?  
     - Check license?
 
-3.  ##### How do I search within logs?
-
-Once you navigate to logs page,  
-1. Download log file to search using your preferred editor  
-2. use “grep” option and provide the search range “within specified
-range” or “over entire log”
+3.How do I search within logs?
+    Once you navigate to logs page,  
+    1. Download log file to search using your preferred editor  
+    2. use “grep” option and provide the search range “within specified
+    range” or “over entire log”
 
 # Application Launch
 
-1.  ##### Connection Refused Exception
+1.  Connection Refused Exception
 
-2.  ##### ClassNotFound Exception
+2.  ClassNotFound Exception
 
-3.  ##### Application goes from accepted state to Finished(FAILED) state
+3. Application goes from accepted state to Finished(FAILED) state
 
-Check if your application name conflicts with any of the already running
-applications in your cluster. Apex do not allow two application with
-same names run simultaneously.  
-Your STRAM logs will have following error:  
-“Forced shutdown due to Application master failed due to application
-\<appId\> with duplicate application name \<appName\> by the same user
-\<user name\> is already started.”  
+  Check if your application name conflicts with any of the already running
+  applications in your cluster. Apex do not allow two application with
+  same names run simultaneously.  
+  Your STRAM logs will have following error:  
+  “Forced shutdown due to Application master failed due to application
+  \<appId\> with duplicate application name \<appName\> by the same user
+  \<user name\> is already started.”  
 
-1.  ##### ConstraintViolationException while application launch
+1. ConstraintViolationException while application launch
 
-Check if all @NotNull properties of application are set. Apex operator
-properties are meant to configure parameter to operators. Some of the
-properties are must have, marked as @NotNull, to use an operator. If you
-don’t set any of such @NotNull properties application launch will fail
-and stram will throw ConstraintViolationException.    
+  Check if all @NotNull properties of application are set. Apex operator
+  properties are meant to configure parameter to operators. Some of the
+  properties are must have, marked as @NotNull, to use an operator. If you
+  don’t set any of such @NotNull properties application launch will fail
+  and stram will throw ConstraintViolationException.    
 
-1.  #####Launching apa vs jar
+1. Launching apa vs jar
 
-2.  #####DAG validation failed
+2. DAG validation failed
 
-3.  #####Multiple gateways running simultaneously, app not launched.
+3. Multiple gateways running simultaneously, app not launched.
 
-4.  #####HDFS in safe mode
+4. HDFS in safe mode
 
 #  Application State
 
-1.  #####Application stays in accepted state
+1. Application stays in accepted state
 
-2.  #####Some containers do not get resources (specially in case of repartition)
+2. Some containers do not get resources (specially in case of repartition)
 
-3.  #####Small memory set to operator causes operator kill continuously.
+3. Small memory set to operator causes operator kill continuously.
 
-4.  #####Why is the number of events same/different at input and output port of each operator?
+4. Why is the number of events same/different at input and output port of each operator?
 
 #  Events
 
-#### How to check container failures
+### How to check container failures
 
 In StramEvents list (default location of this widget is in the “logical”
 dashboard), look for event “StopContainer”. Click on “details” button in
 front of event to get details of container failure.
 
-#### How to debug
+### How to debug
 
-#### How to search within events
+### How to search within events
 
 You can search events in specified time range. Select “range” mode in
 StramEvents widget. Then select from and to timestamp and hit the search
 button.
 
-#### tail vs range mode
+### tail vs range mode
 
 tail mode allows you to see events as they come in while range mode
 allows you to search for events by time range.
 
-#### What is “following” button in events pane
+### What is “following” button in events pane
 
 When we enable “following” button the stram events list will
 automatically scroll to bottom when new events come in.
