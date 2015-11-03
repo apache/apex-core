@@ -7,120 +7,116 @@
 1.  Where can I get DataTorrent RTS software OR package for Community /
     Enterprise edition?
 
-                    DataTorrent products are available for download at
-    following location:
+    DataTorrent products are available for download at following location:
     
     [https://www.datatorrent.com/download/](https://www.datatorrent.com/download)
-    
     
     DataTorrent RTS has 2 platform editions for download:
     
     -   Community Edition:
     
-    It is a packaged version of Apache Apex and enables developers to
-    quickly develop their big data streaming and batch projects.
-    
-    You can get download link after filling information at the below
-    location:
-    
-    [http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html&sa=D&usg=AFQjCNE9nA6aazcnf14BNbZKfESizZafkg)
-    
-    [](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html&sa=D&usg=AFQjCNE9nA6aazcnf14BNbZKfESizZafkg)
+        It is a packaged version of Apache Apex and enables developers to
+        quickly develop their big data streaming and batch projects.
+        
+        You can get download link after filling information at the below
+        location:
+        
+        [http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html](http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html)
+  
     
     -   Enterprise Edition:
     
-    This edition is designed for enterprise production deployment and
-    includes data analytics, GUI-based app assembly and data visualization.
-    
-    You can get download link after filling information at the below
-    location:
-    
-    [http://web.datatorrent.com/DataTorrent-RTS-Enteprise-Edition-Download.html](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-RTS-Enteprise-Edition-Download.html&sa=D&usg=AFQjCNHvD9M-jFDis4Cd4pvY0CzZyKYCOA)
+        This edition is designed for enterprise production deployment and
+        includes data analytics, GUI-based app assembly and data visualization.
+        
+        You can get download link after filling information at the below
+        location:
+        
+        [http://web.datatorrent.com/DataTorrent-RTS-Enteprise-Edition-Download.html](http://web.datatorrent.com/DataTorrent-RTS-Enteprise-Edition-Download.html)
 
 
 1.  What are DataTorrent RTS package contents of Community / Enterprise
     edition ?
 
-Package contents for Community edition:
-
--   Apache Apex (incubating)
--   DataTorrent Demo Applications
--   DataTorrent dtManage
--   DataTorrent dtIngest
-
-Package contents for Enterprise edition:
-
--   Apache Apex (incubating)
--   DataTorrent Demo Applications
--   DataTorrent Operator Library
--   DataTorrent Enterprise Security
--   DataTorrent dtManage
--   DataTorrent dtIngest
--   DataTorrent dtAssemble
--   DataTorrent dtDashboard
+    Package contents for Community edition:
+    
+    -   Apache Apex (incubating)
+    -   DataTorrent Demo Applications
+    -   DataTorrent dtManage
+    -   DataTorrent dtIngest
+    
+    Package contents for Enterprise edition:
+    
+    -   Apache Apex (incubating)
+    -   DataTorrent Demo Applications
+    -   DataTorrent Operator Library
+    -   DataTorrent Enterprise Security
+    -   DataTorrent dtManage
+    -   DataTorrent dtIngest
+    -   DataTorrent dtAssemble
+    -   DataTorrent dtDashboard
 
 1.  Where can I find the Standard edition installer?
 
-You can use the download link for Enterprise edition as the package is
-same for both editions. But, you have to apply the license to enable the
-Standard edition. You can upgrade the license by using dtManage.
-Licenses are available in 2 types : evaluation and production.
+    You can use the download link for Enterprise edition as the package is
+    same for both editions. But, you have to apply the license to enable the
+    Standard edition. You can upgrade the license by using dtManage.
+    Licenses are available in 2 types : evaluation and production.
 
 1.  What is the difference between DataTorrent RTS editions?
 
-        Please refer to [DataTorrent RTS editions
-overview](https://www.google.com/url?q=https://www.datatorrent.com/product/edition-overview/&sa=D&usg=AFQjCNHM6lrFU9ScM-MrxGJwIbXejxX6lg)
+    Please refer to [DataTorrent RTS editions
+    overview](https://www.datatorrent.com/product/edition-overview/)
 
-1.  How do I confirm the package downloaded correctly?  
+1.  How do I confirm the package downloaded correctly?
 
-You can verify the downloaded DataTorrent RTS package by comparing with
-MD5 sum. The command to get md5 sum of downloaded package:
-
-\# md5sum \<DT\_RTS\_Package\>
-
-Compare the result with \<TODO\> Not available on website
-([WEB-243](https://www.google.com/url?q=https://datatorrent.atlassian.net/browse/WEB-243&sa=D&usg=AFQjCNFYWTUoZZGPOsGhnhppi89TC89ZZQ))
+    You can verify the downloaded DataTorrent RTS package by comparing with
+    MD5 sum. The command to get md5 sum of downloaded package:
+    
+    ```# md5sum <DT_RTS_Package>```
+    
+    Compare the result with \<TODO\> Not available on website
+    ([WEB-243](https://datatorrent.atlassian.net/browse/WEB-243))
 
 1.  How do I download the DataTorrent RTS package using CLI?
 
-                Use following curl command to download DataTorrent RTS
-package:
-
-                            \# curl -LSO \<DT\_RTS\_download\_link\>
-
-We recommend to use ‘curl’ instead of ‘wget’ to get the package
-downloaded without corruption
+    Use following curl command to download DataTorrent RTS package:
+    
+    ```\# curl -LSO <DT_RTS_download_link>```
+    
+    We recommend to use ‘curl’ instead of ‘wget’ to get the package
+    downloaded without corruption
 
 1.  What are the prerequisites of DataTorrent RTS ?
 
-                DataTorrent RTS platform has following Hadoop cluster
-requirements:
-
--   Operating system supported by Hadoop distribution
--   Hadoop (2.2 or above) cluster with HDFS, YARN configured. Make sure
-    hadoop executable available in PATH variable
--   Java 7 or 8 as supported by Hadoop distribution
--   Minimum of 8G RAM available on the Hadoop cluster
--   Permissions to create HDFS directory for DataTorrent user
--   Google Chrome, Firefox, or Safari to access dtManage (DataTorrent UI
-    console)
+    DataTorrent RTS platform has following Hadoop cluster
+    requirements:
+    
+    -   Operating system supported by Hadoop distribution
+    -   Hadoop (2.2 or above) cluster with HDFS, YARN configured. Make sure
+        hadoop executable available in PATH variable
+    -   Java 7 or 8 as supported by Hadoop distribution
+    -   Minimum of 8G RAM available on the Hadoop cluster
+    -   Permissions to create HDFS directory for DataTorrent user
+    -   Google Chrome, Firefox, or Safari to access dtManage (DataTorrent UI
+        console)
 
 1.  Where can I start from after downloading DataTorrent RTS?
 
--   After successful download of DataTorrent RTS, make sure all
-    prerequisites are satisfied.
--   You will need to install DataTorrent RTS on hadoop cluster using the
-    downloaded installer. For more details, you can refer to
-    [installation
-    guide](https://www.google.com/url?q=https://www.datatorrent.com/docs/README.html&sa=D&usg=AFQjCNEiGC32cS9VRtxcG2H0KuNbn6Ohag)
--   Once installation done, you can configure and monitor applications
-    by using dtManage(DataTorrent console)
+  -   After successful download of DataTorrent RTS, make sure all
+      prerequisites are satisfied.
+  -   You will need to install DataTorrent RTS on hadoop cluster using the
+      downloaded installer. For more details, you can refer to
+      [installation
+      guide](https://www.google.com/url?q=https://www.datatorrent.com/docs/README.html&sa=D&usg=AFQjCNEiGC32cS9VRtxcG2H0KuNbn6Ohag)
+  -   Once installation done, you can configure and monitor applications
+      by using dtManage(DataTorrent console)
 
 1.  What are the supported Hadoop distribution by DataTorrent RTS?
 
-DataTorrent RTS is a Hadoop 2.x native application and is fully
-integrated with YARN and HDFS providing tight integration with any
-Apache Hadoop 2.x based distribution.
+  DataTorrent RTS is a Hadoop 2.x native application and is fully
+  integrated with YARN and HDFS providing tight integration with any
+  Apache Hadoop 2.x based distribution.
 
 
 <table>
