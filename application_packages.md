@@ -1,24 +1,23 @@
-#Apache Apex (incubating) Application Packages
-
-# 1. Introduction
+Apache Apex Application Packages
+================================
 
 An Apache Apex Application Package is a zip file that contains all the
 necessary files to launch an application in Apache Apex. It is the
 standard way for assembling and sharing an Apache Apex application.
 
-# 2. Requirements
+# Requirements
 
 You will need have the following installed:
 
 1. Apache Maven 3.0 or later (for assembling the App Package)
 2. Apache Apex 3.0.0 or later (for launching the App Package in your cluster)
 
-#3. Creating Your First Apex App Package
+# Creating Your First Apex App Package
 
 You can create an Apex Application Package using your Linux command
 line, or using your favorite IDE.
 
-##Using Command Line
+## Using Command Line
 
 First, change to the directory where you put your projects, and create
 an Apex application project using Maven by running the following
@@ -113,7 +112,7 @@ project, with a default unit test.  You can run the unit test, make code
 changes or make dependency changes within your IDE.  The procedure for
 other IDEs, like Eclipse or IntelliJ, is similar.
 
-# 4. Writing Your Own App Package
+# Writing Your Own App Package
 
 
 Please refer to the [Application Developer Guide](https://www.datatorrent.com/docs/guides/ApplicationDeveloperGuide.html) on the basics on how to write a DataTorrent application.  In your AppPackage project, you can add custom operators (refer to [Operator Developer Guide](https://www.datatorrent.com/docs/guides/OperatorDeveloperGuide.html)), project dependencies, default and required configuration properties, pre-set configurations and other metadata.
@@ -290,13 +289,10 @@ setHost. The method is called using JAVA reflection and the property
 value is passed as an argument. In the above example the method setHost
 will be called on the “redis” operator with “127.0.0.1” as the argument.
 
-## Port attributes
-
+## Port attributes 
 Port attributes are used to specify the platform behavior for input and
-output ports. They can be specified using the parameter
-```dt.operator.<operator-name>.inputport.<port-name>.attr.<attribute>```
-for input port and
-```dt.operator.<operator-name>.outputport.<port-name>.attr.<attribute>```
+output ports. They can be specified using the parameter ```dt.operator.<operator-name>.inputport.<port-name>.attr.<attribute>```
+for input port and ```dt.operator.<operator-name>.outputport.<port-name>.attr.<attribute>```
 for output port. The keyword “inputport” is used to denote an input port
 and “outputport” to denote an output port. The rest of the specification
 follows the conventions described in other specifications above. An
@@ -379,7 +375,7 @@ also be used for operator name, stream name or application name. Regular
 expressions can also be used for names to specify attributes or
 properties for a specific set.
 
-##Adding configuration properties
+## Adding configuration properties
 
 It is common for applications to require configuration parameters to
 run.  For example, the address and port of the database, the location of
@@ -402,7 +398,7 @@ project. The properties.xml may look like:
 
 The name of an application-specific property takes the form of:
 
-```dt.operator.{opName}.prop.{propName}```
+```dt.operator.{opName}.prop.{propName} ```
 
 The first represents the property with name propName of operator opName.
  Or you can set the application name at run time by setting this
@@ -419,7 +415,7 @@ must be set at launch time, or it must be set by a pre-set configuration
 assigned with value some\_default\_value unless it is overridden at
 launch time.
 
-##Adding pre-set configurations
+## Adding pre-set configurations
 
 
 At build time, you can add pre-set configurations to the App Package by
@@ -428,7 +424,7 @@ project.  You can then specify which configuration to use at launch
 time.  The configuration XML is of the same format of the properties.xml
 file.
 
-##Application-specific properties file
+## Application-specific properties file
 
 You can also specify properties.xml per application in the application
 package.  Just create a file with the name properties-{appName}.xml and
@@ -500,7 +496,7 @@ Note that by default from project created from the maven archetype,
 there is already a log4j.properties file under src/test/resources and
 that file is only used for the unit test.
 
-#5. Zip Structure of Application Package
+# Zip Structure of Application Package
 
 
 DataTorrent Application Package files are zip files.  You can examine the content of any Application Package by using unzip -t on your Linux command line.
@@ -514,12 +510,12 @@ There are four top level directories in an Application Package:
 5. “resources” contains other files that are to be served by the Gateway on behalf of the app package.
 
 
-#6. Managing Application Packages Through DT Gateway
+# Managing Application Packages Through DT Gateway
 
 The DT Gateway provides storing and retrieving Application Packages to
 and from your distributed file system, e.g. HDFS.
 
-##Storing an Application Package
+## Storing an Application Package
 
 You can store your Application Packages through DT Gateway using this
 REST call:
@@ -537,7 +533,7 @@ localhost:9090:
 $ curl -XPOST -T <app-package-file> http://localhost:9090/ws/v2/appPackages
 ```
 
-##Getting Meta Information on Application Packages
+## Getting Meta Information on Application Packages
 
 
 You can get the meta information on Application Packages stored through
@@ -637,14 +633,14 @@ Here is an example of launching an application through curl:
 
 Please refer to the [Gateway API reference](https://www.google.com/url?q=https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html&sa=D&usg=AFQjCNEWfN7-e7fd6MoWZjmJUE3GW7UwdQ) for the complete specification of the REST API.
 
-# 7. Examining and Launching Application Packages Through Apex CLI
+# Examining and Launching Application Packages Through Apex CLI
 
 If you are working with Application Packages in the local filesystem and
 do not want to deal with dtGateway, you can use the Apex
 Command Line Interface (dtcli).  Please refer to the [Gateway API reference](https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html)
 to see samples for these commands.
 
-##Getting Application Package Meta Information
+## Getting Application Package Meta Information
 
 You can get the meta information about the Application Package using
 this Apex CLI command.
@@ -671,17 +667,16 @@ Package using this command.
  dt> get-app-package-operator-properties <app-package-file> <operator-class>
 
 
-##Launching an Application Package
+## Launching an Application Package
 
 You can launch an application within an Application Package.
 ```
 dt> launch [-D property-name=property-value, ...] [-conf config-name]
  [-apconf config-file-within-app-package] <app-package-file>
- [matching-app-name]
-```
+ [matching-app-name] 
+ ```
 Note that -conf expects a configuration file in the file system, while -apconf expects a configuration file within the app package.
 
-© 2014-2015 DataTorrent Inc.
 
 
 
