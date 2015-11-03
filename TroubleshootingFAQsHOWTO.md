@@ -366,7 +366,7 @@
 
 Solution: Add the property :
 
-            <property\>
+            <property>
              <name>dt.application.<APP-NAME>.attr.DEBUG</name>
              <value>true</value> 
             </property>
