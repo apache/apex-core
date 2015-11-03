@@ -332,9 +332,11 @@
     - Specified directory does not exist on DFS
     - Specified directory does not have permissions to user with which DataTorrent is installed or dtGateway is running.
 
-     ```$ hadoop dfs -ls /user/<USER>/datatorrent 
-        $ hadoop dfs -mkdir /user/<USER>/datatorrent  
-        $ hadoop dfs -chown <USER> /user/<USER>/datatorrent```
+            $ hadoop dfs -ls /user/<USER>/datatorrent
+         
+            $ hadoop dfs -mkdir /user/<USER>/datatorrent  
+            
+            $ hadoop dfs -chown <USER> /user/<USER>/datatorrent
 
 #Upgrade
 
