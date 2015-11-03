@@ -287,21 +287,19 @@
 
     ![HadoopConfiguration.png](images/TroubleshootingFAQsHOWTO/image02.png)
 
-        *Troubleshooting*: Install Hadoop \> 2.2.0 and set these configuration parameters.
+      *Troubleshooting*: Install Hadoop \> 2.2.0 and set these configuration parameters.
 
    c.  How do I check if Hadoop is installed and running correctly?
 
-        $ hadoop version Hadoop 2.4.0
+        $ hadoop version 
+                Hadoop 2.4.0
                 Subversion [http://svn.apache.org/repos/asf/hadoop/common](http://svn.apache.org/repos/asf/hadoop/common) -r
                 1583262
-                
-                  Compiled by jenkins on 2014-03-31T08:29Z
-                  Compiled with protoc 2.5.0
-                  
-                  From source with checksum 375b2832a6641759c6eaf6e3e998147
-                  
-                  This command was run using
-                  /usr/local/hadoop/share/hadoop/common/hadoop-common-2.4.0.jar
+                Compiled by jenkins on 2014-03-31T08:29Z
+                Compiled with protoc 2.5.0
+                From source with checksum 375b2832a6641759c6eaf6e3e998147
+                This command was run using
+                /usr/local/hadoop/share/hadoop/common/hadoop-common-2.4.0.jar
 
           $ jps
       
@@ -316,20 +314,20 @@
 
 1.  What happens if the downloaded file is corrupted?
 
-    Symptoms & errors: MD5 checksum mismatch error should be seen on
+  **Symptoms & errors**: MD5 checksum mismatch error should be seen on
     console: “Verifying archive integrity...Error in MD5 checksums: \<MD5
     checksum\> is different from \<MD5 checksum\>”.
     
-    Troubleshooting: Downloaded installer could be corrupt, please download
+    **Troubleshooting**: Downloaded installer could be corrupt, please download
     the installer binary again and try installing.
 
 1.  Why do I see following permissions errors?
 
-    Symptoms & errors: Following error message will be seen on screen
+    **Symptoms & errors**: Following error message will be seen on screen
     
     ![Permissions\_error.png](images/TroubleshootingFAQsHOWTO/image01.png)
     
-    Troubleshooting: There are different possibilities here:
+    **Troubleshooting**: There are different possibilities here:
     
     - Specified directory does not exist on DFS
     - Specified directory does not have permissions to user with which DataTorrent is installed or dtGateway is running.
