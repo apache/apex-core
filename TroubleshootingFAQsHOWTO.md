@@ -290,11 +290,11 @@
 ![HadoopConfiguration.png](images/TroubleshootingFAQsHOWTO/image02.png)
 
           *Troubleshooting*: Install Hadoop \> 2.2.0 and set these configuration
-          parameters.
+        parameters.
 
     1.  How do I check if Hadoop is installed and running correctly?
 
-            ```$ hadoop version Hadoop 2.4.0
+            $ hadoop version Hadoop 2.4.0
 
                 Subversion [http://svn.apache.org/repos/asf/hadoop/common](http://svn.apache.org/repos/asf/hadoop/common) -r
                 1583262
@@ -305,19 +305,19 @@
                   From source with checksum 375b2832a6641759c6eaf6e3e998147
                   
                   This command was run using
-                  /usr/local/hadoop/share/hadoop/common/hadoop-common-2.4.0.jar```
+                  /usr/local/hadoop/share/hadoop/common/hadoop-common-2.4.0.jar
 
-$ jps
-
-10211 NameNode
-
-10772 ResourceManager
-
-10427 DataNode
-
-14691 Jps
-
-10995 NodeManager
+      $ jps
+      
+      10211 NameNode
+      
+      10772 ResourceManager
+      
+      10427 DataNode
+      
+      14691 Jps
+      
+      10995 NodeManager
 
 ###Installation:
 
@@ -339,21 +339,17 @@ $ jps
     
     Troubleshooting: There are different possibilities here:
     
-    -   Specified directory does not exist on DFS
-    -   Specified directory does not have permissions to user with which
-        DataTorrent is installed or dtGateway is running.
+    - Specified directory does not exist on DFS
+    - Specified directory does not have permissions to user with which DataTorrent is installed or dtGateway is running.
 
-                        \$ hadoop dfs -ls /user/\<USER\>/datatorrent
-
-                        \$ hadoop dfs -mkdir /user/\<USER\>/datatorrent
-
-                        \$ hadoop dfs -chown \<USER\>
-/user/\<USER\>/datatorrent
+      $ hadoop dfs -ls /user\<USER>/datatorrent
+      $ hadoop dfs -mkdir /user\<USER>/datatorrent
+      $ hadoop dfs -chown <USER> /user/<USER>/datatorrent
 
 #Upgrade
 
 1.  License agent behavior on upgrade from 2.0 to 3.0 (Some one had faced issue, his application was getting launched continuously because of license agent)
-    ========================================================================================================================================================
+
 
 #Configuration
  
@@ -375,7 +371,7 @@ $ jps
 
     Update hadoop OPTS variable by running,
 
-    export HADOOP\_OPTS="-agentlib:jdwp=transport=dt\_socket,server=y,suspend=y,address=5432 \$HADOOP\_OPTS
+    ```export HADOOP_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5432 $HADOOP_OPTS``
 
 1.  How to setup DEBUG level while running an application
 
@@ -391,7 +387,7 @@ ERROR YARN Resource Manager has problem: java.net.ConnectException: Call
 From myexample.com/192.168.3.21 to 0.0.0.0:8032 failed on connection
 exception: java.net.ConnectException: Connection refused; For more
 details
-see:[http://wiki.apache.org/hadoop/ConnectionRefused](https://www.google.com/url?q=http://wiki.apache.org/hadoop/ConnectionRefused&sa=D&usg=AFQjCNGQ92mC6gGop08khKfsZB_juE1pZA) at
+see:[http://wiki.apache.org/hadoop/ConnectionRefused](http://wiki.apache.org/hadoop/ConnectionRefused) at
 sun.reflect.GeneratedConstructorAccessor27.newInstance(Unknown Source)
 at
 sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
@@ -403,9 +399,9 @@ it to run successfully.
 
 # How to set custom log4j properties for an app package
 
-#.  Log analysis
+# Log analysis
 
-#### How to check stram logs
+### How to check stram logs
 
     You can get stram logs from yarn logs or from DT Console.  
     1. use command ‘yarn logs -applicationId \<applicationId\>’, first
@@ -415,7 +411,7 @@ it to run successfully.
     The first container is numbered 000001. Then click the logs dropdown and
     select the log you want to look at.  
 
-#### How to check application logs
+### How to check application logs
 
     On dt console, select a container from the Containers List widget
     (default location of this widget is in the “physical” dashboard). Then
@@ -423,7 +419,7 @@ it to run successfully.
     
     ![console-log-viewing.gif](images/TroubleshootingFAQsHOWTO/image00.gif)
 
-#### How to check killed operator’s state
+### How to check killed operator’s state
 
     1. On dt console, click on “retrieve killed” button of container List.
     Containers List widget’s default location is on the “physical”
@@ -432,7 +428,7 @@ it to run successfully.
     
     ![RetrieveKilled.gif](images/TroubleshootingFAQsHOWTO/image03.gif)
 
-1.  ##### How to search for particular any application or container?
+1.  #### How to search for particular any application or container?
 
 In applications or containers table there is search text box. You can
 type in application name or container number to locate particular
@@ -483,7 +479,6 @@ and stram will throw ConstraintViolationException.  
 4.  #####HDFS in safe mode
 
 #  Application State
-    =================
 
 1.  #####Application stays in accepted state
 
@@ -494,81 +489,84 @@ and stram will throw ConstraintViolationException.  
 4.  #####Why is the number of events same/different at input and output port of each operator?
 
 #  Events
-    ======
 
-1.  ##### How to check container failures
+#### How to check container failures
 
 In StramEvents list (default location of this widget is in the “logical”
 dashboard), look for event “StopContainer”. Click on “details” button in
 front of event to get details of container failure.
 
-1.  ##### How to debug
+#### How to debug
 
-2.  ##### How to search within events
+#### How to search within events
 
 You can search events in specified time range. Select “range” mode in
 StramEvents widget. Then select from and to timestamp and hit the search
 button.
 
-1.  ##### tail vs range mode
+#### tail vs range mode
 
 tail mode allows you to see events as they come in while range mode
 allows you to search for events by time range.
 
-1.  ##### What is “following” button in events pane
+#### What is “following” button in events pane
 
 When we enable “following” button the stram events list will
 automatically scroll to bottom when new events come in.
 
 # Stop an application
-    ===================
 
-1.  Shutdown vs kill option
-2.  Why shutdown doesn’t work? (if some containers are not running)
-3.  Can I kill multiple applications at same time?
-4.  Killing containers vs killing application
-5.  Stram failures (during define partitions)
-6.  Thread local + partition parallel configuration
-7.  What to do when downstream operators are slow than the input
-    operators.
-8.  I am seeing high latency, what to do?
-9.  appConf in ADT (inside apa file) vs conf option in dtcli
-10. Application keeps restarting (has happened once due to license agent
-    during upgrade)
-11. Operator getting killed after every 60 secs (Timeout issue)
-12. How to change commit frequency
-13. Difference between exactly once, at least once and at most once
-14. Thread local vs container local vs node local
-15. Setting operator memory
+  1.  Shutdown vs kill option
+  2.  Why shutdown doesn’t work? (if some containers are not running)
+  3.  Can I kill multiple applications at same time?
+  4.  Killing containers vs killing application
+  5.  Stram failures (during define partitions)
+  6.  Thread local + partition parallel configuration
+  7.  What to do when downstream operators are slow than the input
+      operators.
+  8.  I am seeing high latency, what to do?
+  9.  appConf in ADT (inside apa file) vs conf option in dtcli
+  10. Application keeps restarting (has happened once due to license agent
+      during upgrade)
+  11. Operator getting killed after every 60 secs (Timeout issue)
+  12. How to change commit frequency
+  13. Difference between exactly once, at least once and at most once
+  14. Thread local vs container local vs node local
+  15. Setting operator memory
+  
+    a.  Bufferserver memory
 
-1.  Bufferserver memory
-2.  Stram memory
+    b.  Stram memory
+    
+  
+  1.  Cluster nodes not able to access edge node where Gateway is running
+  2.  Developers not sure when to process incoming tuples in end window or
+      when to do it in process function of operator
+  3.  How partitioning works
+  
+    a.  How the data is partitioned between different partitions.
 
-1.  Cluster nodes not able to access edge node where Gateway is running
-2.  Developers not sure when to process incoming tuples in end window or
-    when to do it in process function of operator
-3.  How partitioning works
-
-1.  How the data is partitioned between different partitions.
-2.  How to use stream-codec
-3.  Data on which ports is partitioned? By default default partitioner
-    partitions data on first port.
-4.  How to enable stream-codec on multiple ports. (Join operator?? where
-    both input-ports needs to receive same set of keys).
-
-1.  pom dependency management, exclusions etc. eg: Malhar library and
-    contrib, Hive (includes hadoop dependencies, we need to explicitly
-    exclude), Jersey(we work only with 1.9 version) etc
-2.  All non-transient members of the operator object need to be
-    serializable. All members that are not serializable cannot be saved
-    during checkpoint and must be declared transient (e.g. connection
-    objects). This is such a common problem that we need to dedicate a
-    section to it.
-3.  Exactly once processing mode. Commit operation is supposed to be
-    done at endWindow. This is only best-effort exactly once and not
-    100% guaranteed exactly once because operators may go down after
-    endWindow and before checkpointing finishes.
-4.  How to check checkpoint size. (large checkpoint size cause
-    instability in the DAG).
-5.  How to add custom metrics and metric aggregator.
-6.  Example of how to implement dynamic partitioning.
+    b.  How to use stream-codec
+    
+    c.  Data on which ports is partitioned? By default default partitioner
+        partitions data on first port.
+        
+    d.  How to enable stream-codec on multiple ports. (Join operator?? where
+        both input-ports needs to receive same set of keys).
+        
+  1.  pom dependency management, exclusions etc. eg: Malhar library and
+      contrib, Hive (includes hadoop dependencies, we need to explicitly
+      exclude), Jersey(we work only with 1.9 version) etc
+  2.  All non-transient members of the operator object need to be
+      serializable. All members that are not serializable cannot be saved
+      during checkpoint and must be declared transient (e.g. connection
+      objects). This is such a common problem that we need to dedicate a
+      section to it.
+  3.  Exactly once processing mode. Commit operation is supposed to be
+      done at endWindow. This is only best-effort exactly once and not
+      100% guaranteed exactly once because operators may go down after
+      endWindow and before checkpointing finishes.
+  4.  How to check checkpoint size. (large checkpoint size cause
+      instability in the DAG).
+  5.  How to add custom metrics and metric aggregator.
+  6.  Example of how to implement dynamic partitioning.
