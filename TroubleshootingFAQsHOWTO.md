@@ -1,63 +1,42 @@
-Troubleshooting / FAQs / HOWTO
+#Troubleshooting / FAQs / HOWTO
 
-[Download](#h.acc9i2tm237w)
 
-[Installation](#h.hmfpto5qwwwg)
-
-[Configuration](#h.6fvr8bnpbegy)
-
-[Programming](#h.1a85o8j0e536)
-
-[Debugging](#h.pz3113vi801)
-
-[Log analysis](#h.ozaoym1gv9xx)
-
-[Application Launch](#h.9fifiugvnfc1)
-
-[Application State](#h.1j34r5eggvax)
-
-[Events](#h.pvkhnaoifor8)
-
-[Stop an application](#h.fbmbdaxpdla)
-
-[Application Launch](#h.7y42vv4hzhn1)
-
-1.  Download
-    ========
+##Download
+  
 
 1.  Where can I get DataTorrent RTS software OR package for Community /
     Enterprise edition?
 
-                DataTorrent products are available for download at
-following location:
+                    DataTorrent products are available for download at
+    following location:
+    
+    [https://www.datatorrent.com/download/](https://www.datatorrent.com/download)
+    
+    
+    DataTorrent RTS has 2 platform editions for download:
+    
+    -   Community Edition:
+    
+    It is a packaged version of Apache Apex and enables developers to
+    quickly develop their big data streaming and batch projects.
+    
+    You can get download link after filling information at the below
+    location:
+    
+    [http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html&sa=D&usg=AFQjCNE9nA6aazcnf14BNbZKfESizZafkg)
+    
+    [](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html&sa=D&usg=AFQjCNE9nA6aazcnf14BNbZKfESizZafkg)
+    
+    -   Enterprise Edition:
+    
+    This edition is designed for enterprise production deployment and
+    includes data analytics, GUI-based app assembly and data visualization.
+    
+    You can get download link after filling information at the below
+    location:
+    
+    [http://web.datatorrent.com/DataTorrent-RTS-Enteprise-Edition-Download.html](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-RTS-Enteprise-Edition-Download.html&sa=D&usg=AFQjCNHvD9M-jFDis4Cd4pvY0CzZyKYCOA)
 
-[https://www.datatorrent.com/download/](https://www.google.com/url?q=https://www.datatorrent.com/download/&sa=D&usg=AFQjCNHyVat82zi1AKlkzDkbQ9mXzqDBNA)
-
-[](https://www.google.com/url?q=https://www.datatorrent.com/download/&sa=D&usg=AFQjCNHyVat82zi1AKlkzDkbQ9mXzqDBNA)
-
-DataTorrent RTS has 2 platform editions for download:
-
--   Community Edition:
-
-It is a packaged version of Apache Apex and enables developers to
-quickly develop their big data streaming and batch projects.
-
-You can get download link after filling information at the below
-location:
-
-[http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html&sa=D&usg=AFQjCNE9nA6aazcnf14BNbZKfESizZafkg)
-
-[](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-RTS-Community-Edition-Download.html&sa=D&usg=AFQjCNE9nA6aazcnf14BNbZKfESizZafkg)
-
--   Enterprise Edition:
-
-This edition is designed for enterprise production deployment and
-includes data analytics, GUI-based app assembly and data visualization.
-
-You can get download link after filling information at the below
-location:
-
-[http://web.datatorrent.com/DataTorrent-RTS-Enteprise-Edition-Download.html](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-RTS-Enteprise-Edition-Download.html&sa=D&usg=AFQjCNHvD9M-jFDis4Cd4pvY0CzZyKYCOA)
 
 1.  What are DataTorrent RTS package contents of Community / Enterprise
     edition ?
@@ -143,7 +122,6 @@ DataTorrent RTS is a Hadoop 2.x native application and is fully
 integrated with YARN and HDFS providing tight integration with any
 Apache Hadoop 2.x based distribution.
 
-[](#)[](#)
 
 <table>
 <col width="50%" />
@@ -246,8 +224,7 @@ contents are same as
 1.  What are the prerequisites of dtIngest?
 
                           DataTorrent RTS 3.x and above. Please refer
-[dtIngest
-tutorial](https://www.google.com/url?q=http://docs.datatorrent.com/dtingest/&sa=D&usg=AFQjCNEApY2g7vaTm-CagTqv0AlOPlfAEg) for
+[dtIngest tutorial](http://docs.datatorrent.com/dtingest/) for
 more details
 
 1.  Where can I start from after downloading dtingest?
@@ -273,26 +250,24 @@ page on the download link forwarded over mail by DataTorrent.
 
 1.  Where can I make request for new license?
 
-                Please follow the instructions mentioned at [License
-Upgrade](https://www.google.com/url?q=https://www.datatorrent.com/license-upgrade/&sa=D&usg=AFQjCNEQLZ_AT-J4ftiQfzHLgJbxjmnkSA)
+                Please follow the instructions mentioned at [License Upgrade](https://www.datatorrent.com/license-upgrade/)
 
 1.  Where do I find documentation links?
 
                 Please refer to online documentation:  [DataTorrent
-Documentation](https://www.google.com/url?q=http://docs.datatorrent.com/&sa=D&usg=AFQjCNFgimF4_pjZp9EPqkLpDlBNChkx_Q)
+Documentation](http://docs.datatorrent.com/)
 
 1.  Where can I get Apache Apex related information?
 
                 You can refer Apex page for more details: [Apache
-Apex](https://www.google.com/url?q=http://apex.apache.org&sa=D&usg=AFQjCNFWvzh3c4988lExp4_WqcPky13ufw)
+Apex](http://apex.apache.org)
 
 1.  Do you need help?
 
                 You can contact us
-at[ ](https://www.google.com/url?q=https://www.datatorrent.com/contact&sa=D&usg=AFQjCNEuLmZ-BX-YCdkbCbZFDvuWWsOFXw)[https://www.datatorrent.com/contact](https://www.google.com/url?q=https://www.datatorrent.com/contact&sa=D&usg=AFQjCNEuLmZ-BX-YCdkbCbZFDvuWWsOFXw)
+at[ ](https://www.datatorrent.com/contact&)[https://www.datatorrent.com/contact](https://www.datatorrent.com/contact)
 
-1.  Installation
-    ============
+# Installation
 
 There are multiple installations available e.g. Sandbox Edition,
 Community Edition, Enterprise Edition, dtIngest. Supported operating
@@ -401,8 +376,7 @@ Troubleshooting: There are different possibilities here:
 
 1.  
 
-1.  Upgrade
-    =======
+#Upgrade
 
 1.  License agent behavior on upgrade from 2.0 to 3.0 (Some one had faced issue, his application was getting launched continuously because of license agent)
     ========================================================================================================================================================
@@ -537,24 +511,24 @@ properties are must have, marked as @NotNull, to use an operator. If you
 don’t set any of such @NotNull properties application launch will fail
 and stram will throw ConstraintViolationException.    
 
-1.  ##### Launching apa vs jar
+1.  #####Launching apa vs jar
 
-2.  ##### DAG validation failed
+2.  #####DAG validation failed
 
-3.  ##### Multiple gateways running simultaneously, app not launched.
+3.  #####Multiple gateways running simultaneously, app not launched.
 
-4.  ##### HDFS in safe mode
+4.  #####HDFS in safe mode
 
 1.  Application State
     =================
 
-1.  ##### Application stays in accepted state
+1.  #####Application stays in accepted state
 
-2.  ##### Some containers do not get resources (specially in case of repartition)
+2.  #####Some containers do not get resources (specially in case of repartition)
 
-3.  ##### Small memory set to operator causes operator kill continuously.
+3.  #####Small memory set to operator causes operator kill continuously.
 
-4.  ##### Why is the number of events same/different at input and output port of each operator?
+4.  #####Why is the number of events same/different at input and output port of each operator?
 
 1.  Events
     ======
