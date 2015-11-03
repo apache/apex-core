@@ -285,11 +285,11 @@
           Configuration page in UI (e.g. http://localhost:9090) will expect hadoop
           binary (/usr/bin/hadoop) & DFS location.
 
-![HadoopConfiguration.png](images/TroubleshootingFAQsHOWTO/image02.png)
+    ![HadoopConfiguration.png](images/TroubleshootingFAQsHOWTO/image02.png)
 
-    *Troubleshooting*: Install Hadoop \> 2.2.0 and set these configuration parameters.
+        *Troubleshooting*: Install Hadoop \> 2.2.0 and set these configuration parameters.
 
-    c.  How do I check if Hadoop is installed and running correctly?
+   c.  How do I check if Hadoop is installed and running correctly?
 
         $ hadoop version Hadoop 2.4.0
                 Subversion [http://svn.apache.org/repos/asf/hadoop/common](http://svn.apache.org/repos/asf/hadoop/common) -r
@@ -303,13 +303,13 @@
                   This command was run using
                   /usr/local/hadoop/share/hadoop/common/hadoop-common-2.4.0.jar
 
-      $ jps
+          $ jps
       
-      10211 NameNode
-      10772 ResourceManager
-      10427 DataNode
-      14691 Jps
-      10995 NodeManager
+          10211 NameNode
+          10772 ResourceManager
+          10427 DataNode
+          14691 Jps
+          10995 NodeManager
 
 ###Installation:
 
