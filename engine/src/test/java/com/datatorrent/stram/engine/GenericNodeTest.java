@@ -211,4 +211,89 @@ public class GenericNodeTest
     Assert.assertEquals(Thread.State.TERMINATED, t.getState());
   }
 
+  @Test
+  public void testPrematureTermination() throws InterruptedException
+  {
+    long maxSleep = 5000;
+    long sleeptime = 25L;
+    GenericOperator go = new GenericOperator();
+    final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, new DefaultAttributeMap(), null));
+    gn.setId(1);
+    DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
+    DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
+
+    gn.connectInputPort("ip1", reservoir1);
+    gn.connectInputPort("ip2", reservoir2);
+    gn.connectOutputPort("op", Sink.BLACKHOLE);
+
+    final AtomicBoolean ab = new AtomicBoolean(false);
+    Thread t = new Thread()
+    {
+      @Override
+      public void run()
+      {
+        ab.set(true);
+        gn.activate();
+        gn.run();
+        gn.deactivate();
+      }
+
+    };
+    t.start();
+
+    long interval = 0;
+    do {
+      Thread.sleep(sleeptime);
+      interval += sleeptime;
+    }
+    while ((ab.get() == false) && (interval < maxSleep));
+
+
+    int controlTupleCount = gn.controlTupleCount;
+    Tuple beginWindow1 = new Tuple(MessageType.BEGIN_WINDOW, 0x1L);
+
+    reservoir1.add(beginWindow1);
+    reservoir2.add(beginWindow1);
+
+    interval = 0;
+    do {
+      Thread.sleep(sleeptime);
+      interval += sleeptime;
+    }
+    while ((gn.controlTupleCount == controlTupleCount) && (interval < maxSleep));
+    Assert.assertTrue("Begin window called", go.endWindowId != go.beginWindowId);
+    controlTupleCount = gn.controlTupleCount;
+
+    Tuple endWindow1 = new EndWindowTuple(0x1L);
+
+    reservoir1.add(endWindow1);
+    reservoir2.add(endWindow1);
+
+    interval = 0;
+    do {
+      Thread.sleep(sleeptime);
+      interval += sleeptime;
+    }
+    while ((gn.controlTupleCount == controlTupleCount) && (interval < maxSleep));
+    Assert.assertTrue("End window called", go.endWindowId == go.beginWindowId);
+    controlTupleCount = gn.controlTupleCount;
+
+    Tuple beginWindow2 = new Tuple(MessageType.BEGIN_WINDOW, 0x2L);
+
+    reservoir1.add(beginWindow2);
+    reservoir2.add(beginWindow2);
+
+    interval = 0;
+    do {
+      Thread.sleep(sleeptime);
+      interval += sleeptime;
+    }
+    while ((gn.controlTupleCount == controlTupleCount) && (interval < maxSleep));
+
+    gn.shutdown();
+    t.join();
+
+    Assert.assertTrue("End window not called", go.endWindowId != go.beginWindowId);
+  }
+
 }

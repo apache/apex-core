@@ -553,7 +553,11 @@ public class GenericNode extends Node<Operator>
       }
     }
 
-    if (insideWindow) {
+    /**
+     * TODO: If shutdown and inside window provide alternate way of notifying the operator in such ways
+     * TODO: as using a listener callback
+     */
+    if (insideWindow && !shutdown) {
       endWindowEmitTime = System.currentTimeMillis();
       operator.endWindow();
       if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
