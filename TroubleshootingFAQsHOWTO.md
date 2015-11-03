@@ -279,7 +279,7 @@
 
         *Troubleshooting*: Install java (6 or 7) from package manager of Linux Distribution and try running installer again.
 
-    1.  What happens if Hadoop is not installed?
+    b.  What happens if Hadoop is not installed?
 
           *Symptoms & errors*: Installation will be successful, however Hadoop
           Configuration page in UI (e.g. http://localhost:9090) will expect hadoop
@@ -287,13 +287,11 @@
 
 ![HadoopConfiguration.png](images/TroubleshootingFAQsHOWTO/image02.png)
 
-          *Troubleshooting*: Install Hadoop \> 2.2.0 and set these configuration
-        parameters.
+    *Troubleshooting*: Install Hadoop \> 2.2.0 and set these configuration parameters.
 
-    1.  How do I check if Hadoop is installed and running correctly?
+    c.  How do I check if Hadoop is installed and running correctly?
 
-            $ hadoop version Hadoop 2.4.0
-
+        $ hadoop version Hadoop 2.4.0
                 Subversion [http://svn.apache.org/repos/asf/hadoop/common](http://svn.apache.org/repos/asf/hadoop/common) -r
                 1583262
                 
@@ -308,13 +306,9 @@
       $ jps
       
       10211 NameNode
-      
       10772 ResourceManager
-      
       10427 DataNode
-      
       14691 Jps
-      
       10995 NodeManager
 
 ###Installation:
