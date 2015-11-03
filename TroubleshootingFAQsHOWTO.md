@@ -262,24 +262,21 @@
 
 ##Prerequisites:
 
-  1.  Minimum hardware requirements, what happens if certain minimum
-      configuration requirement has not been met?
+1. Minimum hardware requirements, what happens if certain minimum configuration requirement has not been met?
 
-        a.  What happens if minimum RAM requirement is not met?
-        
-                Symptoms & errors:
-                Troubleshooting:
+    a.  What happens if minimum RAM requirement is not met?
+          Symptoms & errors:
+          Troubleshooting:
 
-1.  Minimum software requirements, what happens if certain minimum
-    configuration requirement has not been met?
+1. Minimum software requirements, what happens if certain minimum configuration requirement has not been met?
 
     a.  What happens if java is not installed?
 
-          *Symptoms & errors*: “Error: java executable not found. Please ensure java
+        *Symptoms & errors*: “Error: java executable not found. Please ensure java
           or hadoop are installed and available in PATH environment variable
           before proceeding with this installation.”
 
-          *Troubleshooting*: Install java (6 or 7) from package manager of Linux Distribution and try running installer again.
+        *Troubleshooting*: Install java (6 or 7) from package manager of Linux Distribution and try running installer again.
 
     1.  What happens if Hadoop is not installed?
 
