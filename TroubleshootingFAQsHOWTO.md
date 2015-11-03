@@ -265,8 +265,9 @@
 1. Minimum hardware requirements, what happens if certain minimum configuration requirement has not been met?
 
     a.  What happens if minimum RAM requirement is not met?
-          Symptoms & errors:
-          Troubleshooting:
+    
+        Symptoms & errors:
+        Troubleshooting:
 
 1. Minimum software requirements, what happens if certain minimum configuration requirement has not been met?
 
