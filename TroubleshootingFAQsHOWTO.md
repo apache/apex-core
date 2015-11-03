@@ -260,49 +260,44 @@
   
   Following document focuses mainly on Enterprise Edition on Ubuntu 12.04.
 
-Prerequisites:
---------------
+##Prerequisites:
 
-1.  Minimum hardware requirements, what happens if certain minimum
-    configuration requirement has not been met?
+  1.  Minimum hardware requirements, what happens if certain minimum
+      configuration requirement has not been met?
 
-1.  What happens if minimum RAM requirement is not met?
-
-        Symptoms & errors:
-
-        Troubleshooting:
+        1.  What happens if minimum RAM requirement is not met?
+        
+                Symptoms & errors:
+                Troubleshooting:
 
 1.  Minimum software requirements, what happens if certain minimum
     configuration requirement has not been met?
 
-1.  What happens if java is not installed?
+    1.  What happens if java is not installed?
 
-Symptoms & errors: “Error: java executable not found. Please ensure java
-or hadoop are installed and available in PATH environment variable
-before proceeding with this installation.”
+          *Symptoms & errors*: “Error: java executable not found. Please ensure java
+          or hadoop are installed and available in PATH environment variable
+          before proceeding with this installation.”
 
-Troubleshooting: Install java (6 or 7) from package manager of Linux
-Distribution and try running installer again.
+          *Troubleshooting*: Install java (6 or 7) from package manager of Linux Distribution and try running installer again.
 
-1.  What happens if Hadoop is not installed?
+    1.  What happens if Hadoop is not installed?
 
-Symptoms & errors: Installation will be successful, however Hadoop
-Configuration page in UI (e.g. http://localhost:9090) will expect hadoop
-binary (/usr/bin/hadoop) & DFS location.
+          *Symptoms & errors*: Installation will be successful, however Hadoop
+          Configuration page in UI (e.g. http://localhost:9090) will expect hadoop
+          binary (/usr/bin/hadoop) & DFS location.
 
-![HadoopConfiguration.png](images/image02.png)
+![HadoopConfiguration.png](images/TroubleshootingFAQsHOWTO/image02.png)
 
-Troubleshooting: Install Hadoop \> 2.2.0 and set these configuration
-parameters.
+          *Troubleshooting*: Install Hadoop \> 2.2.0 and set these configuration
+          parameters.
 
-1.  How do I check if Hadoop is installed and running correctly?
+    1.  How do I check if Hadoop is installed and running correctly?
 
-                        \$ hadoop version
-
-Hadoop 2.4.0
+            ```$ hadoop version Hadoop 2.4.0```
 
 Subversion
-[http://svn.apache.org/repos/asf/hadoop/common](https://www.google.com/url?q=http://svn.apache.org/repos/asf/hadoop/common&sa=D&usg=AFQjCNHNAzNDvTcCSN0KFdYip2dPmL7yLg) -r
+[http://svn.apache.org/repos/asf/hadoop/common](http://svn.apache.org/repos/asf/hadoop/common) -r
 1583262
 
 Compiled by jenkins on 2014-03-31T08:29Z
