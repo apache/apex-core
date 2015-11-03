@@ -82,7 +82,7 @@
 
     Use following curl command to download DataTorrent RTS package:
     
-    ```\# curl -LSO <DT_RTS_download_link>```
+    ```# curl -LSO <DT_RTS_download_link>```
     
     We recommend to use ‘curl’ instead of ‘wget’ to get the package
     downloaded without corruption
@@ -265,7 +265,7 @@
   1.  Minimum hardware requirements, what happens if certain minimum
       configuration requirement has not been met?
 
-        1.  What happens if minimum RAM requirement is not met?
+        a.  What happens if minimum RAM requirement is not met?
         
                 Symptoms & errors:
                 Troubleshooting:
@@ -273,7 +273,7 @@
 1.  Minimum software requirements, what happens if certain minimum
     configuration requirement has not been met?
 
-    1.  What happens if java is not installed?
+    a.  What happens if java is not installed?
 
           *Symptoms & errors*: “Error: java executable not found. Please ensure java
           or hadoop are installed and available in PATH environment variable
@@ -294,22 +294,20 @@
 
     1.  How do I check if Hadoop is installed and running correctly?
 
-            ```$ hadoop version Hadoop 2.4.0```
+            ```$ hadoop version Hadoop 2.4.0
 
-Subversion
-[http://svn.apache.org/repos/asf/hadoop/common](http://svn.apache.org/repos/asf/hadoop/common) -r
-1583262
+                Subversion [http://svn.apache.org/repos/asf/hadoop/common](http://svn.apache.org/repos/asf/hadoop/common) -r
+                1583262
+                
+                  Compiled by jenkins on 2014-03-31T08:29Z
+                  Compiled with protoc 2.5.0
+                  
+                  From source with checksum 375b2832a6641759c6eaf6e3e998147
+                  
+                  This command was run using
+                  /usr/local/hadoop/share/hadoop/common/hadoop-common-2.4.0.jar```
 
-Compiled by jenkins on 2014-03-31T08:29Z
-
-Compiled with protoc 2.5.0
-
-From source with checksum 375b2832a6641759c6eaf6e3e998147
-
-This command was run using
-/usr/local/hadoop/share/hadoop/common/hadoop-common-2.4.0.jar
-
-\$ jps
+$ jps
 
 10211 NameNode
 
@@ -321,30 +319,29 @@ This command was run using
 
 10995 NodeManager
 
-        Installation:
----------------------
+###Installation:
+
 
 1.  What happens if the downloaded file is corrupted?
 
-Symptoms & errors: MD5 checksum mismatch error should be seen on
-console: “Verifying archive integrity...Error in MD5 checksums: \<MD5
-checksum\> is different from \<MD5 checksum\>”.
-
-Troubleshooting: Downloaded installer could be corrupt, please download
-the installer binary again and try installing.
+    Symptoms & errors: MD5 checksum mismatch error should be seen on
+    console: “Verifying archive integrity...Error in MD5 checksums: \<MD5
+    checksum\> is different from \<MD5 checksum\>”.
+    
+    Troubleshooting: Downloaded installer could be corrupt, please download
+    the installer binary again and try installing.
 
 1.  Why do I see following permissions errors?
 
-                Symptoms & errors: Following error message will be seen
-on screen
-
-                ![Permissions\_error.png](images/image01.png)
-
-Troubleshooting: There are different possibilities here:
-
--   Specified directory does not exist on DFS
--   Specified directory does not have permissions to user with which
-    DataTorrent is installed or dtGateway is running.
+    Symptoms & errors: Following error message will be seen on screen
+    
+    ![Permissions\_error.png](images/TroubleshootingFAQsHOWTO/image01.png)
+    
+    Troubleshooting: There are different possibilities here:
+    
+    -   Specified directory does not exist on DFS
+    -   Specified directory does not have permissions to user with which
+        DataTorrent is installed or dtGateway is running.
 
                         \$ hadoop dfs -ls /user/\<USER\>/datatorrent
 
@@ -353,50 +350,40 @@ Troubleshooting: There are different possibilities here:
                         \$ hadoop dfs -chown \<USER\>
 /user/\<USER\>/datatorrent
 
-1.  
-
 #Upgrade
 
 1.  License agent behavior on upgrade from 2.0 to 3.0 (Some one had faced issue, his application was getting launched continuously because of license agent)
     ========================================================================================================================================================
 
-1.  Configuration
-    =============
+#Configuration
+ 
+#Programming
 
-2.  Programming
-    ===========
+    1.  Scope of hadoop dependencies (use provided scope, don’t bundle any
+        hadoop jar)
+    2.  I am getting this message in STRAM logs. Is anything wrong in my
+        code?
 
-1.  Scope of hadoop dependencies (use provided scope, don’t bundle any
-    hadoop jar)
-2.  I am getting this message in STRAM logs. Is anything wrong in my
-    code?
+      ``` 2015-10-09 04:31:06,749 INFO
+      com.datatorrent.stram.StreamingContainerManager: Heartbeat for unknown
+      operator 3 (container container\_1443694550865\_0150\_01\_000007) ```
 
-  2015-10-09 04:31:06,749 INFO
-com.datatorrent.stram.StreamingContainerManager: Heartbeat for unknown
-operator 3 (container container\_1443694550865\_0150\_01\_000007)
+#Debugging
 
-1.  Debugging
-    =========
 
 1.  How to remote debug gateway service?
 
-Update hadoop OPTS variable by running,
+    Update hadoop OPTS variable by running,
 
-export
-HADOOP\_OPTS="-agentlib:jdwp=transport=dt\_socket,server=y,suspend=y,address=5432
-\$HADOOP\_OPTS
+    export HADOOP\_OPTS="-agentlib:jdwp=transport=dt\_socket,server=y,suspend=y,address=5432 \$HADOOP\_OPTS
 
 1.  How to setup DEBUG level while running an application
 
 Solution: Add the property :
-
-   \<property\>
-
-       \<name\>dt.application.\<APP-NAME\>.attr.DEBUG\</name\>
-
-       \<value\>true\</value\>
-
-   \</property\>
+            <property\>
+             \<name\>dt.application.\<APP-NAME\>.attr.DEBUG\</name\>
+             \<value\>true\</value\> 
+             </property\>
 
 1.  My gateway is throwing following exception. How should I solve it.
 
@@ -414,38 +401,36 @@ Check if the host where gateway is running has yarn-site.xml file. You
 need to have all hadoop configuration files accessible to dtgateway for
 it to run successfully.
 
-1.  How to set custom log4j properties for an app package
-    =====================================================
+# How to set custom log4j properties for an app package
 
-2.  Log analysis
-    ============
+#.  Log analysis
 
-1.  ##### How to check stram logs
+#### How to check stram logs
 
-You can get stram logs from yarn logs or from DT Console.  
-1. use command ‘yarn logs -applicationId \<applicationId\>’, first
-container logs  are stram logs.  
- 2. On dt console, select first container from the Containers List
-widget (default location of this widget is in the “physical” dashboard).
-The first container is numbered 000001. Then click the logs dropdown and
-select the log you want to look at.  
+    You can get stram logs from yarn logs or from DT Console.  
+    1. use command ‘yarn logs -applicationId \<applicationId\>’, first
+    container logs  are stram logs.  
+     2. On dt console, select first container from the Containers List
+    widget (default location of this widget is in the “physical” dashboard).
+    The first container is numbered 000001. Then click the logs dropdown and
+    select the log you want to look at.  
 
-1.  ##### How to check application logs
+#### How to check application logs
 
-On dt console, select a container from the Containers List widget
-(default location of this widget is in the “physical” dashboard). Then
-click the logs dropdown and select the log you want to look at.
+    On dt console, select a container from the Containers List widget
+    (default location of this widget is in the “physical” dashboard). Then
+    click the logs dropdown and select the log you want to look at.
+    
+    ![console-log-viewing.gif](images/TroubleshootingFAQsHOWTO/image00.gif)
 
-![console-log-viewing.gif](images/image00.gif)
+#### How to check killed operator’s state
 
-1.  ##### How to check killed operator’s state
-
-1. On dt console, click on “retrieve killed” button of container List.
-Containers List widget’s default location is on the “physical”
-dashboard. Then select the appropriate container of killed operator and
-check the state.
-
-![RetrieveKilled.gif](images/image03.gif)
+    1. On dt console, click on “retrieve killed” button of container List.
+    Containers List widget’s default location is on the “physical”
+    dashboard. Then select the appropriate container of killed operator and
+    check the state.
+    
+    ![RetrieveKilled.gif](images/TroubleshootingFAQsHOWTO/image03.gif)
 
 1.  ##### How to search for particular any application or container?
 
@@ -465,8 +450,7 @@ Once you navigate to logs page,
 2. use “grep” option and provide the search range “within specified
 range” or “over entire log”
 
-1.  Application Launch
-    ==================
+# Application Launch
 
 1.  ##### Connection Refused Exception
 
@@ -498,7 +482,7 @@ and stram will throw ConstraintViolationException.  
 
 4.  #####HDFS in safe mode
 
-1.  Application State
+#  Application State
     =================
 
 1.  #####Application stays in accepted state
@@ -509,7 +493,7 @@ and stram will throw ConstraintViolationException.  
 
 4.  #####Why is the number of events same/different at input and output port of each operator?
 
-1.  Events
+#  Events
     ======
 
 1.  ##### How to check container failures
@@ -536,7 +520,7 @@ allows you to search for events by time range.
 When we enable “following” button the stram events list will
 automatically scroll to bottom when new events come in.
 
-1.  Stop an application
+# Stop an application
     ===================
 
 1.  Shutdown vs kill option
