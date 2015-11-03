@@ -118,159 +118,147 @@
   integrated with YARN and HDFS providing tight integration with any
   Apache Hadoop 2.x based distribution.
 
-
-<table>
-<col width="50%" />
-<col width="50%" />
-<tbody>
-<tr class="odd">
-<td align="left"><p>Hadoop Distribution</p></td>
-<td align="left"><p>Supported Version</p></td>
-</tr>
-<tr class="even">
-<td align="left"><p>Amazon EMR</p></td>
-<td align="left"><p>Hadoop 2.4 and higher</p></td>
-</tr>
-<tr class="odd">
-<td align="left"><p>Apache Hadoop</p></td>
-<td align="left"><p>Hadoop 2.2 and higher</p></td>
-</tr>
-<tr class="even">
-<td align="left"><p>Cloudera</p></td>
-<td align="left"><p>CDH 5.0 and higher</p></td>
-</tr>
-<tr class="odd">
-<td align="left"><p>Hortonworks</p></td>
-<td align="left"><p>HDP 2.0 and higher</p></td>
-</tr>
-<tr class="even">
-<td align="left"><p>MapR</p></td>
-<td align="left"><p>4.0 and higher</p></td>
-</tr>
-<tr class="odd">
-<td align="left"><p>Microsoft</p></td>
-<td align="left"><p>HDInsight</p></td>
-</tr>
-<tr class="even">
-<td align="left"><p>Pivotal</p></td>
-<td align="left"><p>2.1 and higher</p></td>
-</tr>
-</tbody>
-</table>
+    <table>
+    <col width="50%" />
+    <col width="50%" />
+    <tbody>
+    <tr class="odd">
+    <td align="left"><p>Hadoop Distribution</p></td>
+    <td align="left"><p>Supported Version</p></td>
+    </tr>
+    <tr class="even">
+    <td align="left"><p>Amazon EMR</p></td>
+    <td align="left"><p>Hadoop 2.4 and higher</p></td>
+    </tr>
+    <tr class="odd">
+    <td align="left"><p>Apache Hadoop</p></td>
+    <td align="left"><p>Hadoop 2.2 and higher</p></td>
+    </tr>
+    <tr class="even">
+    <td align="left"><p>Cloudera</p></td>
+    <td align="left"><p>CDH 5.0 and higher</p></td>
+    </tr>
+    <tr class="odd">
+    <td align="left"><p>Hortonworks</p></td>
+    <td align="left"><p>HDP 2.0 and higher</p></td>
+    </tr>
+    <tr class="even">
+    <td align="left"><p>MapR</p></td>
+    <td align="left"><p>4.0 and higher</p></td>
+    </tr>
+    <tr class="odd">
+    <td align="left"><p>Microsoft</p></td>
+    <td align="left"><p>HDInsight</p></td>
+    </tr>
+    <tr class="even">
+    <td align="left"><p>Pivotal</p></td>
+    <td align="left"><p>2.1 and higher</p></td>
+    </tr>
+    </tbody>
+    </table>
 
 1.  What is Datatorrent Sandbox?
 
-DataTorrent Sandbox is a ready to use appliance provides tutorials, demo
-applications and dtManage (Web console) to let new user get started
-quickly with DataTorrent RTS. It is fully functional single node Hadoop
-cluster running in a virtual machine. It is freely available as a
-VirtualBox VM.                          
+    DataTorrent Sandbox is a ready to use appliance provides tutorials, demo
+    applications and dtManage (Web console) to let new user get started
+    quickly with DataTorrent RTS. It is fully functional single node Hadoop
+    cluster running in a virtual machine. It is freely available as a
+    VirtualBox VM.
 
 1.  Where do I get sandbox download link?
 
-                You can get download link after filling information at
-the below location:
-
-[http://web.datatorrent.com/DataTorrent-RTS-Sandbox-Edition-Download.html](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-RTS-Sandbox-Edition-Download.html&sa=D&usg=AFQjCNFmVbSU-kY7zbK389gyJES7yr0rrQ)
+    You can get download link after filling information at the below location:
+    
+    [http://web.datatorrent.com/DataTorrent-RTS-Sandbox-Edition-Download.html](http://web.datatorrent.com/DataTorrent-RTS-Sandbox-Edition-Download.html)
 
 1.  What are the system requirements for sandbox deployment?
 
-The DataTorrent RTS Sandbox is a complete, stand-alone, instance of the
-Enterprise Edition as a single-node Hadoop cluster on your local
-machine. Following are prerequisites for DataTorrent RTS:
-
--   Oracle VirtualBox 4.3 or later; Oracle VirtualBox is
-    available[ ](https://www.google.com/url?q=https://www.virtualbox.org/&sa=D&usg=AFQjCNF57HxCWFrymJ4Nkbrs3KZIw_4WbA)[here](https://www.google.com/url?q=https://www.virtualbox.org/&sa=D&usg=AFQjCNF57HxCWFrymJ4Nkbrs3KZIw_4WbA)
--   Memory size should be greater than 6 GB
--   VT-x/AMD-V hardware acceleration (Hardware Virtualization) should be
-    enabled in your machine. You can verify this in BIOS settings
+    The DataTorrent RTS Sandbox is a complete, stand-alone, instance of the
+    Enterprise Edition as a single-node Hadoop cluster on your local
+    machine. Following are prerequisites for DataTorrent RTS:
+    
+    -   Oracle VirtualBox 4.3 or later; Oracle VirtualBox is
+        available[ ](https://www.virtualbox.org/)[here](https://www.virtualbox.org/)
+    -   Memory size should be greater than 6 GB
+    -   VT-x/AMD-V hardware acceleration (Hardware Virtualization) should be
+        enabled in your machine. You can verify this in BIOS settings
 
 1.  What are the DataTorrent RTS package content details in sandbox?
 
--   Ubuntu+Apache Hadoop 2.2
--   Apache Apex (incubating)
--   Apache Apex-Malhar (incubating) Operator Library
--   DataTorrent Demo Applications
--   DataTorrent Operator Library
--   DataTorrent Enterprise Security
--   DataTorrent dtManage
--   DataTorrent dtIngest
--   DataTorrent dtAssemble
--   DataTorrent dtDashboard
+    -   Ubuntu+Apache Hadoop 2.2
+    -   Apache Apex (incubating)
+    -   Apache Apex-Malhar (incubating) Operator Library
+    -   DataTorrent Demo Applications
+    -   DataTorrent Operator Library
+    -   DataTorrent Enterprise Security
+    -   DataTorrent dtManage
+    -   DataTorrent dtIngest
+    -   DataTorrent dtAssemble
+    -   DataTorrent dtDashboard
 
 1.  What is expected time for sandbox ova?
 
-DataTorrent sandbox’s size is more than 1.5 GB so download time depends
-on the network bandwidth availability.  
+    DataTorrent sandbox’s size is more than 1.5 GB so download time depends
+    on the network bandwidth availability.  
 
 1.  Where do I get dtingest app?
 
-                You can get download link after filling information at
-the below location:
+    You can get download link after filling information at the below location:
 
-[http://web.datatorrent.com/DataTorrent-dtIngest-Download.html](https://www.google.com/url?q=http://web.datatorrent.com/DataTorrent-dtIngest-Download.html&sa=D&usg=AFQjCNFgJbjH_St0LUQYj2njJVYzh_9FxA)
+    [http://web.datatorrent.com/DataTorrent-dtIngest-Download.html](http://web.datatorrent.com/DataTorrent-dtIngest-Download.html)
 
 1.  What are the dtingest package contents?
 
-                dtIngest package comprises of DataTorrent RTS bits. The
-contents are same as
-
-                          DataTorrent RTS package.
+    dtIngest package comprises of DataTorrent RTS bits. The contents are same as DataTorrent RTS package.
 
 1.  What are the prerequisites of dtIngest?
 
-                          DataTorrent RTS 3.x and above. Please refer
-[dtIngest tutorial](http://docs.datatorrent.com/dtingest/) for
-more details
+    DataTorrent RTS 3.x and above. Please refer [dtIngest tutorial](http://docs.datatorrent.com/dtingest/) for more details
 
 1.  Where can I start from after downloading dtingest?
 
--   dtIngest package is a complete set of DataTorrent RTS platform,
-    hence no separate RTS package is required to download.
--   Make sure all prerequisites are satisfied before dtIngest
-    installation.
--   You need to install DataTorrent RTS platform on hadoop cluster using
-    the downloaded installer. Please refer to DT RTS [installation
-    guide](https://www.google.com/url?q=https://www.datatorrent.com/docs/README.html&sa=D&usg=AFQjCNEiGC32cS9VRtxcG2H0KuNbn6Ohag)
--   DT RTS serves dtIngest as an application. So after DT RTS
-    installation and configuration, you can configure and launch the
-    ingestion application from dtManage (DataTorrent console). Please
-    refer to [dtIngest
-    tutorial](https://www.google.com/url?q=http://docs.datatorrent.com/dtingest/&sa=D&usg=AFQjCNEApY2g7vaTm-CagTqv0AlOPlfAEg) for
-    more details.
+    -   dtIngest package is a complete set of DataTorrent RTS platform,
+        hence no separate RTS package is required to download.
+    -   Make sure all prerequisites are satisfied before dtIngest
+        installation.
+    -   You need to install DataTorrent RTS platform on hadoop cluster using
+        the downloaded installer. Please refer to DT RTS [installation
+        guide](https://www.datatorrent.com/docs/README.html)
+    -   DT RTS serves dtIngest as an application. So after DT RTS
+        installation and configuration, you can configure and launch the
+        ingestion application from dtManage (DataTorrent console). Please
+        refer to [dtIngest tutorial](http://docs.datatorrent.com/dtingest/) for
+        more details.
 
 1.  How do I get specific DT version ?
 
-You can find archive list of various DT RTS versions at the end of the
-page on the download link forwarded over mail by DataTorrent.
+    You can find archive list of various DT RTS versions at the end of the
+    page on the download link forwarded over mail by DataTorrent.
 
 1.  Where can I make request for new license?
 
-                Please follow the instructions mentioned at [License Upgrade](https://www.datatorrent.com/license-upgrade/)
+    Please follow the instructions mentioned at [License Upgrade](https://www.datatorrent.com/license-upgrade/)
 
 1.  Where do I find documentation links?
 
-                Please refer to online documentation:  [DataTorrent
-Documentation](http://docs.datatorrent.com/)
+    Please refer to online documentation:  [DataTorrent Documentation](http://docs.datatorrent.com/)
 
 1.  Where can I get Apache Apex related information?
 
-                You can refer Apex page for more details: [Apache
-Apex](http://apex.apache.org)
+    You can refer Apex page for more details: [Apache Apex](http://apex.apache.org)
 
 1.  Do you need help?
 
-                You can contact us
-at[ ](https://www.datatorrent.com/contact&)[https://www.datatorrent.com/contact](https://www.datatorrent.com/contact)
+    You can contact us at[ ](https://www.datatorrent.com/contact&)[https://www.datatorrent.com/contact](https://www.datatorrent.com/contact)
 
 # Installation
 
-There are multiple installations available e.g. Sandbox Edition,
-Community Edition, Enterprise Edition, dtIngest. Supported operating
-systems are which support Hadoop platform (tested on CentOS 6.x and
-Ubuntu 12.04).
-
-Following document focuses mainly on Enterprise Edition on Ubuntu 12.04.
+  There are multiple installations available e.g. Sandbox Edition,
+  Community Edition, Enterprise Edition, dtIngest. Supported operating
+  systems are which support Hadoop platform (tested on CentOS 6.x and
+  Ubuntu 12.04).
+  
+  Following document focuses mainly on Enterprise Edition on Ubuntu 12.04.
 
 Prerequisites:
 --------------
