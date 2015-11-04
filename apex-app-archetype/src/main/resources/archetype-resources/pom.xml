@@ -13,7 +13,7 @@
 
   <properties>
     <!-- change this if you desire to use a different version of DataTorrent -->
-    <datatorrent.version>${archetypeVersion}</datatorrent.version>
+    <apex.version>${archetypeVersion}</apex.version>
     <datatorrent.apppackage.classpath>lib/*.jar</datatorrent.apppackage.classpath>
   </properties>
 
@@ -99,7 +99,7 @@
                <archive>
                  <manifestEntries>
                    <Class-Path>${datatorrent.apppackage.classpath}</Class-Path>
-                   <DT-Engine-Version>${datatorrent.version}</DT-Engine-Version>
+                   <DT-Engine-Version>${apex.version}</DT-Engine-Version>
                    <DT-App-Package-Name>${project.artifactId}</DT-App-Package-Name>
                    <DT-App-Package-Version>${project.version}</DT-App-Package-Version>
                    <DT-App-Package-Display-Name>${project.name}</DT-App-Package-Display-Name>
@@ -256,7 +256,14 @@
     <dependency>
       <groupId>com.datatorrent</groupId>
       <artifactId>malhar-library</artifactId>
-      <version>${datatorrent.version}</version>
+      <version>3.1.1</version>
+      <!-- remove when switching to malhar version that depends on apex-common as shown below -->
+      <exclusions>
+        <exclusion>
+          <groupId>com.datatorrent</groupId>
+          <artifactId>dt-common</artifactId>
+        </exclusion>
+      </exclusions>
       <!-- 
            If you know that your application does not need transitive dependencies pulled in by malhar-library,
            uncomment the following to reduce the size of your app package.
@@ -271,9 +278,9 @@
       -->
     </dependency>
     <dependency>
-      <groupId>com.datatorrent</groupId>
-      <artifactId>dt-common</artifactId>
-      <version>${datatorrent.version}</version>
+      <groupId>org.apache.apex</groupId>
+      <artifactId>apex-common</artifactId>
+      <version>${apex.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -283,9 +290,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.datatorrent</groupId>
-      <artifactId>dt-engine</artifactId>
-      <version>${datatorrent.version}</version>
+      <groupId>org.apache.apex</groupId>
+      <artifactId>apex-engine</artifactId>
+      <version>${apex.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

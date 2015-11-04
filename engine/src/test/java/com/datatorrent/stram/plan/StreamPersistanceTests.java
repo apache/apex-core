@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package com.datatorrent.stram.plan;
 
 import static org.junit.Assert.assertEquals;
@@ -13,6 +31,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -185,10 +204,17 @@ public class StreamPersistanceTests
   {
   }
 
+  private LogicalPlan dag;
+
+  @Before
+  public void setup()
+  {
+    dag = StramTestSupport.createDAG(testMeta);
+  }
+
   @Test
   public void testPersistStreamOperatorIsAdded()
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
     TestRecieverOperator persister = new TestRecieverOperator();
@@ -204,7 +230,6 @@ public class StreamPersistanceTests
   @Test
   public void testPersistStreamOperatorIsAddedPerSink()
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x1 = dag.addOperator("x1", new GenericTestOperator());
     GenericTestOperator x2 = dag.addOperator("x2", new GenericTestOperator());
@@ -237,7 +262,6 @@ public class StreamPersistanceTests
   public void testaddStreamThrowsExceptionOnInvalidLoggerType()
   {
     // Test Logger with non-optional output ports
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
     StreamMeta stream = dag.addStream("Stream1", input1.outport, x.inport1);
@@ -284,7 +308,6 @@ public class StreamPersistanceTests
   public void testaddStreamThrowsExceptionOnInvalidInputPortForLoggerType()
   {
     // Test for input port belonging to different object
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
     TestRecieverOperator persister = new TestRecieverOperator();
@@ -304,7 +327,6 @@ public class StreamPersistanceTests
   public void testPersistStreamOperatorIsRemovedWhenStreamIsRemoved()
   {
     // Remove Stream and check if persist operator is removed
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
     TestRecieverOperator persister = new TestRecieverOperator();
@@ -322,7 +344,6 @@ public class StreamPersistanceTests
   public void testPersistStreamOperatorIsRemovedWhenSinkIsRemoved()
   {
     // Remove sink and check if corresponding persist operator is removed
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x1 = dag.addOperator("x1", new GenericTestOperator());
     GenericTestOperator x2 = dag.addOperator("x2", new GenericTestOperator());
@@ -365,7 +386,6 @@ public class StreamPersistanceTests
   @Test
   public void testPersistStreamOperatorIsRemovedWhenAllSinksAreRemoved()
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x1 = dag.addOperator("x1", new GenericTestOperator());
     GenericTestOperator x2 = dag.addOperator("x2", new GenericTestOperator());
@@ -391,7 +411,6 @@ public class StreamPersistanceTests
   @Test
   public void testPersistStreamOperatorGeneratesIdenticalOutputAsSink() throws ClassNotFoundException, IOException, InterruptedException
   {
-    LogicalPlan dag = new LogicalPlan();
     AscendingNumbersOperator input1 = dag.addOperator("input1", AscendingNumbersOperator.class);
     // Add PersistOperator directly to dag
     final TestRecieverOperator x = dag.addOperator("x", new TestRecieverOperator());
@@ -585,7 +604,6 @@ public class StreamPersistanceTests
   @Test
   public void testPersistStreamWithFiltering() throws ClassNotFoundException, IOException, InterruptedException
   {
-    LogicalPlan dag = new LogicalPlan();
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
     PassThruOperatorWithCodec passThru = dag.addOperator("PassThrough", new PassThruOperatorWithCodec(2));
     TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
@@ -599,7 +617,6 @@ public class StreamPersistanceTests
   @Test
   public void testPersistStreamOnSingleSinkWithFiltering() throws ClassNotFoundException, IOException, InterruptedException
   {
-    LogicalPlan dag = new LogicalPlan();
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
     PassThruOperatorWithCodec passThru = dag.addOperator("PassThrough", new PassThruOperatorWithCodec(2));
     final TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
@@ -614,7 +631,6 @@ public class StreamPersistanceTests
   @Test
   public void testPersistStreamOnSingleSinkWithFilteringContainerLocal() throws ClassNotFoundException, IOException, InterruptedException
   {
-    LogicalPlan dag = new LogicalPlan();
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
     PassThruOperatorWithCodec passThru = dag.addOperator("PassThrough", new PassThruOperatorWithCodec(2));
     PassThruOperatorWithCodec passThru2 = dag.addOperator("Multiples_of_3", new PassThruOperatorWithCodec(3));
@@ -678,7 +694,6 @@ public class StreamPersistanceTests
   @Test
   public void testPersistStreamOperatorGeneratesUnionOfAllSinksOutput() throws ClassNotFoundException, IOException
   {
-    LogicalPlan dag = new LogicalPlan();
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
     PassThruOperatorWithCodec passThru1 = dag.addOperator("PassThrough1", new PassThruOperatorWithCodec(2));
     PassThruOperatorWithCodec passThru2 = dag.addOperator("PassThrough2", new PassThruOperatorWithCodec(3));
@@ -811,7 +826,6 @@ public class StreamPersistanceTests
   @Test
   public void testPersistStreamOperatorMultiplePhysicalOperatorsForSink() throws ClassNotFoundException, IOException
   {
-    LogicalPlan dag = new LogicalPlan();
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
     PartitionedTestOperatorWithFiltering passThru = dag.addOperator("partition", new PartitionedTestOperatorWithFiltering());
     final TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
@@ -865,7 +879,6 @@ public class StreamPersistanceTests
   @Test
   public void testPartitionedPersistOperator() throws ClassNotFoundException, IOException
   {
-    LogicalPlan dag = new LogicalPlan();
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
     PartitionedTestOperatorWithFiltering passThru = dag.addOperator("partition", new PartitionedTestOperatorWithFiltering());
     final TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
@@ -924,10 +937,6 @@ public class StreamPersistanceTests
   @Test
   public void testDynamicPartitioning() throws ClassNotFoundException, IOException
   {
-    LogicalPlan dag = new LogicalPlan();
-
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
-
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
 
     final TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());

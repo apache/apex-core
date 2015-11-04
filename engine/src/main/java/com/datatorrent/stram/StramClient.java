@@ -1,17 +1,20 @@
 /**
- * Copyright (C) 2015 DataTorrent, Inc.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package com.datatorrent.stram;
 
@@ -118,9 +121,9 @@ public class StramClient
       org.apache.http.message.BasicHeaderValueParser.class,
       com.esotericsoftware.minlog.Log.class,
       org.apache.xbean.asm5.tree.ClassNode.class,
-      org.mozilla.javascript.Scriptable.class,
       // The jersey client inclusion is only for Hadoop-2.2 and should be removed when we upgrade our Hadoop
       // dependency version since Hadoop-2.3 onwards has jersey client bundled
+      com.sun.jersey.api.client.ClientHandler.class,
       com.sun.jersey.client.apache4.ApacheHttpClient4Handler.class
   };
 
@@ -493,15 +496,7 @@ public class StramClient
       outStream = fs.create(launchConfigDst, true);
       conf.writeXml(outStream);
       outStream.close();
-
-      FileStatus topologyFileStatus = fs.getFileStatus(cfgDst);
-      LocalResource topologyRsrc = Records.newRecord(LocalResource.class);
-      topologyRsrc.setType(LocalResourceType.FILE);
-      topologyRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
-      topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(cfgDst.toUri()));
-      topologyRsrc.setTimestamp(topologyFileStatus.getModificationTime());
-      topologyRsrc.setSize(topologyFileStatus.getLen());
-      localResources.put(LogicalPlan.SER_FILE_NAME, topologyRsrc);
+      LaunchContainerRunnable.addFileToLocalResources(LogicalPlan.SER_FILE_NAME, fs.getFileStatus(cfgDst), LocalResourceType.FILE, localResources);
 
       // Set local resource info into app master container launch context
       amContainer.setLocalResources(localResources);

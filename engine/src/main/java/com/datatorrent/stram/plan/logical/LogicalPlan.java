@@ -1,17 +1,20 @@
 /**
- * Copyright (C) 2015 DataTorrent, Inc.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package com.datatorrent.stram.plan.logical;
 
@@ -37,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Sets;
 
 import com.datatorrent.api.*;
+import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -1088,7 +1092,7 @@ public class LogicalPlan implements Serializable, DAG
       if (e.getKey().getOperatorWrapper() == om) {
          stream.sinks.remove(e.getKey());
       }
-      // If persistStream was enabled for stream, reset stream when sink removed 
+      // If persistStream was enabled for stream, reset stream when sink removed
       stream.resetStreamPersistanceOnSinkRemoval(e.getKey());
     }
     this.operators.remove(om.getName());
@@ -1309,6 +1313,8 @@ public class LogicalPlan implements Serializable, DAG
             Validation.buildDefaultValidatorFactory();
     Validator validator = factory.getValidator();
 
+    checkAttributeValueSerializable(this.getAttributes(), DAG.class.getName());
+
     // clear oioRoot values in all operators
     for (OperatorMeta n: operators.values()) {
       n.oioRoot = null;
@@ -1332,6 +1338,8 @@ public class LogicalPlan implements Serializable, DAG
       }
 
       OperatorMeta.PortMapping portMapping = n.getPortMapping();
+
+      checkAttributeValueSerializable(n.getAttributes(), n.getName());
 
       // Check operator annotation
       if (n.operatorAnnotation != null) {
@@ -1365,6 +1373,7 @@ public class LogicalPlan implements Serializable, DAG
 
       // check that non-optional ports are connected
       for (InputPortMeta pm: portMapping.inPortMap.values()) {
+        checkAttributeValueSerializable(pm.getAttributes(), n.getName() + "." + pm.getPortName());
         StreamMeta sm = n.inputStreams.get(pm);
         if (sm == null) {
           if ((pm.portAnnotation == null || !pm.portAnnotation.optional()) && pm.classDeclaringHiddenPort == null) {
@@ -1394,6 +1403,7 @@ public class LogicalPlan implements Serializable, DAG
 
       boolean allPortsOptional = true;
       for (OutputPortMeta pm: portMapping.outPortMap.values()) {
+        checkAttributeValueSerializable(pm.getAttributes(), n.getName() + "." + pm.getPortName());
         if (!n.outputStreams.containsKey(pm)) {
           if ((pm.portAnnotation != null && !pm.portAnnotation.optional()) && pm.classDeclaringHiddenPort == null) {
             throw new ValidationException("Output port connection required: " + n.name + "." + pm.getPortName());
@@ -1430,8 +1440,12 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     for (StreamMeta s: streams.values()) {
-      if (s.source == null || (s.sinks.isEmpty())) {
-        throw new ValidationException(String.format("stream not connected: %s", s.getName()));
+      if (s.source == null) {
+        throw new ValidationException("Stream source not connected: " + s.getName());
+      }
+
+      if (s.sinks.isEmpty()) {
+        throw new ValidationException("Stream sink not connected: " + s.getName());
       }
     }
 
@@ -1449,6 +1463,22 @@ public class LogicalPlan implements Serializable, DAG
       validateProcessingMode(om, visited);
     }
 
+  }
+
+  private void checkAttributeValueSerializable(AttributeMap attributes, String context)
+  {
+    StringBuilder sb = new StringBuilder();
+    String delim = "";
+    // Check all attributes got operator are serializable
+    for (Entry<Attribute<?>, Object> entry : attributes.entrySet()) {
+      if (entry.getValue() != null && !(entry.getValue() instanceof Serializable)) {
+        sb.append(delim).append(entry.getKey().getSimpleName());
+        delim = ", ";
+      }
+    }
+    if (sb.length() > 0) {
+      throw new ValidationException("Attribute value(s) for " + sb.toString() + " in " + context + " are not serializable");
+    }
   }
 
   /*

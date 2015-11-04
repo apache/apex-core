@@ -1,17 +1,20 @@
 /**
- * Copyright (C) 2015 DataTorrent, Inc.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package com.datatorrent.bufferserver.internal;
 
@@ -70,8 +73,7 @@ public class LogicalNode implements DataListener
 
     if (iterator instanceof DataListIterator) {
       this.iterator = (DataListIterator)iterator;
-    }
-    else {
+    } else {
       throw new IllegalArgumentException("iterator does not belong to DataListIterator class");
     }
 
@@ -192,12 +194,12 @@ public class LogicalNode implements DataListener
             case MessageType.BEGIN_WINDOW_VALUE:
               tuple = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
               logger.debug("{}->{} condition {} =? {}",
-                           new Object[] {
-                upstream,
-                group,
-                Codec.getStringWindowId(baseSeconds | tuple.getWindowId()),
-                Codec.getStringWindowId(skipWindowId)
-              });
+                  new Object[] {
+                      upstream,
+                      group,
+                      Codec.getStringWindowId(baseSeconds | tuple.getWindowId()),
+                      Codec.getStringWindowId(skipWindowId)
+                  });
               if ((baseSeconds | tuple.getWindowId()) > skipWindowId) {
                 logger.debug("caught up {}->{} skipping {} payload tuples", upstream, group, skippedPayloadTuples);
                 ready = GiveAll.getInstance().distribute(physicalNodes, data);
@@ -216,8 +218,7 @@ public class LogicalNode implements DataListener
               logger.debug("Message {} was not distributed to {}", MessageType.valueOf(data.buffer[data.dataOffset]), physicalNodes);
           }
         }
-      }
-      catch (InterruptedException ie) {
+      } catch (InterruptedException ie) {
         throw new RuntimeException(ie);
       }
 
@@ -229,9 +230,8 @@ public class LogicalNode implements DataListener
     logger.debug("Exiting catch up because caughtup = {}", caughtup);
   }
 
-  @SuppressWarnings("fallthrough")
   @Override
-  public void addedData()
+  public boolean addedData()
   {
     if (isReady()) {
       if (caughtup) {
@@ -254,6 +254,8 @@ public class LogicalNode implements DataListener
                 case MessageType.RESET_WINDOW_VALUE:
                   Tuple resetWindow = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
                   baseSeconds = (long)resetWindow.getBaseSeconds() << 32;
+                  ready = GiveAll.getInstance().distribute(physicalNodes, data);
+                  break;
 
                 default:
                   //logger.debug("sending data of type {}", MessageType.valueOf(data.buffer[data.dataOffset]));
@@ -261,8 +263,7 @@ public class LogicalNode implements DataListener
                   break;
               }
             }
-          }
-          else {
+          } else {
             while (ready && iterator.hasNext()) {
               SerializedData data = iterator.next();
               switch (data.buffer[data.dataOffset]) {
@@ -284,6 +285,8 @@ public class LogicalNode implements DataListener
                 case MessageType.RESET_WINDOW_VALUE:
                   tuple = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
                   baseSeconds = (long)tuple.getBaseSeconds() << 32;
+                  ready = GiveAll.getInstance().distribute(physicalNodes, data);
+                  break;
 
                 default:
                   ready = GiveAll.getInstance().distribute(physicalNodes, data);
@@ -291,15 +294,14 @@ public class LogicalNode implements DataListener
               }
             }
           }
-        }
-        catch (InterruptedException ie) {
+        } catch (InterruptedException ie) {
           throw new RuntimeException(ie);
         }
-      }
-      else {
+      } else {
         catchUp();
       }
     }
+    return !ready;
   }
 
   /**
@@ -342,7 +344,7 @@ public class LogicalNode implements DataListener
   @Override
   public String toString()
   {
-    return "LogicalNode{" + "upstream=" + upstream + ", group=" + group + ", partitions=" + partitions + '}';
+    return "LogicalNode{" + "upstream=" + upstream + ", group=" + group + ", partitions=" + partitions + ", iterator=" + iterator + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class);

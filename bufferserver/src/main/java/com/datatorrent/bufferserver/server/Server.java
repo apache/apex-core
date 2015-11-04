@@ -1,17 +1,20 @@
 /**
- * Copyright (C) 2015 DataTorrent, Inc.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package com.datatorrent.bufferserver.server;
 
@@ -26,7 +29,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
-import java.util.concurrent.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +43,12 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.bufferserver.internal.DataList;
 import com.datatorrent.bufferserver.internal.FastDataList;
 import com.datatorrent.bufferserver.internal.LogicalNode;
-import com.datatorrent.bufferserver.packet.*;
+import com.datatorrent.bufferserver.packet.PayloadTuple;
+import com.datatorrent.bufferserver.packet.PublishRequestTuple;
+import com.datatorrent.bufferserver.packet.PurgeRequestTuple;
+import com.datatorrent.bufferserver.packet.ResetRequestTuple;
+import com.datatorrent.bufferserver.packet.SubscribeRequestTuple;
+import com.datatorrent.bufferserver.packet.Tuple;
 import com.datatorrent.bufferserver.storage.Storage;
 import com.datatorrent.common.util.NameableThreadFactory;
 import com.datatorrent.netlet.AbstractLengthPrependerClient;
@@ -97,16 +111,15 @@ public class Server implements ServerListener
   @Override
   public void unregistered(SelectionKey key)
   {
-        serverHelperExecutor.shutdown();
-        storageHelperExecutor.shutdown();
-        try {
-          serverHelperExecutor.awaitTermination(5000, TimeUnit.MILLISECONDS);
-        }
-        catch (InterruptedException ex) {
-          logger.debug("Executor Termination", ex);
-        }
-        logger.info("Server stopped listening at {}", address);
-      }
+    serverHelperExecutor.shutdown();
+    storageHelperExecutor.shutdown();
+    try {
+      serverHelperExecutor.awaitTermination(5000, TimeUnit.MILLISECONDS);
+    } catch (InterruptedException ex) {
+      logger.debug("Executor Termination", ex);
+    }
+    logger.info("Server stopped listening at {}", address);
+  }
 
   public synchronized InetSocketAddress run(EventLoop eventloop)
   {
@@ -114,8 +127,7 @@ public class Server implements ServerListener
     while (address == null) {
       try {
         wait(20);
-      }
-      catch (InterruptedException ex) {
+      } catch (InterruptedException ex) {
         throw new RuntimeException(ex);
       }
     }
@@ -139,8 +151,7 @@ public class Server implements ServerListener
     int port;
     if (args.length > 0) {
       port = Integer.parseInt(args[0]);
-    }
-    else {
+    } else {
       port = 0;
     }
 
@@ -162,7 +173,7 @@ public class Server implements ServerListener
   private final int blockSize;
   private final int numberOfCacheBlocks;
 
-  public void handlePurgeRequest(PurgeRequestTuple request, final AbstractLengthPrependerClient ctx) throws IOException
+  private void handlePurgeRequest(PurgeRequestTuple request, final AbstractLengthPrependerClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBuffers.get(request.getIdentifier());
@@ -170,24 +181,14 @@ public class Server implements ServerListener
     byte[] message;
     if (dl == null) {
       message = ("Invalid identifier '" + request.getIdentifier() + "'").getBytes();
-    }
-    else {
+    } else {
       dl.purge(request.getBaseSeconds(), request.getWindowId());
       message = ("Request sent for processing: " + request).getBytes();
     }
 
     final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
     System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    serverHelperExecutor.submit(new Runnable()
-    {
-      @Override
-      public void run()
-      {
-        ctx.write(tuple);
-        eventloop.disconnect(ctx);
-      }
-
-    });
+    ctx.write(tuple);
   }
 
   private void handleResetRequest(ResetRequestTuple request, final AbstractLengthPrependerClient ctx) throws IOException
@@ -198,8 +199,7 @@ public class Server implements ServerListener
     byte[] message;
     if (dl == null) {
       message = ("Invalid identifier '" + request.getIdentifier() + "'").getBytes();
-    }
-    else {
+    } else {
       AbstractLengthPrependerClient channel = publisherChannels.remove(request.getIdentifier());
       if (channel != null) {
         eventloop.disconnect(channel);
@@ -210,16 +210,7 @@ public class Server implements ServerListener
 
     final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
     System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    serverHelperExecutor.submit(new Runnable()
-    {
-      @Override
-      public void run()
-      {
-        ctx.write(tuple);
-        eventloop.disconnect(ctx);
-      }
-
-    });
+    ctx.write(tuple);
   }
 
   /**
@@ -249,8 +240,7 @@ public class Server implements ServerListener
       ln = subscriberGroups.get(type);
       ln.boot(eventloop);
       ln.addConnection(connection);
-    }
-    else {
+    } else {
       /*
        * if there is already a datalist registered for the type in which this client is interested,
        * then get a iterator on the data items of that data list. If the datalist is not registered,
@@ -260,8 +250,7 @@ public class Server implements ServerListener
       if (publisherBuffers.containsKey(upstream_identifier)) {
         dl = publisherBuffers.get(upstream_identifier);
         //logger.debug("old list = {}", dl);
-      }
-      else {
+      } else {
         dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks) : new DataList(upstream_identifier, blockSize, numberOfCacheBlocks);
         publisherBuffers.put(upstream_identifier, dl);
         //logger.debug("new list = {}", dl);
@@ -312,12 +301,10 @@ public class Server implements ServerListener
       dl = publisherBuffers.get(identifier);
       try {
         dl.rewind(request.getBaseSeconds(), request.getWindowId());
-      }
-      catch (IOException ie) {
+      } catch (IOException ie) {
         throw new RuntimeException(ie);
       }
-    }
-    else {
+    } else {
       dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(identifier, blockSize, numberOfCacheBlocks) : new DataList(identifier, blockSize, numberOfCacheBlocks);
       publisherBuffers.put(identifier, dl);
     }
@@ -419,8 +406,7 @@ public class Server implements ServerListener
               }
 
             };
-          }
-          else {
+          } else {
             publisher = new Publisher(dl, (long)request.getBaseSeconds() << 32 | request.getWindowId());
           }
 
@@ -454,8 +440,7 @@ public class Server implements ServerListener
 //          }
           if (subscriberRequest.getVersion().equals(Tuple.FAST_VERSION)) {
             subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions(), bufferSize);
-          }
-          else {
+          } else {
             subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions(), bufferSize)
             {
               @Override
@@ -491,8 +476,7 @@ public class Server implements ServerListener
           logger.info("Received purge request: {}", request);
           try {
             handlePurgeRequest((PurgeRequestTuple)request, this);
-          }
-          catch (IOException io) {
+          } catch (IOException io) {
             throw new RuntimeException(io);
           }
           break;
@@ -501,8 +485,7 @@ public class Server implements ServerListener
           logger.info("Received reset all request: {}", request);
           try {
             handleResetRequest((ResetRequestTuple)request, this);
-          }
-          catch (IOException io) {
+          } catch (IOException io) {
             throw new RuntimeException(io);
           }
           break;
@@ -633,9 +616,13 @@ public class Server implements ServerListener
         {
           final int interestOps = key.interestOps();
           if ((interestOps & SelectionKey.OP_READ) == 0) {
-            logger.debug("Resuming read on key {} with attachment {}", key, key.attachment());
-            read(0);
-            key.interestOps(interestOps | SelectionKey.OP_READ);
+            if (readExt(0)) {
+              logger.debug("Resuming read on key {} with attachment {}", key, key.attachment());
+              key.interestOps(interestOps | SelectionKey.OP_READ);
+            } else {
+              logger.debug("Keeping read on key {} with attachment {} suspended. ", key, key.attachment(), datalist);
+              datalist.notifyListeners();
+            }
           }
         }
       });
@@ -644,6 +631,11 @@ public class Server implements ServerListener
 
     @Override
     public void read(int len)
+    {
+      readExt(len);
+    }
+
+    private boolean readExt(int len)
     {
       //logger.debug("read {} bytes", len);
       writeOffset += len;
@@ -661,18 +653,20 @@ public class Server implements ServerListener
                    * new byteBuffer and start as if we always had full room but not enough data.
                    */
                   if (!switchToNewBufferOrSuspendRead(buffer, readOffset)) {
-                    return;
+                    return false;
                   }
                 }
-              }
-              else if (dirty) {
+              } else if (dirty) {
                 dirty = false;
                 datalist.flush(writeOffset);
               }
-              return;
+              return true;
 
             case 0:
               continue;
+
+            default:
+              break;
           }
         }
 
@@ -680,8 +674,7 @@ public class Server implements ServerListener
           onMessage(buffer, readOffset, size);
           readOffset += size;
           size = 0;
-        }
-        else {
+        } else {
           if (writeOffset == buffer.length) {
             dirty = false;
             datalist.flush(writeOffset);
@@ -691,14 +684,14 @@ public class Server implements ServerListener
             if (!switchToNewBufferOrSuspendRead(buffer, readOffset - VarInt.getSize(size))) {
               readOffset -= VarInt.getSize(size);
               size = 0;
-              return;
+              return false;
             }
             size = 0;
           } else if (dirty) {
             dirty = false;
             datalist.flush(writeOffset);
           }
-          return;
+          return true;
         }
       }
       while (true);
@@ -748,8 +741,7 @@ public class Server implements ServerListener
       if (cce instanceof RejectedExecutionException && serverHelperExecutor.isTerminated()) {
         logger.warn("Terminated Executor Exception for {}.", this, cce);
         el.disconnect(this);
-      }
-      else {
+      } else {
         super.handleException(cce, el);
       }
     }
@@ -833,8 +825,7 @@ public class Server implements ServerListener
         if (len < remainingCapacity) {
           remainingCapacity = len;
           byteBuffer.position(writeOffset + remainingCapacity);
-        }
-        else {
+        } else {
           byteBuffer.position(buffer.length);
         }
         System.arraycopy(array, offset, buffer, writeOffset, remainingCapacity);

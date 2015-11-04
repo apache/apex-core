@@ -1,17 +1,20 @@
 /**
- * Copyright (C) 2015 DataTorrent, Inc.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package com.datatorrent.stram.util;
 
@@ -54,7 +57,7 @@ public class VersionInfo {
         }
       }
 
-      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/maven/com.datatorrent/dt-engine/pom.properties");
+      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/maven/org.apache.apex/apex-engine/pom.properties");
       while (resources.hasMoreElements()) {
         Properties pomInfo = new Properties();
         pomInfo.load(resources.nextElement().openStream());
@@ -150,6 +153,25 @@ public class VersionInfo {
     } else {
       return Integer.signum(vals1.length - vals2.length);
     }
+  }
+
+  public static boolean isCompatible(String thisVersion, String requiredVersion)
+  {
+    String[] thisVersionComponent = normalizeVersion(thisVersion).split("\\.");
+    String[] requiredVersionComponent = normalizeVersion(requiredVersion).split("\\.");
+
+    // major version check
+    if (!thisVersionComponent[0].equals(requiredVersionComponent[0])) {
+      return false;
+    }
+
+    // minor version check
+    if (Integer.parseInt(thisVersionComponent[1]) < Integer.parseInt(requiredVersionComponent[1])) {
+      return false;
+    }
+
+    // patch version doesn't matter
+    return true;
   }
 
   private static String normalizeVersion(String ver)

@@ -1,37 +1,38 @@
 /**
- * Copyright (C) 2015 DataTorrent, Inc.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package com.datatorrent.stram;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -80,10 +81,20 @@ import org.eclipse.jetty.websocket.WebSocket;
 
 public class StreamingContainerManagerTest
 {
-  @Rule public TestMeta testMeta = new TestMeta();
+  @Rule
+  public TestMeta testMeta = new TestMeta();
+
+  private LogicalPlan dag;
+
+  @Before
+  public void setup()
+  {
+    dag = StramTestSupport.createDAG(testMeta);
+  }
 
   @Test
-  public void testDeployInfoSerialization() throws Exception {
+  public void testDeployInfoSerialization() throws Exception
+  {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     ndi.name = "node1";
     ndi.type = OperatorDeployInfo.OperatorType.GENERIC;
@@ -133,11 +144,8 @@ public class StreamingContainerManagerTest
   }
 
   @Test
-  public void testGenerateDeployInfo() {
-
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
-
+  public void testGenerateDeployInfo()
+  {
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
@@ -235,9 +243,8 @@ public class StreamingContainerManagerTest
   }
 
   @Test
-  public void testStaticPartitioning() {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
+  public void testStaticPartitioning()
+  {
     //
     //            ,---> node2----,
     //            |              |
@@ -352,9 +359,6 @@ public class StreamingContainerManagerTest
   @Test
   public void testRecoveryOrder() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
@@ -403,9 +407,6 @@ public class StreamingContainerManagerTest
   @Test
   public void testRecoveryUpstreamInline() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
@@ -441,11 +442,9 @@ public class StreamingContainerManagerTest
   }
 
   @Test
-  public void testCheckpointWindowIds() throws Exception {
-    File path =  new File(testMeta.dir);
-    FileUtils.deleteDirectory(path.getAbsoluteFile());
-
-    FSStorageAgent sa = new FSStorageAgent(path.getPath(), null);
+  public void testCheckpointWindowIds() throws Exception
+  {
+    FSStorageAgent sa = new FSStorageAgent(testMeta.getPath(), null);
 
     long[] windowIds = new long[]{123L, 345L, 234L};
     for (long windowId : windowIds) {
@@ -472,11 +471,7 @@ public class StreamingContainerManagerTest
   @Test
   public void testAsyncCheckpointWindowIds() throws Exception
   {
-    File path = new File(testMeta.dir);
-    FileUtils.deleteDirectory(path.getAbsoluteFile());
-    FileUtils.forceMkdir(new File(path.getAbsoluteFile(), "/localPath"));
-
-    AsyncFSStorageAgent sa = new AsyncFSStorageAgent(path.getPath(), null);
+    AsyncFSStorageAgent sa = new AsyncFSStorageAgent(testMeta.getPath(), null);
 
     long[] windowIds = new long[]{123L, 345L, 234L};
     for (long windowId : windowIds) {
@@ -503,13 +498,8 @@ public class StreamingContainerManagerTest
   @Test
   public void testProcessHeartbeat() throws Exception
   {
-    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
-
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
-     dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
+    dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
@@ -652,9 +642,6 @@ public class StreamingContainerManagerTest
   @Test
   public void testValidGenericOperatorDeployInfoType()
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
-
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     TestGeneratorInputOperator.ValidGenericOperator o2 = dag.addOperator("o2", TestGeneratorInputOperator.ValidGenericOperator.class);
 
@@ -680,9 +667,6 @@ public class StreamingContainerManagerTest
   @Test
   public void testValidInputOperatorDeployInfoType()
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
-
     TestGeneratorInputOperator.ValidInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.ValidInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
 
@@ -708,8 +692,6 @@ public class StreamingContainerManagerTest
   @Test
   public void testOperatorShutdown()
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
@@ -759,18 +741,13 @@ public class StreamingContainerManagerTest
     mc1.sendHeartbeat();
     scm.monitorHeartbeat();
 
+    Assert.assertEquals("committedWindowId", 1, scm.getCommittedWindowId());
+
     o2p1mos.currentWindowId(2).checkpointWindowId(2);
     mc2.sendHeartbeat();
     scm.monitorHeartbeat();
-    Assert.assertEquals("committedWindowId", 1, scm.getCommittedWindowId());
-    scm.monitorHeartbeat(); // committedWindowId updated in next cycle
-    Assert.assertEquals("committedWindowId", 2, scm.getCommittedWindowId());
-    Assert.assertEquals(1, o1p1.getContainer().getOperators().size());
-    Assert.assertEquals(1, o2p1.getContainer().getOperators().size());
-    Assert.assertEquals(2, physicalPlan.getContainers().size());
 
-    // call again as events are processed after committed window was updated
-    scm.processEvents();
+    // Operators are shutdown when both operators reach window Id 2
     Assert.assertEquals(0, o1p1.getContainer().getOperators().size());
     Assert.assertEquals(0, o2p1.getContainer().getOperators().size());
     Assert.assertEquals(0, physicalPlan.getContainers().size());
@@ -778,7 +755,6 @@ public class StreamingContainerManagerTest
 
   private void testDownStreamPartition(Locality locality) throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     dag.setAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
@@ -812,8 +788,6 @@ public class StreamingContainerManagerTest
   @Test
   public void testPhysicalPropertyUpdate() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     dag.addStream("o1.outport", o1.outport, o2.inport1);
@@ -834,10 +808,9 @@ public class StreamingContainerManagerTest
     lc.shutdown();
   }
 
-  private LogicalPlan getTestAppDataSourceLogicalPlan(Class<? extends TestAppDataQueryOperator> qClass,
+  private void setupAppDataSourceLogicalPlan(Class<? extends TestAppDataQueryOperator> qClass,
           Class<? extends TestAppDataSourceOperator> dsClass, Class<? extends TestAppDataResultOperator> rClass)
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     TestAppDataQueryOperator q = dag.addOperator("q", qClass);
     TestAppDataResultOperator r = dag.addOperator("r", rClass);
@@ -851,13 +824,10 @@ public class StreamingContainerManagerTest
     dag.addStream("o1-to-ds", o1.outport, ds.inport1);
     dag.addStream("q-to-ds", q.outport, ds.query);
     dag.addStream("ds-to-r", ds.result, r.inport);
-
-    return dag;
   }
 
-  private void testAppDataSources(LogicalPlan dag, boolean appendQIDToTopic) throws Exception
+  private void testAppDataSources(boolean appendQIDToTopic) throws Exception
   {
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.runAsync();
     StreamingContainerManager dnmgr = lc.dnmgr;
@@ -880,22 +850,22 @@ public class StreamingContainerManagerTest
   @Test
   public void testGetAppDataSources1() throws Exception
   {
-    LogicalPlan dag = getTestAppDataSourceLogicalPlan(TestAppDataQueryOperator.class, TestAppDataSourceOperator.class, TestAppDataResultOperator.ResultOperator1.class);
-    testAppDataSources(dag, true);
+    setupAppDataSourceLogicalPlan(TestAppDataQueryOperator.class, TestAppDataSourceOperator.class, TestAppDataResultOperator.ResultOperator1.class);
+    testAppDataSources(true);
   }
 
   @Test
   public void testGetAppDataSources2() throws Exception
   {
-    LogicalPlan dag = getTestAppDataSourceLogicalPlan(TestAppDataQueryOperator.class, TestAppDataSourceOperator.class, TestAppDataResultOperator.ResultOperator2.class);
-    testAppDataSources(dag, false);
+    setupAppDataSourceLogicalPlan(TestAppDataQueryOperator.class, TestAppDataSourceOperator.class, TestAppDataResultOperator.ResultOperator2.class);
+    testAppDataSources(false);
   }
 
   @Test
   public void testGetAppDataSources3() throws Exception
   {
-    LogicalPlan dag = getTestAppDataSourceLogicalPlan(TestAppDataQueryOperator.class, TestAppDataSourceOperator.class, TestAppDataResultOperator.ResultOperator3.class);
-    testAppDataSources(dag, false);
+    setupAppDataSourceLogicalPlan(TestAppDataQueryOperator.class, TestAppDataSourceOperator.class, TestAppDataResultOperator.ResultOperator3.class);
+    testAppDataSources(false);
   }
 
   @Test
@@ -930,8 +900,6 @@ public class StreamingContainerManagerTest
     try {
       server.start();
       int port = server.getPort();
-      LogicalPlan dag = new LogicalPlan();
-      dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(testMeta.dir, null));
       TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
       GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
       dag.addStream("o1.outport", o1.outport, o2.inport1);

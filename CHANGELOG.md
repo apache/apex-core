@@ -2,19 +2,59 @@ Apex Changelog
 ========================================================================================================================
 
 
+Version 3.2.0-incubating - 2015-10-23
+------------------------------------------------------------------------------------------------------------------------
+
+### Bug
+* [APEX-56] - Controlled plan modification on operator shutdown
+* [APEX-88] - Stray directories under working directory when running tests using StramLocalCluster
+* [APEX-89] - Javascript error when launching app on CDH 5.2 (hadoop 2.5.0)
+* [APEX-93] - Persist operators need a re-deploy after a sink being persisted is dynamically partitioned
+* [APEX-96] - AsyncFSStorageAgent loses synccheckpoint flag value during serialization/deserialization
+* [APEX-97] - syncCheckpoint property on AsyncFSStorageAgent not working
+* [APEX-98] - WindowGenerator.getWindowMillis loses precisions
+* [APEX-100] - StreamingContainerManagerTest.testAppDataPush uses hardcoded port
+* [APEX-101] - Negative Memory reported for Application Master
+* [APEX-102] - AppDataPushAgent Not Adding timeBuckets and dimensionsAggregators
+* [APEX-111] - dtcli: show-logical-plan with app package does not list the applications in the app package
+* [APEX-112] - Property change on logical operator converts from null to "null"(string)
+* [APEX-113] - Application Master not setting correct temp location
+* [APEX-114] - Stateful Stream Codec Exception
+* [APEX-117] - When Using Double Max Aggregator Data Stops Being Pushed By AppDataPushAgent
+* [APEX-118] - Sometimes the collection of metric values passed to an AutoMetric aggregator is empty
+* [APEX-120] - AsyncFSStorageAgentTest unit tests fail
+* [APEX-121] - Making sure that state is transferred to client for Statefull Codec
+* [APEX-126] - handleIdleTime Called Outside Of The Space Between beginWindow and endWindow
+* [APEX-149] - In secure mode non-HA setup STRAM web service calls are failing
+* [APEX-159] - StramMiniClusterTest.testOperatorFailureRecovery succeeds with unexpected error condition
+* [APEX-184] - When There Are 8 Or More Subscribers Buffer Server Can Become Blocked
+* [APEX-198] - Unit tests created remnant directories outside of target directory
+* [APEX-212] - Null pointer exception after all physical operators are removed.
+
+### Task
+* [APEX-16] - Configure Checkstyle plugin
+* [APEX-124] - Set the default temp location in pom
+
+### Improvement
+* [APEX-22] - Ability to re-declare ports 
+* [APEX-68] - Buffer server should use a separate thread to spool blocks to disk
+* [APEX-115] - Use containers set temp location
+
+
+
 Version 3.1.0
 ------------------------------------------------------------------------------------------------------------------------
 
-### Improvement
-* [APEX-12] - Fix Base Operator To Not Show Name Property In App Builder
-
 ### Bug
+* [APEX-12] - Fix Base Operator To Not Show Name Property In App Builder
 * [APEX-35] - Test exceptions due to missing directory in saveMetaInfo
 * [APEX-36] - FSStorageAgent to account for HDFS lease when writing checkpoint files
 * [APEX-37] - Container and operator json line file in StreamingContainerManager should not be appended from previous app attempt 
 * [APEX-43] - SchemaSupport: TUPLE_CLASS attribute should use Class2String StringCodec
 * [APEX-56] - Controlled plan modification on operator shutdown 
 
+### Improvement
+* [APEX-13] - Unblock operator thread from checkpoint writes
 
 
 Version 3.0.0
