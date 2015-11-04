@@ -1,7 +1,7 @@
 Apache Apex
 ================================================================================
 
-Apache Apex (incubating) is the industry’s only Apache 2.0 licensed open source enterprise grade unified stream and batch processing engine.  Project Apex includes key features requested by open source developer community that are not available in current open source technologies.
+Apache Apex (incubating) is the industry’s only open source, enterprise-grade unified stream and batch processing engine.  Apache Apex includes key features requested by open source developer community that are not available in current open source technologies.
 
 * Event processing guarantees
 * In-memory performance & scalability
@@ -10,3 +10,5 @@ Apache Apex (incubating) is the industry’s only Apache 2.0 licensed open sourc
 * Hadoop-native YARN & HDFS implementation
 
 For additional information visit [Apache Apex](http://apex.incubator.apache.org/).
+
+![](images/apex_logo.png)

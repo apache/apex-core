@@ -24,15 +24,11 @@ an Apex application project using Maven by running the following
 command.  Replace "com.example", "mydtapp" and "1.0-SNAPSHOT" with the
 appropriate values (make sure this is all on one line):
 
-```
- $ mvn archetype:generate
- -DarchetypeRepository=https://www.datatorrent.com/maven/content/reposito
- ries/releases
- -DarchetypeGroupId=com.datatorrent
- -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.2.0
- -DgroupId=com.example -Dpackage=com.example.mydtapp -DartifactId=mydtapp
- -Dversion=1.0-SNAPSHOT
-```
+    $ mvn archetype:generate \
+     -DarchetypeGroupId=org.apache.apex \
+     -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.2.0-incubating \
+     -DgroupId=com.example -Dpackage=com.example.mydtapp -DartifactId=mydtapp \
+     -Dversion=1.0-SNAPSHOT
 
 This creates a Maven project named "mydtapp". Open it with your favorite
 IDE (e.g. NetBeans, Eclipse, IntelliJ IDEA). In the project, there is a
@@ -44,9 +40,8 @@ runs the unit test for the DAG is in
 src/test/java/com/example/mydtapp/ApplicationTest.java. Try it out by
 running the following command:
 
-```
- $cd mydtapp; mvn package
-```
+    $cd mydtapp; mvn package
+
 This builds the App Package runs the unit test of the DAG.  You should
 be getting test output similar to this:
 
@@ -95,19 +90,16 @@ Then fill the Group ID, Artifact ID, Version and Repository entries as shown bel
 
 ![](images/AppPackage/ApplicationPackages.html-image02.png)
 
-Group ID: com.datatorrent
+Group ID: org.apache.apex
 Artifact ID: apex-app-archetype
-Version: 3.0.0 (or any later version)
-
-Repository:
-[https://www.datatorrent.com/maven/content/repositories/releases](https://www.datatorrent.com/maven/content/repositories/releases)
+Version: 3.2.0-incubating (or any later version)
 
 Press Next and fill out the rest of the required information. For
 example:
 
 ![](images/AppPackage/ApplicationPackages.html-image01.png)
 
-Click Finish, and now you have created your own DataTorrent App Package
+Click Finish, and now you have created your own Apache Apex App Package
 project, with a default unit test.  You can run the unit test, make code
 changes or make dependency changes within your IDE.  The procedure for
 other IDEs, like Eclipse or IntelliJ, is similar.
@@ -115,7 +107,7 @@ other IDEs, like Eclipse or IntelliJ, is similar.
 # Writing Your Own App Package
 
 
-Please refer to the [Application Developer Guide](https://www.datatorrent.com/docs/guides/ApplicationDeveloperGuide.html) on the basics on how to write a DataTorrent application.  In your AppPackage project, you can add custom operators (refer to [Operator Developer Guide](https://www.datatorrent.com/docs/guides/OperatorDeveloperGuide.html)), project dependencies, default and required configuration properties, pre-set configurations and other metadata.
+Please refer to the [Creating Apps](create.md) on the basics on how to write an Apache Apex application.  In your AppPackage project, you can add custom operators (refer to [Operator Development Guide](https://www.datatorrent.com/docs/guides/OperatorDeveloperGuide.html)), project dependencies, default and required configuration properties, pre-set configurations and other metadata.
 
 ## Adding (and removing) project dependencies
 
@@ -126,9 +118,9 @@ the default pom.xml:
   <dependencies>
     <!-- add your dependencies here -->
     <dependency>
-      <groupId>com.datatorrent</groupId>
+      <groupId>org.apache.apex</groupId>
       <artifactId>malhar-library</artifactId>
-      <version>${datatorrent.version}</version>
+      <version>${apex.version}</version>
       <!--
            If you know your application do not need the transitive dependencies that are pulled in by malhar-library,
            Uncomment the following to reduce the size of your app package.
@@ -143,9 +135,9 @@ the default pom.xml:
       -->
     </dependency>
     <dependency>
-      <groupId>com.datatorrent</groupId>
-      <artifactId>dt-engine</artifactId>
-      <version>${datatorrent.version}</version>
+      <groupId>org.apache.apex</groupId>
+      <artifactId>apex-engine</artifactId>
+      <version>${apex.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -176,7 +168,7 @@ warnings similar to the following:
 ```
 
  [WARNING] 'dependencies.dependency.exclusions.exclusion.groupId' for
- com.datatorrent:malhar-library:jar with value '*' does not match a
+ org.apache.apex:malhar-library:jar with value '*' does not match a
  valid id pattern.
 
  [WARNING]
@@ -289,7 +281,7 @@ setHost. The method is called using JAVA reflection and the property
 value is passed as an argument. In the above example the method setHost
 will be called on the “redis” operator with “127.0.0.1” as the argument.
 
-## Port attributes 
+## Port attributes
 Port attributes are used to specify the platform behavior for input and
 output ports. They can be specified using the parameter ```dt.operator.<operator-name>.inputport.<port-name>.attr.<attribute>```
 for input port and ```dt.operator.<operator-name>.outputport.<port-name>.attr.<attribute>```
@@ -464,14 +456,14 @@ section that looks like:
 
 ```
 <properties>
-  <datatorrent.version>3.0.0</datatorrent.version>
-  <datatorrent.apppackage.classpath\>lib*.jar</datatorrent.apppackage.classpath>
+  <apex.version>3.2.0-incubating</apex.version>
+  <apex.apppackage.classpath\>lib*.jar</apex.apppackage.classpath>
 </properties>
 ```
-datatorrent.version is the DataTorrent RTS version that are to be used
+apex.version is the Apache Apex version that are to be used
 with this Application Package.
 
-datatorrent.apppackage.classpath is the classpath that is used when
+apex.apppackage.classpath is the classpath that is used when
 launching the application in the Application Package.  The default is
 lib/\*.jar, where lib is where all the dependency jars are kept within
 the Application Package.  One reason to change this field is when your
@@ -499,7 +491,7 @@ that file is only used for the unit test.
 # Zip Structure of Application Package
 
 
-DataTorrent Application Package files are zip files.  You can examine the content of any Application Package by using unzip -t on your Linux command line.
+Apache Apex Application Package files are zip files.  You can examine the content of any Application Package by using unzip -t on your Linux command line.
 
 There are four top level directories in an Application Package:
 
@@ -673,12 +665,6 @@ You can launch an application within an Application Package.
 ```
 dt> launch [-D property-name=property-value, ...] [-conf config-name]
  [-apconf config-file-within-app-package] <app-package-file>
- [matching-app-name] 
+ [matching-app-name]
  ```
 Note that -conf expects a configuration file in the file system, while -apconf expects a configuration file within the app package.
-
-
-
-
-
-
