@@ -32,6 +32,7 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
+import com.datatorrent.common.util.SimpleDelayOperator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
@@ -125,12 +126,13 @@ public class LogicalPlanTest {
     GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
     GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
     GenericTestOperator opD = dag.addOperator("D", GenericTestOperator.class);
+    SimpleDelayOperator opDelay = dag.addOperator("opDelay", SimpleDelayOperator.class);
 
     dag.addStream("AtoB", opA.outport, opB.inport1);
     dag.addStream("BtoC", opB.outport1, opC.inport1);
     dag.addStream("CtoD", opC.outport1, opD.inport1);
-    dag.addStream("CtoB", opC.outport2, opB.inport2);
-    dag.setInputPortAttribute(opB.inport2, PortContext.ITERATION_WINDOW_OFFSET, 1);
+    dag.addStream("CtoDelay", opC.outport2, opDelay.input);
+    dag.addStream("DelayToB", opDelay.output, opB.inport2);
 
     try {
       final StramLocalCluster localCluster = new StramLocalCluster(dag);

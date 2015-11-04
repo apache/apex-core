@@ -197,10 +197,10 @@ public class GenericNode extends Node<Operator>
     insideWindow = applicationWindowCount != 0;
   }
 
-  private int getIterationWindowOffset(String portName)
+  private boolean isInputPortConnectedToDelayOperator(String portName)
   {
     Operators.PortContextPair<InputPort<?>> pcPair = descriptor.inputPorts.get(portName);
-    return pcPair.context.getValue(PortContext.ITERATION_WINDOW_OFFSET);
+    return pcPair.context.getValue(PortContext.IS_CONNECTED_TO_DELAY_OPERATOR);
   }
 
   /**
@@ -219,8 +219,7 @@ public class GenericNode extends Node<Operator>
     int totalQueues = inputs.size();
     int regularQueues = totalQueues;
     for (String portName : inputs.keySet()) {
-      int iterationWindowOffset = getIterationWindowOffset(portName);
-      if (iterationWindowOffset > 0) {
+      if (isInputPortConnectedToDelayOperator(portName)) {
         regularQueues--;
       }
     }
@@ -243,8 +242,8 @@ public class GenericNode extends Node<Operator>
           SweepableReservoir activePort = activePortEntry.getValue();
           Tuple t = activePort.sweep();
           if (t != null) {
-            int iterationWindowOffset = getIterationWindowOffset(activePortEntry.getKey());
-            long tupleWindowId = WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, iterationWindowOffset);
+            boolean delay = isInputPortConnectedToDelayOperator(activePortEntry.getKey());
+            long tupleWindowId = delay ? WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, 1) : t.getWindowId();
             logger.debug("############# GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()), firstWindowMillis, windowWidthMillis);
             switch (t.getType()) {
               case BEGIN_WINDOW:
@@ -259,7 +258,7 @@ public class GenericNode extends Node<Operator>
                     // This is the first BEGIN_WINDOW we are getting for this window
                     for (Map.Entry<String, SweepableReservoir> entry : inputs.entrySet()) {
                       long diff = WindowGenerator.compareWindowId(tupleWindowId, initialWindowId, firstWindowMillis, windowWidthMillis);
-                      if (diff < getIterationWindowOffset(entry.getKey())) {
+                      if (delay && diff == 0) {
                         logger.debug("##### REMOVING BEGIN_WINDOW EXPECTATION FROM {} ({} < {})", entry.getKey(), diff);
                         activeQueues.remove(entry.getKey());
                         expectingBeginWindow--;
@@ -345,7 +344,7 @@ public class GenericNode extends Node<Operator>
 
               case CHECKPOINT:
                 activePort.remove();
-                if (iterationWindowOffset == 0) {
+                if (!delay) {
                   long checkpointWindow = tupleWindowId;
                   if (lastCheckpointWindowId < checkpointWindow) {
                     if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
@@ -374,8 +373,8 @@ public class GenericNode extends Node<Operator>
                 activePort.remove();
                 buffers.remove();
 
-                // ignore iteration port
-                if (iterationWindowOffset == 0) {
+                // ignore delay port
+                if (!delay) {
                   int baseSeconds = t.getBaseSeconds();
                   tracker = null;
                   Iterator<TupleTracker> trackerIterator = resetTupleTracker.iterator();
@@ -417,7 +416,7 @@ public class GenericNode extends Node<Operator>
                     if (!activeQueues.isEmpty()) {
                       // make sure they are all queues from iteration
                       for (Map.Entry<String, SweepableReservoir> entry : activeQueues) {
-                        if (getIterationWindowOffset(entry.getKey()) == 0) {
+                        if (!isInputPortConnectedToDelayOperator(entry.getKey())) {
                           assert(false);
                         }
                       }
@@ -433,8 +432,8 @@ public class GenericNode extends Node<Operator>
               case END_STREAM:
                 activePort.remove();
                 buffers.remove();
-                // ignore iteration port
-                if (iterationWindowOffset == 0) {
+                // ignore delay port
+                if (!delay) {
                   for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext(); ) {
                     Entry<String, SweepableReservoir> e = it.next();
                     if (e.getValue() == activePort) {

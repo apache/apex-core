@@ -162,10 +162,11 @@ public interface Context
     Attribute<Class<?>> TUPLE_CLASS = new Attribute<>(new Class2String<>());
 
     /**
-     * Attribute of input port to specify how many windows behind incoming windows should be treated as.
+     * Attribute of input port.
+     * This is a read-only attribute to query whether the input port is connected to a DelayOperator
      * This is for iterative processing.
      */
-    Attribute<Integer> ITERATION_WINDOW_OFFSET = new Attribute<>(0);
+    Attribute<Boolean> IS_CONNECTED_TO_DELAY_OPERATOR = new Attribute<>(false);
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(PortContext.class);

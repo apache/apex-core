@@ -1576,9 +1576,9 @@ public class LogicalPlan implements Serializable, DAG
     // depth first successors traversal
     for (StreamMeta downStream: om.outputStreams.values()) {
       for (InputPortMeta sink: downStream.sinks) {
-        int iterationWindows = sink.getValue(PortContext.ITERATION_WINDOW_OFFSET);
-        if (iterationWindows > 0) {
+        if (om.getOperator() instanceof Operator.DelayOperator) {
           // this is an iteration loop, do not treat it as downstream when detecting cycles
+          sink.attributes.put(PortContext.IS_CONNECTED_TO_DELAY_OPERATOR, true);
           continue;
         }
         OperatorMeta successor = sink.getOperatorWrapper();

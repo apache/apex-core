@@ -1007,7 +1007,7 @@ public class StreamingContainerManager implements PlanContext
       return operatorStatus.latencyMA.getAvg();
     }
     for (PTOperator.PTInput input : maxOperator.getInputs()) {
-      if (null != input.source.source && input.iterationWindowOffset > 0) {
+      if (null != input.source.source && !input.delay) {
         operators.add(input.source.source);
       }
     }
@@ -1918,26 +1918,25 @@ public class StreamingContainerManager implements PlanContext
     }
 
     // DFS downstream operators
-    for (PTOperator.PTOutput out : operator.getOutputs()) {
-      for (PTOperator.PTInput sink : out.sinks) {
-        PTOperator sinkOperator = sink.target;
-        if (!ctx.visited.contains(sinkOperator)) {
-          // downstream traversal
-
-          if (sink.iterationWindowOffset > 0) {
+    if (!(operator.getOperatorMeta().getOperator() instanceof Operator.DelayOperator)) {
+      for (PTOperator.PTOutput out : operator.getOutputs()) {
+        for (PTOperator.PTInput sink : out.sinks) {
+          PTOperator sinkOperator = sink.target;
+          if (!ctx.visited.contains(sinkOperator)) {
+            // downstream traversal
             updateRecoveryCheckpoints(sinkOperator, ctx);
           }
-        }
-        // recovery window id cannot move backwards
-        // when dynamically adding new operators
-        if (sinkOperator.getRecoveryCheckpoint().windowId >= operator.getRecoveryCheckpoint().windowId) {
-          maxCheckpoint = Math.min(maxCheckpoint, sinkOperator.getRecoveryCheckpoint().windowId);
-        }
+          // recovery window id cannot move backwards
+          // when dynamically adding new operators
+          if (sinkOperator.getRecoveryCheckpoint().windowId >= operator.getRecoveryCheckpoint().windowId) {
+            maxCheckpoint = Math.min(maxCheckpoint, sinkOperator.getRecoveryCheckpoint().windowId);
+          }
 
-        if (ctx.blocked.contains(sinkOperator)) {
-          if (sinkOperator.stats.getCurrentWindowId() == operator.stats.getCurrentWindowId()) {
-            // downstream operator is blocked by this operator
-            ctx.blocked.remove(sinkOperator);
+          if (ctx.blocked.contains(sinkOperator)) {
+            if (sinkOperator.stats.getCurrentWindowId() == operator.stats.getCurrentWindowId()) {
+              // downstream operator is blocked by this operator
+              ctx.blocked.remove(sinkOperator);
+            }
           }
         }
       }
