@@ -628,8 +628,7 @@ Please refer to the [Gateway API reference](https://www.google.com/url?q=https:/
 # Examining and Launching Application Packages Through Apex CLI
 
 If you are working with Application Packages in the local filesystem and
-do not want to deal with dtGateway, you can use the Apex
-Command Line Interface (dtcli).  Please refer to the [Gateway API reference](https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html)
+do not want to deal with dtGateway, you can use the Apex Command Line Interface (dtcli).  Please refer to the [Gateway API](dtgateway_api.md)
 to see samples for these commands.
 
 ## Getting Application Package Meta Information
