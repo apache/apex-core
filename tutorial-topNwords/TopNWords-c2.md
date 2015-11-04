@@ -13,24 +13,20 @@ Step I: Clone the Apex Malhar repository
 Clone the Malhar repository (we will use some of these source files in a later
 section):
 
-1. Open a terminal window and create a new directory where you want the code
-   to reside, for example: `cd ~/src; mkdir dt; cd dt`
+1.  Open a terminal window and create a new directory where you want the code
+    to reside, for example: `cd ~/src; mkdir dt; cd dt`
 
-2. Download the code for Malhar:
+2.  Download the code for Malhar:
 
-    ```
-    git clone https://github.com/apache/incubator-apex-malhar
-    ```
+        git clone https://github.com/apache/incubator-apex-malhar
 
     You should now see a directory named `incubator-apex-malhar`.
 
 3.  Navigate to the `incubator-apex-malhar` directory and switch to the
     `devel-3` branch:
 
-    ```
-    cd incubator-apex-malhar
-    git checkout devel-3
-    ```
+        cd incubator-apex-malhar
+        git checkout devel-3
 
 Step II: Create the application project using NetBeans IDE
 ---
@@ -111,30 +107,28 @@ Step II (Optional): Create the application project using the command line
 The new maven project can be created using the command line (instead of an IDE)
 as follows:
 
-+ Copy this script to a simple text file named, for example, `newdt.sh`.
+1. Copy this script to a simple text file named, for example, `newdt.sh`.
 
-```
-    #!/bin/bash
-    # script to create a new project
-    mvn archetype:generate \
-    -DarchetypeRepository=https://www.datatorrent.com/maven/content/repositories/releases \
-      -DarchetypeGroupId=com.datatorrent \
-      -DarchetypeArtifactId=apex-app-archetype \
-      -DarchetypeVersion=3.1.1 \
-      -DgroupId=com.example \
-      -Dpackage=com.example.topnwordcount \
-      -DartifactId=topNwordcount \
-      -Dversion=1.0-SNAPSHOT
-```
+        #!/bin/bash
+        # script to create a new project
+        mvn archetype:generate \
+        -DarchetypeRepository=https://www.datatorrent.com/maven/content/repositories/releases \
+          -DarchetypeGroupId=com.datatorrent \
+          -DarchetypeArtifactId=apex-app-archetype \
+          -DarchetypeVersion=3.1.1 \
+          -DgroupId=com.example \
+          -Dpackage=com.example.topnwordcount \
+          -DartifactId=topNwordcount \
+          -Dversion=1.0-SNAPSHOT
 
-+ Run the file: `bash newdt.sh`
+2.  Run the file: `bash newdt.sh`
 
     _Note_: The command parameters might require minor adjustments as newer
     versions of Apache Apex are released. The parameters are displayed when you run this command.
 
-+ Press _Enter_ when prompted with `Y : :`. A new project directory named
-   `topNwordcount` containing source files for a simple application should
-   appear.
+3.  Press _Enter_ when prompted with `Y : :`. A new project directory named
+    `topNwordcount` containing source files for a simple application should
+    appear.
 
 Step III: Copy application files to the new project
 ---
@@ -147,22 +141,31 @@ in Step I to the appropriate subdirectory of the new project.
 2.  Delete file `ApplicationTest.java` file under
    `src/test/java/com/example/topnwordcount`.
 3.  Copy the following files from:
-  ```
-  incubator-apex-malhar/demos/wordcount/src/main/java/com/datatorrent/demos/wordcount/
-  ```
-  to `src/main/java/com/example/topnwordcount`:
 
-    - `ApplicationWithQuerySupport.java`
-    - `FileWordCount.java`
-    - `LineReader.java`
-    - `WCPair.java`
-    - `WindowWordCount.java`
-    - `WordCountWriter.java`
-    - `WordReader.java`
+        incubator-apex-malhar/demos/wordcount/src/main/java/com/datatorrent/demos/wordcount/
 
-4. Copy the file `WordDataSchema.json` from
-   ```incubator-apex-malhar/demos/wordcount/src/main/resources/```
-   to `src/main/resources/` in the new project.
+    to 
+
+        src/main/java/com/example/topnwordcount
+
+    - ApplicationWithQuerySupport.java
+    - FileWordCount.java
+    - LineReader.java
+    - WCPair.java
+    - WindowWordCount.java
+    - WordCountWriter.java
+    - WordReader.java
+
+4.  Copy the file `WordDataSchema.json` from 
+
+        incubator-apex-malhar/demos/wordcount/src/main/resources/
+
+    to 
+
+        src/main/resources/
+
+    in the new project.
+    
     _Note_: This file defines the format of data sent to the visualization widgets within **dtDashboard**.
 
 Step IV: Customize the application and operators
@@ -200,21 +203,17 @@ Appendix.
 
 To make these changes, edit the file `ApplicationWithQuerySupport.java`:
 
-1. Remove the lines containing calls to `setEmbeddableQueryInfoProvider()`
-and add these two lines in their place:
+1.  Remove the lines containing calls to `setEmbeddableQueryInfoProvider()`
+    and add these two lines in their place:
 
-    ```
-    dag.addOperator("QueryFile",   wsQueryFile);  
-    dag.addOperator("QueryGlobal", wsQueryGlobal);
-    ```
+        dag.addOperator("QueryFile",   wsQueryFile);  
+        dag.addOperator("QueryGlobal", wsQueryGlobal);
 
-2. Add streams to connect the two query operators to the DAG by adding these
-   lines before the four existing `addstream()` calls:
+2.  Add streams to connect the two query operators to the DAG by adding these
+    lines before the four existing `addstream()` calls:
 
-    ```
-    dag.addStream("QueryFileStream", wsQueryFile.outputPort, snapshotServerFile.query,
-    dag.addStream("QueryGlobalStream", wsQueryGlobal.outputPort, snapshotServerGlobal.query);
-    ```
+        dag.addStream("QueryFileStream", wsQueryFile.outputPort, snapshotServerFile.query,
+        dag.addStream("QueryGlobalStream", wsQueryGlobal.outputPort, snapshotServerGlobal.query);
 
 3.  Save the file.
 

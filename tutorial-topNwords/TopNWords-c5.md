@@ -21,37 +21,34 @@ To add the files to the monitored input directory
 5. Create the input and output directories in HDFS and drop a file into the
    input directory by running the following commands:
 
-    ```
-    hdfs dfs -mkdir -p /tmp/test/input-dir
-    hdfs dfs -mkdir -p /tmp/test/output-dir
-    hdfs dfs -put ~/data/rfc4844.txt /tmp/test/input-dir
-    ```
+        hdfs dfs -mkdir -p /tmp/test/input-dir
+        hdfs dfs -mkdir -p /tmp/test/output-dir
+        hdfs dfs -put ~/data/rfc4844.txt /tmp/test/input-dir
 
 You should now see some numbers above and below some of the operators as the
 lines of the file are read and tuples start flowing through the DAG.
 
 You can view the top 10 words and the frequencies for each input file by
 examining the corresponding output file in the output directory, for example:
-```
-hdfs dfs -cat /tmp/test/output-dir/rfc4844.txt
-```
+
+    hdfs dfs -cat /tmp/test/output-dir/rfc4844.txt
 
 For operating on these input and output directories, you may find the following
 shell aliases and functions useful:
-```
-in=/tmp/test/input-dir
-out=/tmp/test/output-dir
-alias ls-input="hdfs dfs -ls $in"
-alias ls-output="hdfs dfs -ls $out"
-alias clean-input="hdfs dfs -rm $in/\*"
-alias clean-output="hdfs dfs -rm $out/\*"
-function put-file ( ) {
-    hdfs dfs -put "$1" "$in"
-}
-function get-file ( ) {
-    hdfs dfs -get "$out/$1" "$1".out
-}
-```
+
+    in=/tmp/test/input-dir
+    out=/tmp/test/output-dir
+    alias ls-input="hdfs dfs -ls $in"
+    alias ls-output="hdfs dfs -ls $out"
+    alias clean-input="hdfs dfs -rm $in/\*"
+    alias clean-output="hdfs dfs -rm $out/\*"
+    function put-file ( ) {
+        hdfs dfs -put "$1" "$in"
+    }
+    function get-file ( ) {
+        hdfs dfs -get "$out/$1" "$1".out
+    }
+
 Put them in a file called, say, `aliases` and read them into your shell with:
 `source aliases`.
 
