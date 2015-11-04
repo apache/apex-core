@@ -3,7 +3,7 @@ Apache Apex Configuration Packages
 
 An Apache Apex Application Configuration Package is a zip file that contains
 configuration files and additional files to be launched with an
-[Application Package](https://www.datatorrent.com/docs/guides/ApplicationPackages.html) using 
+[Application Package](application_packages.md) using 
 DTCLI or REST API.  This guide assumes the reader’s familiarity of
 Application Package.  Please read the Application Package document to
 get yourself familiar with the concept first if you have not done so.
@@ -28,28 +28,23 @@ DT configuration project using Maven by running the following command.
  Replace "com.example", "mydtconfig" and "1.0-SNAPSHOT" with the
 appropriate values:
 
-```
- $ mvn archetype:generate                                                
- -DarchetypeRepository=https://www.datatorrent.com/maven/content/reposito 
- ries/releases                                                            
- -DarchetypeGroupId=com.datatorrent                                       
- -DarchetypeArtifactId=apex-conf-archetype -DarchetypeVersion=3.0.0       
- -DgroupId=com.example -Dpackage=com.example.mydtconfig                   
- -DartifactId=mydtconfig -Dversion=1.0-SNAPSHOT                           
-
-```
+    $ mvn archetype:generate \
+     -DarchetypeGroupId=org.apache.apex \
+     -DarchetypeArtifactId=apex-conf-archetype -DarchetypeVersion=3.2.0-incubating \
+     -DgroupId=com.example -Dpackage=com.example.mydtconfig -DartifactId=mydtconfig \
+     -Dversion=1.0-SNAPSHOT
 
 This creates a Maven project named "mydtconfig". Open it with your
 favorite IDE (e.g. NetBeans, Eclipse, IntelliJ IDEA).  Try it out by
 running the following command:
+
 ```
 $ mvn package                                                         
 ```
 
 The "mvn package" command creates the Config Package file in target
 directory as target/mydtconfig.apc. You will be able to use that
-Configuration Package file to launch an application in your actual
-DataTorrent RTS installation.
+Configuration Package file to launch an Apache Apex application.
 
 ## Using IDE 
 
@@ -64,14 +59,9 @@ shown below.
 
 ![](images/AppConfig/ApplicationConfigurationPackages.html-image02.png)
 
-Group ID: com.datatorrent
+Group ID: org.apache.apex
 Artifact ID: apex-conf-archetype
-Version: 3.0.0 (or any later version)
-
-Repository:
-[https://www.datatorrent.com/maven/content/repositories/releases](https://www.datatorrent.com/maven/content/repositories/releases)
-
-[](https://www.datatorrent.com/maven/content/repositories/releases)
+Version: 3.2.0-incubating (or any later version)
 
 Press Next and fill out the rest of the required information. For
 example:
@@ -82,19 +72,19 @@ Click Finish, and now you have created your own Apex
 Configuration Package project.  The procedure for other IDEs, like
 Eclipse or IntelliJ, is similar.
 
-#Assembling your own configuration package 
+
+# Assembling your own configuration package 
 
 Inside the project created by the archetype, these are the files that
 you should know about when assembling your own configuration package:
 
-        ./pom.xml
-        ./src/main/resources/classpath
-        ./src/main/resources/files
+    ./pom.xml
+    ./src/main/resources/classpath
+    ./src/main/resources/files
+    ./src/main/resources/META-INF/properties.xml
+    ./src/main/resources/META-INF/properties-{appname}.xml
 
-./src/main/resources/META-INF/properties.xml
-./src/main/resources/META-INF/properties-{appname}.xml
-
-##pom.xml 
+## pom.xml 
 
 Example:
 
