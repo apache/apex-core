@@ -11,10 +11,10 @@ An `AutoMetric` can be any object. It can be of a primitive type - int, long, et
 public class LineReceiver extends BaseOperator
 {
  @AutoMetric
- int length;
+ long length;
 
  @AutoMetric
- int count;
+ long count;
 
  public final transient DefaultInputPort<String> input = new DefaultInputPort<String>()
  {
@@ -40,7 +40,7 @@ There are 2 auto-metrics declared in the `LineReceiver`. At the end of each appl
 # Aggregating AutoMetrics across Partitions
 When an operator is partitioned, it is useful to aggregate the values of auto-metrics across all its partitions every window to get a logical view of these metrics. The application master performs these aggregations using metrics aggregators.
 
-The AutoMetric API helps to achieve this by providing an interface for writing aggregators- `AutoMetric.Aggregator`. Any implementation of `AutoMetric.Aggregator` can be set as an operator attribute - `METRICS_AGGREGATOR` for a particular operator which in turn is used for aggregating physical metrics. 
+The AutoMetric API helps to achieve this by providing an interface for writing aggregators- `AutoMetric.Aggregator`. Any implementation of `AutoMetric.Aggregator` can be set as an operator attribute - `METRICS_AGGREGATOR` for a particular operator which in turn is used for aggregating physical metrics.
 
 ## Default aggregators
 [`MetricsAggregator`](https://github.com/apache/incubator-apex-core/blob/devel-3/common/src/main/java/com/datatorrent/common/metric/MetricsAggregator.java) is a simple implementation of `AutoMetric.Aggregator` that platform uses as a default for summing up primitive types - int, long, float and double.
@@ -78,8 +78,8 @@ public class AnotherLineReceiver extends BaseOperator
 
   public static class LineMetrics implements Serializable
   {
-    int length;
-    int count;
+    long length;
+    long count;
 
     private static final long serialVersionUID = 201511041908L;
   }
@@ -111,7 +111,7 @@ public class AvgLineLengthAggregator implements AutoMetric.Aggregator
 ```
 An instance of above aggregator can be specified as the `METRIC_AGGREGATOR` for `AnotherLineReceiver` while creating the DAG as shown below.
 
-```
+```java
   @Override
   public void populateDAG(DAG dag, Configuration configuration)
   {
@@ -130,10 +130,10 @@ GET /ws/v2/applications/{appid}/logicalPlan/operators/{opName}
 {
     ...
     "autoMetrics": {
-       "count": "71314", 
+       "count": "71314",
        "length": "27780706"
     },
-    "className": "com.datatorrent.autometric.LineReceiver", 
+    "className": "com.datatorrent.autometric.LineReceiver",
     ...
 }
 ```
@@ -156,13 +156,13 @@ The Gateway REST API provides a way to retrieve the latest values for all of the
 GET /ws/v2/applications/{appid}/logicalPlan/operators/{opName}
 {
     ...
-    "cpuPercentageMA": "{cpuPercentageMA}", 
-    "failureCount": "{failureCount}", 
+    "cpuPercentageMA": "{cpuPercentageMA}",
+    "failureCount": "{failureCount}",
     "latencyMA": "{latencyMA}",  
-    "totalTuplesEmitted": "{totalTuplesEmitted}", 
-    "totalTuplesProcessed": "{totalTuplesProcessed}", 
-    "tuplesEmittedPSMA": "{tuplesEmittedPSMA}", 
-    "tuplesProcessedPSMA": "{tuplesProcessedPSMA}", 
+    "totalTuplesEmitted": "{totalTuplesEmitted}",
+    "totalTuplesProcessed": "{totalTuplesProcessed}",
+    "tuplesEmittedPSMA": "{tuplesEmittedPSMA}",
+    "tuplesProcessedPSMA": "{tuplesProcessedPSMA}",
     ...
 }
 ```
@@ -222,7 +222,7 @@ public class AggregatorIIRAVG extends AbstractIncrementalAggregator
     double[] destVals = dest.getAggregates().getFieldsDouble();
     double[] srcVals = src.getAggregates().getFieldsDouble();
 
-    for(int index = 0; index < destLongs.length; index++) {
+    for (int index = 0; index < destLongs.length; index++) {
       destVals[index] = .5 * destVals[index] + .5 * srcVals[index];
     }
   }
@@ -250,6 +250,48 @@ AppDataTracker searches for custom aggregator jars under the following directori
 2. {user\_home\_dir}/plugin/aggregators
 
 It uses reflection to find all the classes that extend from `IncrementalAggregator` and `OTFAggregator` in these jars and registers them with the name provided by `@Name` annotation (or class name when `@Name` is absent).
+
+# Using `METRICS_DIMENSIONS_SCHEME`
+
+Here is a sample code snippet on how you can make use of `METRICS_DIMENSIONS_SCHEME` to set your own time buckets and your own set of aggregators for certain `AutoMetric`s performed by the App Data Tracker in your application.
+
+```java
+  public void populateDAG(DAG dag, Configuration configuration)
+  {
+    ...
+    LineReceiver lineReceiver = dag.addOperator("LineReceiver", new LineReceiver());
+    ...
+    AutoMetric.DimensionsScheme dimensionsScheme = new AutoMetric.DimensionsScheme()
+    {
+      String[] timeBuckets = new String[] { "1s", "1m", "1h" };
+      String[] lengthAggregators = new String[] { "IIRAVG", "SUM" };
+      String[] countAggregators = new String[] { "SUM" };
+
+      /* Setting the aggregation time bucket to be one second, one minute and one hour */
+      @Override
+      public String[] getTimeBuckets()
+      {
+        return timeBuckets;
+      }
+
+      @Override
+      public String[] getDimensionAggregationsFor(String logicalMetricName)
+      {
+        if ("length".equals(logicalMetricName)) {
+          return lengthAggregators;
+        } else if ("count".equals(logicalMetricName)) {
+          return countAggregators;
+        } else {
+          return null; // use default
+        }
+      }
+    };
+
+    dag.setAttribute(lineReceiver, OperatorContext.METRICS_DIMENSIONS_SCHEME, dimensionsScheme);
+    ...
+  }
+```
+
 
 # Dashboards
 With App Data Tracker enabled, you can visualize the AutoMetrics and system metrics in the Dashboards within dtManage.   Refer back to the diagram in the App Data Tracker section, dtGateway relays queries and query results to and from the App Data Tracker.  In this way, dtManage sends queries and receives results from the App Data Tracker via dtGateway and uses the results to let the user visualize the data.
