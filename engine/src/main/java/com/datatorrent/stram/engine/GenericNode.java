@@ -258,7 +258,7 @@ public class GenericNode extends Node<Operator>
                     // This is the first BEGIN_WINDOW we are getting for this window
                     for (Map.Entry<String, SweepableReservoir> entry : inputs.entrySet()) {
                       long diff = WindowGenerator.compareWindowId(tupleWindowId, initialWindowId, firstWindowMillis, windowWidthMillis);
-                      if (delay && diff == 0) {
+                      if (isInputPortConnectedToDelayOperator(entry.getKey()) && diff == 0) {
                         logger.debug("##### REMOVING BEGIN_WINDOW EXPECTATION FROM {} ({} < {})", entry.getKey(), diff);
                         activeQueues.remove(entry.getKey());
                         expectingBeginWindow--;
