@@ -130,8 +130,10 @@ GET /ws/v2/applications/{appid}/logicalPlan/operators/{opName}
 {
     ...
     "autoMetrics": {
-	//Chandni, please fill this in that is relevant with your sample app
-    }
+       "count": "71314", 
+       "length": "27780706"
+    },
+    "className": "com.datatorrent.autometric.LineReceiver", 
     ...
 }
 ```
