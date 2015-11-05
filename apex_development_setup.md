@@ -105,7 +105,7 @@ This command file also exists in the Data Torrent _examples_ repository which yo
 
 You will find the script under `examples\tutorials\topnwords\scripts\newapp.cmd`.
 
-You can also, if you prefer, use an IDE to generate the project as described in Section 3 of [Apex Packages](apex_package.md) but use the archetype version 3.1.1 instead of 3.0.0.
+You can also, if you prefer, use an IDE to generate the project as described in Section 3 of [Application Packages](application_packages.md) but use the archetype version 3.1.1 instead of 3.0.0.
 
 
 When the run completes successfully, you should see a new directory named `myapexapp` containing a maven project for building a basic Apache Apex application. It includes 3 source files:**Application.java**,  **RandomNumberGenerator.java** and **ApplicationTest.java**. You can now build the application by stepping into the new directory and running the appropriate maven command:
