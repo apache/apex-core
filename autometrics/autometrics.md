@@ -243,6 +243,14 @@ public class AggregatorIIRAVG extends AbstractIncrementalAggregator
 }
 ```
 
+## Discovery of Custom Aggregators
+AppDataTracker searches for custom aggregator jars under the following directories statitcally before launching:
+
+1. {dt\_installation\_dir}/plugin/aggregators
+2. {user\_home\_dir}/plugin/aggregators
+
+It uses reflection to find all the classes that extend from `IncrementalAggregator` and `OTFAggregator` in these jars and registers them with the name provided by `@Name` annotation (or class name when `@Name` is absent).
+
 # Dashboards
 With App Data Tracker enabled, you can visualize the AutoMetrics and system metrics in the Dashboards within dtManage.   Refer back to the diagram in the App Data Tracker section, dtGateway relays queries and query results to and from the App Data Tracker.  In this way, dtManage sends queries and receives results from the App Data Tracker via dtGateway and uses the results to let the user visualize the data.
 
