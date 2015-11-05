@@ -665,5 +665,5 @@ You can launch an application within an Application Package.
 dt> launch [-D property-name=property-value, ...] [-conf config-name]
  [-apconf config-file-within-app-package] <app-package-file>
  [matching-app-name]
- ```
+```
 Note that -conf expects a configuration file in the file system, while -apconf expects a configuration file within the app package.

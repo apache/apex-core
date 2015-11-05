@@ -105,9 +105,20 @@ Example:
   </properties> 
 
 ```
-In pom.xml, you can change the values of  ```<groupId>, <version>, <artifactId>, <name> ```and ```<description>``` to your desired values.  
+In pom.xml, you can change the following keys to your desired values
 
-You can also change the values of ```<datatorrent.apppackage.name>, <datatorrent.apppackage.minversion> <datatorrent.apppackage.maxversion>```
+* ```<groupId>```
+* ```<version>```
+* ```<artifactId>```
+* ```<name> ```
+* ```<description>```
+
+You can also change the values of 
+
+* ```<datatorrent.apppackage.name>```
+* ```<datatorrent.apppackage.minversion>```
+* ```<datatorrent.apppackage.maxversion>```
+
 to reflect what app packages should be used with this configuration package.  Apex will use this information to check whether a
 configuration package is compatible with the application package when you issue a launch command.
 
@@ -169,6 +180,8 @@ files
   {files} 
 ```
 
+
+
 #Launching with CLI 
 
 `-conf` option of the launch command in CLI supports specifying configuration package in the local filesystem.  Example:
@@ -177,9 +190,11 @@ files
 
 This command expects both the application package and the configuration package to be in the local file system.
 
-#Related REST API 
 
-##POST /ws/v2/configPackages
+
+# Related REST API 
+
+### POST /ws/v2/configPackages
 
 Payload: Raw content of configuration package zip
 
@@ -189,23 +204,23 @@ Curl example:
 
     $ curl -XPOST -T DTConfig-{name}.jar http://{yourhost:port}/ws/v2/configPackages
 
-## GET /ws/v2/configPackages?appPackageName=...&appPackageVersion=... 
+### GET /ws/v2/configPackages?appPackageName=...&appPackageVersion=... 
 
 All query parameters are optional
 
 Function: Returns the configuration packages that the user is authorized to use and that are compatible with the specified appPackageName, appPackageVersion and appName. 
 
-## GET /ws/v2/configPackages/``<user>``?appPackageName=...&appPackageVersion=... 
+### GET /ws/v2/configPackages/``<user>``?appPackageName=...&appPackageVersion=... 
 
 All query parameters are optional
 
 Function: Returns the configuration packages under the specified user and that are compatible with the specified appPackageName, appPackageVersion and appName.
 
-## GET /ws/v2/configPackages/```<user>```/```<name>``` 
+### GET /ws/v2/configPackages/```<user>```/```<name>``` 
 
 Function: Returns the information of the specified configuration package
 
-## GET /ws/v2/configPackages/```<user>```/```<name>```/download 
+### GET /ws/v2/configPackages/```<user>```/```<name>```/download 
 
 Function: Returns the raw config package file
 
@@ -216,7 +231,7 @@ $ curl http://{yourhost:port}/ws/v2/configPackages/{user}/{name}/download \> DTC
 $ unzip -t DTConfig-xyz.jar
 ```
 
-## POST /ws/v2/appPackages/```<user>```/```<app-pkg-name>```/```<app-pkg-version>```/applications/{app-name}/launch?configPackage=```<user>```/```<confpkgname>```
+### POST /ws/v2/appPackages/```<user>```/```<app-pkg-name>```/```<app-pkg-version>```/applications/{app-name}/launch?configPackage=```<user>```/```<confpkgname>```
 
 Function: Launches the app package with the specified configuration package stored in HDFS.
 
