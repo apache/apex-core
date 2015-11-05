@@ -1,36 +1,24 @@
-# Operator Getting Started  Guide and Tutorial
-
-Introduction
-============
+Operator Development Guide
+==========================
 
 Operators are basic building blocks of an application built to run on
 Apache Apex platform. An application may consist of one or more
 operators each of which define some logical operation to be done on the
 tuples arriving at the operator. These operators are connected together
-together using streams forming a Directed Acyclic Graph i.e. DAG. In
-other words, a streaming application is represented by a Directed
-Acyclic Graph (DAG) that consists of operations (called operators) and
+using streams forming a Directed Acyclic Graph (DAG). In other words, a streaming
+application is represented by a DAG that consists of operations (called operators) and
 data flow (called streams).
-
-About this document
-===================
 
 In this document we will discuss details on how an operator works and
 its internals. This document is intended to serve the following purposes
 
-1.  Getting started with Apache Apex operators - This will guide the user to quickly putting together an
-    operator using Apache Apex APIs.
-2.  Tutorial - This will present a tutorial
-    for writing an operator from scratch. The tutorial will discuss
-    details on implementation wrt. design, code and testing. Link to
-    actual code for this operator will also be provided.
-3.  Operator Reference Guide - This the document will target the details and intricacies in writing an
-    operator. This will cover operators and related aspects to great
-    depths including pitfalls and optimizations.
+1.  **[Apache Apex Operators](#apex_operators)** - Introduction to operator terminology and concepts.
+2.  **[Writing Custom Operators](#writing_custom_operators)** - Designing, coding and testing new operators from scratch.  Includes code examples.
+3.  **[Operator Reference](#operator_reference)** - Details of operator internals, lifecycle, and best practices and optimizations.
 
 * * * * *
 
-Getting started with Apache Apex Operators
+Apache Apex Operators <a name="apex_operators"></a>
 ==========================================
 
 Operators - “What” in a nutshell
@@ -168,7 +156,7 @@ operator passes.
 -   The _teardown()_ call is used for gracefully shutting down the
     operator and releasing any resources held by the operator.
 
-Tutorial - Write your first operator
+Writing Custom Operators <a name="writing_custom_operators"></a>
 ====================================
 
 About this tutorial
@@ -302,6 +290,11 @@ Code
 The source code for the tutorial can be found here:
 
 [https://github.com/DataTorrent/examples/tree/master/tutorials/operatorTutorial](https://www.google.com/url?q=https://github.com/DataTorrent/examples/tree/master/tutorials/operatorTutorial&sa=D&usg=AFQjCNHAAgSpNprHJVvy9GSjdlD1uwU7jw)
+
+
+Operator Reference <a name="operator_reference"></a>
+====================================
+
 
 ### The Operator Class
 
@@ -471,5 +464,5 @@ endWindow calls and compare the output received at the simulated output
 ports.
 
 1. Invoke constructor; non-transients initialized.
-2. Copy state from checkpoint -- initalized values from step 1 are
+2. Copy state from checkpoint -- initialized values from step 1 are
 replaced.
