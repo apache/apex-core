@@ -244,10 +244,10 @@ public class AggregatorIIRAVG extends AbstractIncrementalAggregator
 ```
 
 ## Discovery of Custom Aggregators
-AppDataTracker searches for custom aggregator jars under the following directories statitcally before launching:
+AppDataTracker searches for custom aggregator jars under the following directories statically before launching:
 
 1. {dt\_installation\_dir}/plugin/aggregators
-2. {user\_home\_dir}/plugin/aggregators
+2. {user\_home\_dir}/.dt/plugin/aggregators
 
 It uses reflection to find all the classes that extend from `IncrementalAggregator` and `OTFAggregator` in these jars and registers them with the name provided by `@Name` annotation (or class name when `@Name` is absent).
 
