@@ -1,11 +1,11 @@
-Apache Apex: AutoMetric in a Nutshell
-======================================
+Apache Apex AutoMetric API
+==========================
 
 # Introduction
-Metrics help to collect some statistical information about a process which can be very useful for diagnosis. Auto Metrics in Apex help to monitor operators in a DAG. The goal of `AutoMetric` API is to enable operator developer to define relevant metrics for an operator in a simple way which the platform collects and reports automatically.
+Metrics help to collect some statistical information about a process which can be very useful for diagnosis. Auto Metrics in Apex can help monitor operators in a running application.  The goal of *AutoMetric* API is to enable operator developer to define relevant metrics for an operator in a simple way which the platform collects and reports automatically.
 
 # Specifying AutoMetrics in an Operator
-An `AutoMetric` can be any object. It can be of a primitive type - int, long, etc. or a complex one. A field or a `get` method in an operator can be annotated with `@AutoMetric` to specify that its value is a metric. After every application end window, the platform collects the values of these fields/methods in a map and sends it to application master.
+An *AutoMetric* can be any object. It can be of a primitive type - int, long, etc. or a complex one. A field or a `get` method in an operator can be annotated with `@AutoMetric` to specify that its value is a metric. After every application end window, the platform collects the values of these fields/methods in a map and sends it to application master.
 
 ```java
 public class LineReceiver extends BaseOperator
@@ -172,7 +172,7 @@ However, just like AutoMetrics, the Gateway only provides the latest metrics.  F
 # App Data Tracker
 As discussed above, STRAM aggregates the AutoMetrics from physical operators (partitions) to something that makes sense in one logical operator.  It pushes the aggregated AutoMetrics values using Websocket to the Gateway at every second along with system metrics for each operator.  Gateway relays the information to an application called App Data Tracker.  It is another Apex application that runs in the background and further aggregates the incoming values by time bucket and stores the values in HDHT.  It also allows the outside to retrieve the aggregated AutoMetrics and system metrics through websocket interface.
 
-![AppDataTracker](images/adt.png)
+![AppDataTracker](images/autometrics/adt.png)
 
 App Data Tracker is enabled by having these properties in dt-site.xml:
 
@@ -299,11 +299,11 @@ With App Data Tracker enabled, you can visualize the AutoMetrics and system metr
 
 Click on the visualize button in dtManage's application page.
 
-![AppDataTracker](images/visualize.png)
+![AppDataTracker](images/autometrics/visualize.png)
 
 You will see the dashboard for the AutoMetrics and the system metrics.
 
-![AppDataTracker](images/dashboard.png)
+![AppDataTracker](images/autometrics/dashboard.png)
 
 The left widget shows the AutoMetrics of `line` and `count` for the LineReceiver operator.  The right widget shows the system metrics.
 
