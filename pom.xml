@@ -98,6 +98,7 @@
             <email>dev@apex.incubator.apache.org</email>
           </properties>
           <excludes>
+            <exclude>**/*.iml</exclude>
             <exclude>DISCLAIMER</exclude>
             <exclude>LICENSE</exclude>
             <exclude>NOTICE</exclude>
@@ -305,13 +306,12 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>6.11.2</version>
+              <version>6.12.1</version>
             </dependency>
           </dependencies>
           <executions>
             <execution>
               <id>checkstyle</id>
-              <phase>validate</phase>
               <goals>
                 <goal>check</goal>
               </goals>
@@ -323,6 +323,8 @@
           </executions>
           <configuration>
             <configLocation>apex_checks.xml</configLocation>
+            <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
+            <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
           </configuration>
         </plugin>
         <plugin>

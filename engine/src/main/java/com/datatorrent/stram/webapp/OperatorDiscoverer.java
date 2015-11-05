@@ -375,7 +375,6 @@ public class OperatorDiscoverer
 
       typeGraph.trim();
 
-      typeGraph.updatePortTypeInfoInTypeGraph(openJarFiles, openClassFiles);
     } finally {
       for (Entry<String, JarFile> entry : openJarFiles.entrySet()) {
         try {
