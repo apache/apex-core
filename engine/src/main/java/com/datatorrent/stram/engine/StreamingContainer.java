@@ -1445,7 +1445,7 @@ public class StreamingContainer extends YarnContainerMain
     try {
       signal.await();
     } catch (InterruptedException ex) {
-      logger.debug("Activation of operators interruped.", ex);
+      logger.debug("Activation of operators interrupted.", ex);
     }
 
     for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
