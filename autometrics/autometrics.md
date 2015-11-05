@@ -256,6 +256,7 @@ It uses reflection to find all the classes that extend from `IncrementalAggregat
 Here is a sample code snippet on how you can make use of `METRICS_DIMENSIONS_SCHEME` to set your own time buckets and your own set of aggregators for certain `AutoMetric`s performed by the App Data Tracker in your application.
 
 ```java
+  @Override
   public void populateDAG(DAG dag, Configuration configuration)
   {
     ...
@@ -296,6 +297,15 @@ Here is a sample code snippet on how you can make use of `METRICS_DIMENSIONS_SCH
 # Dashboards
 With App Data Tracker enabled, you can visualize the AutoMetrics and system metrics in the Dashboards within dtManage.   Refer back to the diagram in the App Data Tracker section, dtGateway relays queries and query results to and from the App Data Tracker.  In this way, dtManage sends queries and receives results from the App Data Tracker via dtGateway and uses the results to let the user visualize the data.
 
-The Dashboards have some simple builtin widgets to visualize the data.  Line charts and bar charts are some examples.
+Click on the visualize button in dtManage's application page.
 
-** Need screenshots from dashboard from Chandni’s sample app.
+![AppDataTracker](images/visualize.png)
+
+You will see the dashboard for the AutoMetrics and the system metrics.
+
+![AppDataTracker](images/dashboard.png)
+
+The left widget shows the AutoMetrics of `line` and `count` for the LineReceiver operator.  The right widget shows the system metrics.
+
+The Dashboards have some simple builtin widgets to visualize the data.  Line charts and bar charts are some examples.
+Users will be able to implement their own widgets to visualize their data.
