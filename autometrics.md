@@ -1,8 +1,8 @@
-Apache Apex AutoMetric API
-==========================
+Apache Apex AutoMetrics
+=======================
 
 # Introduction
-Metrics help to collect some statistical information about a process which can be very useful for diagnosis. Auto Metrics in Apex can help monitor operators in a running application.  The goal of *AutoMetric* API is to enable operator developer to define relevant metrics for an operator in a simple way which the platform collects and reports automatically.
+Metrics collect various statistical information about a process which can be very useful for diagnosis. Auto Metrics in Apex can help monitor operators in a running application.  The goal of *AutoMetric* API is to enable operator developer to define relevant metrics for an operator in a simple way which the platform collects and reports automatically.
 
 # Specifying AutoMetrics in an Operator
 An *AutoMetric* can be any object. It can be of a primitive type - int, long, etc. or a complex one. A field or a `get` method in an operator can be annotated with `@AutoMetric` to specify that its value is a metric. After every application end window, the platform collects the values of these fields/methods in a map and sends it to application master.
