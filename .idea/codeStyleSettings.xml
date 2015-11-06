@@ -78,7 +78,7 @@
           <option name="FOR_BRACE_FORCE" value="3" />
           <indentOptions>
             <option name="INDENT_SIZE" value="2" />
-            <option name="CONTINUATION_INDENT_SIZE" value="2" />
+            <option name="CONTINUATION_INDENT_SIZE" value="4" />
             <option name="TAB_SIZE" value="2" />
             <option name="LABEL_INDENT_SIZE" value="2" />
             <option name="LABEL_INDENT_ABSOLUTE" value="true" />
@@ -101,6 +101,5 @@
       </value>
     </option>
     <option name="USE_PER_PROJECT_SETTINGS" value="true" />
-    <option name="PREFERRED_PROJECT_CODE_STYLE" value="Default (1)" />
   </component>
 </project>

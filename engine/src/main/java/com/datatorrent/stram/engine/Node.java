@@ -66,6 +66,7 @@ import com.datatorrent.api.Stats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StatsListener.OperatorRequest;
 import com.datatorrent.api.StorageAgent;
+import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.Pair;
@@ -79,6 +80,7 @@ import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.tuple.EndStreamTuple;
 import com.datatorrent.stram.tuple.EndWindowTuple;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * <p>
@@ -621,12 +623,30 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     if (!DATA_TUPLE_AWARE && (operator instanceof StatsListener)) {
       DATA_TUPLE_AWARE = operator.getClass().isAnnotationPresent(StatsListener.DataQueueSize.class);
     }
+
+    logger.warn("CURRENT WINDOW ID {}", currentWindowId);
+    if (operator instanceof Operator.DelayOperator) {
+      Operator.DelayOperator delayOperator = (Operator.DelayOperator) operator;
+      long windowId = (currentWindowId == -1) ? 0 :
+          WindowGenerator.getAheadWindowId(currentWindowId, firstWindowMillis, windowWidthMillis, -1);
+      // send initial begin window
+      for (Sink<Object> sink : outputs.values()) {
+        logger.warn("Fabricating BEGIN WINDOW {}", windowId);
+        sink.put(new Tuple(MessageType.BEGIN_WINDOW, windowId));
+      }
+      delayOperator.firstWindow(windowId);
+      // send initial end window
+      for (Sink<Object> sink : outputs.values()) {
+        logger.warn("Fabricating END WINDOW {}", windowId);
+        sink.put(new Tuple(MessageType.END_WINDOW, windowId));
+      }
+    }
+
     /*
      * If there were any requests which needed to be executed before the operator started
      * its normal execution, execute those requests now - e.g. Restarting the operator
      * recording for the operators which failed while recording and being replaced.
      */
-    logger.warn("CURRENT WINDOW ID {}", currentWindowId);
     handleRequests(currentWindowId);
   }
 

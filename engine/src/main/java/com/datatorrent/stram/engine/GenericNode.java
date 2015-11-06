@@ -243,17 +243,31 @@ public class GenericNode extends Node<Operator>
           Tuple t = activePort.sweep();
           if (t != null) {
             boolean delay = isInputPortConnectedToDelayOperator(activePortEntry.getKey());
-            long tupleWindowId = delay ? WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, 1) : t.getWindowId();
+            long tupleWindowId;
+
+            if (delay) {
+              logger.debug("#### DELAY #### GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), t.getWindowId(), t.getBaseSeconds(), windowWidthMillis);
+              if (t.getBaseSeconds() == -1) {
+                // This is the first window of the delay operator
+                tupleWindowId = WindowGenerator.getWindowId(firstWindowMillis + windowWidthMillis, firstWindowMillis, windowWidthMillis);
+                logger.debug("Setting BEGIN WINDOW ID {}", Codec.getStringWindowId(tupleWindowId));
+              } else {
+                tupleWindowId = WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, 1);
+              }
+            } else {
+              tupleWindowId = t.getWindowId();
+            }
             logger.debug("############# GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()), firstWindowMillis, windowWidthMillis);
             switch (t.getType()) {
               case BEGIN_WINDOW:
                 if (expectingBeginWindow == totalQueues) {
                   activePort.remove();
                   expectingBeginWindow--;
+                  receivedEndWindow = 0;
+                  /*
                   if (initialWindowId == -1) {
                     initialWindowId = tupleWindowId;
                   }
-                  receivedEndWindow = 0;
                   if (currentWindowId != tupleWindowId) {
                     // This is the first BEGIN_WINDOW we are getting for this window
                     for (Map.Entry<String, SweepableReservoir> entry : inputs.entrySet()) {
@@ -267,6 +281,7 @@ public class GenericNode extends Node<Operator>
                       }
                     }
                   }
+                  */
                   currentWindowId = tupleWindowId;
                   for (int s = sinks.length; s-- > 0; ) {
                     sinks[s].put(t);
