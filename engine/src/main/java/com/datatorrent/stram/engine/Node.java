@@ -626,6 +626,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
      * its normal execution, execute those requests now - e.g. Restarting the operator
      * recording for the operators which failed while recording and being replaced.
      */
+    logger.warn("CURRENT WINDOW ID {}", currentWindowId);
     handleRequests(currentWindowId);
   }
 
