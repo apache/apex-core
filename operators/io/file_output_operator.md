@@ -4,8 +4,8 @@ The abstract file output operator in Apache Apex Malhar library &mdash; [`Abstra
 
 1. Persisting data to files.
 2. Automatic rotation of files based on:  
-	a. maximum length of a file.  
-	b. time-based rotation where time is specified using a count of application windows.
+  a. maximum length of a file.  
+  b. time-based rotation where time is specified using a count of application windows.
 3. Fault-tolerance.
 4. Compression and encryption of data before it is persisted.
 
@@ -14,7 +14,7 @@ In this tutorial we will cover the details of the basic structure and implementa
 ## Persisting data to files
 The principal function of this operator is to persist tuples to files efficiently. These files are created under a specific directory on the file system. The relevant configuration item is:
 
-<a name="filePath"></a>**filePath**: path specifying the directory where files are written. 
+**filePath**: path specifying the directory where files are written. 
 
 Different types of file system that are implementations of `org.apache.hadoop.fs.FileSystem` are supported. The file system instance which is used for creating streams is constructed from the `filePath` URI.
 
@@ -152,7 +152,7 @@ The use of `finalizedFiles` and `finalizedPart` are explained in detail under [`
 ### Recovering files
 When the operator is re-deployed, it checks in its `setup(...)` method if the state of a file which it has seen before the failure is consistent with the file's state on the file system, that is, the size of the file on the file system should match the size in the `endOffsets`. When it doesn't the operator truncates the file.
 
-For example, let's say the operator wrote 100 bytes to test1.txt by the end of window 10. It wrote another 20 bytes by the end of window 12 but failed in window 13. When the operator gets re-deployed it is restored with window 10 (recovery checkpoint) state. In the previous run, by the end of window 10, the size of file on the filesystem was 100 bytes but now it is 120 bytes. Tuples for windows 11 & 12 are going to be replayed. Therefore, in order to avoid writing duplicates to test1.txt, the operator truncates the file to size 10. 
+For example, let's say the operator wrote 100 bytes to test1.txt by the end of window 10. It wrote another 20 bytes by the end of window 12 but failed in window 13. When the operator gets re-deployed it is restored with window 10 (recovery checkpoint) state. In the previous run, by the end of window 10, the size of file on the filesystem was 100 bytes but now it is 120 bytes. Tuples for windows 11 and 12 are going to be replayed. Therefore, in order to avoid writing duplicates to test1.txt, the operator truncates the file to size 10. 
 
 ### <a name="requestFinalize"></a>`requestFinalize(String fileName)`
 When the operator is always writing to temporary files (in order to avoid HDFS Lease exceptions), then it is necessary to rename the temporary files to the actual files once it has been determined that the files are closed. This is refered to as *finalization* of files and the method allows the user code to specify when a file is ready for finalization.
