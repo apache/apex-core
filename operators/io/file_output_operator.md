@@ -1,18 +1,19 @@
 AbstractFileOutputOperator
 ===========================
-The abstract file output operator in Apache Apex Malhar library -[`AbstractFileOutputOperator`](https://github.com/chandnisingh/incubator-apex-malhar/blob/master/library/src/main/java/com/datatorrent/lib/io/fs/AbstractFileOutputOperator.java) writes streaming data to files. The main features of this operator are:
+The abstract file output operator in Apache Apex Malhar library &mdash; [`AbstractFileOutputOperator`](https://github.com/apache/incubator-apex-malhar/blob/devel-3/library/src/main/java/com/datatorrent/lib/io/fs/AbstractFileOutputOperator.java) writes streaming data to files. The main features of this operator are:
 
-1. Persisting data.
+1. Persisting data to files.
 2. Automatic rotation of files based on:  
 	a. maximum length of a file.  
 	b. time-based rotation where time is specified using a count of application windows.
 3. Fault-tolerance.
 4. Compression and encryption of data before it is persisted.
 
-In this tutorial we will cover the details of the basic structure and implementation of all the above features in `AbstractFileOutputOperator`. Configurations related to each feature is discussed as they are introduced in the section of that feature.
+In this tutorial we will cover the details of the basic structure and implementation of all the above features in `AbstractFileOutputOperator`. Configuration items related to each feature are discussed as they are introduced in the section of that feature.
 
-## Persisting data
-The principal function of this operator is to persist tuples to files efficiently. These files are created under a specific directory on the file system.  
+## Persisting data to files
+The principal function of this operator is to persist tuples to files efficiently. These files are created under a specific directory on the file system. The relevant configuration item is:
+
 <a name="filePath"></a>**filePath**: path specifying the directory where files are written. 
 
 Different types of file system that are implementations of `org.apache.hadoop.fs.FileSystem` are supported. The file system instance which is used for creating streams is constructed from the `filePath` URI.
@@ -21,7 +22,7 @@ Different types of file system that are implementations of `org.apache.hadoop.fs
 FileSystem.newInstance(new Path(filePath).toUri(), new Configuration())
 ```
 
-Tuples may belong to different files therefore expensive IO operations like creating multiple output streams, flushing of data to disk, and closing streams is handled carefully.
+Tuples may belong to different files therefore expensive IO operations like creating multiple output streams, flushing of data to disk, and closing streams are handled carefully.
 
 ### Ports
 - `input`: the input port on which tuples to be persisted are received.
@@ -29,29 +30,29 @@ Tuples may belong to different files therefore expensive IO operations like crea
 ### `streamsCache`
 This transient state caches output streams per file in memory. The file to which the data is appended may change with incoming tuples. It will be highly inefficient to keep re-opening streams for a file just because tuples for that file are interleaved with tuples for another file. Therefore, the operator maintains a cache of limited size with open output streams.
 
- `streamsCache` is of type `com.google.common.cache.LoadingCache`. A `LoadingCache` has an attached `CacheLoader` which is responsible to load value of a key when the key is not present int the cache. Details of it are explained here- [CachesExplained](https://github.com/google/guava/wiki/CachesExplained). 
+ `streamsCache` is of type `com.google.common.cache.LoadingCache`. A `LoadingCache` has an attached `CacheLoader` which is responsible to load value of a key when the key is not present in the cache. Details are explained here- [CachesExplained](https://github.com/google/guava/wiki/CachesExplained). 
 
-The operator constructs this cache in its `setup(...)`. It is built with the following configurations:
+The operator constructs this cache in `setup(...)`. It is built with the following configuration items:
 
 - **maxOpenFiles**: maximum size of the cache. The cache evicts entries that haven't been used recently when the cache size is approaching this limit. *Default*: 100
-- <a name="expireStreamAfterAcessMillis"></a>**expireStreamAfterAcessMillis**: expires streams after the specified duration has passed since the stream was last accessed. *Default*: value of attribute- `OperatorContext.SPIN_MILLIS`.
+- **expireStreamAfterAcessMillis**: expires streams after the specified duration has passed since the stream was last accessed. *Default*: value of attribute- `OperatorContext.SPIN_MILLIS`.
 
-An important point to note here is that guava cache does not perform cleanup and evict values asynchronously, that is, instantly after a value expires. Instead, it performs small amounts of maintenance during write operations, or during occasional read operations if writes are rare.
+An important point to note here is that the guava cache does not perform cleanup and evict values asynchronously, that is, instantly after a value expires. Instead, it performs small amounts of maintenance during write operations, or during occasional read operations if writes are rare.
 
 #### CacheLoader
-`streamsCache` is created with a `CacheLoader` that opens an `FSDataOutputStream` for a file which is not in the cache. The output stream is opened in either `append` or `create` mode and the logic to determine this is explained by the simple diagram below.
+`streamsCache` is created with a `CacheLoader` that opens an `FSDataOutputStream` for a file which is not in the cache. The output stream is opened in either `append` or `create` mode and the basic logic to determine this is explained by the simple diagram below.
 
 ![Opening an output stream](images/fileoutput/diagram1.png)
 
-This process gets complicated when fault-tolerance and rotation is added and will be re-visited in each of those sections.
+This process gets complicated when fault-tolerance (writing to temporary files)  and rotation is added.
 
-Following are few configurations used for opening the streams:
+Following are few configuration items used for opening the streams:
 
 - **replication**: specifies the replication factor of the output files. *Default*: `fs.getDefaultReplication(new Path(filePath))`
-- **filePermission**: specifies the permission of the output files. *Default*: 0777
+- **filePermission**: specifies the permission of the output files. The permission is an octal number similar to that used by the Unix chmod command. *Default*: 0777
 
 #### RemovalListener
-A `Guava` cache also allows to specify a removal listener which can perform some operation when an entry is removed from the cache. Since `streamsCache` is of limited size and also has time-based expiry enabled, it is imperative that when a stream is evicted from the cache it is closed properly. Therefore, we attach a  removal listener to `streamsCache` which closes the stream when it is evicted.
+A `Guava` cache also allows specification of removal listener which can perform some operation when an entry is removed from the cache. Since `streamsCache` is of limited size and also has time-based expiry enabled, it is imperative that when a stream is evicted from the cache it is closed properly. Therefore, we attach a removal listener to `streamsCache` which closes the stream when it is evicted.
 
 ### <a name="processTuple"></a>`processTuple(INPUT tuple)`
 The code snippet below highlights the basic steps of processing a tuple.
@@ -91,33 +92,37 @@ When any operator in a dag fails then the application master invokes `teardown()
 ## Automatic rotation
 
 ## Fault-tolerance
-There are two issues that should be addressed in order to make the operator fault-tolerant - 
+There are two issues that should be addressed in order to make the operator fault-tolerant:
 
-1. The operator flushes data to filesystem every application window. This implies that after a failure when the operator is re-deployed and tuples of a window are replayed, then duplicate data will be saved to the files. This is handled by recording how much the operator has written to each file every window in a state that is checkpointed and truncating files after deployment. 
+1. The operator flushes data to the filesystem every application window. This implies that after a failure when the operator is re-deployed and tuples of a window are replayed, then duplicate data will be saved to the files. This is handled by recording how much the operator has written to each file every window in a state that is checkpointed and truncating files back to the recovery checkpoint after re-deployment. 
 
-2. While writing to HDFS, if the operator gets killed and didn't have the opportunity to close a file, then later when it is redeployed it will attempt to truncate/restore that file. Restoring a file may fail because the lease that the previous process (operator instance before failure) had acquired from namenode to write to a file may still linger and therefore there can be exceptions in acquiring the lease again by the new process (operator instance after failure). This is handled by always writing data to temporary files and renaming these files to actual files when a file is ensured to be finalized (closed) for writing, that is, no more data will be written to it.   
+2. While writing to HDFS, if the operator gets killed and didn't have the opportunity to close a file, then later when it is redeployed it will attempt to truncate/restore that file. Restoring a file may fail because the lease that the previous process (operator instance before failure) had acquired from namenode to write to a file may still linger and therefore there can be exceptions in acquiring the lease again by the new process (operator instance after failure). This is handled by always writing data to temporary files and renaming these files to actual files when a file is finalized (closed) for writing, that is, we are sure that no more data will be written to it. The relevant configuration item is:  
   - **alwaysWriteToTmp**: enables/disables writing to a temporary file. *Default*: true.
    
 Most of the complexity in the code comes from making this operator fault-tolerant.
 
 ### Checkpointed states needed for fault-tolerance
 
-- `endOffsets` : `Map<String, MutableLong>`   
-This contains the size of each file as it is being updated by the operator. It helps the operator to restore a file during recovery in operator `setup(...)` and is also used while loading a stream to find out if the operator has seen a file before.
+- `endOffsets`: contains the size of each file as it is being updated by the operator. It helps the operator to restore a file during recovery in operator `setup(...)` and is also used while loading a stream to find out if the operator has seen a file before.
 
-- `fileNameToTmpName` : `Map<String, String>`  
-This contains the name of the temporary file per actual file. It is needed because the name of a temporary file is random. They are named based on the timestamp when the stream is created. During recovery the operator need to know the temp file which it was writing to and if it needs restoration then it creates a new temp file and updates this mapping.
+- `fileNameToTmpName`: contains the name of the temporary file per actual file. It is needed because the name of a temporary file is random. They are named based on the timestamp when the stream is created. During recovery the operator needs to know the temp file which it was writing to and if it needs restoration then it creates a new temp file and updates this mapping.
 
-- `finalizedFiles` : `Map<Long, Set<String>>`  
-This contains set of files which were requested to be finalized per window id.
+- `finalizedFiles`: contains set of files which were requested to be finalized per window id.
 
-- `finalizedPart` : `Map<String, MutableInt>`  
-This contains the latest `part` of each file which was requested to be finalized.
+- `finalizedPart`: contains the latest `part` of each file which was requested to be finalized.
 
 The use of `finalizedFiles` and `finalizedPart` are explained in detail under [`requestFinalize(...)`](#requestFinalize) method. 
 
+### Recovering files
+When the operator is re-deployed, it checks in its `setup(...)` method if the state of a file which it has seen before the failure is consistent with the file's state on the file system, that is, the size of the file on the file system should match the size in the `endOffsets`. When it doesn't the operator truncates the file.
+
+For example, let's say the operator wrote 100 bytes to test1.txt by the end of window 10. It wrote another 20 bytes by the end of window 12 but failed in window 13. When the operator gets re-deployed it is restored with window 10 (recovery checkpoint) state. In the previous run, by the end of window 10, the size of file on the filesystem was 100 bytes but now it is 120 bytes. Tuples for windows 11 & 12 are going to be replayed. Therefore, in order to avoid writing duplicates to test1.txt, the operator truncates the file to size 10. 
+
 ### <a name="requestFinalize"></a>`requestFinalize(String fileName)`
+When the operator is always writing to temporary files (in order to avoid HDFS Lease exceptions), then it is necessary to rename the temporary files to the actual files once it has been determined that the files are closed. This is refered to as *finalization* of files and the method allows the user code to specify when a file is ready for finalization.
 
+In this method, the requested file (or in the case of rotation &mdash; all the file parts including the latest open part which have not yet been requested for finalization) are registered for finalization. Registration is basically adding the file names to `finalizedFiles` state and updating `finalizedPart`. 
 
+The process of *finalization* of all the files which were requested till the window *w* is deferred till window *w* is committed. This is because until a window is committed it can be replayed after a failure which means that a file can be open for writing even after it was requested for finalization.
 
-
+When rotation is enabled, part files as and when they get completed are requested for finalization. However, when rotation is not enabled user code needs to invoke this method as the knowledge that when a file is closed is unknown to this abstract operator.
