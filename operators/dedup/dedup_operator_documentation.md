@@ -8,14 +8,7 @@ About this document
 -------------------
 
 This document is intended as a guide for understanding and using the
-Dedup operator/module. It will guide the reader on the functionality and
-usage of Dedup operator / module.
-
-Terminology
------------
-
-We will refer to this operator as the Deduper or Dedup operator
-interchangeably.
+Dedup operator/module.
 
 Overview
 ========
@@ -29,8 +22,7 @@ times it is essential to discard, or at the very least separate out the
 data into unique and duplicate components. The entire purpose of this
 operator is to de-duplicate data. In other words, when data passes
 through this operator, it will be segregated into two different data
-sets, one of which contains all unique tuples, and the other which are
-repeating more than once in the original data set.
+sets, one containing all unique tuples, and the other containing duplicates.
 
 ![](images/image00.png)
 
@@ -45,8 +37,6 @@ hashing mechanism (known as the Bucket Store) which allows it to
 identify if a particular tuple is duplicate or unique. Each time it
 identifies a tuple as a unique tuple, it also stores it into a
 persistent store called the Bucket Store for lookup in the future.
-This is needed for
-future lookups.
 
 ![](images/image02.png)
 -----------------------
@@ -58,12 +48,10 @@ Following are the different components of the Deduper Operator
     establish the end goal of deciding whether a tuple is a duplicate of
     some earlier tuple, or is a unique tuple.
 2.  **Bucket Store** - This is responsible for storing the unique tuples as
-    supplied by the Deduper and storing them into Buckets. It also takes
-    care of persisting this data on the HDFS.
+    supplied by the Deduper and storing them into Buckets in HDFS.
 3.  **Bucket Manager** - Since, all of the data cannot be stored in memory,
     this component is responsible for loading and unloading of the
-    buckets to and from the memory. Again, this functions as needed and
-    loads the buckets requested by the Deduper.
+    buckets to and from the memory as requested by the Deduper.
 
 This was a very small introduction to the functioning of the Deduper.
 Following sections will go into more detail on each of the components.
