@@ -1,11 +1,8 @@
 # Dedup - Operator Documentation
 
 
-Introduction
-============
-
 About this document
--------------------
+===================
 
 This document is intended as a guide for understanding and using the
 Dedup operator/module.
