@@ -91,6 +91,42 @@ When any operator in a dag fails then the application master invokes `teardown()
 
 ## Automatic rotation
 
+In a streaming application where data is being continuously processed, when this output operator is used, data will be continuously written to an output file. The users may want to be able to take the data from time to time to use it, copy it out of Hadoop or do some other processing. Having all the data in a single file makes it difficult as the user needs to keep track of how much data has been read from the file each time so that the same data is not read again. Also users may already have processes and scripts in place that work with full files and not partial data from a file.
+
+To help solve these problems the operator supports creating many smaller files instead of writing to just one big file. Data is written to a file and when some condition is met the file is finalized and data is written to a new file. This is called file rotation. The user can determine when the file gets rotated. Each of these files is called a part file as they contain portion of the data.
+
+###Part filename
+
+The filename for a part file is formed by using the original file name and the part number. The part number starts from 0 and is incremented each time a new part file created. The default filename has the format, assuming origfile represents the original filename and partnum represents the part number,
+
+`origfile.partnum`
+
+This naming scheme can be changed by the user. It can be done so by overriding the following method
+
+```java
+protected String getPartFileName(String fileName, int part)
+```
+
+This method is passed the original filename and part number as arguments and should return the part filename.
+
+###Mechanisms 
+
+The user has a couple of ways to specify when a file gets rotated. First is based on size and second on time. In the first case the files are limited by size and in the second they are rotated by time.
+
+####Size Based
+
+With size based rotation the user specifies a size limit. Once the size of the currently file reaches this limit the file is rotated. The size limit can be specified by setting the following property
+
+`maxLength`
+
+Like any other property this can be set in Java application code or in the property file.
+
+####Time Based
+
+In time based rotation user specifies a time interval. This interval is specified as number of application windows. The files are rotated periodically once the specified number of application windows have elapsed. Since the interval is application window based it is not always exactly constant time. The interval can be specified using the following property
+
+`rotationWindows`
+
 ## Fault-tolerance
 There are two issues that should be addressed in order to make the operator fault-tolerant:
 
