@@ -127,6 +127,13 @@ In time based rotation user specifies a time interval. This interval is specifie
 
 `rotationWindows`
 
+###Setup
+
+When an operator is being started there may be stray part files and they need to be cleaned up. One common scenario, when these could be present, is in the case of failure, where a node running the operator failed and a previous instance of the operator was killed. This cleanup and other initial processing for the part files happens in the operator setup. The following diagram describes this process
+
+![Rotation setup](images/fileoutput/FileRotation.png)
+
+
 ## Fault-tolerance
 There are two issues that should be addressed in order to make the operator fault-tolerant:
 
