@@ -4,7 +4,7 @@
 The *Dimensions Computation Tutorial* contains a brief introduction of the Dimension Computation usecase. This tutorial provides detailed steps for performing dimensions computation. Additionally, this tutorial contains instructions for using DataTorrent's out-of-the-box operators to easily add dimensions computation to an application.
 
 ## Getting to know Dimensions Computations
-Big data scenarios often come with a problem -- the volumes of  of data flowing into big data systems are huge, and these volumes need to be observed for historical trends.
+Big data scenarios often have usecase where huge volumes of data flowing through the big data systems need to be observed for historical trends.
 Big data applications will greatly benefit if they are equipped with the functionality of viewing  historical data aggregated across time buckets. The process of receiving individual events, aggregating them over a duration, and using parameters to observe trends  is called *Dimensions Computation*.
 
 
@@ -58,12 +58,12 @@ The DimensionsStore operator  is an Operator that performs transient and final a
 
 
 ## Dimensions Computation use cases
-Consider the case of a digital advertising publisher who receives thousands of click events every second. The history of individual clicks and impressions doesn't divulge details about  users and the advertisements. A technique for deriving meaning out of such data is to observe the total number of clicks and impressions every second, minute, hour, and day. Such a technique might be  helpful for determining global trends in the advertising system, but may not provide enough granularity for  localized trends. For example, the total clicks and impressions over a duration might lack in usefulness, however, the total clicks and impressions for a particular advertiser, a particular geographical area, or a combination of the two can provide actionable insight.
+Consider the case of a digital advertising publisher who receives thousands of click events every second. The history of individual clicks and impressions doesn't divulge details about users and the advertisements. A technique for deriving meaning out of such data is to observe the total number of clicks and impressions every second, minute, hour, and day. Such a technique might be  helpful for determining global trends in the advertising system, but may not provide enough granularity for localized trends. For example, the total clicks and impressions over a duration might lack in usefulness, however, the total clicks and impressions for a particular advertiser, a particular geographical area, or a combination of the two can provide actionable insight.
 
 
 ## Architecture
 
-Dimensions Computation requires 4 operators working in sync: Dimensions Computation, Dimensions Store, Query, and Query Result. Given [DAG](#dag) is for a complete Dimensions Computation application.
+Dimensions Computation requires 4 operators working in sync: DimensionsComputation, DimensionsStore, Query, and QueryResult. Given [DAG](#dag) is for a complete Dimensions Computation application.
 
 The operators within Dimensions Computation are described in detail.
 
@@ -158,7 +158,7 @@ This attribute determines the number of  partitions for DimensionsComputation. A
 1. **dt.operator.DimensionsComputation.attr.MEMORY_MB:**
 This attribute determines the  memory that should be assigned to the DimensionsComputations operator. If this attribute is not provided, the default value of  1 GB is used.
 1. **dt.operator.Store.attr.MEMORY_MB:**
-This attribute determines the memory that should be assigned the to DimensionsStore operator. If this attribute is not provided, the default value of 1 GB is used.
+This attribute determines the memory that should be assigned to DimensionsStore operator. If this attribute is not provided, the default value of 1 GB is used.
 1. **dt.port.*.attr.QUEUE_CAPACITY**
 This attribute determines the number of tuples the buffer server can cache without blocking the input stream to the port. For peak activity, we  recommend increasing QUEUE_CAPACITY to a higher value such as 32000. If this attribute is not provided, the default value of 1024 is used.
 
