@@ -54,6 +54,14 @@ Following are few configuration items used for opening the streams:
 #### RemovalListener
 A `Guava` cache also allows specification of removal listener which can perform some operation when an entry is removed from the cache. Since `streamsCache` is of limited size and also has time-based expiry enabled, it is imperative that when a stream is evicted from the cache it is closed properly. Therefore, we attach a removal listener to `streamsCache` which closes the stream when it is evicted.
 
+### `setup(OperatorContext context)`
+During setup the following main tasks are performed:
+
+1. FileSystem instance is created.
+2. The cache of streams is created.
+3. Files are recovered (see Fault-tolerance section).
+4. Stray part files are cleaned (see Automatic rotation section).
+
 ### <a name="processTuple"></a>`processTuple(INPUT tuple)`
 The code snippet below highlights the basic steps of processing a tuple.
 
@@ -87,7 +95,7 @@ for (FSFilterStreamContext streamContext: openStreams.values()) {
 `FSFilterStreamContext` will be explained with compression and encryption.
 
 ### <a name="teardown"></a>teardown()
-When any operator in a dag fails then the application master invokes `teardown()` for that operator and its downstream operators. In `AbstractFileOutputOperator` we have a bunch of open streams in the cache and the operator (acting as hdfs client) holds leases for all the corresponding files. It is important to release these leases for clean re-deployment. Therefore, we try to close all the open streams in `teardown()`.
+When any operator in a DAG fails then the application master invokes `teardown()` for that operator and its downstream operators. In `AbstractFileOutputOperator` we have a bunch of open streams in the cache and the operator (acting as HDFS client) holds leases for all the corresponding files. It is important to release these leases for clean re-deployment. Therefore, we try to close all the open streams in `teardown()`.
 
 ## Automatic rotation
 
@@ -95,7 +103,7 @@ In a streaming application where data is being continuously processed, when this
 
 To help solve these problems the operator supports creating many smaller files instead of writing to just one big file. Data is written to a file and when some condition is met the file is finalized and data is written to a new file. This is called file rotation. The user can determine when the file gets rotated. Each of these files is called a part file as they contain portion of the data.
 
-###Part filename
+### Part filename
 
 The filename for a part file is formed by using the original file name and the part number. The part number starts from 0 and is incremented each time a new part file created. The default filename has the format, assuming origfile represents the original filename and partnum represents the part number,
 
@@ -109,11 +117,11 @@ protected String getPartFileName(String fileName, int part)
 
 This method is passed the original filename and part number as arguments and should return the part filename.
 
-###Mechanisms 
+### Mechanisms 
 
 The user has a couple of ways to specify when a file gets rotated. First is based on size and second on time. In the first case the files are limited by size and in the second they are rotated by time.
 
-####Size Based
+#### Size Based
 
 With size based rotation the user specifies a size limit. Once the size of the currently file reaches this limit the file is rotated. The size limit can be specified by setting the following property
 
@@ -121,13 +129,13 @@ With size based rotation the user specifies a size limit. Once the size of the c
 
 Like any other property this can be set in Java application code or in the property file.
 
-####Time Based
+#### Time Based
 
 In time based rotation user specifies a time interval. This interval is specified as number of application windows. The files are rotated periodically once the specified number of application windows have elapsed. Since the interval is application window based it is not always exactly constant time. The interval can be specified using the following property
 
 `rotationWindows`
 
-###Setup
+### `setup(OperatorContext context)`
 
 When an operator is being started there may be stray part files and they need to be cleaned up. One common scenario, when these could be present, is in the case of failure, where a node running the operator failed and a previous instance of the operator was killed. This cleanup and other initial processing for the part files happens in the operator setup. The following diagram describes this process
 
@@ -159,7 +167,7 @@ The use of `finalizedFiles` and `finalizedPart` are explained in detail under [`
 ### Recovering files
 When the operator is re-deployed, it checks in its `setup(...)` method if the state of a file which it has seen before the failure is consistent with the file's state on the file system, that is, the size of the file on the file system should match the size in the `endOffsets`. When it doesn't the operator truncates the file.
 
-For example, let's say the operator wrote 100 bytes to test1.txt by the end of window 10. It wrote another 20 bytes by the end of window 12 but failed in window 13. When the operator gets re-deployed it is restored with window 10 (recovery checkpoint) state. In the previous run, by the end of window 10, the size of file on the filesystem was 100 bytes but now it is 120 bytes. Tuples for windows 11 and 12 are going to be replayed. Therefore, in order to avoid writing duplicates to test1.txt, the operator truncates the file to size 10. 
+For example, let's say the operator wrote 100 bytes to test1.txt by the end of window 10. It wrote another 20 bytes by the end of window 12 but failed in window 13. When the operator gets re-deployed it is restored with window 10 (recovery checkpoint) state. In the previous run, by the end of window 10, the size of file on the filesystem was 100 bytes but now it is 120 bytes. Tuples for windows 11 and 12 are going to be replayed. Therefore, in order to avoid writing duplicates to test1.txt, the operator truncates the file to 100 bytes (size at the end of window 10) discarding the last 20 bytes. 
 
 ### <a name="requestFinalize"></a>`requestFinalize(String fileName)`
 When the operator is always writing to temporary files (in order to avoid HDFS Lease exceptions), then it is necessary to rename the temporary files to the actual files once it has been determined that the files are closed. This is refered to as *finalization* of files and the method allows the user code to specify when a file is ready for finalization.
