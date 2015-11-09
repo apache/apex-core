@@ -302,18 +302,15 @@ The operator will exist physically as a class which implements the
 Operator interface. This interface will require implementations for the
 following method calls:
 
-``` java
--   setup(OperatorContext context)
--   beginWindow(long windowId)
--   endWindow()
--   tearDown()
-```
+-  setup(OperatorContext context)
+-  beginWindow(long windowId)
+-  endWindow()
+-  tearDown()
 
 In order to simplify the creation of an operator, the Apache Apex
 library also provides a base class “BaseOperator” which has empty
-implementations for these methods. Please refer to the [Getting
-Started](#h.dbmfyx6yasqs) section and the
-[Reference](#h.z10k75daf2xl) section for details on these.
+implementations for these methods. Please refer to the [Apex Operators](#apex_operators) section and the
+[Reference](#operator_reference) section for details on these.
 
 We extend the class “BaseOperator” to create our own operator
 “WordCountOperator”.
