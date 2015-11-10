@@ -1,5 +1,6 @@
 AbstractFileOutputOperator
 ===========================
+
 The abstract file output operator in Apache Apex Malhar library &mdash; [`AbstractFileOutputOperator`](https://github.com/apache/incubator-apex-malhar/blob/devel-3/library/src/main/java/com/datatorrent/lib/io/fs/AbstractFileOutputOperator.java) writes streaming data to files. The main features of this operator are:
 
 1. Persisting data to files.
@@ -14,7 +15,7 @@ In this tutorial we will cover the details of the basic structure and implementa
 ## Persisting data to files
 The principal function of this operator is to persist tuples to files efficiently. These files are created under a specific directory on the file system. The relevant configuration item is:
 
-**filePath**: path specifying the directory where files are written. 
+**filePath**: path specifying the directory where files are written.
 
 Different types of file system that are implementations of `org.apache.hadoop.fs.FileSystem` are supported. The file system instance which is used for creating streams is constructed from the `filePath` URI.
 
@@ -30,7 +31,7 @@ Tuples may belong to different files therefore expensive IO operations like crea
 ### `streamsCache`
 This transient state caches output streams per file in memory. The file to which the data is appended may change with incoming tuples. It will be highly inefficient to keep re-opening streams for a file just because tuples for that file are interleaved with tuples for another file. Therefore, the operator maintains a cache of limited size with open output streams.
 
- `streamsCache` is of type `com.google.common.cache.LoadingCache`. A `LoadingCache` has an attached `CacheLoader` which is responsible to load value of a key when the key is not present in the cache. Details are explained here- [CachesExplained](https://github.com/google/guava/wiki/CachesExplained). 
+ `streamsCache` is of type `com.google.common.cache.LoadingCache`. A `LoadingCache` has an attached `CacheLoader` which is responsible to load value of a key when the key is not present in the cache. Details are explained here- [CachesExplained](https://github.com/google/guava/wiki/CachesExplained).
 
 The operator constructs this cache in `setup(...)`. It is built with the following configuration items:
 
@@ -70,12 +71,12 @@ protected void processTuple(INPUT tuple)
 {  
   //which file to write to is derived from the tuple.
   String fileName = getFileName(tuple);  
-  
+
   //streamsCache is queried for the output stream. If the stream is already opened then it is returned immediately otherwise the cache loader creates one.
   FilterOutputStream fsOutput = streamsCache.get(fileName).getFilterStream();
-  
+
   byte[] tupleBytes = getBytesForTuple(tuple);
-  
+
   fsOutput.write(tupleBytes);
 }
 ```
@@ -117,7 +118,7 @@ protected String getPartFileName(String fileName, int part)
 
 This method is passed the original filename and part number as arguments and should return the part filename.
 
-### Mechanisms 
+### Mechanisms
 
 The user has a couple of ways to specify when a file gets rotated. First is based on size and second on time. In the first case the files are limited by size and in the second they are rotated by time.
 
@@ -145,11 +146,11 @@ When an operator is being started there may be stray part files and they need to
 ## Fault-tolerance
 There are two issues that should be addressed in order to make the operator fault-tolerant:
 
-1. The operator flushes data to the filesystem every application window. This implies that after a failure when the operator is re-deployed and tuples of a window are replayed, then duplicate data will be saved to the files. This is handled by recording how much the operator has written to each file every window in a state that is checkpointed and truncating files back to the recovery checkpoint after re-deployment. 
+1. The operator flushes data to the filesystem every application window. This implies that after a failure when the operator is re-deployed and tuples of a window are replayed, then duplicate data will be saved to the files. This is handled by recording how much the operator has written to each file every window in a state that is checkpointed and truncating files back to the recovery checkpoint after re-deployment.
 
 2. While writing to HDFS, if the operator gets killed and didn't have the opportunity to close a file, then later when it is redeployed it will attempt to truncate/restore that file. Restoring a file may fail because the lease that the previous process (operator instance before failure) had acquired from namenode to write to a file may still linger and therefore there can be exceptions in acquiring the lease again by the new process (operator instance after failure). This is handled by always writing data to temporary files and renaming these files to actual files when a file is finalized (closed) for writing, that is, we are sure that no more data will be written to it. The relevant configuration item is:  
   - **alwaysWriteToTmp**: enables/disables writing to a temporary file. *Default*: true.
-   
+
 Most of the complexity in the code comes from making this operator fault-tolerant.
 
 ### Checkpointed states needed for fault-tolerance
@@ -162,17 +163,17 @@ Most of the complexity in the code comes from making this operator fault-toleran
 
 - `finalizedPart`: contains the latest `part` of each file which was requested to be finalized.
 
-The use of `finalizedFiles` and `finalizedPart` are explained in detail under [`requestFinalize(...)`](#requestFinalize) method. 
+The use of `finalizedFiles` and `finalizedPart` are explained in detail under [`requestFinalize(...)`](#requestFinalize) method.
 
 ### Recovering files
 When the operator is re-deployed, it checks in its `setup(...)` method if the state of a file which it has seen before the failure is consistent with the file's state on the file system, that is, the size of the file on the file system should match the size in the `endOffsets`. When it doesn't the operator truncates the file.
 
-For example, let's say the operator wrote 100 bytes to test1.txt by the end of window 10. It wrote another 20 bytes by the end of window 12 but failed in window 13. When the operator gets re-deployed it is restored with window 10 (recovery checkpoint) state. In the previous run, by the end of window 10, the size of file on the filesystem was 100 bytes but now it is 120 bytes. Tuples for windows 11 and 12 are going to be replayed. Therefore, in order to avoid writing duplicates to test1.txt, the operator truncates the file to 100 bytes (size at the end of window 10) discarding the last 20 bytes. 
+For example, let's say the operator wrote 100 bytes to test1.txt by the end of window 10. It wrote another 20 bytes by the end of window 12 but failed in window 13. When the operator gets re-deployed it is restored with window 10 (recovery checkpoint) state. In the previous run, by the end of window 10, the size of file on the filesystem was 100 bytes but now it is 120 bytes. Tuples for windows 11 and 12 are going to be replayed. Therefore, in order to avoid writing duplicates to test1.txt, the operator truncates the file to 100 bytes (size at the end of window 10) discarding the last 20 bytes.
 
 ### <a name="requestFinalize"></a>`requestFinalize(String fileName)`
 When the operator is always writing to temporary files (in order to avoid HDFS Lease exceptions), then it is necessary to rename the temporary files to the actual files once it has been determined that the files are closed. This is refered to as *finalization* of files and the method allows the user code to specify when a file is ready for finalization.
 
-In this method, the requested file (or in the case of rotation &mdash; all the file parts including the latest open part which have not yet been requested for finalization) are registered for finalization. Registration is basically adding the file names to `finalizedFiles` state and updating `finalizedPart`. 
+In this method, the requested file (or in the case of rotation &mdash; all the file parts including the latest open part which have not yet been requested for finalization) are registered for finalization. Registration is basically adding the file names to `finalizedFiles` state and updating `finalizedPart`.
 
 The process of *finalization* of all the files which were requested till the window *w* is deferred till window *w* is committed. This is because until a window is committed it can be replayed after a failure which means that a file can be open for writing even after it was requested for finalization.
 
