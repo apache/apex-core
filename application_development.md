@@ -1528,7 +1528,7 @@ public void beginWindow(long windowId) // Called at the start of the window as s
 public void endWindow() // Called at the end of the window after end_window tuples arrive on all input ports
 public void setup(OperatorContext context) // Called once during initialization of the operator
 public void teardown() // Called once when the operator is being shutdown
-````
+```
 
 
 A tuple can be emitted in any of the three streaming run-time
