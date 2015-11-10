@@ -87,9 +87,8 @@ DAG.
 Positioning of Operators in the DAG
 -----------------------------------
 
-We may refer to operators depending on their positioning with respect to
-one another. For any operator opr, we have the following types of
-operators.
+We may refer to operators depending on their position with respect to
+one another. For any operator opr (see image below), there are two types of operators.
 
 1.  **Upstream operators** - These are the operators from which there is a
     directed path to opr in the application DAG.
@@ -103,9 +102,9 @@ Note that there are no cycles formed in the application DAG.
 Ports
 -----
 
-The operators in the DAG are connected together via directed flows
+Operators in a DAG are connected together via directed flows
 called streams. Each stream has end-points located on the operators
-called ports. The ports again fall into two types.
+called ports. Therea are two types of ports.
 
 1.  **Input Port** - This is a port through which an operator accepts input
     tuples from an upstream operator.
@@ -124,7 +123,7 @@ external source.
 
 * * * * *
 
-Working of an Operator
+How Operator Works
 ----------------------
 
 An operator passes through various stages during its lifetime. Each
@@ -156,7 +155,7 @@ operator passes.
 -   The _teardown()_ call is used for gracefully shutting down the
     operator and releasing any resources held by the operator.
 
-Writing Custom Operators <a name="writing_custom_operators"></a>
+Developing Custom Operators <a name="writing_custom_operators"></a>
 ====================================
 
 About this tutorial
@@ -325,8 +324,7 @@ public class WordCountOperator extends BaseOperator
 
 We define the following class variables:
 
--   _sendPerTuple_ - Needed for configuring the frequency of output from
-    the operator
+-   _sendPerTuple_ - Configures the output frequency from the operator
 ``` java
 private boolean sendPerTuple = true; // default
 ```
@@ -338,17 +336,15 @@ private String stopWordFilePath; // no default
 ``` java
 private transient String[] stopWords;
 ```
--   _globalCounts_ - A Map which stores the counts for all the words
+-   _globalCounts_ - A Map which stores the counts of all the words
     encountered so far. Note that this variable is non transient, which
-    means that this variable is saved as part of the checkpointing state
-    and can be recovered in event of a crash.
+    means that this variable is saved as part of the check point and can be recovered in event of a crash.
 ``` java
 private Map<String, Long> globalCounts;
 ```
--   _updatedCounts_ - A map which stores the counts for only the most
-    recent tuple(s). Whether to store the most recent or the recent
-    window worth of tuples will be determined by the configuration
-    parameter sendPerTuple.
+-   _updatedCounts_ - A Map which stores the counts for only the most
+    recent tuple(s). sendPerTuple configuration determines whether to store the most recent or the recent
+    window worth of tuples.
 ``` java
 private transient Map<String, Long> updatedCounts;
 ```
@@ -391,24 +387,18 @@ globalCounts = Maps.newHashMap();
 ```
 ### Setup call
 
-The setup method is called only once during the lifetime of an operator.
-The purpose of the setup call is to allow the operator to set itself up
-for processing incoming streams. Transient objects in the operator are
-not serialized and checkpointed. Hence it is essential that such objects
-must be initialized in the setup call. In case of operator failure, the
-operator will be redeployed, most likely on a different container. In
-this case, it is the setup method which will be called by the Apache
-Apex engine to allow the operator to prepare for execution in the new
-container.
+The setup method is called only once during an operator lifetime and its purpose is to allow 
+the operator to set itself up for processing incoming streams. Transient objects in the operator are
+not serialized and checkpointed. Hence, it is essential that such objects initialized in the setup call. 
+In case of operator failure, the operator will be redeployed (most likely on a different container). The setup method called by the Apache Apex engine allows the operator to prepare for execution in the new container.
 
-We perform the following tasks as part of the setup call:
+The following tasks are executed as part of the setup call:
 
 1.  Read the stop-word list from HDFS and store it in the
     stopWords array
 2.  Initialize updatedCounts variable. This will store the updated
     counts for words in most recent tuples processed by the operator.
-    This is a transient variable, hence the value of this variable will
-    be lost in case of operator failure.
+    As a transient variable, the value will be lost when operator fails.
 
 ### Begin Window call
 
@@ -446,9 +436,7 @@ downstream operators.
 Testing your Operator
 ---------------------
 
-Testing an operator after development is essential to ensure that he
-required functionality is indeed correctly implemented. As part of
-testing our operator, we test the following two facets:
+As part of testing our operator, we test the following two facets:
 
 1.  Test output of the operator after processing a single tuple
 2.  Test output of the operator after processing of a window of tuples
