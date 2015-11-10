@@ -87,7 +87,7 @@ public @interface AutoMetric
      * <li>w - week</li>
      * <li>M - month</li>
      * <li>q - quarter</li>
-     * <li>y - year</li
+     * <li>y - year</li>
      * </ul>
      *
      * @return time buckets.

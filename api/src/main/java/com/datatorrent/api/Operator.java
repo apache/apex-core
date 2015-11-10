@@ -36,7 +36,7 @@ public interface Operator extends Component<OperatorContext>
    * processed data. This is the default mode.
    * <br />
    * In AT_MOST_ONCE mode in case of failure, the operator will start with the tuples which are being sent at the time
-   * the failed operator is recovered. Unlike AT_LEAST_MOST once operator, it will not try to recover the tuples which
+   * the failed operator is recovered. Unlike AT_LEAST_ONCE operator, it will not try to recover the tuples which
    * may have arrived while operator was down. Typically you would want to mark operators AT_MOST_ONCE if it does not
    * materially impact your computation if a few tuples are omitted from the computation and the expected throughput is
    * most likely to consume all the resources available for the operator or the DAG.
