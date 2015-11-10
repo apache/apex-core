@@ -34,9 +34,8 @@ automatically.
 DataTorrent is a native Hadoop application. It runs as a YARN
 (Hadoop 2.x) application and leverages Hadoop as a distributed operating
 system. All the basic distributed operating system capabilities of
-Hadoop like resource allocation ( [Resource Manager](#h.1ksv4uv) [)](#h.1ksv4uv),
-distributed file system ([HDFS](#h.3j2qqm3)[)](#h.3j2qqm3), [multi-tenancy](#h.3q5sasy)[,](#h.3q5sasy) 
-[security](#h.3q5sasy) [,](#h.3q5sasy) [fault-tolerance](#h.2nusc19)[,](#h.2nusc19) [scalability](#h.34g0dwd)[,](#h.34g0dwd) etc.
+Hadoop like resource allocation (Resource Manager, distributed file system (HDFS),
+multi-tenancy, security, fault-tolerance, scalability, etc.
 are supported natively in all streaming applications.  Just as Hadoop
 for map-reduce handles all the details of the application allowing you
 to only focus on writing the application (the mapper and reducer
@@ -49,9 +48,8 @@ applications.
 
 In the platform, building a streaming application can be extremely
 easy and intuitive.  The application is represented as a Directed
-Acyclic Graph (DAG) of computation units called [operators](#h.3o7alnk)[ ](#h.3o7alnk)interconnected
-by the data-flow edges called  [streams](#h.nmf14n)
-[.](#h.nmf14n) The operators process input
+Acyclic Graph (DAG) of computation units called *Operators* interconnected
+by the data-flow edges called  *Streams*. The operators process input
 streams and produce output streams. A library of common operators is
 provided to enable quick application development.  In case the desired
 processing is not available in the Operator Library, one can easily
@@ -396,7 +394,7 @@ market opens every day.
 
 The operator Quote:
 This operator has three input ports, which are price (from
-StockTickInput), daily\_vol (from
+StockTickInput), daily_vol (from
 Daily Volume), and time (from
  StockTickInput).  This operator
 just consolidates the three data items and and emits the consolidated
@@ -619,7 +617,7 @@ dag.getOperatorMeta(name).getAttributes().put(OperatorContext.APPLICATION_WINDOW
 
 Note that we also set a user-specific sliding window for SMA that
 keeps track of the previous N data points.  Do not confuse this with the
-attribute APPLICATION\_WINDOW\_COUNT.
+attribute APPLICATION_WINDOW_COUNT.
 
 In the rest of this chapter we will run through the process of
 running this application. We assume that  you are familiar with details
@@ -645,7 +643,7 @@ STRAM in more detail in the next chapter.
 
 
 The instructions below assume that the platform was installed in a
-directory &lt;INSTALL\_DIR&gt; and the command line interface (CLI) will
+directory &lt;INSTALL_DIR&gt; and the command line interface (CLI) will
 be used to launch the demo application. An application can be run in
 [local mode](#h.3dy6vkm)[ ](#h.3dy6vkm)(in IDE or from command line) or on a  [Hadoop cluster](#h.1t3h5sf) [.](#h.1t3h5sf)
 
@@ -789,8 +787,8 @@ called streaming windows. Each window contains the ordered
 set of tuples in that time slice. A typical duration of a window is 500
 ms, but can be configured per application (the Yahoo! Finance
 application configures this value in the  properties.xml file to be 1000ms = 1s). Each
-window is preceded by a begin\_window event and is terminated by an
-end\_window event, and is assigned
+window is preceded by a begin_window event and is terminated by an
+end_window event, and is assigned
 a unique window ID. Even though the platform performs computations at
 the tuple level, bookkeeping is done at the window boundary, making the
 computations within a window an atomic event in the platform.  We can
@@ -874,12 +872,12 @@ it gets and simply emits new tuples based on its business logic. The
 only guarantee it has is that the upstream operators are processing
 either the current or some later window, and the downstream operator is
 processing either the current or some earlier window. The completion of
-a window (i.e. propagation of the  end\_window event through an operator) in any
+a window (i.e. propagation of the  end_window event through an operator) in any
 operator guarantees that all upstream operators have finished processing
-this window. Thus, the end\_window event is blocking on an operator
+this window. Thus, the end_window event is blocking on an operator
 with multiple outputs, and is a synchronization point in the DAG. The
- begin\_window event does not have
-any such restriction, a single begin\_window event from any upstream operator
+ begin_window event does not have
+any such restriction, a single begin_window event from any upstream operator
 triggers the operator to start processing tuples.
 
 Streaming Application Manager (STRAM)
@@ -1202,7 +1200,9 @@ Let us revisit how the Yahoo! Finance test application constructs the DAG:
 ```java
 public class Application implements StreamingApplication
 {
-[...CUT...]
+
+  ...
+
   @Override
   public void populateDAG(DAG dag, Configuration conf)
   {
@@ -1301,9 +1301,7 @@ an operator developer, all that is needed is to figure out what to do
 with the incoming tuple and when (and which output port) to send out a
 particular output tuple. Correctly designed operators will most likely
 get reused. Operator design needs care and foresight. For details, refer
-to the  [Operator Developer
-Guide](https://www.datatorrent.com/docs/guides/OperatorDeveloperGuide.html)
-. As an application developer you need to connect operators
+to the  [Operator Developer Guide](operator_development.md). As an application developer you need to connect operators
 in a way that it implements your business logic. You may also require
 operator customization for functionality and use attributes for
 performance/scalability etc.
@@ -1451,8 +1449,7 @@ not impact functionality of the operator. Users can change certain
 attributes in runtime. Users cannot add attributes to operators; they
 are pre-defined by the platform. They are interpreted by the platform
 and thus cannot be defined in user created code (like properties).
-Details of attributes are covered in  [Operation and Installation Guide](http://docs.google.com/OperationandInstallationGuide.html)
-.
+Details of attributes are covered in  [Configuration Guide](configuration.md).
 
 ### Operator State
 
@@ -1525,25 +1522,13 @@ methods relating to a streaming window are as follows
 
 
 
-[](#) [](#)
-
-<table>
-<colgroup>
-<col width="100%" />
-</colgroup>
-<tbody>
-<tr class="odd">
-<td align="left"><p>public void process(&lt;tuple_type&gt; tuple) // Called on the input port on which the tuple arrives</p>
-<p>public void beginWindow(long windowId) // Called at the start of the window as soon as the first begin_window tuple arrives</p>
-<p>public void endWindow() // Called at the end of the window after end_window tuples arrive on all input ports</p>
-<p>public void setup(OperatorContext context) // Called once during initialization of the operator</p>
-<p>public void teardown() // Called once when the operator is being shutdown</p></td>
-</tr>
-</tbody>
-</table>
-
-
-
+```java
+public void process(<tuple_type> tuple) // Called on the input port on which the tuple arrives
+public void beginWindow(long windowId) // Called at the start of the window as soon as the first begin_window tuple arrives
+public void endWindow() // Called at the end of the window after end_window tuples arrive on all input ports
+public void setup(OperatorContext context) // Called once during initialization of the operator
+public void teardown() // Called once when the operator is being shutdown
+````
 
 
 A tuple can be emitted in any of the three streaming run-time
@@ -1598,7 +1583,7 @@ operator has to start processing that window. A multi-input operator
 reads from more than one upstream ports. Such an operator would start
 processing as soon as the first begin_window event arrives. However the
 window would not close (i.e. invoke endWindow) till all ports receive
-end\_window events for that windowId. Thus the end of a window is a
+end_window events for that windowId. Thus the end of a window is a
 blocking event. As we saw earlier, a multi-input operator is also the
 point in the DAG where windows of all upstream operators are
 synchronized. The windows (atomic micro-batches) from a faster (or just
@@ -1637,21 +1622,14 @@ Recovery mechanisms can be specified per Operator while writing
 the application as shown below.
 
 
-
+```java
 Operator o = dag.addOperator(“operator”, …);
-
-dag.setAttribute(o,
-
-                 OperatorContext.PROCESSING\_MODE,
+dag.setAttribute(o,  OperatorContext.PROCESSING_MODE,  ProcessingMode.AT_MOST_ONCE);
+```
 
 
-               
- ProcessingMode.AT\_MOST\_ONCE);
-
-
-
-Also note that once an operator is attributed to AT\_MOST\_ONCE,
-all the operators downstream to it have to be AT\_MOST\_ONCE. The client
+Also note that once an operator is attributed to AT_MOST_ONCE,
+all the operators downstream to it have to be AT_MOST_ONCE. The client
 will give appropriate warnings or errors if that’s not the case.
 
 
@@ -1688,20 +1666,18 @@ following characteristics
     and other. Modes may be overruled (for example due to lack
     of containers). They are defined as follows:
 
-<!-- -->
-
--   THREAD\_LOCAL: In the same thread, uses thread
-    stack (intra-thread). This mode can only be used for a downstream
-    operator which has only one input port connected; also called
-    in-line.
--   CONTAINER\_LOCAL: In the same container (intra-process); also
-    called in-container.
--   NODE\_LOCAL: In the same Hadoop node (inter processes, skips
-    NIC); also called in-node.
--   RACK\_LOCAL: On nodes in the same rack; also called
-    in-rack.
--   unspecified: No guarantee. Could be anywhere within the
-    cluster
+    -   THREAD_LOCAL: In the same thread, uses thread
+        stack (intra-thread). This mode can only be used for a downstream
+        operator which has only one input port connected; also called
+        in-line.
+    -   CONTAINER_LOCAL: In the same container (intra-process); also
+        called in-container.
+    -   NODE_LOCAL: In the same Hadoop node (inter processes, skips
+        NIC); also called in-node.
+    -   RACK_LOCAL: On nodes in the same rack; also called
+        in-rack.
+    -   unspecified: No guarantee. Could be anywhere within the
+        cluster
 
 
 
@@ -1709,22 +1685,12 @@ An example of a stream declaration is given below
 
 
 
-[](#) [](#)
-
-<table>
-<colgroup>
-<col width="100%" />
-</colgroup>
-<tbody>
-<tr class="odd">
-<td align="left"><p>DAG dag = new DAG();</p>
-<p> …</p>
-<p>dag.addStream(&quot;views&quot;, viewAggregate.sum, cost.data).setLocality(CONTAINER_LOCAL); // A container local  stream</p>
-<p>dag.addStream(“clicks”, clickAggregate.sum, rev.data); // An example of unspecified locality</p></td>
-</tr>
-</tbody>
-</table>
-
+```java
+DAG dag = new DAG();
+ …
+dag.addStream("views", viewAggregate.sum, cost.data).setLocality(CONTAINER_LOCAL); // A container local  stream
+dag.addStream(“clicks”, clickAggregate.sum, rev.data); // An example of unspecified locality
+```
 
 
 The platform guarantees in-order delivery of tuples in a stream.
@@ -1764,7 +1730,7 @@ StreamDuplicator operator.
 Modes of the streams are critical for performance. An in-line
 stream is the most optimal as it simply delivers the tuple as-is without
 serialization-deserialization. Streams should be marked
-container\_local, specially in case where there is a large tuple volume
+container_local, specially in case where there is a large tuple volume
 between two operators which then on drops significantly. Since the
 setLocality call merely provides a hint, STRAM may ignore it. An In-node
 stream is not as efficient as an in-line one, but it is clearly better
@@ -1773,7 +1739,7 @@ the network card.
 
 
 
-THREAD\_LOCAL and CONTAINER\_LOCAL streams do not use a buffer
+THREAD_LOCAL and CONTAINER_LOCAL streams do not use a buffer
 server as this stream is in a single process. The other two do.
 
 Validating an Application
@@ -1832,30 +1798,22 @@ application as the compile time validations.
 
 Examples include
 
--   [JavaBeans
-    Validation](http://docs.oracle.com/javaee/6/tutorial/doc/gircz.html):
+-   [JavaBeans Validation](http://docs.oracle.com/javaee/6/tutorial/doc/gircz.html):
     Examples include
 
-<!-- -->
-
--   @Max(): Value must be less than or equal to the number
-
-<!-- -->
-
--   @Min(): Value must be greater than or equal to the
-    number
--   @NotNull: The value of the field or property must not be
-    null
--   @Pattern(regexp = “....”): Value must match the regular
-    expression
--   Input port connectivity: By default, every non-optional input
-    port must be connected. A port can be declared optional by using an
-    annotation:     @InputPortFieldAnnotation(name = "...", optional
-    = true)
--   Output Port Connectivity: Similar. The annotation here is:    
-    @OutputPortFieldAnnotation(name = "...", optional = true)
-
-<!-- -->
+    -   @Max(): Value must be less than or equal to the number
+    -   @Min(): Value must be greater than or equal to the
+        number
+    -   @NotNull: The value of the field or property must not be
+        null
+    -   @Pattern(regexp = “....”): Value must match the regular
+        expression
+    -   Input port connectivity: By default, every non-optional input
+        port must be connected. A port can be declared optional by using an
+        annotation:     @InputPortFieldAnnotation(name = "...", optional
+        = true)
+    -   Output Port Connectivity: Similar. The annotation here is:    
+        @OutputPortFieldAnnotation(name = "...", optional = true)
 
 -   Unique names in application scope: Operators, streams, must have
     unique names.
@@ -2203,7 +2161,7 @@ intermediate unifier between operator 1 and 2 is
 optimized away. The partition computation for operator  2 is executed on outbound streams of each
 partitions of operator 1. Each
 partition of operator 2 has its own
-CONTAINER\_LOCAL unifier. In such a situation, the in-bound network
+CONTAINER_LOCAL unifier. In such a situation, the in-bound network
 tuple flow is split between containers for  2a and 2b each of which take half the traffic. STRAM
 does this by default since it always has better performance.
 
@@ -2240,8 +2198,8 @@ adequate by which time tuple flow volume is low.
 Since operator 4 has sufficient resources to manage the combined
 output of multiple instances of operator 3, it need not be partitioned. A further
 optimization can be done by declaring operators  1, 2, and
-3 as THREAD\_LOCAL (intra-thread)
-or CONTAINER\_LOCAL (intra-process) or NODE\_LOCAL (intra-node).
+3 as THREAD_LOCAL (intra-thread)
+or CONTAINER_LOCAL (intra-process) or NODE_LOCAL (intra-node).
 Parallel partition is not used by default, users have to specify it
 explicitly via an attribute of the input port (reader) of the stream as
 shown below.
@@ -2250,23 +2208,12 @@ shown below.
 
 
 
-The following code shows an example of creating a parallel
-partition.
+The following code shows an example of creating a parallel partition.
 
-[](#) [](#)
-
-<table>
-<colgroup>
-<col width="100%" />
-</colgroup>
-<tbody>
-<tr class="odd">
-<td align="left"><p>dag.addStream(&quot;DenormalizedUserId&quot;, idAssigner.userid, uniqUserCount.data);</p>
-<p>dag.setInputPortAttribute(uniqUserCount.data, PortContext.PARTITION_PARALLEL, partitionParallel);</p></td>
-</tr>
-</tbody>
-</table>
-
+```java
+dag.addStream("DenormalizedUserId", idAssigner.userid, uniqUserCount.data);
+dag.setInputPortAttribute(uniqUserCount.data, PortContext.PARTITION_PARALLEL, partitionParallel);
+```
 
 
 Parallel partitions can be used with other partitions, for example
@@ -2286,15 +2233,15 @@ partition, then making the streams in-line or in-node within nodes
 
 
 
-CONTAINER\_LOCAL stream has high bandwidth, and can manage to
+CONTAINER_LOCAL stream has high bandwidth, and can manage to
 consume massive tuple count without taxing the NIC and networking stack.
 The downside is that all operators (1,2,3) in this case need to be able
 to fit within the resource limits of CPU and memory enforced on a Hadoop
 container. A way around this is to request RM to provide a big
 container. On a highly used Hadoop grid, getting a bigger container may
 be a problem, and operational complexities of managing a Hadoop cluster
-with different container sizes may be higher. If THREAD\_LOCAL or
-CONTAINER\_LOCAL streams are needed to get the throughput, increasing
+with different container sizes may be higher. If THREAD_LOCAL or
+CONTAINER_LOCAL streams are needed to get the throughput, increasing
 the partition count should be considered. In future STRAM may take this
 decision automatically. Unless there is a very bad skew and sticky key
 partitioning is in use, the approach to partition till each container
@@ -2302,35 +2249,35 @@ has enough resources works well.
 
 
 
-A NODE\_LOCAL stream has lower bandwidth compared to a
-CONTAINER\_LOCAL stream, but it works well with the RM in terms of
-respecting container size limits. A NODE\_LOCAL parallel partition uses
+A NODE_LOCAL stream has lower bandwidth compared to a
+CONTAINER_LOCAL stream, but it works well with the RM in terms of
+respecting container size limits. A NODE_LOCAL parallel partition uses
 local loop back for streams and is much better than using NIC. Though
-NODE\_LOCAL stream fits well with similar size containers, it does need
+NODE_LOCAL stream fits well with similar size containers, it does need
 RM to be able to deliver two containers on the same Hadoop node. On a
 heavily used Hadoop cluster, this may not always be possible. In future
 STRAM would do these trade-offs automatically at run-time.
 
 
 
-A RACK\_LOCAL stream has much lower bandwidth than NODE\_LOCAL
+A RACK_LOCAL stream has much lower bandwidth than NODE_LOCAL
 stream, as events go through the NIC. But it still is able to better
 manage SLA and latency. Moreover RM has much better ability to give a
 rack local container as opposed to the other two.
 
 
 
-Parallel partitions with CONTAINER\_LOCAL streams can be done by
-setting all the intermediate streams to CONTAINER\_LOCAL. Parallel
-partitions with THREAD\_LOCAL streams can be done by setting all the
-intermediate streams to THREAD\_LOCAL. Platform supports the following
+Parallel partitions with CONTAINER_LOCAL streams can be done by
+setting all the intermediate streams to CONTAINER_LOCAL. Parallel
+partitions with THREAD_LOCAL streams can be done by setting all the
+intermediate streams to THREAD_LOCAL. Platform supports the following
 via attributes.
 
 -   Parallel-Partition
--   Parallel-Partition with THREAD\_LOCAL stream
--   Parallel-Partition with CONTAINER\_LOCAL stream
--   Parallel-Partition with NODE\_LOCAL stream
--   Parallel-Partition with RACK\_LOCAL stream
+-   Parallel-Partition with THREAD_LOCAL stream
+-   Parallel-Partition with CONTAINER_LOCAL stream
+-   Parallel-Partition with NODE_LOCAL stream
+-   Parallel-Partition with RACK_LOCAL stream
 
 
 
@@ -2527,11 +2474,7 @@ platform is designed to handle these and features would be released in
 future as they get developed. At a top level, STRAM monitors throughput
 per operator, computes latency per operator, manages uptime and supports
 various recovery mechanisms to handle data loss. A lot of this decision
-making and algorithms will be customizable. Those interested in details
-should refer to the  [Operation and Installation
-Guide](https://www.datatorrent.com/docs/guides/OperationandInstallationGuide.html)
-.
-
+making and algorithms will be customizable.
 
 
 ------------------------------------------------------------------------
@@ -2584,7 +2527,7 @@ based on checkpointing in downstream operators).
 Operators can be stateless or stateful. A stateless operator
 retains no data between windows. All results of all computations done in
 a window are emitted in that window. Variables in such an operator are
-either transient or are cleared by an end\_window event. Such operators
+either transient or are cleared by an end_window event. Such operators
 need no state restoration after an outage. A stateful operator retains
 data between windows and has data in checkpointed state. This data
 (state) is used for computation in future windows. Such an operator
@@ -2628,7 +2571,7 @@ The only delay is the latency of the control tuple to reach all
 the operators. Checkpoint is thus done between the endWindow call of a
 window and the beginWindow call of the next window. Since most operators
 are computing in parallel (with the exception of those connected by
-THREAD\_LOCAL streams) they each checkpoint as and when they are ready
+THREAD_LOCAL streams) they each checkpoint as and when they are ready
 to process the “checkpoint” control tuple. The asynchronous design of
 the platform means that there is no guarantee that two operators would
 checkpoint at exactly the same time, but there is a guarantee that by
@@ -2644,8 +2587,8 @@ In case of an operator that has an application window size that is
 larger than the size of the streaming window, the checkpointing by
 default still happens at same intervals as with other operators. To
 align checkpointing with application window boundary, the application
-developer should set the attribute “CHECKPOINT\_WINDOW\_COUNT” to
-“APPLICATION\_WINDOW\_COUNT”. This ensures that the checkpoint happens
+developer should set the attribute “CHECKPOINT_WINDOW_COUNT” to
+“APPLICATION_WINDOW_COUNT”. This ensures that the checkpoint happens
 at the  end of the application
 window and not within that window.
 Such operators now treat the application window as an atomic computation
@@ -2706,8 +2649,8 @@ operator) outage. In this section we discuss a single container outage.
 Multiple container outages are handled as independent events. Recovery
 requires the upstream buffer server to replay windows and it would
 simply go one more level upstream if the immediate upstream container
-has also failed. If multiple operators are in a container (THREAD\_LOCAL
-or CONTAINER\_LOCAL stream) the container recovery treats each operator
+has also failed. If multiple operators are in a container (THREAD_LOCAL
+or CONTAINER_LOCAL stream) the container recovery treats each operator
 as an independent object when figuring out the recovery steps.
 Application developers can set any of the recovery mechanisms discussed
 below for node outage.
@@ -2756,21 +2699,14 @@ recovery mechanism.
 In general for this recovery mode, the average time lag on a node
 outage is
 
-= (CP/2\*SW)\*T + HC
+**= (CP/2\*SW)\*T + HC**
 
-Where
+where
 
-CP        - Checkpointing period (default value is 30
-seconds)
-
-SW        - Streaming window period (default value is 0.5
-seconds)
-
-T        -  Time taken to re-compute one lost window from data in
-memory
-
-HC        - Time it takes to get a new Hadoop Container, or make
-do with the current ones
+* **CP**  - Checkpointing period (default value is 30 seconds)
+* **SW**  - Streaming window period (default value is 0.5 seconds)
+* **T**   -  Time taken to re-compute one lost window from data in memory
+* **HC**  - Time it takes to get a new Hadoop Container, or make do with the current ones
 
 
 
@@ -2819,14 +2755,14 @@ such cases is not available.
 In general, in this recovery mode, the average time lag on a node
 outage is
 
-= SW/2 + HC
+**= SW/2 + HC**
 
-Where
+where
 
-SW        - Streaming window period (default value is 0.5
+* **SW** - Streaming window period (default value is 0.5
 seconds)
 
-HC        - Time it takes to get a new Hadoop Container, or make
+* **HC** - Time it takes to get a new Hadoop Container, or make
 do with the current ones
 
 
@@ -2851,30 +2787,25 @@ high.
 
 
 
-Speculative Execution
+### Speculative Execution
 
-In future we intend to provide speculative execution for the
-applications. This would be enabled in multiple ways.
+In future we looking at possibility of adding speculative execution for the applications. This would be enabled in multiple ways.
 
 1.  At an operator level: The upstream operator would emit to
     two copies. The downstream operator would receive from both copies
     and pick a winner. The winner (primary) would be picked in either of
     the following ways
 
-<!-- -->
+    *  Statically as dictated by STRAM
+    *  Dynamically based on whose tuple arrives first. This mode
+        needs both copies to guarantee that the computation result would
+        have identical functionality
 
-1.  Statically as dictated by STRAM
-2.  Dynamically based on whose tuple arrives first. This mode
-    needs both copies to guarantee that the computation result would
-    have identical functionality
-
-<!-- -->
-
-1.  At a sub-query level: A part of the application DAG would be
+2.  At a sub-query level: A part of the application DAG would be
     run in parallel and all upstream operators would feed to two copies
     and all downstream operators would receive from both copies. The
     winners would again be picked in a static or dynamic manner
-2.  Entire DAG: Another copy of the application would be run by
+3.  Entire DAG: Another copy of the application would be run by
     STRAM and the winner would be decided outside the application. In
     this mode the output adapters would both be writing
     the result.
@@ -2909,8 +2840,7 @@ continue.
 
 Some examples are
 
--   [Dynamic
-    Partitioning](#h.3hv69ve)[:](#h.3hv69ve) Automatic
+-   Dynamic Partitioning: Automatic
     changes in partitioning of computations to match constraints on a
     run time basis. Examples includes STRAM adding resource during spike
     in streams and returning them once spike is gone. Scale up and scale
@@ -2942,14 +2872,8 @@ Dynamic modifications to applications are foundational part of the
 platform. They enable users to build layers over the applications. Users
 can also save all the changes done since the application launch, and
 therefore predictably get the application to its current state. For
-details refer to  [Operations and Installation
-Guide](https://www.datatorrent.com/docs/guides/OperationandInstallationGuide.html)
+details refer to  [Configuration Guide](configuraiton.md)
 .
-
-
-
-
-
 
 
 ------------------------------------------------------------------------
@@ -2965,9 +2889,7 @@ The platform provides a rich user interface. This includes tools
 to monitor the application system metrics (throughput, latency, resource
 utilization, etc.); dashboards for application data, replay, errors; and
 a Developer studio for application creation, launch etc. For details
-refer to  [UI Console
-Guide](https://www.datatorrent.com/docs/guides/ConsoleGuide.html)
-.
+refer to  [UI Console Guide](dtmanage.md).
 
 
 
@@ -2976,8 +2898,7 @@ Demos
 
 In this section we list some of the demos that come packaged with
 installer. The source code for the demos is available in the open-source
-[Apache Apex-Malhar
-repository](https://github.com/apache/incubator-apex-malhar).
+[Apache Apex-Malhar repository](https://github.com/apache/incubator-apex-malhar).
 All of these do computations in real-time. Developers are encouraged to
 review them as they use various features of the platform and provide an
 opportunity for quick learning.
@@ -3008,40 +2929,6 @@ opportunity for quick learning.
     map-reduce applications.
 11. R: Analyzes a synthetic stream of
     eruption event data for the Old Faithful
-    geyser (https://en.wikipedia.org/wiki/Old\_Faithful).
+    geyser (https://en.wikipedia.org/wiki/Old_Faithful).
 12. Machinedata: Analyzes a synthetic
-    stream of events to determine health of a machine.
-
-
-
-
-
-------------------------------------------------------------------------
-
-
-
-
-
-
-
-Related Documents
-==============================
-
-1.  [Application Packages
-    Guide](https://www.datatorrent.com/docs/guides/ApplicationPackages.html)
-2.  [Operator Developer
-    Guide](https://www.datatorrent.com/docs/guides/OperatorDeveloperGuide.html)
-3.  [Operation and Installation
-    Guide](https://www.datatorrent.com/docs/guides/OperationandInstallationGuide.html)
-4.  [dtManage User
-    Guide](https://www.datatorrent.com/docs/guides/ConsoleGuide.html)
-5.  [dtAssemble User
-    Guide](https://www.datatorrent.com/docs/guides/GraphicalApplicationAssemblyGuide.html)
-6.  [dtDashboard User
-    Guide](https://www.datatorrent.com/docs/guides/dtDashboardUsersGuide.html)
-
-
-
-
-
-© 2012-2015 DataTorrent Inc.  Patent pending         
+    stream of events to determine health of a machine.  
