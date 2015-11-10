@@ -21,6 +21,7 @@ package com.datatorrent.stram.engine;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.stram.plan.logical.Operators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -229,10 +230,10 @@ public class GenericNode extends Node<Operator>
 
     int expectingBeginWindow = activeQueues.size();
     int receivedEndWindow = 0;
+    long firstResetWindow = -1;
 
     TupleTracker tracker;
     LinkedList<TupleTracker> resetTupleTracker = new LinkedList<TupleTracker>();
-    long initialWindowId = -1;
     try {
       do {
         Iterator<Map.Entry<String, SweepableReservoir>> buffers = activeQueues.iterator();
@@ -243,21 +244,14 @@ public class GenericNode extends Node<Operator>
           Tuple t = activePort.sweep();
           if (t != null) {
             boolean delay = isInputPortConnectedToDelayOperator(activePortEntry.getKey());
-            long tupleWindowId;
 
             if (delay) {
-              logger.debug("#### DELAY #### GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), t.getWindowId(), t.getBaseSeconds(), windowWidthMillis);
-              if (t.getBaseSeconds() == -1) {
-                // This is the first window of the delay operator
-                tupleWindowId = WindowGenerator.getWindowId(firstWindowMillis + windowWidthMillis, firstWindowMillis, windowWidthMillis);
-                logger.debug("Setting BEGIN WINDOW ID {}", Codec.getStringWindowId(tupleWindowId));
-              } else {
-                tupleWindowId = WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, 1);
-              }
+              logger.debug("#### DELAY #### GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()), t.getBaseSeconds(), windowWidthMillis);
+              t.setWindowId(WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, 1));
+              logger.debug("#### DELAY #### SET WINDOW ID TO {}", Codec.getStringWindowId(t.getWindowId()));
             } else {
-              tupleWindowId = t.getWindowId();
+              logger.debug("#### REGULAR #### GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()), firstWindowMillis, windowWidthMillis);
             }
-            logger.debug("############# GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()), firstWindowMillis, windowWidthMillis);
             switch (t.getType()) {
               case BEGIN_WINDOW:
                 if (expectingBeginWindow == totalQueues) {
@@ -282,7 +276,7 @@ public class GenericNode extends Node<Operator>
                     }
                   }
                   */
-                  currentWindowId = tupleWindowId;
+                  currentWindowId = t.getWindowId();;
                   for (int s = sinks.length; s-- > 0; ) {
                     sinks[s].put(t);
                   }
@@ -292,7 +286,7 @@ public class GenericNode extends Node<Operator>
                     insideWindow = true;
                     operator.beginWindow(currentWindowId);
                   }
-                } else if (tupleWindowId == currentWindowId) {
+                } else if (t.getWindowId() == currentWindowId) {
                   activePort.remove();
                   expectingBeginWindow--;
                 } else {
@@ -309,7 +303,7 @@ public class GenericNode extends Node<Operator>
                   assert (port != null); /* we should always find the port */
 
                   if (PROCESSING_MODE == ProcessingMode.AT_MOST_ONCE) {
-                    if (tupleWindowId < currentWindowId) {
+                    if (t.getWindowId() < currentWindowId) {
                       /*
                        * we need to fast forward this stream till we find the current
                        * window or the window which is bigger than the current window.
@@ -344,7 +338,7 @@ public class GenericNode extends Node<Operator>
 
               case END_WINDOW:
                 buffers.remove();
-                if (tupleWindowId == currentWindowId) {
+                if (t.getWindowId() == currentWindowId) {
                   activePort.remove();
                   endWindowDequeueTimes.put(activePort, System.currentTimeMillis());
                   if (++receivedEndWindow == totalQueues) {
@@ -360,7 +354,7 @@ public class GenericNode extends Node<Operator>
               case CHECKPOINT:
                 activePort.remove();
                 if (!delay) {
-                  long checkpointWindow = tupleWindowId;
+                  long checkpointWindow = t.getWindowId();
                   if (lastCheckpointWindowId < checkpointWindow) {
                     if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
                       lastCheckpointWindowId = checkpointWindow;
@@ -386,10 +380,9 @@ public class GenericNode extends Node<Operator>
                  * we will receive tuples which are equal to the number of input streams.
                  */
                 activePort.remove();
-                buffers.remove();
-
                 // ignore delay port
                 if (!delay) {
+                  buffers.remove();
                   int baseSeconds = t.getBaseSeconds();
                   tracker = null;
                   Iterator<TupleTracker> trackerIterator = resetTupleTracker.iterator();
@@ -439,6 +432,27 @@ public class GenericNode extends Node<Operator>
                     }
                     activeQueues.addAll(inputs.entrySet());
                     expectingBeginWindow = activeQueues.size();
+
+                    if (firstResetWindow == -1) {
+                      if (operator instanceof Operator.DelayOperator) {
+                        // if it's a DelayOperator and this is the first RESET_WINDOW, call firstWindow
+                        logger.warn("Fabricating first window {}", t.getWindowId());
+
+                        Operator.DelayOperator delayOperator = (Operator.DelayOperator)operator;
+                        Tuple beginWindowTuple = new Tuple(MessageType.BEGIN_WINDOW, t.getWindowId());
+                        Tuple endWindowTuple = new Tuple(MessageType.END_WINDOW, t.getWindowId());
+                        for (Sink<Object> sink : outputs.values()) {
+                          logger.warn("Fabricating BEGIN WINDOW {}", t.getWindowId());
+                          sink.put(beginWindowTuple);
+                        }
+                        delayOperator.firstWindow(t.getWindowId());
+                        for (Sink<Object> sink : outputs.values()) {
+                          logger.warn("Fabricating END WINDOW {}", t.getWindowId());
+                          sink.put(endWindowTuple);
+                        }
+                      }
+                      firstResetWindow = t.getWindowId();
+                    }
                     break activequeue;
                   }
                 }
@@ -579,8 +593,7 @@ public class GenericNode extends Node<Operator>
             }
           }
         }
-      }
-      while (alive);
+      } while (alive);
     }
     catch (ShutdownException se) {
       logger.debug("Shutdown requested by the operator when alive = {}.", alive);

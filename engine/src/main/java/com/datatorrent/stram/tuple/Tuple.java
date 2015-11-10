@@ -52,6 +52,11 @@ public class Tuple
     return windowId;
   }
 
+  public void setWindowId(long windowId)
+  {
+    this.windowId = windowId;
+  }
+
   public final int getBaseSeconds()
   {
     return (int)(windowId >> 32);
