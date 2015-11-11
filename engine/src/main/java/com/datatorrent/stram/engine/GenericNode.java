@@ -508,8 +508,8 @@ public class GenericNode extends Node<Operator>
         else {
           boolean need2sleep = true;
           for (SweepableReservoir cb : activeQueues) {
-            if (cb.size() > 0) {
-              need2sleep = false;
+            need2sleep = cb.isEmpty();
+            if (!need2sleep) {
               break;
             }
           }
@@ -601,17 +601,7 @@ public class GenericNode extends Node<Operator>
     for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
       ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
-      portStats.queueSize = ar.size();
-      if(DATA_TUPLE_AWARE) {
-        if (ar instanceof CircularBuffer) {
-          Iterator iterator = ((CircularBuffer) ar).getFrozenIterator();
-          while (iterator.hasNext()) {
-            if (iterator.next() instanceof Tuple) {
-              portStats.queueSize--;
-            }
-          }
-        }
-      }
+      portStats.queueSize = ar.size(DATA_TUPLE_AWARE);
       portStats.tupleCount = ar.getCount(true);
       portStats.endWindowTimestamp = endWindowDequeueTimes.get(e.getValue());
       ipstats.add(portStats);

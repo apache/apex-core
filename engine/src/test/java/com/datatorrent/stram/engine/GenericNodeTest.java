@@ -99,8 +99,8 @@ public class GenericNodeTest
     GenericOperator go = new GenericOperator();
     final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, new DefaultAttributeMap(), null));
     gn.setId(1);
-    DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
-    DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
+    AbstractReservoir reservoir1 = AbstractReservoir.newReservoir("ip1Res", 1024);
+    AbstractReservoir reservoir2 = AbstractReservoir.newReservoir("ip2Res", 1024);
     Sink<Object> output = new Sink<Object>()
     {
       @Override
@@ -219,8 +219,8 @@ public class GenericNodeTest
     GenericOperator go = new GenericOperator();
     final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, new DefaultAttributeMap(), null));
     gn.setId(1);
-    DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
-    DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
+    AbstractReservoir reservoir1 = AbstractReservoir.newReservoir("ip1Res", 1024);
+    AbstractReservoir reservoir2 = AbstractReservoir.newReservoir("ip2Res", 1024);
 
     gn.connectInputPort("ip1", reservoir1);
     gn.connectInputPort("ip2", reservoir2);
