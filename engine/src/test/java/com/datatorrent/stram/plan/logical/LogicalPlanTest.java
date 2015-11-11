@@ -146,6 +146,62 @@ public class LogicalPlanTest {
     }
   }
 
+  public static class FibonacciOperator extends BaseOperator
+  {
+    public long currentNumber = 1;
+    private transient long tempNum;
+    public transient DefaultInputPort<Object> dummyInputPort = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+      }
+    };
+    public transient DefaultInputPort<Long> input = new DefaultInputPort<Long>()
+    {
+      @Override
+      public void process(Long tuple)
+      {
+        tempNum = tuple;
+      }
+    };
+    public transient DefaultOutputPort<Long> output = new DefaultOutputPort<>();
+
+
+    @Override
+    public void endWindow()
+    {
+      output.emit(currentNumber);
+      System.out.println("==============> " + currentNumber);
+      currentNumber += tempNum;
+    }
+  }
+
+  @Test
+  public void testFibonacci()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator dummyInput = dag.addOperator("DUMMY", TestGeneratorInputOperator.class);
+    FibonacciOperator fib = dag.addOperator("FIB", FibonacciOperator.class);
+    SimpleDelayOperator opDelay = dag.addOperator("opDelay", SimpleDelayOperator.class);
+
+    dag.addStream("dummy_to_operator", dummyInput.outport, fib.dummyInputPort);
+    dag.addStream("operator_to_delay", fib.output, opDelay.input);
+    dag.addStream("delay_to_operator", opDelay.output, fib.input);
+
+    try {
+      final StramLocalCluster localCluster = new StramLocalCluster(dag);
+      localCluster.runAsync();
+      Thread.sleep(10000);
+      localCluster.shutdown();
+    } catch (InterruptedException ex) {
+      // ignore
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
   public static class ValidationOperator extends BaseOperator {
     public final transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>();
 
