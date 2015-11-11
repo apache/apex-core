@@ -39,56 +39,40 @@ public class ClassNodeType extends ClassNode
   }
 
   ClassSignatureVisitor csv = new ClassSignatureVisitor();
-  private boolean visitFields = false;
   
   @SuppressWarnings("unchecked")
   @Override
   public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions)
   {
-    if(!isVisitFields()) {
     MethodNode mn = new MethodNode(access, name, desc, signature, exceptions);
     mn.typeVariableSignatureNode = csv;
     methods.add(mn);
     return mn;
-    }
-    return null;
   }
   
   @SuppressWarnings("unchecked")
   @Override
   public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-    if(isVisitFields()) {
-      FieldNode fn = new FieldNode(access, name, desc, signature, value);
-      fn.typeVariableSignatureNode = csv;
-      fields.add(fn);
-      return fn;
-    }
-    return null;
+    FieldNode fn = new FieldNode(access, name, desc, signature, value);
+    fn.typeVariableSignatureNode = csv;
+    fields.add(fn);
+    return fn;
   }
 
   
   @Override
   public void visit(int version, int access, String name, String signature, String superName, String[] interfaces)
   {
-    if(!isVisitFields()) {
-      // parse the signature first so Type variable can be captured from the signature
-      if(signature!=null){
-        SignatureReader sr = new SignatureReader(signature);
-        sr.accept(csv);
-      }
-      super.visit(version, access, name, signature, superName, interfaces);
+    // parse the signature first so Type variable can be captured from the signature
+    if (signature != null) {
+      SignatureReader sr = new SignatureReader(signature);
+      sr.accept(csv);
     }
+    super.visit(version, access, name, signature, superName, interfaces);
   }
 
   public void setClassSignatureVisitor(ClassSignatureVisitor csv){    
     this.csv = csv;    
   }
 
-  public boolean isVisitFields() {
-    return visitFields;
-  }
-
-  public void setVisitFields(boolean visitFields) {
-    this.visitFields = visitFields;
-  }
 }

@@ -18,7 +18,6 @@
  */
 package com.datatorrent.stram.webapp;
 
-import com.datatorrent.stram.appdata.AppDataPushAgent;
 import java.util.*;
 import javax.xml.bind.annotation.*;
 import org.apache.commons.lang3.mutable.MutableInt;

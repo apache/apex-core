@@ -27,14 +27,15 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.commons.io.IOUtils;
 
-import com.datatorrent.stram.webapp.TypeGraph.TypeGraphSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.datatorrent.stram.webapp.TypeGraph.TypeGraphSerializer;
+
 
 /**
  * This class keeps a precomputed index(prototype) of type graph of all classes in jdk and gateway classpath
@@ -43,7 +44,7 @@ import com.esotericsoftware.kryo.io.Output;
  */
 public class TypeGraphFactory
 {
-  private final static byte[] preComputeGraph;
+  private static final byte[] preComputeGraph;
 
   private static final Logger LOG = LoggerFactory.getLogger(TypeGraphFactory.class);
   
@@ -72,7 +73,7 @@ public class TypeGraphFactory
     for (String path : pathsToScan) {
       try {
         File f = new File(path);
-        if(!f.exists() || !f.getName().endsWith("jar")){
+        if (!f.exists() || !f.getName().endsWith("jar")) {
           continue;
         }
         JarFile jar = new JarFile(path);
@@ -101,11 +102,12 @@ public class TypeGraphFactory
     kryo.writeObject(output, tg);
     output.close();
     preComputeGraph = baos.toByteArray();
-    LOG.warn("The size of precomputed type graph is {} KB", preComputeGraph.length/1024);
+    LOG.warn("The size of precomputed type graph is {} KB", preComputeGraph.length / 1024);
   }
 
 
-  public static TypeGraph createTypeGraphProtoType(){
+  public static TypeGraph createTypeGraphProtoType()
+  {
     Input input = null;
     try {
       input = new Input(new ByteArrayInputStream(preComputeGraph));
