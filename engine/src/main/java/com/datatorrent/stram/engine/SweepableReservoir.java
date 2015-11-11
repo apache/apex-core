@@ -26,7 +26,7 @@ import com.datatorrent.api.Sink;
  *
  * @since 0.3.2
  */
-public interface SweepableReservoir extends Reservoir
+public interface SweepableReservoir extends Reservoir<Object>
 {
   /**
    * Set a new sink on this reservoir where data tuples would be put.
@@ -34,14 +34,14 @@ public interface SweepableReservoir extends Reservoir
    * @param sink The new Sink for the data tuples
    * @return The old sink if present or null
    */
-  public Sink<Object> setSink(Sink<Object> sink);
+  Sink<Object> setSink(Sink<Object> sink);
 
   /**
    * Consume all the data tuples until control tuple is encountered.
    *
    * @return The control tuple encountered or null
    */
-  public Tuple sweep();
+  Tuple sweep();
 
   /**
    * Get the count of tuples consumed.
@@ -49,6 +49,6 @@ public interface SweepableReservoir extends Reservoir
    * @param reset flag to indicate if the count should be reset to zero after this operation
    * @return the count of tuples
    */
-  public int getCount(boolean reset);
+  int getCount(boolean reset);
 
 }

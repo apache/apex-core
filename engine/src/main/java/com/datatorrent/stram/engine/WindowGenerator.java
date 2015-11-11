@@ -18,6 +18,8 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -51,7 +53,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   public static final int MAX_WINDOW_ID = WINDOW_MASK - (WINDOW_MASK % 1000) - 1;
   public static final int MAX_WINDOW_WIDTH = (int)(Long.MAX_VALUE / MAX_WINDOW_ID);
   private final ScheduledExecutorService ses;
-  private final MasterReservoir masterReservoir;
+  private final BlockingQueue<Tuple> queue;
   private long firstWindowMillis; // Window start time
   private int windowWidthMillis; // Window size
   private long currentWindowMillis;
@@ -65,7 +67,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   public WindowGenerator(ScheduledExecutorService service, int capacity)
   {
     ses = service;
-    masterReservoir = new MasterReservoir(capacity);
+    queue = new CircularBuffer<>(capacity);
   }
 
   /**
@@ -86,8 +88,8 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
     baseSeconds = (resetWindowMillis / 1000) << 32;
     //logger.info("generating reset -> begin {}", Codec.getStringWindowId(baseSeconds));
 
-    masterReservoir.put(new ResetWindowTuple(baseSeconds | windowWidthMillis));
-    masterReservoir.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
+    queue.put(new ResetWindowTuple(baseSeconds | windowWidthMillis));
+    queue.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
   }
 
   /**
@@ -96,9 +98,9 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
    */
   private void endCurrentBeginNewWindow() throws InterruptedException
   {
-    masterReservoir.put(new EndWindowTuple(baseSeconds | windowId));
+    queue.put(new EndWindowTuple(baseSeconds | windowId));
     if (++checkPointWindowCount == checkpointCount) {
-      masterReservoir.put(new Tuple(MessageType.CHECKPOINT, baseSeconds | windowId));
+      queue.put(new Tuple(MessageType.CHECKPOINT, baseSeconds | windowId));
       checkPointWindowCount = 0;
     }
 
@@ -108,7 +110,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
     }
     else {
       advanceWindow();
-      masterReservoir.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
+      queue.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
     }
   }
 
@@ -234,10 +236,9 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   }
 
   @Override
-  @SuppressWarnings("ReturnOfCollectionOrArrayField")
-  public Reservoir getMasterReservoir()
+  protected Queue getQueue()
   {
-    return masterReservoir;
+    return queue;
   }
 
   @Override
@@ -321,15 +322,6 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
     assert (multiplier >= 0);
     windowId = windowId & WindowGenerator.WINDOW_MASK;
     return firstWindowMillis + (multiplier * windowWidthMillis * (WindowGenerator.MAX_WINDOW_ID + 1)) + windowId * windowWidthMillis;
-  }
-
-  private class MasterReservoir extends CircularBuffer<Tuple> implements Reservoir
-  {
-    MasterReservoir(int n)
-    {
-      super(n);
-    }
-
   }
 
   private static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);

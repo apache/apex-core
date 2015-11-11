@@ -50,9 +50,15 @@ public class WindowIdActivatedReservoir implements SweepableReservoir
   }
 
   @Override
-  public int size()
+  public int size(final boolean dataTupleAware)
   {
-    return reservoir.size();
+    return reservoir.size(dataTupleAware);
+  }
+
+  @Override
+  public boolean isEmpty()
+  {
+    return reservoir.isEmpty();
   }
 
   @Override
