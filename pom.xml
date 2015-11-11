@@ -98,6 +98,7 @@
             <email>dev@apex.incubator.apache.org</email>
           </properties>
           <excludes>
+            <exclude>**/*.iml</exclude>
             <exclude>DISCLAIMER</exclude>
             <exclude>LICENSE</exclude>
             <exclude>NOTICE</exclude>
