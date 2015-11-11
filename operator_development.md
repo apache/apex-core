@@ -62,11 +62,10 @@ Types of Operators
 ------------------
 
 An operator works on one tuple at a time. These tuples may be supplied
-by some other operator in the application or by some external source,
-like a database or a message bus. Similarly, after the tuples are
-processed, these may be passed on to some other operator, or may be
-stored into some external system. Based on the functions that the
-Operator performs, we have the following types of operators:
+by other operators in the application or by external sources,
+such as a database or a message bus. Similarly, after the tuples are
+processed, these may be passed on to other operators, or stored into an external system. 
+Therea are 3 type of operators based on function: 
 
 1.  **Input Adapter** - This is one of the starting points in
     the application DAG and is responsible for getting tuples from an
@@ -84,12 +83,11 @@ Operator performs, we have the following types of operators:
 Note: There can be multiple operators of all types in an application
 DAG.
 
-Positioning of Operators in the DAG
+Operators Position in a DAG
 -----------------------------------
 
-We may refer to operators depending on their positioning with respect to
-one another. For any operator opr, we have the following types of
-operators.
+We may refer to operators depending on their position with respect to
+one another. For any operator opr (see image below), there are two types of operators.
 
 1.  **Upstream operators** - These are the operators from which there is a
     directed path to opr in the application DAG.
@@ -103,9 +101,9 @@ Note that there are no cycles formed in the application DAG.
 Ports
 -----
 
-The operators in the DAG are connected together via directed flows
+Operators in a DAG are connected together via directed flows
 called streams. Each stream has end-points located on the operators
-called ports. The ports again fall into two types.
+called ports. Therea are 2 types of ports.
 
 1.  **Input Port** - This is a port through which an operator accepts input
     tuples from an upstream operator.
@@ -124,11 +122,11 @@ external source.
 
 * * * * *
 
-Working of an Operator
+How Operator Works
 ----------------------
 
 An operator passes through various stages during its lifetime. Each
-stage is an API call that the streaming application master makes for an
+stage is an API call that the Streaming Application Master makes for an
 operator.  The following figure illustrates the stages through which an
 operator passes.
 
@@ -156,15 +154,15 @@ operator passes.
 -   The _teardown()_ call is used for gracefully shutting down the
     operator and releasing any resources held by the operator.
 
-Writing Custom Operators <a name="writing_custom_operators"></a>
+Developing Custom Operators <a name="writing_custom_operators"></a>
 ====================================
 
 About this tutorial
 -------------------
 
 This tutorial will guide the user towards developing a operator from
-scratch. It will include all aspects of writing an operator including
-design, code as well as unit tests.
+scratch. It includes all aspects of writing an operator including
+design, code and unit testing.
 
 Introduction
 ------------
@@ -307,7 +305,7 @@ following method calls:
 -  endWindow()
 -  tearDown()
 
-In order to simplify the creation of an operator, the Apache Apex
+In order to simplify the creation of an operator, Apache Apex
 library also provides a base class “BaseOperator” which has empty
 implementations for these methods. Please refer to the [Apex Operators](#apex_operators) section and the
 [Reference](#operator_reference) section for details on these.
@@ -325,8 +323,7 @@ public class WordCountOperator extends BaseOperator
 
 We define the following class variables:
 
--   _sendPerTuple_ - Needed for configuring the frequency of output from
-    the operator
+-   _sendPerTuple_ - Configures the output frequency from the operator
 ``` java
 private boolean sendPerTuple = true; // default
 ```
@@ -338,17 +335,15 @@ private String stopWordFilePath; // no default
 ``` java
 private transient String[] stopWords;
 ```
--   _globalCounts_ - A Map which stores the counts for all the words
+-   _globalCounts_ - A Map which stores the counts of all the words
     encountered so far. Note that this variable is non transient, which
-    means that this variable is saved as part of the checkpointing state
-    and can be recovered in event of a crash.
+    means that this variable is saved as part of the checkpoint and can be recovered in event of a crash.
 ``` java
 private Map<String, Long> globalCounts;
 ```
--   _updatedCounts_ - A map which stores the counts for only the most
-    recent tuple(s). Whether to store the most recent or the recent
-    window worth of tuples will be determined by the configuration
-    parameter sendPerTuple.
+-   _updatedCounts_ - A Map which stores the counts for only the most
+    recent tuple(s). sendPerTuple configuration determines whether to store the most recent or the recent
+    window worth of tuples.
 ``` java
 private transient Map<String, Long> updatedCounts;
 ```
@@ -383,39 +378,30 @@ DefaultOutputPort<Entry<String,Long>>();
 
 The constructor is the place where we initialize the non-transient data
 structures, since
-constructor is called just once per activation of an operator. In case
-of Word Count operator, we initialize the globalCounts variable in the
-constructor.
+constructor is called just once per activation of an operator. With regards to Word Count operator, we initialize the globalCounts variable in the constructor.
 ``` java
 globalCounts = Maps.newHashMap();
 ```
 ### Setup call
 
-The setup method is called only once during the lifetime of an operator.
-The purpose of the setup call is to allow the operator to set itself up
-for processing incoming streams. Transient objects in the operator are
-not serialized and checkpointed. Hence it is essential that such objects
-must be initialized in the setup call. In case of operator failure, the
-operator will be redeployed, most likely on a different container. In
-this case, it is the setup method which will be called by the Apache
-Apex engine to allow the operator to prepare for execution in the new
-container.
+The setup method is called only once during an operator lifetime and its purpose is to allow 
+the operator to set itself up for processing incoming streams. Transient objects in the operator are
+not serialized and checkpointed. Hence, it is essential that such objects initialized in the setup call. 
+In case of operator failure, the operator will be redeployed (most likely on a different container). The setup method called by the Apache Apex engine allows the operator to prepare for execution in the new container.
 
-We perform the following tasks as part of the setup call:
+The following tasks are executed as part of the setup call:
 
 1.  Read the stop-word list from HDFS and store it in the
     stopWords array
 2.  Initialize updatedCounts variable. This will store the updated
     counts for words in most recent tuples processed by the operator.
-    This is a transient variable, hence the value of this variable will
-    be lost in case of operator failure.
+    As a transient variable, the value will be lost when operator fails.
 
 ### Begin Window call
 
-The begin window call signals the start of an application window. In
-case of Word Count Operator, if the sendPerTuple is set to false, it
-means that we are expecting updated counts for the most recent window of
-data. Hence, we clear the updatedCounts variable in the begin window
+The begin window call signals the start of an application window. With 
+regards to Word Count Operator, we are expecting updated counts for the most recent window of
+data if the sendPerTuple is set to false. Hence, we clear the updatedCounts variable in the begin window
 call and start accumulating the counts till the end window call.
 
 ### Process Tuple call
@@ -432,23 +418,21 @@ processTuple.
 
 ### End Window call
 
-This call signals the end of an application window. In case of Word
+This call signals the end of an application window. With regards to Word
 Count Operator, we emit the updatedCounts to the output port if the
 sendPerTuple flag is set to false.
 
 ### Teardown call
 
 This method allows the operator to gracefully shut down itself after
-releasing the resources that it has acquired. In case of our operator,
+releasing the resources that it has acquired. With regards to our operator,
 we call the shutDown method which shuts down the operator along with any
 downstream operators.
 
 Testing your Operator
 ---------------------
 
-Testing an operator after development is essential to ensure that he
-required functionality is indeed correctly implemented. As part of
-testing our operator, we test the following two facets:
+As part of testing our operator, we test the following two facets:
 
 1.  Test output of the operator after processing a single tuple
 2.  Test output of the operator after processing of a window of tuples
