@@ -153,6 +153,11 @@ public class ASMUtil
     return (opCode & Opcodes.ACC_PUBLIC) == Opcodes.ACC_PUBLIC;
   }
 
+  public static boolean isAbstract(int opCode)
+  {
+    return (opCode & Opcodes.ACC_ABSTRACT) == Opcodes.ACC_ABSTRACT;
+  }
+
   public static boolean isTransient(int opCode)
   {
     return (opCode & Opcodes.ACC_TRANSIENT) == Opcodes.ACC_TRANSIENT;

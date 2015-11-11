@@ -40,7 +40,7 @@ public class CompactUtil
 
   public static CompactClassNode compactClassNode(ClassNode cn)
   {
-    if(cn == null){
+    if (cn == null) {
       return null;
     }
     CompactClassNode ccn = new CompactClassNode();
@@ -69,11 +69,11 @@ public class CompactUtil
       inner.setAccess(((InnerClassNode)icn).access);
     }
     ccn.setInnerClasses(ccns);
-    if(ASMUtil.isEnum(cn)){
+    if (ASMUtil.isEnum(cn)) {
       ccn.setEnumValues(ASMUtil.getEnumValues(cn));
     }
     
-    if(cn instanceof ClassNodeType){
+    if (cn instanceof ClassNodeType){
       ccn.setCsv(((ClassNodeType)cn).csv);
     }
     
@@ -97,8 +97,7 @@ public class CompactUtil
   {
     List<FieldNode> fields =  ASMUtil.getPorts(cn);
     List<CompactFieldNode> ports = new LinkedList<CompactFieldNode>();
-    for(FieldNode fn : fields)
-    {
+    for (FieldNode fn : fields) {
       ports.add(compactFieldNode(fn));
     }
     ccn.setPorts(ports);
@@ -124,12 +123,10 @@ public class CompactUtil
     cfn.setName(fn.name);
 
     String className = org.apache.xbean.asm5.Type.getObjectType(fn.desc).getClassName();
-    if(className.charAt(0) == 'L')
-    {
+    if (className.charAt(0) == 'L') {
       className = className.substring(1);
     }
-    if(className.endsWith(";"))
-    {
+    if (className.endsWith(";")) {
       className = className.substring(0, className.length() - 1);
     }
     cfn.setDescription(className);
@@ -138,8 +135,9 @@ public class CompactUtil
     if (fn.visibleAnnotations != null) {
       setAnnotationNode(fn, cfn);
     }
-    if(fn instanceof com.datatorrent.stram.webapp.asm.FieldNode)
+    if (fn instanceof com.datatorrent.stram.webapp.asm.FieldNode) {
       cfn.setFieldSignatureNode((((com.datatorrent.stram.webapp.asm.FieldNode)fn).signatureNode));
+    }
     return cfn;
   }
 
@@ -149,7 +147,7 @@ public class CompactUtil
       CompactAnnotationNode node = new CompactAnnotationNode();
       Map<String, Object> annotationMap = new HashMap<String, Object>();
       if (visibleAnnotation instanceof AnnotationNode) {
-        AnnotationNode annotation = (AnnotationNode) visibleAnnotation;
+        AnnotationNode annotation = (AnnotationNode)visibleAnnotation;
         if (annotation.desc.contains("InputPortFieldAnnotation")
             || annotation.desc.contains("OutputPortFieldAnnotation")) {
           List<Object> annotationValues = annotation.values;

@@ -1138,5 +1138,6 @@ public class OperatorDiscoveryTest
     Assert.assertEquals("@description", OperatorDiscoverer.MethodTagType.DESCRIPTION, OperatorDiscoverer.MethodTagType.from("@description"));
     Assert.assertEquals("@random", null, OperatorDiscoverer.MethodTagType.from("@random"));
   }
+
 }
 
