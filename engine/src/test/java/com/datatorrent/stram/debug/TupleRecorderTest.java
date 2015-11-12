@@ -76,8 +76,7 @@ public class TupleRecorderTest
   public TupleRecorder getTupleRecorder(final StramLocalCluster localCluster, final PTOperator op)
   {
     TupleRecorderCollection instance = (TupleRecorderCollection)localCluster.getContainer(op).getInstance(classname);
-    TupleRecorder tupleRecorder = instance.getTupleRecorder(op.getId(), null);
-    return tupleRecorder;
+    return instance.getTupleRecorder(op.getId(), null);
   }
 
   public class Tuple
@@ -89,8 +88,7 @@ public class TupleRecorderTest
   @Test
   public void testRecorder() throws IOException
   {
-    FileSystem fs = new LocalFileSystem();
-    try {
+    try (FileSystem fs = new LocalFileSystem()) {
       TupleRecorder recorder = new TupleRecorder(null, "application_test_id_1");
       recorder.getStorage().setBytesPerPartFile(4096);
       recorder.getStorage().setLocalMode(true);
@@ -132,79 +130,75 @@ public class TupleRecorderTest
 
       fs.initialize((new Path(recorder.getStorage().getBasePath()).toUri()), new Configuration());
       Path path;
-      FSDataInputStream is;
       String line;
-      BufferedReader br;
 
       path = new Path(recorder.getStorage().getBasePath(), FSPartFileCollection.INDEX_FILE);
-      is = fs.open(path);
-      br = new BufferedReader(new InputStreamReader(is));
+      try (FSDataInputStream is = fs.open(path);
+          BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
 
-      line = br.readLine();
-      //    Assert.assertEquals("check index", "B:1000:T:0:part0.txt", line);
-      Assert.assertTrue("check index", line.matches("F:part0.txt:\\d+-\\d+:4:T:1000-1000:33:\\{\"3\":\"1\",\"1\":\"1\",\"0\":\"1\",\"2\":\"1\"\\}"));
-
+        line = br.readLine();
+        //    Assert.assertEquals("check index", "B:1000:T:0:part0.txt", line);
+        Assert.assertTrue("check index", line
+            .matches("F:part0.txt:\\d+-\\d+:4:T:1000-1000:33:\\{\"3\":\"1\",\"1\":\"1\",\"0\":\"1\",\"2\":\"1\"\\}"));
+      }
       path = new Path(recorder.getStorage().getBasePath(), FSPartFileCollection.META_FILE);
-      is = fs.open(path);
-      br = new BufferedReader(new InputStreamReader(is));
+      try (FSDataInputStream is = fs.open(path);
+          BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
 
-      ObjectMapper mapper = new ObjectMapper();
-      line = br.readLine();
-      Assert.assertEquals("check version", "1.2", line);
-      br.readLine(); // RecordInfo
-      //RecordInfo ri = mapper.readValue(line, RecordInfo.class);
-      line = br.readLine();
-      PortInfo pi = mapper.readValue(line, PortInfo.class);
-      Assert.assertEquals("port1", recorder.getPortInfoMap().get(pi.name).id, pi.id);
-      Assert.assertEquals("port1", recorder.getPortInfoMap().get(pi.name).type, pi.type);
-      line = br.readLine();
-      pi = mapper.readValue(line, PortInfo.class);
-      Assert.assertEquals("port2", recorder.getPortInfoMap().get(pi.name).id, pi.id);
-      Assert.assertEquals("port2", recorder.getPortInfoMap().get(pi.name).type, pi.type);
-      line = br.readLine();
-      pi = mapper.readValue(line, PortInfo.class);
-      Assert.assertEquals("port3", recorder.getPortInfoMap().get(pi.name).id, pi.id);
-      Assert.assertEquals("port3", recorder.getPortInfoMap().get(pi.name).type, pi.type);
-      line = br.readLine();
-      pi = mapper.readValue(line, PortInfo.class);
-      Assert.assertEquals("port4", recorder.getPortInfoMap().get(pi.name).id, pi.id);
-      Assert.assertEquals("port4", recorder.getPortInfoMap().get(pi.name).type, pi.type);
-      Assert.assertEquals("port size", 4, recorder.getPortInfoMap().size());
-      //line = br.readLine();
-
+        ObjectMapper mapper = new ObjectMapper();
+        line = br.readLine();
+        Assert.assertEquals("check version", "1.2", line);
+        br.readLine(); // RecordInfo
+        //RecordInfo ri = mapper.readValue(line, RecordInfo.class);
+        line = br.readLine();
+        PortInfo pi = mapper.readValue(line, PortInfo.class);
+        Assert.assertEquals("port1", recorder.getPortInfoMap().get(pi.name).id, pi.id);
+        Assert.assertEquals("port1", recorder.getPortInfoMap().get(pi.name).type, pi.type);
+        line = br.readLine();
+        pi = mapper.readValue(line, PortInfo.class);
+        Assert.assertEquals("port2", recorder.getPortInfoMap().get(pi.name).id, pi.id);
+        Assert.assertEquals("port2", recorder.getPortInfoMap().get(pi.name).type, pi.type);
+        line = br.readLine();
+        pi = mapper.readValue(line, PortInfo.class);
+        Assert.assertEquals("port3", recorder.getPortInfoMap().get(pi.name).id, pi.id);
+        Assert.assertEquals("port3", recorder.getPortInfoMap().get(pi.name).type, pi.type);
+        line = br.readLine();
+        pi = mapper.readValue(line, PortInfo.class);
+        Assert.assertEquals("port4", recorder.getPortInfoMap().get(pi.name).id, pi.id);
+        Assert.assertEquals("port4", recorder.getPortInfoMap().get(pi.name).type, pi.type);
+        Assert.assertEquals("port size", 4, recorder.getPortInfoMap().size());
+        //line = br.readLine();
+      }
       path = new Path(recorder.getStorage().getBasePath(), "part0.txt");
-      is = fs.open(path);
-      br = new BufferedReader(new InputStreamReader(is));
+      try (FSDataInputStream is = fs.open(path);
+          BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
 
-      line = br.readLine();
-      Assert.assertTrue("check part0", line.startsWith("B:"));
-      Assert.assertTrue("check part0", line.endsWith(":1000"));
+        line = br.readLine();
+        Assert.assertTrue("check part0", line.startsWith("B:"));
+        Assert.assertTrue("check part0", line.endsWith(":1000"));
 
-      line = br.readLine();
-      Assert.assertTrue("check part0 1", line.startsWith("T:"));
-      Assert.assertTrue("check part0 1", line.endsWith(":0:30:{\"key\":\"speed\",\"value\":\"5m/h\"}"));
+        line = br.readLine();
+        Assert.assertTrue("check part0 1", line.startsWith("T:"));
+        Assert.assertTrue("check part0 1", line.endsWith(":0:30:{\"key\":\"speed\",\"value\":\"5m/h\"}"));
 
-      line = br.readLine();
-      Assert.assertTrue("check part0 2", line.startsWith("T:"));
-      Assert.assertTrue("check part0 2", line.endsWith(":2:30:{\"key\":\"speed\",\"value\":\"4m/h\"}"));
+        line = br.readLine();
+        Assert.assertTrue("check part0 2", line.startsWith("T:"));
+        Assert.assertTrue("check part0 2", line.endsWith(":2:30:{\"key\":\"speed\",\"value\":\"4m/h\"}"));
 
-      line = br.readLine();
-      Assert.assertTrue("check part0 3", line.startsWith("T:"));
-      Assert.assertTrue("check part0 3", line.endsWith(":1:30:{\"key\":\"speed\",\"value\":\"6m/h\"}"));
+        line = br.readLine();
+        Assert.assertTrue("check part0 3", line.startsWith("T:"));
+        Assert.assertTrue("check part0 3", line.endsWith(":1:30:{\"key\":\"speed\",\"value\":\"6m/h\"}"));
 
-      line = br.readLine();
-      Assert.assertTrue("check part0 4", line.startsWith("T:"));
-      Assert.assertTrue("check part0 4", line.endsWith(":3:30:{\"key\":\"speed\",\"value\":\"2m/h\"}"));
+        line = br.readLine();
+        Assert.assertTrue("check part0 4", line.startsWith("T:"));
+        Assert.assertTrue("check part0 4", line.endsWith(":3:30:{\"key\":\"speed\",\"value\":\"2m/h\"}"));
 
-      line = br.readLine();
-      Assert.assertTrue("check part0 5", line.startsWith("E:"));
-      Assert.assertTrue("check part0 5", line.endsWith(":1000"));
-    }
-    catch (IOException ex) {
+        line = br.readLine();
+        Assert.assertTrue("check part0 5", line.startsWith("E:"));
+        Assert.assertTrue("check part0 5", line.endsWith(":1000"));
+      }
+    } catch (IOException ex) {
       throw new RuntimeException(ex);
-    }
-    finally {
-      fs.close();
     }
   }
 
@@ -234,17 +228,17 @@ public class TupleRecorderTest
     final PTOperator ptOp2 = localCluster.findByLogicalNode(dag.getMeta(op2));
     StramTestSupport.waitForActivation(localCluster, ptOp2);
 
-    testRecordingOnOperator(localCluster, ptOp2, 2);
+    testRecordingOnOperator(localCluster, ptOp2);
 
     final PTOperator ptOp1 = localCluster.findByLogicalNode(dag.getMeta(op1));
     StramTestSupport.waitForActivation(localCluster, ptOp1);
 
-    testRecordingOnOperator(localCluster, ptOp1, 1);
+    testRecordingOnOperator(localCluster, ptOp1);
 
     localCluster.shutdown();
   }
 
-  private void testRecordingOnOperator(final StramLocalCluster localCluster, final PTOperator op, int numPorts) throws Exception
+  private void testRecordingOnOperator(final StramLocalCluster localCluster, final PTOperator op) throws Exception
   {
     String id = "xyz";
     localCluster.getStreamingContainerManager().startRecording(id, op.getId(), null, 0);
@@ -259,25 +253,30 @@ public class TupleRecorderTest
 
     };
     Assert.assertTrue("Should get a tuple recorder within 10 seconds", StramTestSupport.awaitCompletion(c, 10000));
-    TupleRecorder tupleRecorder = getTupleRecorder(localCluster, op);
+    final TupleRecorder tupleRecorder = getTupleRecorder(localCluster, op);
     long startTime = tupleRecorder.getStartTime();
-    BufferedReader br;
     String line;
     File dir = new File(testWorkDir, "recordings/" + op.getId() + "/" + id);
     File file;
 
-    file = new File(dir, "meta.txt");
+    file = new File(dir, FSPartFileCollection.META_FILE);
     Assert.assertTrue("meta file should exist", file.exists());
-    br = new BufferedReader(new FileReader(file));
-    line = br.readLine();
-    Assert.assertEquals("version should be 1.2", "1.2", line);
-    line = br.readLine();
-    JSONObject json = new JSONObject(line);
-    Assert.assertEquals("Start time verification", startTime, json.getLong("startTime"));
-    
-    for (int i = 0; i < numPorts; i++) {
+    int numPorts = tupleRecorder.getSinkMap().size();
+
+    try (BufferedReader br = new BufferedReader(new FileReader(file))) {
       line = br.readLine();
-      Assert.assertTrue("should contain name, streamName, type and id", line != null && line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
+      Assert.assertEquals("version should be 1.2", "1.2", line);
+      line = br.readLine();
+      JSONObject json = new JSONObject(line);
+      Assert.assertEquals("Start time verification", startTime, json.getLong("startTime"));
+      Assert.assertTrue(numPorts > 0);
+
+      for (int i = 0; i < numPorts; i++) {
+        line = br.readLine();
+        Assert.assertTrue("should contain name, streamName, type and id", line != null && line
+            .contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line
+            .contains("\"id\""));
+      }
     }
 
     c = new WaitCondition()
@@ -285,7 +284,6 @@ public class TupleRecorderTest
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = getTupleRecorder(localCluster, op);
         return (tupleRecorder.getTotalTupleCount() >= testTupleCount);
       }
 
@@ -306,24 +304,23 @@ public class TupleRecorderTest
     };
     Assert.assertTrue("Tuple recorder shouldn't exist any more after stopping", StramTestSupport.awaitCompletion(c, 5000));
 
-    file = new File(dir, "index.txt");
+    file = new File(dir, FSPartFileCollection.INDEX_FILE);
     Assert.assertTrue("index file should exist", file.exists());
-    br = new BufferedReader(new FileReader(file));
 
-    ArrayList<String> partFiles = new ArrayList<String>();
+    ArrayList<String> partFiles = new ArrayList<>();
     int indexCount = 0;
-    while ((line = br.readLine()) != null) {
-      String partFile = "part" + indexCount + ".txt";
-      if (line.startsWith("F:" + partFile + ":")) {
-        partFiles.add(partFile);
-        indexCount++;
-      }
-      else if (line.startsWith("E")) {
-        Assert.assertEquals("index file should end after E line", br.readLine(), null);
-        break;
-      }
-      else {
-        Assert.fail("index file line is not starting with F or E");
+    try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+      while ((line = br.readLine()) != null) {
+        String partFile = "part" + indexCount + ".txt";
+        if (line.startsWith("F:" + partFile + ":")) {
+          partFiles.add(partFile);
+          indexCount++;
+        } else if (line.startsWith("E")) {
+          Assert.assertEquals("index file should end after E line", br.readLine(), null);
+          break;
+        } else {
+          Assert.fail("index file line is not starting with F or E");
+        }
       }
     }
 
@@ -337,17 +334,16 @@ public class TupleRecorderTest
         Assert.assertTrue(partFile + " should be greater than 1KB", file.length() >= 1024);
       }
       Assert.assertTrue(partFile + " should exist", file.exists());
-      br = new BufferedReader(new FileReader(file));
-      while ((line = br.readLine()) != null) {
-        if (line.startsWith("B:")) {
-          beginWindowExists = true;
-        }
-        else if (line.startsWith("E:")) {
-          endWindowExists = true;
-        }
-        else if (line.startsWith("T:")) {
-          String[] parts = line.split(":");
-          tupleCount[Integer.valueOf(parts[2])]++;
+      try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+        while ((line = br.readLine()) != null) {
+          if (line.startsWith("B:")) {
+            beginWindowExists = true;
+          } else if (line.startsWith("E:")) {
+            endWindowExists = true;
+          } else if (line.startsWith("T:")) {
+            String[] parts = line.split(":");
+            tupleCount[Integer.valueOf(parts[2])]++;
+          }
         }
       }
     }
