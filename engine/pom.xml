@@ -148,6 +148,18 @@
           <maxAllowedViolations>2942</maxAllowedViolations>
         </configuration>
       </plugin>
+      <plugin>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>2.5</version>
+        <configuration>
+          <filesets>
+            <fileset>
+              <directory>src/test/resources/testAppPackage/mydtapp/target</directory>
+              <followSymlinks>true</followSymlinks>
+            </fileset>
+          </filesets>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
