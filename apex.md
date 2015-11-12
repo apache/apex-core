@@ -11,4 +11,4 @@ Apache Apex (incubating) is the industry’s only open source, enterprise-grade 
 
 For additional information visit [Apache Apex](http://apex.incubator.apache.org/).
 
-![](images/apex_logo.png)
+[![](images/apex_logo.png)](http://apex.incubator.apache.org/)
