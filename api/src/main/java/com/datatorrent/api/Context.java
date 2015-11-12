@@ -301,6 +301,12 @@ public interface Context
      */
     int getId();
 
+    /**
+     * Return the number of windows before the next checkpoint including the current window.
+     * @return Number of windows from checkpoint, 1 if the checkpoint will be after the current window
+     */
+    int getWindowsFromCheckpoint();
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(OperatorContext.class);
   }

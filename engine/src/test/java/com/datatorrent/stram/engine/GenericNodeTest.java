@@ -20,12 +20,16 @@ package com.datatorrent.stram.engine;
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.Assert;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
-import com.datatorrent.api.*;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Sink;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.bufferserver.packet.MessageType;
@@ -40,6 +44,7 @@ public class GenericNodeTest
 {
   public static class GenericOperator implements Operator
   {
+    Context.OperatorContext context;
     long beginWindowId;
     long endWindowId;
     public final transient DefaultInputPort<Object> ip1 = new DefaultInputPort<Object>()
@@ -79,13 +84,12 @@ public class GenericNodeTest
     @Override
     public void setup(Context.OperatorContext context)
     {
-      throw new UnsupportedOperationException("Not supported yet.");
+      this.context = context;
     }
 
     @Override
     public void teardown()
     {
-      throw new UnsupportedOperationException("Not supported yet.");
     }
 
   }
@@ -294,6 +298,73 @@ public class GenericNodeTest
     t.join();
 
     Assert.assertTrue("End window not called", go.endWindowId != go.beginWindowId);
+  }
+
+  @Test
+  public void testCheckpointDistance() throws InterruptedException
+  {
+    long maxSleep = 5000;
+    long sleeptime = 25L;
+    GenericOperator go = new GenericOperator();
+    final OperatorContext context = new com.datatorrent.stram.engine.OperatorContext(0, new DefaultAttributeMap(), null);
+    final GenericNode gn = new GenericNode(go, context);
+    gn.setId(1);
+
+    DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
+    DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
+
+    gn.connectInputPort("ip1", reservoir1);
+    gn.connectInputPort("ip2", reservoir2);
+    gn.connectOutputPort("op", Sink.BLACKHOLE);
+
+    final AtomicBoolean ab = new AtomicBoolean(false);
+    Thread t = new Thread()
+    {
+      @Override
+      public void run()
+      {
+        gn.setup(context);
+        gn.activate();
+        ab.set(true);
+        gn.run();
+        gn.deactivate();
+        gn.teardown();
+      }
+
+    };
+    t.start();
+
+    long interval = 0;
+    do {
+      Thread.sleep(sleeptime);
+      interval += sleeptime;
+    }
+    while ((ab.get() == false) && (interval < maxSleep));
+
+    int checkpointWindowCount = Context.DAGContext.CHECKPOINT_WINDOW_COUNT.defaultValue;
+    int window = 0;
+    for (window = 1; window <= checkpointWindowCount; ++window) {
+      Tuple beginWindow = new Tuple(MessageType.BEGIN_WINDOW, window);
+      reservoir1.add(beginWindow);
+      reservoir2.add(beginWindow);
+
+      Tuple endWindow = new EndWindowTuple(window);
+
+      reservoir1.add(endWindow);
+      reservoir2.add(endWindow);
+
+      interval = 0;
+      do {
+        Thread.sleep(sleeptime);
+        interval += sleeptime;
+      }
+      while ((go.endWindowId != window) && (interval < maxSleep));
+
+      Assert.assertEquals("Windows till checkpoint", (checkpointWindowCount - (window - 1)), context.getWindowsFromCheckpoint());
+    }
+
+    gn.shutdown();
+    t.join();
   }
 
 }
