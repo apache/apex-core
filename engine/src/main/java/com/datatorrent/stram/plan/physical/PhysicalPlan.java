@@ -1443,6 +1443,13 @@ public class PhysicalPlan implements Serializable
 
     for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> e : om.getInputStreams().entrySet()) {
       PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorMeta());
+      if (m == null) {
+        if (e.getValue().getSource().getOperatorMeta().getOperator() instanceof Operator.DelayOperator) {
+          continue;
+        } else {
+          throw new RuntimeException("Encountered unknown operator");
+        }
+      }
       if (e.getKey().getValue(PortContext.PARTITION_PARALLEL).equals(true)) {
         // operator partitioned with upstream
         if (upstreamPartitioned != null) {

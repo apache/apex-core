@@ -421,18 +421,18 @@ public class GenericNode extends Node<Operator>
                     if (firstResetWindow == -1) {
                       if (operator instanceof Operator.DelayOperator) {
                         // if it's a DelayOperator and this is the first RESET_WINDOW, call firstWindow
-                        logger.warn("Fabricating first window {}", t.getWindowId());
+                        logger.warn("Fabricating first window {}", Codec.getStringWindowId(t.getWindowId()));
 
                         Operator.DelayOperator delayOperator = (Operator.DelayOperator)operator;
                         Tuple beginWindowTuple = new Tuple(MessageType.BEGIN_WINDOW, t.getWindowId());
                         Tuple endWindowTuple = new Tuple(MessageType.END_WINDOW, t.getWindowId());
                         for (Sink<Object> sink : outputs.values()) {
-                          logger.warn("Fabricating BEGIN WINDOW {}", t.getWindowId());
+                          logger.warn("Fabricating BEGIN WINDOW {}", Codec.getStringWindowId(t.getWindowId()));
                           sink.put(beginWindowTuple);
                         }
                         delayOperator.firstWindow(t.getWindowId());
                         for (Sink<Object> sink : outputs.values()) {
-                          logger.warn("Fabricating END WINDOW {}", t.getWindowId());
+                          logger.warn("Fabricating END WINDOW {}", Codec.getStringWindowId(t.getWindowId()));
                           sink.put(endWindowTuple);
                         }
                       }
