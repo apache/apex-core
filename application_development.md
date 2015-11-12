@@ -2872,7 +2872,7 @@ Dynamic modifications to applications are foundational part of the
 platform. They enable users to build layers over the applications. Users
 can also save all the changes done since the application launch, and
 therefore predictably get the application to its current state. For
-details refer to  [Configuration Guide](configuraiton.md)
+details refer to  [Configuration Guide](configuration.md)
 .
 
 
