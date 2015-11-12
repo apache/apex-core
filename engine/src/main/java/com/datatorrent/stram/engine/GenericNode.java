@@ -201,6 +201,9 @@ public class GenericNode extends Node<Operator>
   private boolean isInputPortConnectedToDelayOperator(String portName)
   {
     Operators.PortContextPair<InputPort<?>> pcPair = descriptor.inputPorts.get(portName);
+    if (pcPair == null || pcPair.context == null) {
+      return false;
+    }
     return pcPair.context.getValue(PortContext.IS_CONNECTED_TO_DELAY_OPERATOR);
   }
 
