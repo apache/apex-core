@@ -91,7 +91,7 @@ public class FastClassIndexReaderTest
 
     jar.close();
 
-    jar = new JarFile("/usr/lib/jvm/java-7-oracle/jre/lib/rt.jar");
+    jar = new JarFile(jdkJar);
     entriesEnum = jar.entries();
     time = System.currentTimeMillis();
     while (entriesEnum.hasMoreElements()) {
@@ -102,6 +102,8 @@ public class FastClassIndexReaderTest
         ins.close();
       }
     }
+
+    jar.close();
 
     LOG.info("The time to scan jdk using FastClassIndexReader {} ", System.currentTimeMillis() - time);
 
