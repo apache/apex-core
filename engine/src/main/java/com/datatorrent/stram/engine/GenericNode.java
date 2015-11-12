@@ -261,24 +261,6 @@ public class GenericNode extends Node<Operator>
                   activePort.remove();
                   expectingBeginWindow--;
                   receivedEndWindow = 0;
-                  /*
-                  if (initialWindowId == -1) {
-                    initialWindowId = tupleWindowId;
-                  }
-                  if (currentWindowId != tupleWindowId) {
-                    // This is the first BEGIN_WINDOW we are getting for this window
-                    for (Map.Entry<String, SweepableReservoir> entry : inputs.entrySet()) {
-                      long diff = WindowGenerator.compareWindowId(tupleWindowId, initialWindowId, firstWindowMillis, windowWidthMillis);
-                      if (isInputPortConnectedToDelayOperator(entry.getKey()) && diff == 0) {
-                        logger.debug("##### REMOVING BEGIN_WINDOW EXPECTATION FROM {} ({} < {})", entry.getKey(), diff);
-                        activeQueues.remove(entry.getKey());
-                        expectingBeginWindow--;
-                        receivedEndWindow++;
-                        endWindowDequeueTimes.put(entry.getValue(), System.currentTimeMillis());
-                      }
-                    }
-                  }
-                  */
                   currentWindowId = t.getWindowId();;
                   for (int s = sinks.length; s-- > 0; ) {
                     sinks[s].put(t);
