@@ -19,16 +19,22 @@
 package com.datatorrent.stram.engine;
 
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.Assert;
 
+import org.junit.Assert;
 import org.junit.Test;
 
-import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.*;
+import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Operator.CheckpointListener;
+import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.stram.tuple.EndStreamTuple;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -88,6 +94,41 @@ public class GenericNodeTest
       throw new UnsupportedOperationException("Not supported yet.");
     }
 
+  }
+
+  public static class GenericCheckpointOperator extends GenericOperator implements CheckpointListener
+  {
+    public Set<Long> checkpointedWindows = Sets.newHashSet();
+    public volatile boolean checkpointTwice = false;
+    public volatile int numWindows = 0;
+
+    public GenericCheckpointOperator()
+    {
+    }
+
+    @Override
+    public void beginWindow(long windowId)
+    {
+      super.beginWindow(windowId);
+    }
+
+    @Override
+    public void endWindow()
+    {
+      super.endWindow();
+      numWindows++;
+    }
+
+    @Override
+    public void checkpointed(long windowId)
+    {
+      checkpointTwice = checkpointTwice || !checkpointedWindows.add(windowId);
+    }
+
+    @Override
+    public void committed(long windowId)
+    {
+    }
   }
 
   @Test
@@ -296,4 +337,78 @@ public class GenericNodeTest
     Assert.assertTrue("End window not called", go.endWindowId != go.beginWindowId);
   }
 
+  @Test
+  public void testDoubleCheckpointAtleastOnce() throws Exception
+  {
+    testDoubleCheckpointHandling(ProcessingMode.AT_LEAST_ONCE);
+  }
+
+  @Test
+  public void testDoubleCheckpointAtMostOnce() throws Exception
+  {
+    testDoubleCheckpointHandling(ProcessingMode.AT_MOST_ONCE);
+  }
+
+  @Test
+  public void testDoubleCheckpointExactlyOnce() throws Exception
+  {
+    testDoubleCheckpointHandling(ProcessingMode.EXACTLY_ONCE);
+  }
+
+  @SuppressWarnings("SleepWhileInLoop")
+  private void testDoubleCheckpointHandling(ProcessingMode processingMode) throws Exception
+  {
+    WindowGenerator windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1, "WindowGenerator"), 1024);
+    windowGenerator.setResetWindow(0L);
+    windowGenerator.setFirstWindow(0L);
+    windowGenerator.setWindowWidth(100);
+    windowGenerator.setCheckpointCount(1, 0);
+
+    GenericCheckpointOperator gco = new GenericCheckpointOperator();
+    DefaultAttributeMap dam = new DefaultAttributeMap();
+    dam.put(OperatorContext.APPLICATION_WINDOW_COUNT, 2);
+    dam.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 2);
+    dam.put(OperatorContext.PROCESSING_MODE, processingMode);
+
+    final GenericNode in = new GenericNode(gco, new com.datatorrent.stram.engine.OperatorContext(0, dam, null));
+    in.setId(1);
+
+    TestSink testSink = new TestSink();
+
+    in.connectInputPort("ip1", windowGenerator.acquireReservoir(String.valueOf(in.id), 1024));
+    in.connectOutputPort("output", testSink);
+
+    windowGenerator.activate(null);
+
+    final AtomicBoolean ab = new AtomicBoolean(false);
+    Thread t = new Thread()
+    {
+      @Override
+      public void run()
+      {
+        ab.set(true);
+        in.activate();
+        in.run();
+        in.deactivate();
+      }
+
+    };
+
+    t.start();
+
+    long startTime = System.currentTimeMillis();
+    long endTime = 0;
+
+    while (gco.numWindows < 3 && ((endTime = System.currentTimeMillis()) - startTime) < 5000) {
+      Thread.sleep(50);
+    }
+
+    in.shutdown();
+    t.join();
+
+    windowGenerator.deactivate();
+
+    Assert.assertFalse(gco.checkpointTwice);
+    Assert.assertTrue("Timed out", (endTime - startTime) < 5000);
+  }
 }
