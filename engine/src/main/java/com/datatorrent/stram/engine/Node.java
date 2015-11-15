@@ -55,6 +55,7 @@ import com.google.common.math.IntMath;
 
 import com.datatorrent.api.AutoMetric;
 import com.datatorrent.api.Component;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
@@ -99,6 +100,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public static final String OUTPUT = "output";
   protected int APPLICATION_WINDOW_COUNT; /* this is write once variable */
 
+  protected int EFFECTIVE_CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
+
   protected int CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
 
   protected boolean DATA_TUPLE_AWARE; /* this is write once variable */
@@ -118,6 +121,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected Checkpoint checkpoint;
   public int applicationWindowCount;
   public int checkpointWindowCount;
+  protected int windowsFromCheckpoint;
   protected int controlTupleCount;
   public final OperatorContext context;
   public final BlockingQueue<StatsListener.OperatorResponse> commandResponse;
@@ -530,6 +534,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     if (operator instanceof Operator.CheckpointListener) {
       ((Operator.CheckpointListener) operator).checkpointed(windowId);
     }
+    windowsFromCheckpoint = EFFECTIVE_CHECKPOINT_WINDOW_COUNT;
   }
 
   @SuppressWarnings("unchecked")
@@ -599,6 +604,19 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       logger.warn("Ignoring {} attribute in favor of {} processing mode", OperatorContext.CHECKPOINT_WINDOW_COUNT.getSimpleName(), ProcessingMode.EXACTLY_ONCE.name());
       CHECKPOINT_WINDOW_COUNT = 1;
     }
+
+    int dagChkptWndwCnt = context.getValue(Context.DAGContext.CHECKPOINT_WINDOW_COUNT);
+    if (PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
+      int chkOffset = dagChkptWndwCnt % CHECKPOINT_WINDOW_COUNT;
+      if (chkOffset != 0) {
+        EFFECTIVE_CHECKPOINT_WINDOW_COUNT = dagChkptWndwCnt + CHECKPOINT_WINDOW_COUNT - chkOffset;
+      } else {
+        EFFECTIVE_CHECKPOINT_WINDOW_COUNT = dagChkptWndwCnt;
+      }
+    } else {
+      EFFECTIVE_CHECKPOINT_WINDOW_COUNT = 1;
+    }
+    context.setWindowsFromCheckpoint(EFFECTIVE_CHECKPOINT_WINDOW_COUNT);
 
     context.setThread(Thread.currentThread());
     activateSinks();

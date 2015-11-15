@@ -18,7 +18,12 @@
  */
 package com.datatorrent.stram.engine;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import org.slf4j.Logger;
@@ -33,10 +38,9 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.ShutdownException;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
 import com.datatorrent.stram.tuple.Tuple;
@@ -142,6 +146,8 @@ public class GenericNode extends Node<Operator>
       applicationWindowCount = 0;
     }
 
+    windowsFromCheckpoint--;
+
     if (endWindowTuple == null) {
       emitEndWindow();
     }
@@ -216,6 +222,7 @@ public class GenericNode extends Node<Operator>
 
     int expectingBeginWindow = activeQueues.size();
     int receivedEndWindow = 0;
+    windowsFromCheckpoint = EFFECTIVE_CHECKPOINT_WINDOW_COUNT;
 
     TupleTracker tracker;
     LinkedList<TupleTracker> resetTupleTracker = new LinkedList<TupleTracker>();
@@ -238,6 +245,8 @@ public class GenericNode extends Node<Operator>
                     sinks[s].put(t);
                   }
                   controlTupleCount++;
+
+                  context.setWindowsFromCheckpoint(windowsFromCheckpoint);
 
                   if (applicationWindowCount == 0) {
                     insideWindow = true;
@@ -284,6 +293,7 @@ public class GenericNode extends Node<Operator>
                       expectingBeginWindow--;
                       if (++receivedEndWindow == totalQueues) {
                         processEndWindow(null);
+                        windowsFromCheckpoint = EFFECTIVE_CHECKPOINT_WINDOW_COUNT;
                         activeQueues.addAll(inputs.values());
                         expectingBeginWindow = activeQueues.size();
                         break activequeue;

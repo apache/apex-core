@@ -48,6 +48,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   private final CircularBuffer<ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<ContainerStats.OperatorStats>(1024);
   private final CircularBuffer<OperatorRequest> requests = new CircularBuffer<OperatorRequest>(1024);
   public final boolean stateless;
+  private int windowsFromCheckpoint;
 
   /**
    * The operator to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
@@ -95,6 +96,15 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   public int getId()
   {
     return id;
+  }
+
+  @Override
+  public int getWindowsFromCheckpoint() {
+    return windowsFromCheckpoint;
+  }
+
+  public void setWindowsFromCheckpoint(int windowsFromCheckpoint) {
+    this.windowsFromCheckpoint = windowsFromCheckpoint;
   }
 
   /**
