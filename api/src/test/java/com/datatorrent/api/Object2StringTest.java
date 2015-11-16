@@ -22,7 +22,9 @@ import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 
 /**
  * This tests the Object2String codec
@@ -100,7 +102,7 @@ public class Object2StringTest
         return false;
       }
 
-      TestBean testBean = (TestBean) o;
+      TestBean testBean = (TestBean)o;
 
       if (intVal != testBean.intVal) {
         return false;
@@ -120,7 +122,7 @@ public class Object2StringTest
     {
       int result = intVal;
       result = 31 * result + (stringVal != null ? stringVal.hashCode() : 0);
-      result = 31 * result + (int) (longVal ^ (longVal >>> 32));
+      result = 31 * result + (int)(longVal ^ (longVal >>> 32));
       return result;
     }
   }
@@ -222,8 +224,7 @@ public class Object2StringTest
     try {
       bean2String.fromString(bean);
       assertFalse(true);
-    }
-    catch (RuntimeException e) {
+    } catch (RuntimeException e) {
       if (e.getCause() instanceof ClassNotFoundException) {
         String expRegex = "java.lang.ClassNotFoundException: com.datatorrent.api.Object2StringTest\\$TestBean1";
         assertThat("exception message", e.getMessage(), RegexMatcher.matches(expRegex));
@@ -257,7 +258,7 @@ public class Object2StringTest
     @Override
     public boolean matches(Object o)
     {
-      return ((String) o).matches(regex);
+      return ((String)o).matches(regex);
 
     }
 

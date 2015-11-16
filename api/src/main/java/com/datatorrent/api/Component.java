@@ -65,7 +65,7 @@ public interface Component<CONTEXT extends Context>
    * @param <COMPLEMENT>
    * @since 0.3.2
    */
-  public static abstract class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
+  public abstract static class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
   {
     public final COMPONENT component;
 
@@ -103,7 +103,8 @@ public interface Component<CONTEXT extends Context>
       if (this.component != other.component && (this.component == null || !this.component.equals(other.component))) {
         return false;
       }
-      if (this.getComplement() != other.getComplement() && (this.getComplement() == null || !this.getComplement().equals(other.getComplement()))) {
+      if (this.getComplement() != other.getComplement() &&
+          (this.getComplement() == null || !this.getComplement().equals(other.getComplement()))) {
         return false;
       }
       return true;

@@ -55,7 +55,7 @@ public interface StreamingApplication
   {
     LOCAL,
     CLUSTER
-  };
+  }
 
   /**
    * <p>populateDAG.</p>

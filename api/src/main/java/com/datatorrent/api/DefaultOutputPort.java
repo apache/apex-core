@@ -57,9 +57,9 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
    * Called by execution engine to inject sink at deployment time.
    */
   @Override
-  final public void setSink(Sink<Object> s)
+  public final void setSink(Sink<Object> s)
   {
-    this.sink = s == null? Sink.BLACKHOLE: s;
+    this.sink = s == null ? Sink.BLACKHOLE : s;
   }
 
   /**

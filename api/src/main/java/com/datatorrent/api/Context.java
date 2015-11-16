@@ -25,7 +25,12 @@ import java.util.Map;
 
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.StringCodec.*;
+import com.datatorrent.api.StringCodec.Class2String;
+import com.datatorrent.api.StringCodec.Collection2String;
+import com.datatorrent.api.StringCodec.Integer2String;
+import com.datatorrent.api.StringCodec.Map2String;
+import com.datatorrent.api.StringCodec.Object2String;
+import com.datatorrent.api.StringCodec.String2String;
 import com.datatorrent.api.annotation.Stateless;
 
 /**
@@ -103,9 +108,10 @@ public interface Context
      */
     Attribute<Integer> QUEUE_CAPACITY = new Attribute<Integer>(1024);
     /**
-     * The amount of buffer memory this port requires. There is a buffer server in each container. This is used to calculate total buffer server memory for container.
-     * Also due to the nature of the application, if buffer server needs to use more RAM, from time to time, this number may
-     * not be adhered to.
+     * The amount of buffer memory this port requires. There is a buffer server in each container.
+     * This is used to calculate total buffer server memory for container.
+     * Also due to the nature of the application, if buffer server needs to use more RAM, from time to time,
+     * this number may not be adhered to.
      */
     Attribute<Integer> BUFFER_MEMORY_MB = new Attribute<Integer>(8 * 64);
     /**
@@ -145,7 +151,8 @@ public interface Context
     Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);
     /**
      * Whether the output is unified.
-     * This is a read-only attribute to query that whether the output of the operator from multiple instances is being unified.
+     * This is a read-only attribute to query that whether the output of the operator from multiple instances is
+     * being unified.
      */
     Attribute<Boolean> IS_OUTPUT_UNIFIED = new Attribute<Boolean>(false);
     /**
@@ -191,7 +198,8 @@ public interface Context
      * Specify a listener to process and optionally react to operator status updates.
      * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
      */
-    Attribute<Collection<StatsListener>> STATS_LISTENERS = new Attribute<Collection<StatsListener>>(new Collection2String<StatsListener>(",", new Object2String<StatsListener>(":")));
+    Attribute<Collection<StatsListener>> STATS_LISTENERS = new Attribute<>(new Collection2String<>(",", new
+        Object2String<StatsListener>(":")));
     /**
      * Conveys whether the Operator is stateful or stateless. If the operator is stateless, no checkpointing is required
      * by the engine. The attribute is ignored when the operator was already declared stateless through the
@@ -199,16 +207,19 @@ public interface Context
      */
     Attribute<Boolean> STATELESS = new Attribute<Boolean>(false);
     /**
-     * Memory resource that the operator requires for optimal functioning. Used to calculate total memory requirement for containers.
+     * Memory resource that the operator requires for optimal functioning. Used to calculate total memory requirement
+     * for containers.
      */
     Attribute<Integer> MEMORY_MB = new Attribute<Integer>(1024);
     /**
-     * CPU Cores that the operator requires for optimal functioning. Used to calculate total CPU Cores requirement for containers.
+     * CPU Cores that the operator requires for optimal functioning. Used to calculate total CPU Cores requirement
+     * for containers.
      */
     Attribute<Integer> VCORES = new Attribute<Integer>(0);
 
     /**
-     * The options to be pass to JVM when launching the operator. Options such as java maximum heap size can be specified here.
+     * The options to be pass to JVM when launching the operator. Options such as java maximum heap size can be
+     * specified here.
      */
     Attribute<String> JVM_OPTIONS = new Attribute<String>(new String2String());
     /**
@@ -216,8 +227,9 @@ public interface Context
      */
     Attribute<Integer> APPLICATION_WINDOW_COUNT = new Attribute<Integer>(1);
     /**
-     * When set it changes the computation to sliding window computation where duration is determined using {@link #APPLICATION_WINDOW_COUNT} that is
-     * slided by duration determined using value of this attribute. Default value is null which is equivalent to that of {@link #APPLICATION_WINDOW_COUNT}.
+     * When set it changes the computation to sliding window computation where duration is determined using
+     * {@link #APPLICATION_WINDOW_COUNT} that is slided by duration determined using value of this attribute. Default
+     * value is null which is equivalent to that of {@link #APPLICATION_WINDOW_COUNT}.
      * The value should range between  (0 - {@link #APPLICATION_WINDOW_COUNT})
      */
     Attribute<Integer> SLIDE_BY_WINDOW_COUNT = new Attribute<Integer>(new Integer2String());
@@ -225,16 +237,18 @@ public interface Context
     /**
      * Attribute of the operator that hints at the optimal checkpoint boundary.
      * By default checkpointing happens after every predetermined streaming windows. Application developer can override
-     * this behavior by defining the following attribute. When this attribute is defined, checkpointing will be done after
-     * completion of later of regular checkpointing window and the window whose serial number is divisible by the attribute
-     * value. Typically user would define this value to be the same as that of APPLICATION_WINDOW_COUNT so checkpointing
-     * will be done at application window boundary.
+     * this behavior by defining the following attribute. When this attribute is defined, checkpointing will be done
+     * after completion of later of regular checkpointing window and the window whose serial number is divisible by the
+     * attribute value. Typically user would define this value to be the same as that of APPLICATION_WINDOW_COUNT so
+     * checkpointing will be done at application window boundary.
      */
     Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(1);
     /**
      * Name of host to directly control locality of an operator. Complementary to stream locality (NODE_LOCAL affinity).
-     * For example, the user may wish to specify a locality constraint for an input operator relative to its data source.
-     * The attribute can then be set to the host name that is specified in the operator specific connect string property.
+     * For example, the user may wish to specify a locality constraint for an input operator relative to its data
+     * source.
+     * The attribute can then be set to the host name that is specified in the operator specific connect string
+     * property.
      */
     Attribute<String> LOCALITY_HOST = new Attribute<String>(new String2String());
     /**
@@ -247,13 +261,14 @@ public interface Context
     Attribute<StorageAgent> STORAGE_AGENT = new Attribute<StorageAgent>(new Object2String<StorageAgent>());
     /**
      * The payload processing mode for this operator - at most once, exactly once, or default at least once.
-     * If the processing mode for an operator is specified as AT_MOST_ONCE and no processing mode is specified for the downstream
-     * operators if any, the processing mode of the downstream operators is automatically set to AT_MOST_ONCE. If a different processing
-     * mode is specified for the downstream operators it will result in an error.
-     * If the processing mode for an operator is specified as EXACTLY_ONCE then the processing mode for all downstream operators
-     * should be specified as AT_MOST_ONCE otherwise it will result in an error.
+     * If the processing mode for an operator is specified as AT_MOST_ONCE and no processing mode is specified for
+     * the downstream operators if any, the processing mode of the downstream operators is automatically set to
+     * AT_MOST_ONCE.
+     * If a different processing mode is specified for the downstream operators it will result in an error.
+     * If the processing mode for an operator is specified as EXACTLY_ONCE then the processing mode for all
+     * downstream operators should be specified as AT_MOST_ONCE otherwise it will result in an error.
      */
-    Attribute<Operator.ProcessingMode> PROCESSING_MODE = new Attribute<Operator.ProcessingMode>(ProcessingMode.AT_LEAST_ONCE);
+    Attribute<Operator.ProcessingMode> PROCESSING_MODE = new Attribute<>(ProcessingMode.AT_LEAST_ONCE);
     /**
      * Timeout to identify stalled processing, specified as count of streaming windows. If the last processed
      * window does not advance within the specified timeout count, the operator will be considered stuck and the
@@ -266,33 +281,35 @@ public interface Context
      */
     Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);
     /**
-     * How the operator distributes its state and share the input can be influenced by setting the Partitioner attribute.
+     * How the operator distributes its state and share the input can be influenced by setting the Partitioner
+     * attribute.
      * If this attribute is set to non null value, the instance of the partitioner is used to partition and merge the
      * state of the operator and the inputs. If this attribute is set to null then default partitioning is used.
      * If the attribute is not set and the operator implements Partitioner interface, then the instance of the operator
      * is used otherwise default default partitioning is used.
      */
-    Attribute<Partitioner<? extends Operator>> PARTITIONER = new Attribute<Partitioner<? extends Operator>>(new Object2String<Partitioner<? extends Operator>>());
+    Attribute<Partitioner<? extends Operator>> PARTITIONER = new Attribute<>(new Object2String<Partitioner<? extends
+        Operator>>());
 
     /**
      * Aggregates physical counters to a logical counter.
      * @deprecated  use {@link #METRICS_AGGREGATOR}
      */
     @Deprecated
-    Attribute<CountersAggregator> COUNTERS_AGGREGATOR = new Attribute<CountersAggregator>(new Object2String<CountersAggregator>());
+    Attribute<CountersAggregator> COUNTERS_AGGREGATOR = new Attribute<>(new Object2String<CountersAggregator>());
 
     /**
      * Aggregates metrics of physical instances of an operator. This handler is called with the metrics data of a
      * particular window from all the physical instances so that it can be aggregated into a logical view.
      */
-    Attribute<AutoMetric.Aggregator> METRICS_AGGREGATOR = new Attribute<AutoMetric.Aggregator>(new Object2String<AutoMetric.Aggregator>());
+    Attribute<AutoMetric.Aggregator> METRICS_AGGREGATOR = new Attribute<>(new Object2String<AutoMetric.Aggregator>());
 
     /**
      * Provides dimension aggregations and time buckets information for logical metrics. The information provided
      * by this construct is conveyed to tracker application and influences the aggregations done on it by the tracker.
      */
-    Attribute<AutoMetric.DimensionsScheme> METRICS_DIMENSIONS_SCHEME = new Attribute<AutoMetric.DimensionsScheme>(new
-      Object2String<AutoMetric.DimensionsScheme>());
+    Attribute<AutoMetric.DimensionsScheme> METRICS_DIMENSIONS_SCHEME = new Attribute<>(new Object2String<AutoMetric
+        .DimensionsScheme>());
 
     /**
      * Return the operator runtime id.
@@ -344,8 +361,8 @@ public interface Context
      * along with the operator ID to segregate output etc.
      * <p>
      * When running in distributed mode, the value is the YARN application id as shown in the resource manager (example:
-     * <code>application_1355713111917_0002</code>). Note that only the full id string uniquely identifies an application,
-     * the integer offset will reset on RM restart.
+     * <code>application_1355713111917_0002</code>). Note that only the full id string uniquely identifies an
+     * application, the integer offset will reset on RM restart.
      */
     Attribute<String> APPLICATION_ID = new Attribute<String>(new String2String());
     /**
@@ -358,7 +375,8 @@ public interface Context
      */
     Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
     /**
-     * The options to be pass to JVM when launching the containers. Options such as java maximum heap size can be specified here.
+     * The options to be pass to JVM when launching the containers. Options such as java maximum heap size can be
+     * specified here.
      */
     Attribute<String> CONTAINER_JVM_OPTIONS = new Attribute<String>(new String2String());
     /**
@@ -376,26 +394,30 @@ public interface Context
     Attribute<Integer> STREAMING_WINDOW_SIZE_MILLIS = new Attribute<Integer>(500);
     /**
      * The time interval for saving the operator state. It is specified as a multiple of streaming windows. The operator
-     * state is saved periodically with interval equal to the checkpoint interval. Default value is 60 streaming windows.
+     * state is saved periodically with interval equal to the checkpoint interval. Default value is 60 streaming
+     * windows.
      */
     Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(60);
     /**
-     * The path to store application dependencies, recording and other generated files for application master and containers.
+     * The path to store application dependencies, recording and other generated files for application master and
+     * containers.
      */
     Attribute<String> APPLICATION_PATH = new Attribute<String>(new String2String());
     /**
      * The size limit for a file where tuple recordings are stored. When tuples are being recorded they are stored
-     * in files. When a file size reaches this limit a new file is created and tuples start getting stored in the new file. Default value is 128k.
+     * in files. When a file size reaches this limit a new file is created and tuples start getting stored in the new
+     * file. Default value is 128k.
      */
     Attribute<Integer> TUPLE_RECORDING_PART_FILE_SIZE = new Attribute<Integer>(128 * 1024);
     /**
      * The time limit for a file where tuple recordings are stored. When tuples are being recorded they are stored
-     * in files. When a tuple recording file creation time falls beyond the time limit window from the current time a new file
-     * is created and the tuples start getting stored in the new file. Default value is 30hrs.
+     * in files. When a tuple recording file creation time falls beyond the time limit window from the current time a
+     * new file is created and the tuples start getting stored in the new file. Default value is 30hrs.
      */
     Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<Integer>(30 * 60 * 60 * 1000);
     /**
-     * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt.gateway.listenAddress" in the configuration.
+     * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt
+     * .gateway.listenAddress" in the configuration.
      */
     Attribute<String> GATEWAY_CONNECT_ADDRESS = new Attribute<String>(new String2String());
     /**
@@ -430,18 +452,19 @@ public interface Context
     Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<Integer>(Integer.MAX_VALUE);
     /**
      * Maximum number of windows that can be pending for statistics calculation. Statistics are computed when
-     * the metrics are available from all operators for a window. If the information is not available from all operators then
-     * the window is pending. When the number of pending windows reaches this limit the information for the oldest window
-     * is purged. Default value is 1000 windows.
+     * the metrics are available from all operators for a window. If the information is not available from all
+     * operators then the window is pending. When the number of pending windows reaches this limit the information
+     * for the oldest window is purged. Default value is 1000 windows.
      */
     Attribute<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new Attribute<Integer>(1000);
     /**
-     * Whether or not we record statistics. The statistics are recorded for each heartbeat if enabled. The default value is false.
+     * Whether or not we record statistics. The statistics are recorded for each heartbeat if enabled. The default
+     * value is false.
      */
     Attribute<Boolean> ENABLE_STATS_RECORDING = new Attribute<Boolean>(false);
     /**
-     * The time interval for throughput calculation. The throughput is periodically calculated with interval greater than or
-     * equal to the throughput calculation interval. The default value is 10s.
+     * The time interval for throughput calculation. The throughput is periodically calculated with interval greater
+     * than or equal to the throughput calculation interval. The default value is 10s.
      */
     Attribute<Integer> THROUGHPUT_CALCULATION_INTERVAL = new Attribute<Integer>(10000);
     /**
@@ -458,12 +481,15 @@ public interface Context
     /**
      * The agent which can be used to find the jvm options for the container.
      */
-    Attribute<ContainerOptConfigurator> CONTAINER_OPTS_CONFIGURATOR = new Attribute<ContainerOptConfigurator>(new Object2String<ContainerOptConfigurator>());
+    Attribute<ContainerOptConfigurator> CONTAINER_OPTS_CONFIGURATOR = new Attribute<>(new
+        Object2String<ContainerOptConfigurator>());
     /**
      * The string codec map for classes that are to be set or get through properties as strings.
      * Only supports string codecs that have a constructor with no arguments
      */
-    Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>>(new Map2String<Class<?>, Class<? extends StringCodec<?>>>(",", "=", new Class2String<Object>(), new Class2String<StringCodec<?>>()));
+    Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<>(new Map2String<>(",",
+        "=", new Class2String<>(), new Class2String<StringCodec<?>>()));
+
     @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(DAGContext.class);
   }

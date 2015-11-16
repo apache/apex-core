@@ -67,8 +67,8 @@ public interface Partitioner<T>
   public class PartitionKeys implements java.io.Serializable
   {
     private static final long serialVersionUID = 201312271835L;
-    final public int mask;
-    final public Set<Integer> partitions;
+    public final int mask;
+    public final Set<Integer> partitions;
 
     public PartitionKeys(int mask, Set<Integer> partitions)
     {
@@ -98,7 +98,8 @@ public interface Partitioner<T>
       if (this.mask != other.mask) {
         return false;
       }
-      return this.partitions == other.partitions || (this.partitions != null && this.partitions.equals(other.partitions));
+      return this.partitions == other.partitions || (this.partitions != null && this.partitions
+          .equals(other.partitions));
     }
 
     @Override
@@ -151,7 +152,8 @@ public interface Partitioner<T>
 
     /**
      * Get the attributes associated with this partition.
-     * The returned map does not contain any attributes that may have been defined in the parent context of this context.
+     * The returned map does not contain any attributes that may have been defined in the parent context of this
+     * context.
      *
      * @return attributes defined for the current context.
      */

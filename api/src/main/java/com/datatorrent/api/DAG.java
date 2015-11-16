@@ -52,7 +52,8 @@ public interface DAG extends DAGContext, Serializable
    * significant performance gains. Optimizations are subject to resource
    * availability.
    */
-  enum Locality {
+  enum Locality
+  {
     /**
      * Adjacent operators should be deployed into the same executing thread,
      * effectively serializing the computation. This setting is beneficial
@@ -117,7 +118,8 @@ public interface DAG extends DAGContext, Serializable
      * @param Input port to use for persisting
      * @return Object that describes the meta for the stream.
      */
-    public StreamMeta persistUsing(String name, Operator persistOperator, Operator.InputPort<?> persistOperatorInputPort);
+    public StreamMeta persistUsing(String name, Operator persistOperator,
+        Operator.InputPort<?> persistOperatorInputPort);
 
     /**
      * Set locality for the stream. The setting is best-effort, engine can
@@ -139,7 +141,8 @@ public interface DAG extends DAGContext, Serializable
      * @param Sink to persist
      * @return Object that describes the meta for the stream.
      */
-    public StreamMeta persistUsing(String name, Operator persistOperator, Operator.InputPort<?> persistOperatorInputPort, Operator.InputPort<?> sinkToPersist);
+    public StreamMeta persistUsing(String name, Operator persistOperator,
+        Operator.InputPort<?> persistOperatorInputPort, Operator.InputPort<?> sinkToPersist);
 
   }
 
@@ -165,7 +168,8 @@ public interface DAG extends DAGContext, Serializable
    *
    * @param <T> Concrete type of the operator
    * @param name Logical name of the operator used to identify the operator in the DAG
-   * @param clazz Concrete class with default constructor so that instance of it can be initialized and added to the DAG.
+   * @param clazz Concrete class with default constructor so that instance of it can be initialized and added to the
+   *              DAG.
    * @return Instance of the operator that has been added to the DAG.
    */
   public abstract <T extends Operator> T addOperator(String name, Class<T> clazz);
@@ -202,25 +206,29 @@ public interface DAG extends DAGContext, Serializable
    * @param sinks
    * @return StreamMeta
    */
-  public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks);
+  public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source,
+      Operator.InputPort<? super T>... sinks);
 
   /**
    * Overload varargs version to avoid generic array type safety warnings in calling code.
    * "Type safety: A generic array of Operator.InputPort<> is created for a varargs parameter"
    *
    * @param <T>
-   * @link <a href=http://www.angelikalanger.com/GenericsFAQ/FAQSections/ProgrammingIdioms.html#FAQ300>Programming Idioms</a>
+   * @link
+   * <a href=http://www.angelikalanger.com/GenericsFAQ/FAQSections/ProgrammingIdioms.html#FAQ300>Programming Idioms</a>
    * @param id
    * @param source
    * @param sink1
    * @return StreamMeta
    */
-  public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1);
+  public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source,
+      Operator.InputPort<? super T> sink1);
 
   /**
    * <p>addStream.</p>
    */
-  public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2);
+  public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source,
+      Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2);
 
   /**
    * <p>setAttribute.</p>

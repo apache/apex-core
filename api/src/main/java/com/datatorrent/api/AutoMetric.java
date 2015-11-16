@@ -18,7 +18,11 @@
  */
 package com.datatorrent.api;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.Collection;
 import java.util.Map;
 
@@ -96,8 +100,10 @@ public @interface AutoMetric
 
     /**
      * Application data tracker by default performs SUM, MIN, MAX, AVG, COUNT, FIRST, LAST on all number metrics.
-     * An app developer can influence this behavior by creating a dimension scheme that has a mapping of logical metric name
-     * to aggregations. Stram will invoke this method for each logical metric and check if the aggregations are overwritten
+     * An app developer can influence this behavior by creating a dimension scheme that has a mapping of logical
+     * metric name
+     * to aggregations. Stram will invoke this method for each logical metric and check if the aggregations are
+     * overwritten
      * and will inform that to app data tracker.
      *
      * @param logicalMetricName logical metric name.

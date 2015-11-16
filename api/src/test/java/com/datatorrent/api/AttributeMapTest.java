@@ -23,9 +23,9 @@ import java.util.Set;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static org.junit.Assert.*;
 
-import com.datatorrent.api.Attribute;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 /**
  *
@@ -36,7 +36,8 @@ public class AttributeMapTest
   public void testGetAttributes()
   {
     assertTrue("Identity of Interface", com.datatorrent.api.Context.DAGContext.serialVersionUID != 0);
-    Set<Attribute<Object>> result = com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer.getAttributes(com.datatorrent.api.Context.DAGContext.class);
+    Set<Attribute<Object>> result = com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer
+        .getAttributes(com.datatorrent.api.Context.DAGContext.class);
     assertTrue("Attributes Collection", !result.isEmpty());
     for (Attribute<Object> attribute : result) {
       logger.debug("{}", attribute);
@@ -47,7 +48,7 @@ public class AttributeMapTest
   {
     hello,
     howdy
-  };
+  }
 
   interface iface
   {
