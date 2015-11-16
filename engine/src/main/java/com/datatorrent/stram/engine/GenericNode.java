@@ -156,10 +156,12 @@ public class GenericNode extends Node<Operator>
       checkpointWindowCount = 0;
       if (doCheckpoint) {
         checkpoint(currentWindowId);
+        lastCheckpointWindowId = currentWindowId;
         doCheckpoint = false;
       }
       else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
         checkpoint(currentWindowId);
+        lastCheckpointWindowId = currentWindowId;
       }
     }
 
