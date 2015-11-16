@@ -35,8 +35,11 @@ import com.datatorrent.api.DAG;
 /**
  * The default implementation for {@link Context.ContainerOptConfigurator}
  * <br>
- * This aggregates the heap size configurations for Xmx, Xms, Xss. If Xmx is not set for an operator, it is set to 75% of the operator memory <br>
- * For other JVM options it assumes that they are all set same for all operators deployed in container. If JVM options are set on only one operator in the container,then those configurations will be applied to all the operators deployed in the container
+ * This aggregates the heap size configurations for Xmx, Xms, Xss. If Xmx is not set for an operator, it is set to
+ * 75% of the operator memory <br>
+ * For other JVM options it assumes that they are all set same for all operators deployed in container. If JVM
+ * options are set on only one operator in the container,then those configurations will be applied to all the
+ * operators deployed in the container
  *
  * @since 2.0.0
  */
@@ -61,13 +64,13 @@ public class BasicContainerOptConfigurator implements Context.ContainerOptConfig
     long xss = 0;
     List<Map<String, Object>> jvmOptsList = Lists.newArrayList();
     for (DAG.OperatorMeta operatorMeta : operatorMetaList) {
-      Map<String, Object> operatorMap = parseJvmOpts(operatorMeta.getValue(Context.OperatorContext.JVM_OPTIONS), operatorMeta.getValue(Context.OperatorContext.MEMORY_MB));
+      Map<String, Object> operatorMap = parseJvmOpts(operatorMeta.getValue(Context.OperatorContext.JVM_OPTIONS),
+          operatorMeta.getValue(Context.OperatorContext.MEMORY_MB));
       LOG.info("property map for operator {}", operatorMap);
-      Set<String> operatorPropertySet = (Set<String>) operatorMap.get(GENERIC);
+      Set<String> operatorPropertySet = (Set<String>)operatorMap.get(GENERIC);
       if (genericProperties == null) {
         genericProperties = operatorPropertySet;
-      }
-      else {
+      } else {
         if (operatorPropertySet != null && !genericProperties.equals(operatorPropertySet)) {
           throw new AssertionError("Properties don't match: " + genericProperties + " " + operatorPropertySet);
         }
@@ -77,15 +80,15 @@ public class BasicContainerOptConfigurator implements Context.ContainerOptConfig
     for (Map<String, Object> map : jvmOptsList) {
       String value;
       if (map.containsKey(XMX)) {
-        value = (String) map.get(XMX);
+        value = (String)map.get(XMX);
         xmx += getOptValue(value);
       }
       if (map.containsKey(XMS)) {
-        value = (String) map.get(XMS);
+        value = (String)map.get(XMS);
         xms += getOptValue(value);
       }
       if (map.containsKey(XSS)) {
-        value = (String) map.get(XSS);
+        value = (String)map.get(XSS);
         xss += getOptValue(value);
       }
     }
@@ -110,14 +113,11 @@ public class BasicContainerOptConfigurator implements Context.ContainerOptConfig
     long result;
     if (value.endsWith("g") || value.endsWith("G")) {
       result = Long.valueOf(value.substring(0, value.length() - 1)) * GB_TO_B;
-    }
-    else if (value.endsWith("m") || value.endsWith("M")) {
+    } else if (value.endsWith("m") || value.endsWith("M")) {
       result = Long.valueOf(value.substring(0, value.length() - 1)) * MB_TO_B;
-    }
-    else if (value.endsWith("k") || value.endsWith("K")) {
+    } else if (value.endsWith("k") || value.endsWith("K")) {
       result = Long.valueOf(value.substring(0, value.length() - 1)) * KB_TO_B;
-    }
-    else {
+    } else {
       result = Long.valueOf(value);
     }
     return result;
@@ -151,7 +151,7 @@ public class BasicContainerOptConfigurator implements Context.ContainerOptConfig
       int memoryOverhead = memory / 4;
       int heapSize = memory - memoryOverhead;
       if (memoryOverhead > 1024) {
-         heapSize = memory - 1024;
+        heapSize = memory - 1024;
       }
       map.put(XMX, heapSize + "m");
     }

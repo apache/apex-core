@@ -24,12 +24,13 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  *
@@ -45,7 +46,7 @@ public class SerializableObjectTest
       @Override
       public void process(T tuple)
       {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        throw new UnsupportedOperationException("Not supported yet.");
       }
 
     };
@@ -123,5 +124,4 @@ public class SerializableObjectTest
 
     assertEquals("Serialized Deserialized Objects", pre, post);
   }
-
 }

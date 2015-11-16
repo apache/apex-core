@@ -21,12 +21,11 @@ package com.datatorrent.common.util;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
-
-import com.ning.http.client.*;
-import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
-import com.ning.http.client.websocket.*;
 
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
@@ -36,11 +35,19 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.common.util.PubSubMessage.PubSubMessageType;
+import com.ning.http.client.AsyncCompletionHandler;
+import com.ning.http.client.AsyncHttpClient;
+import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
+import com.ning.http.client.AsyncHttpClientConfigBean;
+import com.ning.http.client.Cookie;
+import com.ning.http.client.Response;
+import com.ning.http.client.websocket.WebSocket;
+import com.ning.http.client.websocket.WebSocketTextListener;
+import com.ning.http.client.websocket.WebSocketUpgradeHandler;
 
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
-
+import com.datatorrent.common.util.PubSubMessage.PubSubMessageType;
 import com.datatorrent.netlet.util.DTThrowable;
 
 /**
@@ -70,15 +77,13 @@ public abstract class PubSubWebSocketClient implements Component<Context>
       PubSubMessage<Object> pubSubMessage;
       try {
         pubSubMessage = codec.parseMessage(message);
-        PubSubWebSocketClient.this.onMessage(pubSubMessage.getType().getIdentifier(), pubSubMessage.getTopic(), pubSubMessage.getData());
-      }
-      catch (JsonParseException jpe) {
+        PubSubWebSocketClient.this.onMessage(pubSubMessage.getType().getIdentifier(), pubSubMessage.getTopic(),
+            pubSubMessage.getData());
+      } catch (JsonParseException jpe) {
         logger.warn("Ignoring unparseable JSON message: {}", message, jpe);
-      }
-      catch (JsonMappingException jme) {
+      } catch (JsonMappingException jme) {
         logger.warn("Ignoring JSON mapping in message: {}", message, jme);
-      }
-      catch (IOException ex) {
+      } catch (IOException ex) {
         onError(ex);
       }
     }
@@ -164,7 +169,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * @throws InterruptedException
    * @throws TimeoutException
    */
-  public void openConnection(long timeoutMillis) throws IOException, ExecutionException, InterruptedException, TimeoutException
+  public void openConnection(long timeoutMillis) throws IOException, ExecutionException, InterruptedException,
+      TimeoutException
   {
     throwable.set(null);
 
@@ -175,11 +181,11 @@ public abstract class PubSubWebSocketClient implements Component<Context>
       try {
         json.put("userName", userName);
         json.put("password", password);
-      }
-      catch (JSONException ex) {
+      } catch (JSONException ex) {
         throw new RuntimeException(ex);
       }
-      Response response = client.preparePost(loginUrl).setHeader("Content-Type", "application/json").setBody(json.toString()).execute().get();
+      Response response = client.preparePost(loginUrl).setHeader("Content-Type", "application/json").setBody(
+          json.toString()).execute().get();
       cookies = response.getCookies();
     }
     BoundRequestBuilder brb = client.prepareGet(uri.toString());
@@ -188,7 +194,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
         brb.addCookie(cookie);
       }
     }
-    connection = brb.execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()).build()).get(timeoutMillis, TimeUnit.MILLISECONDS);
+    connection = brb.execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()).build())
+        .get(timeoutMillis, TimeUnit.MILLISECONDS);
   }
 
   public void openConnectionAsync() throws IOException
@@ -201,40 +208,42 @@ public abstract class PubSubWebSocketClient implements Component<Context>
       try {
         json.put("userName", userName);
         json.put("password", password);
-      }
-      catch (JSONException ex) {
+      } catch (JSONException ex) {
         throw new RuntimeException(ex);
       }
-      client.preparePost(loginUrl).setHeader("Content-Type", "application/json").setBody(json.toString()).execute(new AsyncCompletionHandler<Response>()
-      {
+      client.preparePost(loginUrl).setHeader("Content-Type", "application/json").setBody(json.toString())
+          .execute(new AsyncCompletionHandler<Response>()
+          {
 
-        @Override
-        public Response onCompleted(Response response) throws Exception
-        {
-          List<Cookie> cookies = response.getCookies();
-          BoundRequestBuilder brb = client.prepareGet(uri.toString());
-          if (cookies != null) {
-            for (Cookie cookie : cookies) {
-              brb.addCookie(cookie);
+            @Override
+            public Response onCompleted(Response response) throws Exception
+            {
+              List<Cookie> cookies = response.getCookies();
+              BoundRequestBuilder brb = client.prepareGet(uri.toString());
+              if (cookies != null) {
+                for (Cookie cookie : cookies) {
+                  brb.addCookie(cookie);
+                }
+              }
+              connection =
+                  brb.execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()).build())
+                      .get();
+              return response;
             }
-          }
-          connection = brb.execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()).build()).get();
-          return response;
-        }
 
-      });
-    }
-    else {
-      client.prepareGet(uri.toString()).execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()
-      {
-        @Override
-        public void onOpen(WebSocket ws)
-        {
-          connection = ws;
-          super.onOpen(ws);
-        }
-
-      }).build());
+          });
+    } else {
+      final WebSocketUpgradeHandler.Builder socketUpgradeBuilder =
+          new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()
+          {
+            @Override
+            public void onOpen(WebSocket ws)
+            {
+              connection = ws;
+              super.onOpen(ws);
+            }
+          });
+      client.prepareGet(uri.toString()).execute(socketUpgradeBuilder.build());
     }
   }
 
@@ -289,11 +298,11 @@ public abstract class PubSubWebSocketClient implements Component<Context>
     Throwable t = throwable.get();
     if (t instanceof IOException) {
       throw (IOException)t;
-    }
-    else {
+    } else {
       DTThrowable.rethrow(t);
     }
   }
+
   /**
    * <p>publish.</p>
    *
@@ -376,7 +385,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * @return subscribe num subscriber message.
    * @throws IOException
    */
-  public static <T> String constructSubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
+  public static <T> String constructSubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec)
+  throws IOException
   {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
     pubSubMessage.setType(PubSubMessageType.SUBSCRIBE_NUM_SUBSCRIBERS);
@@ -406,7 +416,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * @return un-subscribe num subscribers message.
    * @throws IOException
    */
-  public static <T> String constructUnsubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
+  public static <T> String constructUnsubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec)
+      throws IOException
   {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
     pubSubMessage.setType(PubSubMessageType.UNSUBSCRIBE_NUM_SUBSCRIBERS);

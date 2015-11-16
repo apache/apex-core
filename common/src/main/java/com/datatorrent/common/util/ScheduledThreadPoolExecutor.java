@@ -22,13 +22,13 @@ package com.datatorrent.common.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * <p>ScheduledThreadPoolExecutor class.</p>
  *
  * @since 0.3.2
  */
-public class ScheduledThreadPoolExecutor extends java.util.concurrent.ScheduledThreadPoolExecutor implements ScheduledExecutorService
+public class ScheduledThreadPoolExecutor extends java.util.concurrent.ScheduledThreadPoolExecutor
+    implements ScheduledExecutorService
 {
   public static final Logger logger = LoggerFactory.getLogger(ScheduledExecutorService.class);
 

@@ -54,9 +54,7 @@ public class NameableThreadFactory implements ThreadFactory
   @Override
   public Thread newThread(Runnable r)
   {
-    Thread t = new Thread(group, r,
-                          namePrefix + threadNumber.getAndIncrement(),
-                          0);
+    Thread t = new Thread(group, r, namePrefix + threadNumber.getAndIncrement(), 0);
     if (t.isDaemon() != this.isDaemon) {
       t.setDaemon(isDaemon);
     }
