@@ -69,14 +69,15 @@ public class InputNode extends Node<InputOperator>
     long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
 
-    boolean insideWindow = applicationWindowCount != 0;
+    boolean insideApplicationWindow = applicationWindowCount != 0;
     boolean doCheckpoint = false;
+    boolean insideStreamingWindow = false;
 
     try {
       while (alive) {
         Tuple t = controlTuples.sweep();
         if (t == null) {
-          if (insideWindow) {
+          if (insideStreamingWindow) {
             int generatedTuples = 0;
 
             for (Sink<Object> cs : sinks) {
@@ -111,8 +112,9 @@ public class InputNode extends Node<InputOperator>
               }
               controlTupleCount++;
               currentWindowId = t.getWindowId();
+              insideStreamingWindow = true;
               if (applicationWindowCount == 0) {
-                insideWindow = true;
+                insideApplicationWindow = true;
                 operator.beginWindow(currentWindowId);
               }
               operator.emitTuples(); /* give at least one chance to emit the tuples */
@@ -121,8 +123,9 @@ public class InputNode extends Node<InputOperator>
 
             case END_WINDOW:
               endWindowEmitTime = System.currentTimeMillis();
+              insideStreamingWindow = false;
               if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
-                insideWindow = false;
+                insideApplicationWindow = false;
                 operator.endWindow();
                 applicationWindowCount = 0;
               }
@@ -145,7 +148,7 @@ public class InputNode extends Node<InputOperator>
 
               ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
               reportStats(stats, currentWindowId);
-              if(!insideWindow){
+              if(!insideApplicationWindow){
                 stats.metrics = collectMetrics();
               }
               handleRequests(currentWindowId);
@@ -214,7 +217,7 @@ public class InputNode extends Node<InputOperator>
       }
     }
 
-    if (insideWindow) {
+    if (insideApplicationWindow) {
       endWindowEmitTime = System.currentTimeMillis();
       operator.endWindow();
       if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
