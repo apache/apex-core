@@ -124,7 +124,8 @@ public class StramClient
       // The jersey client inclusion is only for Hadoop-2.2 and should be removed when we upgrade our Hadoop
       // dependency version since Hadoop-2.3 onwards has jersey client bundled
       com.sun.jersey.api.client.ClientHandler.class,
-      com.sun.jersey.client.apache4.ApacheHttpClient4Handler.class
+      com.sun.jersey.client.apache4.ApacheHttpClient4Handler.class,
+      org.jctools.queues.SpscArrayQueue.class
   };
 
   private static final Class<?>[] DATATORRENT_SECURITY_SPECIFIC_CLASSES = new Class<?>[]{

@@ -145,7 +145,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <configuration>
-          <maxAllowedViolations>4406</maxAllowedViolations>
+          <maxAllowedViolations>4403</maxAllowedViolations>
         </configuration>
       </plugin>
       <plugin>
@@ -312,6 +312,11 @@
       <groupId>org.apache.xbean</groupId>
       <artifactId>xbean-asm5-shaded</artifactId>
       <version>4.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jctools</groupId>
+      <artifactId>jctools-core</artifactId>
+      <version>1.1</version>
     </dependency>
   </dependencies>
   <profiles>
