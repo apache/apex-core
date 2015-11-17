@@ -18,8 +18,8 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.api.Sink;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * <p>SweepableReservoir interface.</p>
