@@ -46,7 +46,7 @@
     <module name="EmptyBlock">
       <property name="option" value="TEXT"/>
       <property name="tokens"
-                value="LITERAL_TRY, LITERAL_CATCH, LITERAL_FINALLY, LITERAL_IF, LITERAL_ELSE, LITERAL_SWITCH"/>
+          value="LITERAL_TRY, LITERAL_CATCH, LITERAL_FINALLY, LITERAL_IF, LITERAL_ELSE, LITERAL_SWITCH"/>
     </module>
     <!-- checks for braces around code blocks -->
     <module name="NeedBraces"/>
@@ -54,13 +54,15 @@
     <module name="LeftCurly">
       <property name="option" value="eol"/>
       <property name="tokens"
-                value="LITERAL_CATCH, LITERAL_DO, LITERAL_ELSE, LITERAL_FINALLY, LITERAL_FOR, LITERAL_IF, LITERAL_SWITCH, LITERAL_SYNCHRONIZED, LITERAL_TRY, LITERAL_WHILE, STATIC_INIT"/>
+          value="LITERAL_CATCH, LITERAL_DO, LITERAL_ELSE, LITERAL_FINALLY, LITERAL_FOR, LITERAL_IF, LITERAL_SWITCH,
+          LITERAL_SYNCHRONIZED, LITERAL_TRY, LITERAL_WHILE, STATIC_INIT"/>
     </module>
 
     <module name="LeftCurly">
       <property name="option" value="nl"/>
       <property name="tokens"
-                value="ANNOTATION_DEF, CLASS_DEF, CTOR_DEF, ENUM_DEF, ENUM_CONSTANT_DEF, INTERFACE_DEF, METHOD_DEF"/>
+          value="ANNOTATION_DEF, CLASS_DEF, CTOR_DEF, ENUM_DEF, ENUM_CONSTANT_DEF, INTERFACE_DEF, METHOD_DEF,
+          OBJBLOCK"/>
     </module>
 
     <module name="RightCurly">
@@ -71,12 +73,12 @@
     <module name="RightCurly">
       <property name="option" value="alone"/>
       <property name="tokens"
-                value="CLASS_DEF, METHOD_DEF, CTOR_DEF, LITERAL_FOR, LITERAL_WHILE, LITERAL_DO, STATIC_INIT, INSTANCE_INIT"/>
+          value="CLASS_DEF, METHOD_DEF, CTOR_DEF, LITERAL_FOR, LITERAL_WHILE, LITERAL_DO, STATIC_INIT, INSTANCE_INIT"/>
     </module>
 
     <module name="NoWhitespaceAfter">
       <property name="tokens"
-                value="ARRAY_INIT, BNOT, DEC, DOT, INC, LNOT, UNARY_MINUS, UNARY_PLUS, TYPECAST, ARRAY_DECLARATOR"/>
+          value="ARRAY_INIT, BNOT, DEC, DOT, INC, LNOT, UNARY_MINUS, UNARY_PLUS, TYPECAST, ARRAY_DECLARATOR"/>
     </module>
 
     <module name="NoWhitespaceBefore">
