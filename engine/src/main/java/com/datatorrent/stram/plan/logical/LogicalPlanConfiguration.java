@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram.plan.logical;
 
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,6 +31,7 @@ import java.lang.reflect.Type;
 
 import java.util.*;
 import java.util.Map.Entry;
+
 
 import javax.validation.ValidationException;
 
@@ -45,7 +47,6 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.CollectionUtils;
@@ -60,6 +61,7 @@ import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
+
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;

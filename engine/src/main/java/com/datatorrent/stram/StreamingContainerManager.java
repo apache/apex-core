@@ -95,6 +95,7 @@ import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalOperatorStatus;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.ModuleMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
@@ -2244,6 +2245,25 @@ public class StreamingContainerManager implements PlanContext
       return null;
     }
     return fillLogicalOperatorInfo(operatorMeta);
+  }
+
+  public ModuleMeta getModuleMeta(String moduleName)
+  {
+    return getModuleMeta(moduleName, getLogicalPlan());
+  }
+
+  private ModuleMeta getModuleMeta(String moduleName, LogicalPlan dag)
+  {
+    for (ModuleMeta m : dag.getAllModules()) {
+      if (m.getFullName().equals(moduleName)) {
+        return m;
+      }
+      ModuleMeta res = getModuleMeta(moduleName, m.getDag());
+      if (res != null) {
+        return res;
+      }
+    }
+    return null;
   }
 
   public List<LogicalOperatorInfo> getLogicalOperatorInfoList()

@@ -32,6 +32,7 @@ import javax.validation.constraints.NotNull;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.slf4j.Logger;
@@ -1090,9 +1091,9 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     // Avoid name conflict with module.
-    if (modules.containsKey(name))
+    if (modules.containsKey(name)) {
       throw new IllegalArgumentException("duplicate operator id: " + operators.get(name));
-
+    }
     OperatorMeta decl = new OperatorMeta(name, operator);
     rootOperators.add(decl); // will be removed when a sink is added to an input port for this operator
     operators.put(name, decl);
@@ -1193,7 +1194,7 @@ public class LogicalPlan implements Serializable, DAG
      * @param parentDAG parent dag to populate with operators from this and inner modules.
      * @param conf      configuration object.
      */
-    public void flattenModule(LogicalPlan parentDAG, org.apache.hadoop.conf.Configuration conf)
+    public void flattenModule(LogicalPlan parentDAG, Configuration conf)
     {
       module.populateDAG(dag, conf);
       for (ModuleMeta subModuleMeta : dag.getAllModules()) {
