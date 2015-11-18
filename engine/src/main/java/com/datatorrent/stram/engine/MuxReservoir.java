@@ -22,6 +22,9 @@ import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.api.Sink;
 import com.datatorrent.netlet.util.CircularBuffer;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Queue;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +74,7 @@ public abstract class MuxReservoir
     return r;
   }
 
-  public abstract Reservoir getMasterReservoir();
+  protected abstract Queue getQueue();
 
   class SubReservoir extends CircularBuffer<Object> implements SweepableReservoir
   {
@@ -81,6 +84,22 @@ public abstract class MuxReservoir
     SubReservoir(int capacity)
     {
       super(capacity);
+    }
+
+    @Override
+    public int size(final boolean dataTupleAware)
+    {
+      int size = size();
+      if (dataTupleAware) {
+        Iterator<Object> iterator = getFrozenIterator();
+        while (iterator.hasNext()) {
+          if (iterator.next() instanceof Tuple) {
+            size--;
+          }
+        }
+      }
+      logger.info("{} queue size {}", this, size);
+      return size;
     }
 
     @Override
@@ -110,14 +129,14 @@ public abstract class MuxReservoir
         count += size;
       }
 
-      final Reservoir masterReservoir = getMasterReservoir();
-      synchronized (masterReservoir) {
-        /* find out the minimum remaining capacity in all the other buffers and consume those many tuples from bufferserver */
-        int min = masterReservoir.size();
-        if (min == 0) {
+      final Queue queue = getQueue();
+      synchronized (queue) {
+        if (queue.isEmpty()) {
           return null;
         }
 
+        /* find out the minimum remaining capacity in all the other buffers and consume those many tuples from bufferserver */
+        int min = Integer.MAX_VALUE;
         for (int i = reservoirs.length; i-- > 0;) {
           if (reservoirs[i].remainingCapacity() < min) {
             min = reservoirs[i].remainingCapacity();
@@ -125,7 +144,10 @@ public abstract class MuxReservoir
         }
 
         while (min-- > 0) {
-          Object o = masterReservoir.remove();
+          Object o = queue.poll();
+          if (o == null) {
+            break;
+          }
           for (int i = reservoirs.length; i-- > 0;) {
             reservoirs[i].add(o);
           }

@@ -16,39 +16,55 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.datatorrent.stram.debug;
+package com.datatorrent.stram.engine;
 
-import com.datatorrent.stram.engine.SweepableReservoir;
-import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.api.Sink;
+import com.datatorrent.stram.tuple.Tuple;
 
-/**
- * <p>TappedReservoir class.</p>
- *
- * @since 0.3.2
- */
-public class TappedReservoir extends MuxSink implements SweepableReservoir
+public class ForwardingReservoir implements SweepableReservoir
 {
-  public final SweepableReservoir reservoir;
-  private Sink<Object> sink;
+  public static ForwardingReservoir newReservoir(final String id, final int capacity)
+  {
+    return new ForwardingReservoir(AbstractReservoir.newReservoir(id, capacity));
+  }
 
-  @SuppressWarnings({"unchecked", "LeakingThisInConstructor"})
-  public TappedReservoir(SweepableReservoir reservoir, Sink<Object> tap)
+  private final AbstractReservoir reservoir;
+
+  public ForwardingReservoir(AbstractReservoir reservoir)
   {
     this.reservoir = reservoir;
-    add(tap);
-    sink = reservoir.setSink(this);
   }
 
   @Override
   public Sink<Object> setSink(Sink<Object> sink)
   {
-    try {
-      return this.sink;
-    }
-    finally {
-      this.sink = sink;
-    }
+    return reservoir.setSink(sink);
+  }
+
+  @Override
+  public int getCount(boolean reset)
+  {
+    return reservoir.getCount(reset);
+  }
+
+  public String getId()
+  {
+    return reservoir.getId();
+  }
+
+  public void setId(String id)
+  {
+    reservoir.setId(id);
+  }
+
+  public boolean add(Object o)
+  {
+    return reservoir.add(o);
+  }
+
+  public void put(Object o) throws InterruptedException
+  {
+    reservoir.put(o);
   }
 
   @Override
@@ -58,15 +74,15 @@ public class TappedReservoir extends MuxSink implements SweepableReservoir
   }
 
   @Override
-  public int getCount(boolean reset)
-  {
-    return reservoir.getCount(reset);
-  }
-
-  @Override
   public int size(final boolean dataTupleAware)
   {
     return reservoir.size(dataTupleAware);
+  }
+
+  @Override
+  public Object remove()
+  {
+    return reservoir.remove();
   }
 
   @Override
@@ -75,19 +91,9 @@ public class TappedReservoir extends MuxSink implements SweepableReservoir
     return reservoir.isEmpty();
   }
 
-  @Override
-  public void put(Object tuple)
+  public AbstractReservoir getReservoir()
   {
-    super.put(tuple);
-    sink.put(tuple);
-  }
-
-  @Override
-  public Object remove()
-  {
-    Object object = reservoir.remove();
-    super.put(object);
-    return object;
+    return reservoir;
   }
 
 }
