@@ -325,6 +325,7 @@
             <configLocation>apex_checks.xml</configLocation>
             <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
             <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
+            <includeTestSourceDirectory>true</includeTestSourceDirectory>
           </configuration>
         </plugin>
         <plugin>
