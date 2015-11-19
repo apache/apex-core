@@ -222,7 +222,7 @@ public class GenericNode extends Node<Operator>
 
     int expectingBeginWindow = activeQueues.size();
     int receivedEndWindow = 0;
-    windowsFromCheckpoint = EFFECTIVE_CHECKPOINT_WINDOW_COUNT;
+    calculateNextCheckpointWindow();
 
     TupleTracker tracker;
     LinkedList<TupleTracker> resetTupleTracker = new LinkedList<TupleTracker>();
@@ -246,7 +246,8 @@ public class GenericNode extends Node<Operator>
                   }
                   controlTupleCount++;
 
-                  context.setWindowsFromCheckpoint(windowsFromCheckpoint);
+                  ++streamingWindowCount;
+                  context.setWindowsFromCheckpoint((int)(nextCheckpointWindowCount - streamingWindowCount + 1));
 
                   if (applicationWindowCount == 0) {
                     insideWindow = true;
@@ -293,7 +294,6 @@ public class GenericNode extends Node<Operator>
                       expectingBeginWindow--;
                       if (++receivedEndWindow == totalQueues) {
                         processEndWindow(null);
-                        windowsFromCheckpoint = EFFECTIVE_CHECKPOINT_WINDOW_COUNT;
                         activeQueues.addAll(inputs.values());
                         expectingBeginWindow = activeQueues.size();
                         break activequeue;

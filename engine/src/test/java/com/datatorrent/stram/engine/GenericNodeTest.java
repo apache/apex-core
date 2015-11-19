@@ -19,6 +19,7 @@
 package com.datatorrent.stram.engine;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Assert;
@@ -33,6 +34,8 @@ import com.datatorrent.api.Sink;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.common.util.ScheduledExecutorService;
+import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.stram.tuple.EndStreamTuple;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -92,6 +95,22 @@ public class GenericNodeTest
     {
     }
 
+  }
+
+  public static class CheckpointDistanceOperator extends GenericOperator {
+    List<Integer> distances = new ArrayList<Integer>();
+    int numWindows = 0;
+    int maxWindows = 0;
+
+    @Override
+    public void beginWindow(long windowId)
+    {
+      super.beginWindow(windowId);
+      if (numWindows < maxWindows) {
+        distances.add(context.getWindowsFromCheckpoint());
+        ++numWindows;
+      }
+    }
   }
 
   @Test
@@ -303,18 +322,47 @@ public class GenericNodeTest
   @Test
   public void testCheckpointDistance() throws InterruptedException
   {
-    long maxSleep = 5000;
+    int windowWidth = 50;
     long sleeptime = 25L;
-    GenericOperator go = new GenericOperator();
-    final OperatorContext context = new com.datatorrent.stram.engine.OperatorContext(0, new DefaultAttributeMap(), null);
+    int maxWindows = 60;
+    int dagCheckPoint = 7;
+    int opCheckPoint = 5;
+    // Adding some extra time for the windows to finish
+    long maxSleep = windowWidth * maxWindows + 5000;
+
+    ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(1, "default");
+    final WindowGenerator windowGenerator = new WindowGenerator(executorService, 1024);
+    windowGenerator.setWindowWidth(windowWidth);
+    windowGenerator.setFirstWindow(executorService.getCurrentTimeMillis());
+    windowGenerator.setCheckpointCount(dagCheckPoint, 0);
+    //GenericOperator go = new GenericOperator();
+    CheckpointDistanceOperator go = new CheckpointDistanceOperator();
+    go.maxWindows = maxWindows;
+
+    List<Integer> checkpoints = new ArrayList<Integer>();
+
+    int window = 0;
+    while (window < maxWindows) {
+      window = (int)Math.ceil((double)(window + 1)/dagCheckPoint) * dagCheckPoint;
+      window = (int)Math.ceil((double)window/opCheckPoint) * opCheckPoint;
+      checkpoints.add(window);
+    }
+
+    final StreamContext stcontext = new StreamContext("s1");
+    DefaultAttributeMap attrMap = new DefaultAttributeMap();
+    attrMap.put(Context.DAGContext.CHECKPOINT_WINDOW_COUNT, dagCheckPoint);
+    attrMap.put(Context.OperatorContext.CHECKPOINT_WINDOW_COUNT, opCheckPoint);
+    final OperatorContext context = new com.datatorrent.stram.engine.OperatorContext(0, attrMap, null);
     final GenericNode gn = new GenericNode(go, context);
     gn.setId(1);
 
-    DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
-    DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
+    //DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
+    //DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
 
-    gn.connectInputPort("ip1", reservoir1);
-    gn.connectInputPort("ip2", reservoir2);
+    //gn.connectInputPort("ip1", reservoir1);
+    //gn.connectInputPort("ip2", reservoir2);
+    gn.connectInputPort("ip1", windowGenerator.acquireReservoir("ip1", 1024));
+    gn.connectInputPort("ip1", windowGenerator.acquireReservoir("ip2", 1024));
     gn.connectOutputPort("op", Sink.BLACKHOLE);
 
     final AtomicBoolean ab = new AtomicBoolean(false);
@@ -324,13 +372,14 @@ public class GenericNodeTest
       public void run()
       {
         gn.setup(context);
+        windowGenerator.activate(stcontext);
         gn.activate();
         ab.set(true);
         gn.run();
+        windowGenerator.deactivate();
         gn.deactivate();
         gn.teardown();
       }
-
     };
     t.start();
 
@@ -339,28 +388,17 @@ public class GenericNodeTest
       Thread.sleep(sleeptime);
       interval += sleeptime;
     }
-    while ((ab.get() == false) && (interval < maxSleep));
+    //while ((ab.get() == false) && (interval < maxSleep));
+    while ((go.numWindows < maxWindows) && (interval < maxSleep));
 
-    int checkpointWindowCount = Context.DAGContext.CHECKPOINT_WINDOW_COUNT.defaultValue;
-    int window = 0;
-    for (window = 1; window <= checkpointWindowCount; ++window) {
-      Tuple beginWindow = new Tuple(MessageType.BEGIN_WINDOW, window);
-      reservoir1.add(beginWindow);
-      reservoir2.add(beginWindow);
-
-      Tuple endWindow = new EndWindowTuple(window);
-
-      reservoir1.add(endWindow);
-      reservoir2.add(endWindow);
-
-      interval = 0;
-      do {
-        Thread.sleep(sleeptime);
-        interval += sleeptime;
+    Assert.assertEquals("Number distances", maxWindows, go.numWindows);
+    int chkindex = 0;
+    int nextCheckpoint = checkpoints.get(chkindex++);
+    for (int i = 0; i < maxWindows; ++i) {
+      if ((i + 1) > nextCheckpoint) {
+        nextCheckpoint = checkpoints.get(chkindex++);
       }
-      while ((go.endWindowId != window) && (interval < maxSleep));
-
-      Assert.assertEquals("Windows till checkpoint", (checkpointWindowCount - (window - 1)), context.getWindowsFromCheckpoint());
+      Assert.assertEquals("Windows from checkpoint", nextCheckpoint - i, (int)go.distances.get(i));
     }
 
     gn.shutdown();

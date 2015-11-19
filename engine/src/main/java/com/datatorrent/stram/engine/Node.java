@@ -100,7 +100,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public static final String OUTPUT = "output";
   protected int APPLICATION_WINDOW_COUNT; /* this is write once variable */
 
-  protected int EFFECTIVE_CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
+  protected int DAG_CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
 
   protected int CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
 
@@ -121,6 +121,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected Checkpoint checkpoint;
   public int applicationWindowCount;
   public int checkpointWindowCount;
+  public long streamingWindowCount;
+  protected long nextCheckpointWindowCount;
   protected int windowsFromCheckpoint;
   protected int controlTupleCount;
   public final OperatorContext context;
@@ -530,11 +532,20 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       }
     }
 
+    calculateNextCheckpointWindow();
     checkpoint = new Checkpoint(windowId, applicationWindowCount, checkpointWindowCount);
     if (operator instanceof Operator.CheckpointListener) {
       ((Operator.CheckpointListener) operator).checkpointed(windowId);
     }
-    windowsFromCheckpoint = EFFECTIVE_CHECKPOINT_WINDOW_COUNT;
+  }
+
+  protected void calculateNextCheckpointWindow() {
+    if (PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
+      long nextDAGCheckpoint = (long)Math.ceil((double)(streamingWindowCount+1)/DAG_CHECKPOINT_WINDOW_COUNT)*DAG_CHECKPOINT_WINDOW_COUNT;
+      nextCheckpointWindowCount = (long)Math.ceil(((double)nextDAGCheckpoint)/CHECKPOINT_WINDOW_COUNT)*CHECKPOINT_WINDOW_COUNT;
+    } else {
+      nextCheckpointWindowCount = streamingWindowCount + 1;
+    }
   }
 
   @SuppressWarnings("unchecked")
@@ -589,6 +600,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       int slidingWindowCount = context.getValue(OperatorContext.SLIDE_BY_WINDOW_COUNT);
       APPLICATION_WINDOW_COUNT = IntMath.gcd(APPLICATION_WINDOW_COUNT, slidingWindowCount);
     }
+    DAG_CHECKPOINT_WINDOW_COUNT = context.getValue(Context.DAGContext.CHECKPOINT_WINDOW_COUNT);
     CHECKPOINT_WINDOW_COUNT = context.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
     Collection<StatsListener> statsListeners = context.getValue(OperatorContext.STATS_LISTENERS);
 
@@ -604,19 +616,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       logger.warn("Ignoring {} attribute in favor of {} processing mode", OperatorContext.CHECKPOINT_WINDOW_COUNT.getSimpleName(), ProcessingMode.EXACTLY_ONCE.name());
       CHECKPOINT_WINDOW_COUNT = 1;
     }
-
-    int dagChkptWndwCnt = context.getValue(Context.DAGContext.CHECKPOINT_WINDOW_COUNT);
-    if (PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
-      int chkOffset = dagChkptWndwCnt % CHECKPOINT_WINDOW_COUNT;
-      if (chkOffset != 0) {
-        EFFECTIVE_CHECKPOINT_WINDOW_COUNT = dagChkptWndwCnt + CHECKPOINT_WINDOW_COUNT - chkOffset;
-      } else {
-        EFFECTIVE_CHECKPOINT_WINDOW_COUNT = dagChkptWndwCnt;
-      }
-    } else {
-      EFFECTIVE_CHECKPOINT_WINDOW_COUNT = 1;
-    }
-    context.setWindowsFromCheckpoint(EFFECTIVE_CHECKPOINT_WINDOW_COUNT);
 
     context.setThread(Thread.currentThread());
     activateSinks();
