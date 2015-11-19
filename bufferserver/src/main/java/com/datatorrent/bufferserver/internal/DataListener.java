@@ -18,9 +18,9 @@
  */
 package com.datatorrent.bufferserver.internal;
 
-import com.datatorrent.bufferserver.util.BitVector;
-
 import java.util.Collection;
+
+import com.datatorrent.bufferserver.util.BitVector;
 
 /**
  *
@@ -32,17 +32,17 @@ import java.util.Collection;
  */
 public interface DataListener
 {
-  public static final BitVector NULL_PARTITION = new BitVector(0, 0);
+  BitVector NULL_PARTITION = new BitVector(0, 0);
 
   /**
    */
-  public boolean addedData();
+  boolean addedData();
 
   /**
    *
    * @param partitions
    * @return int
    */
-  public int getPartitions(Collection<BitVector> partitions);
+  int getPartitions(Collection<BitVector> partitions);
 
 }

@@ -90,8 +90,8 @@ public class DataList
   public DataList(String identifier)
   {
     /*
-     * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
-     * we will use default value of 8 block sizes to be cached in memory
+     * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block
+     * at a time to the filesystem. We will use default value of 8 block sizes to be cached in memory
      */
     this(identifier, 64 * 1024 * 1024, 8);
   }
@@ -104,7 +104,8 @@ public class DataList
   public void rewind(final int baseSeconds, final int windowId) throws IOException
   {
     final long longWindowId = (long)baseSeconds << 32 | windowId;
-    logger.debug("Rewinding {} from window ID {} to window ID {}", this, Codec.getStringWindowId(last.ending_window), Codec.getStringWindowId(longWindowId));
+    logger.debug("Rewinding {} from window ID {} to window ID {}", this, Codec.getStringWindowId(last.ending_window),
+        Codec.getStringWindowId(longWindowId));
 
     int numberOfInMemBlockRewound = 0;
     synchronized (this) {
@@ -139,13 +140,16 @@ public class DataList
     }
 
     /*
-      TODO: properly rewind Data List iterators, especially handle case when iterators point to blocks past the last block.
-    */
+     * TODO: properly rewind Data List iterators, especially handle case when iterators point to blocks past the last
+     *  block.
+     */
 
     final int numberOfInMemBlockPermits = this.numberOfInMemBlockPermits.addAndGet(numberOfInMemBlockRewound);
-    assert numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS : "Number of in memory block permits " + numberOfInMemBlockPermits + " exceeded configured maximum " + MAX_COUNT_OF_INMEM_BLOCKS + '.';
+    assert numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS : "Number of in memory block permits " +
+        numberOfInMemBlockPermits + " exceeded configured maximum " + MAX_COUNT_OF_INMEM_BLOCKS + '.';
     resumeSuspendedClients(numberOfInMemBlockPermits);
-    logger.debug("Discarded {} in memory blocks during rewind. Number of in memory blocks permits {} after rewinding {}. ", numberOfInMemBlockRewound, numberOfInMemBlockPermits, this);
+    logger.debug("Discarded {} in memory blocks during rewind. Number of in memory blocks permits {} after" +
+        " rewinding {}.", numberOfInMemBlockRewound, numberOfInMemBlockPermits, this);
 
   }
 
@@ -177,11 +181,13 @@ public class DataList
   public void purge(final int baseSeconds, final int windowId)
   {
     final long longWindowId = (long)baseSeconds << 32 | windowId;
-    logger.debug("Purging {} from window ID {} to window ID {}", this, Codec.getStringWindowId(first.starting_window), Codec.getStringWindowId(longWindowId));
+    logger.debug("Purging {} from window ID {} to window ID {}", this, Codec.getStringWindowId(first.starting_window),
+        Codec.getStringWindowId(longWindowId));
 
     int numberOfInMemBlockPurged = 0;
     synchronized (this) {
-      for (Block prev = null, temp = first; temp != null && temp.starting_window <= longWindowId; prev = temp, temp = temp.next) {
+      for (Block prev = null, temp = first; temp != null && temp.starting_window <= longWindowId;
+          prev = temp, temp = temp.next) {
         if (temp.ending_window > longWindowId || temp == last) {
           if (prev != null) {
             first = temp;
@@ -204,9 +210,11 @@ public class DataList
     }
 
     final int numberOfInMemBlockPermits = this.numberOfInMemBlockPermits.addAndGet(numberOfInMemBlockPurged);
-    assert numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS : "Number of in memory block permits " + numberOfInMemBlockPermits + " exceeded configured maximum " + MAX_COUNT_OF_INMEM_BLOCKS + '.';
+    assert numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS : "Number of in memory block permits " +
+        numberOfInMemBlockPermits + " exceeded configured maximum " + MAX_COUNT_OF_INMEM_BLOCKS + '.';
     resumeSuspendedClients(numberOfInMemBlockPermits);
-    logger.debug("Discarded {} in memory blocks during purge. Number of in memory blocks permits {} after purging {}. ", numberOfInMemBlockPurged, numberOfInMemBlockPermits, this);
+    logger.debug("Discarded {} in memory blocks during purge. Number of in memory blocks permits {} after purging {}. ",
+        numberOfInMemBlockPurged, numberOfInMemBlockPermits, this);
 
   }
 
@@ -220,7 +228,8 @@ public class DataList
 
   public void flush(final int writeOffset)
   {
-    //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
+    //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset,
+    //    nextOffset.integer, writeOffset);
     flush:
     do {
       while (size == 0) {
@@ -427,7 +436,8 @@ public class DataList
         suspendedClients.clear();
       }
     } else {
-      logger.debug("Keeping clients: {} suspended, numberOfInMemBlockPermits={}, Listeners: {}", suspendedClients, numberOfInMemBlockPermits, all_listeners);
+      logger.debug("Keeping clients: {} suspended, numberOfInMemBlockPermits={}, Listeners: {}", suspendedClients,
+          numberOfInMemBlockPermits, all_listeners);
     }
     return resumedSuspendedClients;
   }
@@ -608,10 +618,11 @@ public class DataList
       try (DataListIterator dli = getIterator(this)) {
         done:
         while (dli.hasNext()) {
-          SerializedData sd = dli.next();
+          final SerializedData sd = dli.next();
+          final int length = sd.length - sd.dataOffset + sd.offset;
           switch (sd.buffer[sd.dataOffset]) {
             case MessageType.RESET_WINDOW_VALUE:
-              ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
+              final ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, length);
               bs = (long)rwt.getBaseSeconds() << 32;
               if (bs > windowId) {
                 writingOffset = sd.offset;
@@ -620,7 +631,7 @@ public class DataList
               break;
 
             case MessageType.BEGIN_WINDOW_VALUE:
-              BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
+              BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, length);
               if ((bs | bwt.getWindowId()) >= windowId) {
                 writingOffset = sd.offset;
                 break done;
@@ -649,8 +660,9 @@ public class DataList
 
     public void purge(long longWindowId)
     {
-//    logger.debug("starting_window = {}, longWindowId = {}, ending_window = {}",
-//                 new Object[] {VarInt.getStringWindowId(starting_window), VarInt.getStringWindowId(longWindowId), VarInt.getStringWindowId(ending_window)});
+      //logger.debug("starting_window = {}, longWindowId = {}, ending_window = {}",
+      //    VarInt.getStringWindowId(starting_window), VarInt.getStringWindowId(longWindowId),
+      //    VarInt.getStringWindowId(ending_window));
       boolean found = false;
       long bs = starting_window & 0xffffffff00000000L;
       SerializedData lastReset = null;
@@ -659,20 +671,22 @@ public class DataList
         done:
         while (dli.hasNext()) {
           SerializedData sd = dli.next();
+          final int length = sd.length - sd.dataOffset + sd.offset;
           switch (sd.buffer[sd.dataOffset]) {
             case MessageType.RESET_WINDOW_VALUE:
-              ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
+              ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, length);
               bs = (long)rwt.getBaseSeconds() << 32;
               lastReset = sd;
               break;
 
             case MessageType.BEGIN_WINDOW_VALUE:
-              BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
+              BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, length);
               if ((bs | bwt.getWindowId()) > longWindowId) {
                 found = true;
                 if (lastReset != null) {
                   /*
-                   * Restore the last Reset tuple if there was any and adjust the writingOffset to the beginning of the reset tuple.
+                   * Restore the last Reset tuple if there was any and adjust the writingOffset to the beginning of
+                   * the reset tuple.
                    */
                   if (sd.offset >= lastReset.length) {
                     sd.offset -= lastReset.length;
@@ -702,7 +716,8 @@ public class DataList
        * It helps with better utilization of the RAM.
        */
       if (!found) {
-        //logger.debug("we could not find a tuple which is in a window later than the window to be purged, so this has to be the last window published so far");
+        //logger.debug("we could not find a tuple which is in a window later than the window to be purged, " +
+        //    "so this has to be the last window published so far");
         if (lastReset != null && lastReset.offset != 0) {
           this.readingOffset = this.writingOffset - lastReset.length;
           System.arraycopy(lastReset.buffer, lastReset.offset, this.data, this.readingOffset, lastReset.length);
@@ -797,7 +812,8 @@ public class DataList
       }
     }
 
-    private Runnable getStorer(final byte[] data, final int readingOffset, final int writingOffset, final Storage storage)
+    private Runnable getStorer(final byte[] data, final int readingOffset, final int writingOffset,
+        final Storage storage)
     {
       return new Runnable()
       {
@@ -819,7 +835,8 @@ public class DataList
                 logger.debug("Keeping Block {} unchanged", Block.this);
               }
             }
-            assert numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS : "Number of in memory block permits " + numberOfInMemBlockPermits + " exceeded configured maximum " + MAX_COUNT_OF_INMEM_BLOCKS + '.';
+            assert numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS : "Number of in memory block permits " +
+                numberOfInMemBlockPermits + " exceeded configured maximum " + MAX_COUNT_OF_INMEM_BLOCKS + '.';
             resumeSuspendedClients(numberOfInMemBlockPermits);
           }
         }
@@ -884,11 +901,14 @@ public class DataList
     @Override
     public String toString()
     {
-      return getClass().getName() + '@' + Integer.toHexString(hashCode()) + "{identifier=" + identifier + ", data=" + (data == null ? "null" : data.length)
-             + ", readingOffset=" + readingOffset + ", writingOffset=" + writingOffset
-             + ", starting_window=" + Codec.getStringWindowId(starting_window) + ", ending_window=" + Codec.getStringWindowId(ending_window)
-             + ", refCount=" + refCount.get() + ", uniqueIdentifier=" + uniqueIdentifier + ", next=" + (next == null ? "null" : next.identifier)
-             + ", future=" + (future == null ? "null" : future.isDone() ? "Done" : future.isCancelled() ? "Cancelled" : future) + '}';
+      final String future = this.future == null ? "null" : this.future.isDone() ? "Done" :
+          this.future.isCancelled() ? "Cancelled" : this.future.toString();
+      return getClass().getName() + '@' + Integer.toHexString(hashCode()) + "{identifier=" + identifier +
+          ", data=" + (data == null ? "null" : data.length) + ", readingOffset=" + readingOffset +
+          ", writingOffset=" + writingOffset + ", starting_window=" + Codec.getStringWindowId(starting_window) +
+          ", ending_window=" + Codec.getStringWindowId(ending_window) + ", refCount=" + refCount.get() +
+          ", uniqueIdentifier=" + uniqueIdentifier + ", next=" + (next == null ? "null" : next.identifier) +
+          ", future=" + future + '}';
     }
 
   }
@@ -968,8 +988,10 @@ public class DataList
       if (nextOffset.integer + size <= da.writingOffset) {
         current = new SerializedData(buffer, readOffset, size + nextOffset.integer - readOffset);
         current.dataOffset = nextOffset.integer;
-        //if (buffer[current.dataOffset] == MessageType.BEGIN_WINDOW_VALUE || buffer[current.dataOffset] == MessageType.END_WINDOW_VALUE) {
-        //  Tuple t = Tuple.getTuple(current.buffer, current.dataOffset, current.length - current.dataOffset + current.offset);
+        //final byte messageType = buffer[current.dataOffset];
+        //if (messageType == MessageType.BEGIN_WINDOW_VALUE || messageType == MessageType.END_WINDOW_VALUE) {
+        //  final int length = current.length - current.dataOffset + current.offset;
+        //  Tuple t = Tuple.getTuple(current.buffer, current.dataOffset, length);
         //  logger.debug("next t = {}", t);
         //}
         return true;
@@ -993,9 +1015,9 @@ public class DataList
     }
 
     /**
-     * Removes from the underlying collection the last element returned by the iterator (optional operation). This method can be called only once per call to
-     * next. The behavior of an iterator is unspecified if the underlying collection is modified while the iteration is in progress in any way other than by
-     * calling this method.
+     * Removes from the underlying collection the last element returned by the iterator (optional operation). This
+     * method can be called only once per call to next. The behavior of an iterator is unspecified if the underlying
+     * collection is modified while the iteration is in progress in any way other than by calling this method.
      */
     @Override
     public void remove()

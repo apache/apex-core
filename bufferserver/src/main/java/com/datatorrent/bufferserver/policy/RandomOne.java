@@ -25,9 +25,8 @@ import com.datatorrent.bufferserver.util.SerializedData;
 
 /**
  *
- * Randomly distributes tuples to downstream nodes. A random load balancing policy<p>
- * <br>
- * A generic random load balancing policy. Extends the base class {@link com.datatorrent.bufferserver.policy.AbstractPolicy}<br>
+ * Randomly distributes tuples to downstream nodes. A random load balancing policy.
+ * A generic random load balancing policy. Extends the base class {@link AbstractPolicy}
  *
  * @since 0.3.2
  */
@@ -50,13 +49,6 @@ public class RandomOne extends AbstractPolicy
   private RandomOne()
   {
   }
-
-  /**
-   *
-   *
-   * @param nodes Set of downstream {@link com.datatorrent.bufferserver.PhysicalNode}s
-   * @param data Opaque {@link com.datatorrent.bufferserver.util.SerializedData} to be send
-   */
 
   @Override
   public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException

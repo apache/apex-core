@@ -126,33 +126,28 @@ public abstract class Tuple
       byte tmp = buffer[offset++];
       if (tmp >= 0) {
         return tmp;
-      }
-      else if (offset < limit) {
+      } else if (offset < limit) {
         int integer = tmp & 0x7f;
         tmp = buffer[offset++];
         if (tmp >= 0) {
           return integer | tmp << 7;
-        }
-        else if (offset < limit) {
+        } else if (offset < limit) {
           integer |= (tmp & 0x7f) << 7;
           tmp = buffer[offset++];
 
           if (tmp >= 0) {
             return integer | tmp << 14;
-          }
-          else if (offset < limit) {
+          } else if (offset < limit) {
             integer |= (tmp & 0x7f) << 14;
             tmp = buffer[offset++];
             if (tmp >= 0) {
               return integer | tmp << 21;
-            }
-            else if (offset < limit) {
+            } else if (offset < limit) {
               integer |= (tmp & 0x7f) << 21;
               tmp = buffer[offset++];
               if (tmp >= 0) {
                 return integer | tmp << 28;
-              }
-              else {
+              } else {
                 throw new NumberFormatException("Invalid varint at location " + offset + " => "
                         + Arrays.toString(Arrays.copyOfRange(buffer, offset, limit)));
               }

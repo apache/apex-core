@@ -91,7 +91,10 @@ public class Server implements ServerListener
     this.blockSize = blocksize;
     this.numberOfCacheBlocks = numberOfCacheBlocks;
     serverHelperExecutor = Executors.newSingleThreadExecutor(new NameableThreadFactory("ServerHelper"));
-    storageHelperExecutor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(numberOfCacheBlocks), new NameableThreadFactory("StorageHelper"), new ThreadPoolExecutor.CallerRunsPolicy());
+    final ArrayBlockingQueue<Runnable> workQueue = new ArrayBlockingQueue<>(numberOfCacheBlocks);
+    final NameableThreadFactory threadFactory = new NameableThreadFactory("StorageHelper");
+    storageHelperExecutor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, workQueue, threadFactory,
+        new ThreadPoolExecutor.CallerRunsPolicy());
   }
 
   public void setSpoolStorage(Storage storage)
@@ -168,8 +171,8 @@ public class Server implements ServerListener
 
   private final HashMap<String, DataList> publisherBuffers = new HashMap<String, DataList>();
   private final ConcurrentHashMap<String, LogicalNode> subscriberGroups = new ConcurrentHashMap<String, LogicalNode>();
-  private final ConcurrentHashMap<String, AbstractLengthPrependerClient> publisherChannels = new ConcurrentHashMap<String, AbstractLengthPrependerClient>();
-  private final ConcurrentHashMap<String, AbstractLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<String, AbstractLengthPrependerClient>();
+  private final ConcurrentHashMap<String, AbstractLengthPrependerClient> publisherChannels = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, AbstractLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<>();
   private final int blockSize;
   private final int numberOfCacheBlocks;
 
@@ -251,7 +254,9 @@ public class Server implements ServerListener
         dl = publisherBuffers.get(upstream_identifier);
         //logger.debug("old list = {}", dl);
       } else {
-        dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks) : new DataList(upstream_identifier, blockSize, numberOfCacheBlocks);
+        dl = Tuple.FAST_VERSION.equals(request.getVersion()) ?
+            new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks) :
+            new DataList(upstream_identifier, blockSize, numberOfCacheBlocks);
         publisherBuffers.put(upstream_identifier, dl);
         //logger.debug("new list = {}", dl);
       }
@@ -305,7 +310,9 @@ public class Server implements ServerListener
         throw new RuntimeException(ie);
       }
     } else {
-      dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(identifier, blockSize, numberOfCacheBlocks) : new DataList(identifier, blockSize, numberOfCacheBlocks);
+      dl = Tuple.FAST_VERSION.equals(request.getVersion()) ?
+          new FastDataList(identifier, blockSize, numberOfCacheBlocks) :
+          new DataList(identifier, blockSize, numberOfCacheBlocks);
       publisherBuffers.put(identifier, dl);
     }
     dl.setSecondaryStorage(storage, storageHelperExecutor);
@@ -439,9 +446,11 @@ public class Server implements ServerListener
 //            bufferSize = 16 * 1024;
 //          }
           if (subscriberRequest.getVersion().equals(Tuple.FAST_VERSION)) {
-            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions(), bufferSize);
+            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(),
+                subscriberRequest.getPartitions(), bufferSize);
           } else {
-            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions(), bufferSize)
+            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(),
+                subscriberRequest.getPartitions(), bufferSize)
             {
               @Override
               public int readSize()
@@ -515,7 +524,8 @@ public class Server implements ServerListener
     @Override
     public void onMessage(byte[] buffer, int offset, int size)
     {
-      logger.warn("Received data when no data is expected: {}", Arrays.toString(Arrays.copyOfRange(buffer, offset, offset + size)));
+      logger.warn("Received data when no data is expected: {}",
+          Arrays.toString(Arrays.copyOfRange(buffer, offset, offset + size)));
     }
 
     @Override
@@ -535,7 +545,8 @@ public class Server implements ServerListener
     @Override
     public String toString()
     {
-      return "Server.Subscriber{" + "type=" + type + ", mask=" + mask + ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + '}';
+      return "Server.Subscriber{" + "type=" + type + ", mask=" + mask +
+          ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + '}';
     }
 
     private volatile boolean torndown;
@@ -600,10 +611,12 @@ public class Server implements ServerListener
     }
 
     /**
-     * Schedules a task to conditionally resume I/O channel read operations. No-op if {@linkplain java.nio.channels.SelectionKey#OP_READ OP_READ}
-     * is already set in the key {@linkplain java.nio.channels.SelectionKey#interestOps() interestOps}. Otherwise, calls {@linkplain #read(int) read(0)}
-     * to process data left in the Publisher read buffer and registers {@linkplain java.nio.channels.SelectionKey#OP_READ OP_READ} in the key
-     * {@linkplain java.nio.channels.SelectionKey#interestOps() interestOps}.
+     * Schedules a task to conditionally resume I/O channel read operations.
+     * No-op if {@linkplain java.nio.channels.SelectionKey#OP_READ OP_READ}
+     * is already set in the key {@linkplain java.nio.channels.SelectionKey#interestOps() interestOps}.
+     * Otherwise, calls {@linkplain #read(int) read(0)} to process data
+     * left in the Publisher read buffer and registers {@linkplain java.nio.channels.SelectionKey#OP_READ OP_READ}
+     * in the key {@linkplain java.nio.channels.SelectionKey#interestOps() interestOps}.
      * @return true
      */
     @Override
@@ -770,8 +783,9 @@ public class Server implements ServerListener
        */
 
       /**
-       * since the publisher server died, the queue which it was using would stop pumping the data unless a new publisher comes up with the same name. We leave
-       * it to the stream to decide when to bring up a new node with the same identifier as the one which just died.
+       * since the publisher server died, the queue which it was using would stop pumping the data unless
+       * a new publisher comes up with the same name. We leave it to the stream to decide when to bring up a new node
+       * with the same identifier as the one which just died.
        */
       if (publisherChannels.containsValue(this)) {
         final Iterator<Entry<String, AbstractLengthPrependerClient>> i = publisherChannels.entrySet().iterator();

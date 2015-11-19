@@ -25,9 +25,8 @@ import com.datatorrent.bufferserver.util.SerializedData;
 
 /**
  *
- * Implements load balancing by sending the tuple to the least busy partition<p>
- * <br>
- * Basic load balancing policy. Extends the base class {@link com.datatorrent.bufferserver.policy.AbstractPolicy}<br>
+ * Implements load balancing by sending the tuple to the least busy partition.
+ * Basic load balancing policy. Extends the base class {@link AbstractPolicy}<br>
  *
  * @since 0.3.2
  */
@@ -51,20 +50,13 @@ public class LeastBusy extends AbstractPolicy
   {
   }
 
-  /**
-   *
-   *
-   * @param nodes Set of downstream {@link com.datatorrent.bufferserver.PhysicalNode}s
-   * @param data Opaque {@link com.datatorrent.bufferserver.util.SerializedData} to be send
-   */
   @Override
   public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     PhysicalNode theOne = null;
 
     for (PhysicalNode node: nodes) {
-      if (theOne == null
-              || node.getProcessedMessageCount() < theOne.getProcessedMessageCount()) {
+      if (theOne == null || node.getProcessedMessageCount() < theOne.getProcessedMessageCount()) {
         theOne = node;
       }
     }

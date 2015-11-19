@@ -157,7 +157,8 @@ public class LogicalNode implements DataListener
   public void catchUp()
   {
     long lBaseSeconds = (long)iterator.getBaseSeconds() << 32;
-    logger.debug("BaseSeconds = {} and lBaseSeconds = {}", Codec.getStringWindowId(baseSeconds), Codec.getStringWindowId(lBaseSeconds));
+    logger.debug("BaseSeconds = {} and lBaseSeconds = {}", Codec.getStringWindowId(baseSeconds),
+        Codec.getStringWindowId(lBaseSeconds));
     if (lBaseSeconds > baseSeconds) {
       baseSeconds = lBaseSeconds;
     }
@@ -193,13 +194,8 @@ public class LogicalNode implements DataListener
 
             case MessageType.BEGIN_WINDOW_VALUE:
               tuple = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
-              logger.debug("{}->{} condition {} =? {}",
-                  new Object[] {
-                      upstream,
-                      group,
-                      Codec.getStringWindowId(baseSeconds | tuple.getWindowId()),
-                      Codec.getStringWindowId(skipWindowId)
-                  });
+              logger.debug("{}->{} condition {} =? {}", upstream, group,
+                  Codec.getStringWindowId(baseSeconds | tuple.getWindowId()), Codec.getStringWindowId(skipWindowId));
               if ((baseSeconds | tuple.getWindowId()) > skipWindowId) {
                 logger.debug("caught up {}->{} skipping {} payload tuples", upstream, group, skippedPayloadTuples);
                 ready = GiveAll.getInstance().distribute(physicalNodes, data);
@@ -212,10 +208,12 @@ public class LogicalNode implements DataListener
             case MessageType.CODEC_STATE_VALUE:
             case MessageType.END_STREAM_VALUE:
               ready = GiveAll.getInstance().distribute(physicalNodes, data);
-              logger.debug("Message {} was distributed to {}", MessageType.valueOf(data.buffer[data.dataOffset]), physicalNodes);
+              logger.debug("Message {} was distributed to {}", MessageType.valueOf(data.buffer[data.dataOffset]),
+                  physicalNodes);
               break;
             default:
-              logger.debug("Message {} was not distributed to {}", MessageType.valueOf(data.buffer[data.dataOffset]), physicalNodes);
+              logger.debug("Message {} was not distributed to {}", MessageType.valueOf(data.buffer[data.dataOffset]),
+                  physicalNodes);
           }
         }
       } catch (InterruptedException ie) {
@@ -252,7 +250,8 @@ public class LogicalNode implements DataListener
                   break;
 
                 case MessageType.RESET_WINDOW_VALUE:
-                  Tuple resetWindow = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
+                  final int length = data.length - data.dataOffset + data.offset;
+                  Tuple resetWindow = Tuple.getTuple(data.buffer, data.dataOffset, length);
                   baseSeconds = (long)resetWindow.getBaseSeconds() << 32;
                   ready = GiveAll.getInstance().distribute(physicalNodes, data);
                   break;
@@ -266,9 +265,10 @@ public class LogicalNode implements DataListener
           } else {
             while (ready && iterator.hasNext()) {
               SerializedData data = iterator.next();
+              final int length = data.length - data.dataOffset + data.offset;
               switch (data.buffer[data.dataOffset]) {
                 case MessageType.PAYLOAD_VALUE:
-                  Tuple tuple = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
+                  Tuple tuple = Tuple.getTuple(data.buffer, data.dataOffset, length);
                   int value = tuple.getPartition();
                   for (BitVector bv : partitions) {
                     if (bv.matches(value)) {
@@ -283,7 +283,7 @@ public class LogicalNode implements DataListener
                   break;
 
                 case MessageType.RESET_WINDOW_VALUE:
-                  tuple = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
+                  tuple = Tuple.getTuple(data.buffer, data.dataOffset, length);
                   baseSeconds = (long)tuple.getBaseSeconds() << 32;
                   ready = GiveAll.getInstance().distribute(physicalNodes, data);
                   break;
@@ -344,7 +344,8 @@ public class LogicalNode implements DataListener
   @Override
   public String toString()
   {
-    return "LogicalNode{" + "upstream=" + upstream + ", group=" + group + ", partitions=" + partitions + ", iterator=" + iterator + '}';
+    return "LogicalNode{" + "upstream=" + upstream + ", group=" + group + ", partitions=" + partitions +
+        ", iterator=" + iterator + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class);

@@ -79,8 +79,7 @@ public class PhysicalNode
       if (client.write(d.buffer, d.offset, d.length)) {
         return true;
       }
-    }
-    else {
+    } else {
       if (client.send(d.buffer, d.offset, d.length)) {
         return true;
       }

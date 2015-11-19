@@ -61,12 +61,10 @@ public class SubscribeRequestTuple extends RequestTuple
         }
         version = new String(buffer, dataOffset, idlen);
         dataOffset += idlen;
-      }
-      else if (idlen == 0) {
+      } else if (idlen == 0) {
         version = EMPTY_STRING;
         dataOffset++;
-      }
-      else {
+      } else {
         return;
       }
       /*
@@ -78,12 +76,10 @@ public class SubscribeRequestTuple extends RequestTuple
         }
         identifier = new String(buffer, dataOffset, idlen);
         dataOffset += idlen;
-      }
-      else if (idlen == 0) {
+      } else if (idlen == 0) {
         identifier = EMPTY_STRING;
         dataOffset++;
-      }
-      else {
+      } else {
         return;
       }
 
@@ -103,12 +99,10 @@ public class SubscribeRequestTuple extends RequestTuple
         }
         streamType = new String(buffer, dataOffset, idlen);
         dataOffset += idlen;
-      }
-      else if (idlen == 0) {
+      } else if (idlen == 0) {
         streamType = EMPTY_STRING;
         dataOffset++;
-      }
-      else {
+      } else {
         return;
       }
       /*
@@ -120,12 +114,10 @@ public class SubscribeRequestTuple extends RequestTuple
         }
         upstreamIdentifier = new String(buffer, dataOffset, idlen);
         dataOffset += idlen;
-      }
-      else if (idlen == 0) {
+      } else if (idlen == 0) {
         upstreamIdentifier = EMPTY_STRING;
         dataOffset++;
-      }
-      else {
+      } else {
         return;
       }
       /*
@@ -139,8 +131,7 @@ public class SubscribeRequestTuple extends RequestTuple
         if (mask > 0) {
           while (buffer[dataOffset++] < 0) {
           }
-        }
-        else {
+        } else {
           /* mask cannot be zero */
           return;
         }
@@ -149,8 +140,7 @@ public class SubscribeRequestTuple extends RequestTuple
           partitions[i] = readVarInt(dataOffset, limit);
           if (partitions[i] == -1) {
             return;
-          }
-          else {
+          } else {
             while (buffer[dataOffset++] < 0) {
             }
           }
@@ -165,8 +155,7 @@ public class SubscribeRequestTuple extends RequestTuple
       }
 
       valid = true;
-    }
-    catch (NumberFormatException nfe) {
+    } catch (NumberFormatException nfe) {
       logger.warn("Unparseable Tuple", nfe);
     }
   }
@@ -246,15 +235,9 @@ public class SubscribeRequestTuple extends RequestTuple
     return bufferSize;
   }
 
-  public static byte[] getSerializedRequest(
-          String version,
-          String id,
-          String down_type,
-          String upstream_id,
-          int mask,
-          Collection<Integer> partitions,
-          long startingWindowId,
-          int bufferSize)
+  public static byte[] getSerializedRequest(final String version, final String id, final String down_type,
+      final String upstream_id, final int mask, final Collection<Integer> partitions, final long startingWindowId,
+      final int bufferSize)
   {
     byte[] array = new byte[4096];
     int offset = 0;
@@ -263,10 +246,7 @@ public class SubscribeRequestTuple extends RequestTuple
     array[offset++] = MessageType.SUBSCRIBER_REQUEST_VALUE;
 
     /* write the version */
-    if (version == null) {
-      version = CLASSIC_VERSION;
-    }
-    offset = Tuple.writeString(version, array, offset);
+    offset = Tuple.writeString(version == null ? CLASSIC_VERSION : version, array, offset);
 
     /* write the identifier */
     offset = Tuple.writeString(id, array, offset);
@@ -288,8 +268,7 @@ public class SubscribeRequestTuple extends RequestTuple
     /* write the partitions */
     if (partitions == null || partitions.isEmpty()) {
       offset = VarInt.write(0, array, offset);
-    }
-    else {
+    } else {
       offset = VarInt.write(partitions.size(), array, offset);
       offset = VarInt.write(mask, array, offset);
       for (int i : partitions) {
@@ -306,7 +285,11 @@ public class SubscribeRequestTuple extends RequestTuple
   @Override
   public String toString()
   {
-    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", windowId=" + Codec.getStringWindowId((long)baseSeconds | windowId) + ", type=" + streamType + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + ", bufferSize=" + bufferSize + '}';
+    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier +
+        ", windowId=" + Codec.getStringWindowId((long)baseSeconds | windowId) + ", type=" + streamType +
+        ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask +
+        ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) +
+        ", bufferSize=" + bufferSize + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(SubscribeRequestTuple.class);

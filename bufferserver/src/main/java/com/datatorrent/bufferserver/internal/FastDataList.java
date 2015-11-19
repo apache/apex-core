@@ -54,8 +54,7 @@ public class FastDataList extends DataList
           size = last.data[processingOffset];
           size |= (last.data[processingOffset + 1] << 8);
 //          logger.debug("read item = {} of size = {} at offset = {}", item++, size, processingOffset);
-        }
-        else {
+        } else {
           if (writeOffset == last.data.length) {
             processingOffset = 0;
             size = 0;
@@ -73,8 +72,7 @@ public class FastDataList extends DataList
             if (last.starting_window == -1) {
               last.starting_window = baseSeconds | btw.getWindowId();
               last.ending_window = last.starting_window;
-            }
-            else {
+            } else {
               last.ending_window = baseSeconds | btw.getWindowId();
             }
             break;
@@ -83,11 +81,13 @@ public class FastDataList extends DataList
             Tuple rwt = Tuple.getTuple(last.data, processingOffset, size);
             baseSeconds = (long)rwt.getBaseSeconds() << 32;
             break;
+
+          default:
+            break;
         }
         processingOffset += size;
         size = 0;
-      }
-      else {
+      } else {
         if (writeOffset == last.data.length) {
           processingOffset = 0;
           size = 0;

@@ -27,7 +27,7 @@ import java.security.SecureRandom;
  */
 public class AuthManager
 {
-  private final static int BUFFER_SERVER_TOKEN_LENGTH = 20;
+  private static final int BUFFER_SERVER_TOKEN_LENGTH = 20;
 
   private static SecureRandom generator = new SecureRandom();
 

@@ -18,11 +18,9 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import com.datatorrent.bufferserver.packet.ResetWindowTuple;
-import com.datatorrent.bufferserver.packet.Tuple;
+import static org.testng.Assert.assertEquals;
 
 /**
  *
@@ -39,7 +37,7 @@ public class ResetWindowTupleTest
     byte[] serial = ResetWindowTuple.getSerializedTuple(0x7afebabe, 500);
     ResetWindowTuple tuple = (ResetWindowTuple)Tuple.getTuple(serial, 0, serial.length);
 
-    Assert.assertEquals(tuple.getBaseSeconds(), 0x7afebabe, "base seconds");
-    Assert.assertEquals(tuple.getWindowWidth(), 500, "window width");
+    assertEquals(tuple.getBaseSeconds(), 0x7afebabe, "base seconds");
+    assertEquals(tuple.getWindowWidth(), 500, "window width");
   }
 }

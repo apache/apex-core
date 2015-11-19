@@ -25,8 +25,6 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.netlet.util.VarInt;
-import static com.datatorrent.bufferserver.packet.Tuple.CLASSIC_VERSION;
-import static com.datatorrent.bufferserver.packet.Tuple.writeString;
 
 /**
  * <p>GenericRequestTuple class.</p>
@@ -70,12 +68,10 @@ public class GenericRequestTuple extends RequestTuple
         }
         version = new String(buffer, dataOffset, idlen);
         dataOffset += idlen;
-      }
-      else if (idlen == 0) {
+      } else if (idlen == 0) {
         version = EMPTY_STRING;
         dataOffset++;
-      }
-      else {
+      } else {
         return;
       }
       /*
@@ -87,12 +83,10 @@ public class GenericRequestTuple extends RequestTuple
         }
         identifier = new String(buffer, dataOffset, idlen);
         dataOffset += idlen;
-      }
-      else if (idlen == 0) {
+      } else if (idlen == 0) {
         identifier = EMPTY_STRING;
         dataOffset++;
-      }
-      else {
+      } else {
         return;
       }
 
@@ -105,8 +99,7 @@ public class GenericRequestTuple extends RequestTuple
       }
 
       valid = true;
-    }
-    catch (NumberFormatException nfe) {
+    } catch (NumberFormatException nfe) {
       logger.warn("Unparseable Tuple", nfe);
     }
   }
@@ -166,7 +159,8 @@ public class GenericRequestTuple extends RequestTuple
   @Override
   public String toString()
   {
-    return getClass().getSimpleName() + "{" + "version=" + version + ", identifier=" + identifier + ", windowId=" + Codec.getStringWindowId((long)baseSeconds | windowId) + '}';
+    return getClass().getSimpleName() + "{" + "version=" + version + ", identifier=" + identifier + ", windowId=" +
+        Codec.getStringWindowId((long)baseSeconds | windowId) + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(GenericRequestTuple.class);

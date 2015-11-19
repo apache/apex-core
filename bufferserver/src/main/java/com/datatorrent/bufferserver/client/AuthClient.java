@@ -45,7 +45,8 @@ public abstract class AuthClient extends AbstractLengthPrependerClient
     super(readbuffer, position, sendBufferSize);
   }
 
-  protected void sendAuthenticate() {
+  protected void sendAuthenticate()
+  {
     if (token != null) {
       write(token);
     }
@@ -65,7 +66,8 @@ public abstract class AuthClient extends AbstractLengthPrependerClient
         }
       }
       if (!authenticated) {
-        throw new AccessControlException("Buffer server security is enabled. Access is restricted without proper credentials.");
+        throw new AccessControlException("Buffer server security is enabled." +
+            " Access is restricted without proper credentials.");
       }
     }
   }

@@ -48,10 +48,9 @@
       </plugin>
       -->
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <configuration>
-          <maxAllowedViolations>228</maxAllowedViolations>
+          <consoleOutput>true</consoleOutput>
         </configuration>
       </plugin>
     </plugins>
