@@ -17,26 +17,6 @@
     <datatorrent.apppackage.classpath>lib/*.jar</datatorrent.apppackage.classpath>
   </properties>
 
-  <!-- repository to provide the DataTorrent artifacts -->
-  <repositories>
-    <repository>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-      <id>Datatorrent-Releases</id>
-      <name>DataTorrent Release Repository</name>
-      <url>https://www.datatorrent.com/maven/content/repositories/releases/</url>
-    </repository>
-    <repository>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <id>DataTorrent-Snapshots</id>
-      <name>DataTorrent Early Access Program Snapshot Repository</name>
-      <url>https://www.datatorrent.com/maven/content/repositories/snapshots/</url>
-    </repository>
-  </repositories>
-
   <build>
     <plugins>
        <plugin>
@@ -254,16 +234,9 @@
   <dependencies>
     <!-- add your dependencies here -->
     <dependency>
-      <groupId>com.datatorrent</groupId>
+      <groupId>org.apache.apex</groupId>
       <artifactId>malhar-library</artifactId>
-      <version>3.1.1</version>
-      <!-- remove when switching to malhar version that depends on apex-common as shown below -->
-      <exclusions>
-        <exclusion>
-          <groupId>com.datatorrent</groupId>
-          <artifactId>dt-common</artifactId>
-        </exclusion>
-      </exclusions>
+      <version>3.2.0-incubating</version>
       <!-- 
            If you know that your application does not need transitive dependencies pulled in by malhar-library,
            uncomment the following to reduce the size of your app package.
