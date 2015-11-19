@@ -1438,6 +1438,7 @@ public class StreamingContainerManager implements PlanContext
   @SuppressWarnings("StatementWithEmptyBody")
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
   {
+    LOG.debug("GOT HEARTBEAT {}", heartbeat);
     long currentTimeMillis = clock.getTime();
 
     final StreamingContainerAgent sca = this.containers.get(heartbeat.getContainerId());
@@ -1457,6 +1458,7 @@ public class StreamingContainerManager implements PlanContext
         LOG.info("Container {} buffer server: {}", sca.container.getExternalId(), sca.container.bufferServerAddress);
       }
       final long containerStartTime = System.currentTimeMillis();
+      LOG.debug("Setting container state to be active {}", sca.container);
       sca.container.setState(PTContainer.State.ACTIVE);
       sca.container.setStartedTime(containerStartTime);
       sca.container.setFinishedTime(-1);
@@ -1746,6 +1748,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     ContainerHeartbeatResponse rsp = getHeartbeatResponse(sca);
+    LOG.debug("Got container heartbeat response {}", rsp);
 
     if (heartbeat.getContainerStats().operators.isEmpty() && isApplicationIdle()) {
       LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
@@ -1787,6 +1790,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     Set<PTOperator> deployOperators = sca.deployOpers;
+    LOG.debug("DEPLOY OPERATORS {}", sca.deployOpers);
     if (!deployOperators.isEmpty()) {
       // deploy once all containers are running and no undeploy operations are pending.
       for (PTContainer c : getPhysicalPlan().getContainers()) {
@@ -1904,8 +1908,10 @@ public class StreamingContainerManager implements PlanContext
       ctx.committedWindowId.setValue(operator.getRecoveryCheckpoint().windowId);
     }
 
-    if (operator.getState() == PTOperator.State.ACTIVE && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
+    if (operator.getState() == PTOperator.State.ACTIVE &&
+        (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
       // if the checkpoint is ahead, then it is not blocked but waiting for activation (state-less recovery, at-most-once)
+      LOG.debug("WINDOW PROCESSING TIMEOUT {} {}", ctx.currentTms, operator.stats.lastWindowIdChangeTms);
       if (ctx.committedWindowId.longValue() >= operator.getRecoveryCheckpoint().windowId) {
         ctx.blocked.add(operator);
       }
@@ -1913,7 +1919,8 @@ public class StreamingContainerManager implements PlanContext
 
     long maxCheckpoint = operator.getRecentCheckpoint().windowId;
     if (ctx.recovery && maxCheckpoint == Stateless.WINDOW_ID && operator.isOperatorStateLess()) {
-      long currentWindowId = WindowGenerator.getWindowId(ctx.currentTms, this.vars.windowStartMillis, this.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
+      long currentWindowId = WindowGenerator.getWindowId(ctx.currentTms, this.vars.windowStartMillis,
+          this.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
       maxCheckpoint = currentWindowId;
     }
 
@@ -2177,7 +2184,7 @@ public class StreamingContainerManager implements PlanContext
         }
 
         // add to operators that we expect to deploy
-        LOG.debug("scheduling deploy {} {}", e.getKey().getExternalId(), e.getValue());
+        LOG.debug("scheduling deploy {} {} {}", e.getKey(), e.getKey().getExternalId(), e.getValue());
         for (PTOperator oper : e.getValue()) {
           // operator will be deployed after it has been undeployed, if still referenced by the container
           if (oper.getState() != PTOperator.State.PENDING_UNDEPLOY) {
