@@ -33,11 +33,10 @@
   <packaging>jar</packaging>
 
   <build>
-  <plugins>
+    <plugins>
       <plugin>
         <groupId>com.github.siom79.japicmp</groupId>
         <artifactId>japicmp-maven-plugin</artifactId>
-        <version>0.5.3</version>
         <configuration>
           <oldVersion>
             <dependency>
@@ -51,33 +50,16 @@
               <path>${project.build.directory}/${project.artifactId}-${project.version}.jar</path>
             </file>
           </newVersion>
-          <parameter>
-            <onlyModified>true</onlyModified>
-            <accessModifier>protected</accessModifier>
-            <breakBuildOnModifications>false</breakBuildOnModifications>
-            <breakBuildOnBinaryIncompatibleModifications>true</breakBuildOnBinaryIncompatibleModifications>
-            <onlyBinaryIncompatible>false</onlyBinaryIncompatible>
-            <includeSynthetic>false</includeSynthetic>
-            <ignoreMissingClasses>false</ignoreMissingClasses>
-          </parameter>
         </configuration>
-        <executions>
-          <execution>
-            <phase>verify</phase>
-            <goals>
-              <goal>cmp</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
-    <plugin>
-      <groupId>org.apache.maven.plugins</groupId>
-      <artifactId>maven-checkstyle-plugin</artifactId>
-      <configuration>
-        <maxAllowedViolations>149</maxAllowedViolations>
-      </configuration>
-    </plugin>
-  </plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <configuration>
+          <maxAllowedViolations>149</maxAllowedViolations>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
 
   <dependencies>
