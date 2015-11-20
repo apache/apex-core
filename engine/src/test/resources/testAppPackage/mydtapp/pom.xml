@@ -32,9 +32,9 @@
   <description>My Apex Application Description</description>
 
   <properties>
-    <!-- change this if you desire to use a different version of DataTorrent -->
-    <datatorrent.version>3.2.0-incubating</datatorrent.version>
-    <datatorrent.apppackage.classpath>lib/*.jar</datatorrent.apppackage.classpath>
+    <!-- change this if you desire to use a different version of Apex Core -->
+    <apex.version>3.2.0-incubating</apex.version>
+    <apex.apppackage.classpath>lib/*.jar</apex.apppackage.classpath>
   </properties>
 
   <build>
@@ -117,8 +117,8 @@
                </archiverConfig>                  
                <archive>
                  <manifestEntries>
-                   <Class-Path>${datatorrent.apppackage.classpath}</Class-Path>
-                   <DT-Engine-Version>${datatorrent.version}</DT-Engine-Version>
+                   <Class-Path>${apex.apppackage.classpath}</Class-Path>
+                   <DT-Engine-Version>${apex.version}</DT-Engine-Version>
                    <DT-App-Package-Name>${project.artifactId}</DT-App-Package-Name>
                    <DT-App-Package-Version>${project.version}</DT-App-Package-Version>
                    <DT-App-Package-Display-Name>${project.name}</DT-App-Package-Display-Name>
@@ -166,7 +166,7 @@
     <dependency>
       <groupId>org.apache.apex</groupId>
       <artifactId>apex-common</artifactId>
-      <version>${datatorrent.version}</version>
+      <version>${apex.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>

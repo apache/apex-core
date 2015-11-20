@@ -12,9 +12,9 @@
   <description>My Apex Application Description</description>
 
   <properties>
-    <!-- change this if you desire to use a different version of DataTorrent -->
+    <!-- change this if you desire to use a different version of Apex Core -->
     <apex.version>${archetypeVersion}</apex.version>
-    <datatorrent.apppackage.classpath>lib/*.jar</datatorrent.apppackage.classpath>
+    <apex.apppackage.classpath>lib/*.jar</apex.apppackage.classpath>
   </properties>
 
   <build>
@@ -78,7 +78,7 @@
                </archiverConfig>                  
                <archive>
                  <manifestEntries>
-                   <Class-Path>${datatorrent.apppackage.classpath}</Class-Path>
+                   <Class-Path>${apex.apppackage.classpath}</Class-Path>
                    <DT-Engine-Version>${apex.version}</DT-Engine-Version>
                    <DT-App-Package-Name>${project.artifactId}</DT-App-Package-Name>
                    <DT-App-Package-Version>${project.version}</DT-App-Package-Version>
