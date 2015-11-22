@@ -224,6 +224,7 @@ public class GenericNode extends Node<Operator>
 
     int expectingBeginWindow = activeQueues.size();
     int receivedEndWindow = 0;
+
     calculateNextCheckpointWindow();
 
     TupleTracker tracker;

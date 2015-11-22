@@ -72,6 +72,8 @@ public class InputNode extends Node<InputOperator>
     boolean insideWindow = applicationWindowCount != 0;
     boolean doCheckpoint = false;
 
+    calculateNextCheckpointWindow();
+
     try {
       while (alive) {
         Tuple t = controlTuples.sweep();
