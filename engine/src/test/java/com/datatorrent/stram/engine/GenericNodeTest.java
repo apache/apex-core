@@ -320,6 +320,12 @@ public class GenericNodeTest
   }
 
   @Test
+  public void testDefaultCheckPointDistance() throws InterruptedException
+  {
+    testCheckpointDistance(Context.DAGContext.CHECKPOINT_WINDOW_COUNT.defaultValue, Context.OperatorContext.CHECKPOINT_WINDOW_COUNT.defaultValue);
+  }
+
+  @Test
   public void testDAGGreaterCheckPointDistance() throws InterruptedException
   {
     testCheckpointDistance(7, 5);
