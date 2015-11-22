@@ -146,8 +146,6 @@ public class GenericNode extends Node<Operator>
       applicationWindowCount = 0;
     }
 
-    windowsFromCheckpoint--;
-
     if (endWindowTuple == null) {
       emitEndWindow();
     }
@@ -156,6 +154,10 @@ public class GenericNode extends Node<Operator>
         sinks[s].put(endWindowTuple);
       }
       controlTupleCount++;
+    }
+
+    if (doCheckpoint) {
+      dagCheckpointOffsetCount++;
     }
 
     if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
@@ -246,8 +248,7 @@ public class GenericNode extends Node<Operator>
                   }
                   controlTupleCount++;
 
-                  ++streamingWindowCount;
-                  context.setWindowsFromCheckpoint((int)(nextCheckpointWindowCount - streamingWindowCount + 1));
+                  context.setWindowsFromCheckpoint(nextCheckpointWindowCount--);
 
                   if (applicationWindowCount == 0) {
                     insideWindow = true;
@@ -326,6 +327,7 @@ public class GenericNode extends Node<Operator>
                 activePort.remove();
                 long checkpointWindow = t.getWindowId();
                 if (lastCheckpointWindowId < checkpointWindow) {
+                  dagCheckpointOffsetCount = 0;
                   if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
                     lastCheckpointWindowId = checkpointWindow;
                   }

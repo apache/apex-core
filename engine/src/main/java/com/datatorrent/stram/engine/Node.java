@@ -121,9 +121,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected Checkpoint checkpoint;
   public int applicationWindowCount;
   public int checkpointWindowCount;
-  public long streamingWindowCount;
-  protected long nextCheckpointWindowCount;
-  protected int windowsFromCheckpoint;
+  public int nextCheckpointWindowCount;
+  public int dagCheckpointOffsetCount;
   protected int controlTupleCount;
   public final OperatorContext context;
   public final BlockingQueue<StatsListener.OperatorResponse> commandResponse;
@@ -541,10 +540,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected void calculateNextCheckpointWindow() {
     if (PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
-      long nextDAGCheckpoint = (long)Math.ceil((double)(streamingWindowCount+1)/DAG_CHECKPOINT_WINDOW_COUNT)*DAG_CHECKPOINT_WINDOW_COUNT;
-      nextCheckpointWindowCount = (long)Math.ceil(((double)nextDAGCheckpoint)/CHECKPOINT_WINDOW_COUNT)*CHECKPOINT_WINDOW_COUNT;
+      nextCheckpointWindowCount = (int)Math.ceil((double)(DAG_CHECKPOINT_WINDOW_COUNT - dagCheckpointOffsetCount)/CHECKPOINT_WINDOW_COUNT)*CHECKPOINT_WINDOW_COUNT;
     } else {
-      nextCheckpointWindowCount = streamingWindowCount + 1;
+      nextCheckpointWindowCount =  1;
     }
   }
 

@@ -320,13 +320,22 @@ public class GenericNodeTest
   }
 
   @Test
-  public void testCheckpointDistance() throws InterruptedException
+  public void testDAGGreaterCheckPointDistance() throws InterruptedException
+  {
+    testCheckpointDistance(7, 5);
+  }
+
+  @Test
+  public void testOpGreaterCheckPointDistance() throws InterruptedException
+  {
+    testCheckpointDistance(3, 5);
+  }
+
+  private void testCheckpointDistance(int dagCheckPoint, int opCheckPoint) throws InterruptedException
   {
     int windowWidth = 50;
     long sleeptime = 25L;
     int maxWindows = 60;
-    int dagCheckPoint = 7;
-    int opCheckPoint = 5;
     // Adding some extra time for the windows to finish
     long maxSleep = windowWidth * maxWindows + 5000;
 
@@ -398,7 +407,7 @@ public class GenericNodeTest
       if ((i + 1) > nextCheckpoint) {
         nextCheckpoint = checkpoints.get(chkindex++);
       }
-      Assert.assertEquals("Windows from checkpoint", nextCheckpoint - i, (int)go.distances.get(i));
+      Assert.assertEquals("Windows from checkpoint for " + i, nextCheckpoint - i, (int)go.distances.get(i));
     }
 
     gn.shutdown();
