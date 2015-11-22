@@ -132,6 +132,10 @@ public class InputNode extends Node<InputOperator>
               }
               controlTupleCount++;
 
+              if (doCheckpoint) {
+                dagCheckpointOffsetCount++;
+              }
+
               if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
                 checkpointWindowCount = 0;
                 if (doCheckpoint) {
@@ -152,6 +156,7 @@ public class InputNode extends Node<InputOperator>
               break;
 
             case CHECKPOINT:
+              dagCheckpointOffsetCount = 0;
               if (checkpointWindowCount == 0 && PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
                 checkpoint(currentWindowId);
               }
