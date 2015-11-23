@@ -1117,10 +1117,15 @@ public class PhysicalPlan implements Serializable
       }
     }
     PMapping currentMapping = this.logicalToPTOperator.get(p.operatorMeta);
-    List<PTOperator> copyPartitions = Lists.newArrayList(currentMapping.partitions);
-    copyPartitions.remove(p);
-    removePartition(p, currentMapping);
-    currentMapping.partitions = copyPartitions;
+    if (currentMapping != null) {
+      List<PTOperator> copyPartitions = Lists.newArrayList(currentMapping.partitions);
+      copyPartitions.remove(p);
+      removePartition(p, currentMapping);
+      currentMapping.partitions = copyPartitions;
+    } else {
+      // remove the operator
+      removePTOperator(p);
+    }
     // remove orphaned downstream operators
     for (PTOperator dop : downstreamOpers) {
       if (dop.inputs.isEmpty()) {
