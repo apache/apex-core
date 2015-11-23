@@ -102,15 +102,17 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
   @Override
   public void publish(String topic, Object data) throws IOException
   {
-    if (!isConnectionOpen()) {
-      try {
-        long now = System.currentTimeMillis();
-        if (lastConnectTryTime + minWaitConnectionRetry < now) {
-          lastConnectTryTime = now;
-          openConnectionAsync();
+    synchronized (this) {
+      if (!isConnectionOpen()) {
+        try {
+          long now = System.currentTimeMillis();
+          if (lastConnectTryTime + minWaitConnectionRetry < now) {
+            lastConnectTryTime = now;
+            openConnectionAsync();
+          }
+        } catch (Exception ex) {
+          LOG.debug("Failed attempt to reconnect to websocket server", ex);
         }
-      }
-      catch (Exception ex) {
       }
     }
     super.publish(topic, data);
