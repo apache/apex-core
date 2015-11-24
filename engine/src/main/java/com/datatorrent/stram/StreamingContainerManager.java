@@ -2396,7 +2396,7 @@ public class StreamingContainerManager implements PlanContext
         }
       }
     }
-    if (physicalOperators.size() > 0) {
+    if (physicalOperators.size() > 0 && checkpointTimeAggregate.getAvg() != null) {
       loi.checkpointTimeMA = checkpointTimeAggregate.getAvg().longValue();
       loi.counters = latestLogicalCounters.get(operator.getName());
       loi.autoMetrics = latestLogicalMetrics.get(operator.getName());
