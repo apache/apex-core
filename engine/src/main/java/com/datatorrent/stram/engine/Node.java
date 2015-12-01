@@ -124,7 +124,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   private final List<Field> metricFields;
   private final Map<String, Method> metricMethods;
   private ExecutorService executorService;
-  private Queue<Pair<FutureTask<Stats.CheckpointStats>, Long>> taskQueue;
+  private Queue<Pair<FutureTask<Stats.CheckpointStats>, CheckpointWindowInfo>> taskQueue;
   protected Stats.CheckpointStats checkpointStats;
 
   public Node(OPERATOR operator, OperatorContext context)
@@ -132,7 +132,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     this.operator = operator;
     this.context = context;
     executorService = Executors.newSingleThreadExecutor();
-    taskQueue = new LinkedList<Pair<FutureTask<Stats.CheckpointStats>, Long>>();
+    taskQueue = new LinkedList<Pair<FutureTask<Stats.CheckpointStats>, CheckpointWindowInfo>>();
 
     outputs = new HashMap<String, Sink<Object>>();
 
@@ -441,14 +441,16 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       checkpoint = null;
     }
     else {
-      Pair<FutureTask<Stats.CheckpointStats>, Long> pair = taskQueue.peek();
+      Pair<FutureTask<Stats.CheckpointStats>, CheckpointWindowInfo> pair = taskQueue.peek();
       if (pair != null && pair.getFirst().isDone()) {
         taskQueue.poll();
         try {
+          CheckpointWindowInfo checkpointWindowInfo = pair.getSecond();
           stats.checkpointStats = pair.getFirst().get();
-          stats.checkpoint = new Checkpoint(pair.getSecond(), applicationWindowCount, checkpointWindowCount);
+          stats.checkpoint = new Checkpoint(checkpointWindowInfo.windowId, checkpointWindowInfo.applicationWindowCount,
+              checkpointWindowInfo.checkpointWindowCount);
           if (operator instanceof Operator.CheckpointListener) {
-            ((Operator.CheckpointListener) operator).checkpointed(pair.getSecond());
+            ((Operator.CheckpointListener) operator).checkpointed(checkpointWindowInfo.windowId);
           }
         } catch (Exception ex) {
           throw DTThrowable.wrapIfChecked(ex);
@@ -494,13 +496,17 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
             AsyncFSStorageAgent asyncFSStorageAgent = (AsyncFSStorageAgent) ba;
             if (!asyncFSStorageAgent.isSyncCheckpoint()) {
               if(PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
+                CheckpointWindowInfo checkpointWindowInfo = new CheckpointWindowInfo();
+                checkpointWindowInfo.windowId = windowId;
+                checkpointWindowInfo.applicationWindowCount = applicationWindowCount;
+                checkpointWindowInfo.checkpointWindowCount = checkpointWindowCount;
                 CheckpointHandler checkpointHandler = new CheckpointHandler();
                 checkpointHandler.agent = asyncFSStorageAgent;
                 checkpointHandler.operatorId = id;
                 checkpointHandler.windowId = windowId;
                 checkpointHandler.stats = checkpointStats;
-                FutureTask<Stats.CheckpointStats> futureTask = new FutureTask<Stats.CheckpointStats>(checkpointHandler);
-                taskQueue.add(new Pair<FutureTask<Stats.CheckpointStats>, Long>(futureTask, windowId));
+                FutureTask<Stats.CheckpointStats> futureTask = new FutureTask<>(checkpointHandler);
+                taskQueue.add(new Pair<FutureTask<Stats.CheckpointStats>, CheckpointWindowInfo>(futureTask, checkpointWindowInfo));
                 executorService.submit(futureTask);
                 checkpoint = null;
                 checkpointStats = null;
@@ -655,6 +661,13 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       stats.checkpointTime = System.currentTimeMillis() - stats.checkpointStartTime;
       return stats;
     }
+  }
+
+  private class CheckpointWindowInfo
+  {
+    public int applicationWindowCount;
+    public int checkpointWindowCount;
+    public long windowId;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Node.class);

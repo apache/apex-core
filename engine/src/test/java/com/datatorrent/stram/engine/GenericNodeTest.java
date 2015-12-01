@@ -18,23 +18,42 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestWatcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.conf.Configuration;
+
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-import com.datatorrent.api.*;
+import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.CheckpointListener;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.tuple.EndStreamTuple;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -44,6 +63,104 @@ import com.datatorrent.stram.tuple.Tuple;
  */
 public class GenericNodeTest
 {
+  @Rule
+  public FSTestWatcher testMeta = new FSTestWatcher();
+
+  public static class FSTestWatcher extends TestWatcher
+  {
+    private String dir;
+
+    public String getDir()
+    {
+      return dir;
+    }
+
+    @Override
+    protected void starting(org.junit.runner.Description description)
+    {
+      dir = "target/" + description.getClassName() + "/" + description.getMethodName();
+    }
+
+    @Override
+    protected void finished(org.junit.runner.Description description)
+    {
+      super.finished(description);
+      FileUtils.deleteQuietly(new File(dir));
+    }
+  }
+
+  public static class DelayAsyncFSStorageAgent extends AsyncFSStorageAgent
+  {
+    private static final long serialVersionUID = 201511301205L;
+
+    public DelayAsyncFSStorageAgent(String localBasePath, String path, Configuration conf)
+    {
+      super(localBasePath, path, conf);
+    }
+
+    private long delayMS = 2000L;
+
+    public DelayAsyncFSStorageAgent(String path, Configuration conf)
+    {
+      super(path, conf);
+    }
+
+    @Override
+    public void save(final Object object, final int operatorId, final long windowId) throws IOException
+    {
+      LOG.info("Saving");
+      //Do nothing
+    }
+
+    @Override
+    public void copyToHDFS(int operatorId, long windowId) throws IOException
+    {
+      try {
+        Thread.sleep(delayMS);
+      } catch (InterruptedException ex) {
+        throw new RuntimeException(ex);
+      }
+    }
+
+    /**
+     * @return the delayMS
+     */
+    public long getDelayMS()
+    {
+      return delayMS;
+    }
+
+    /**
+     * @param delayMS the delayMS to set
+     */
+    public void setDelayMS(long delayMS)
+    {
+      this.delayMS = delayMS;
+    }
+  }
+
+  public static class TestStatsOperatorContext extends OperatorContext
+  {
+    private static final long serialVersionUID = 201511301206L;
+
+    public volatile List<Checkpoint> checkpoints = Lists.newArrayList();
+
+    public TestStatsOperatorContext(int id, AttributeMap attributes, Context parentContext)
+    {
+      super(id, attributes, parentContext);
+    }
+
+    @Override
+    public void report(OperatorStats stats, long windowId)
+    {
+      super.report(stats, windowId);
+
+      if (stats.checkpoint != null) {
+        checkpoints.add((Checkpoint)stats.checkpoint);
+      }
+    }
+  }
+
   public static class GenericOperator implements Operator
   {
     long beginWindowId;
@@ -391,7 +508,6 @@ public class GenericNodeTest
         in.run();
         in.deactivate();
       }
-
     };
 
     t.start();
@@ -411,4 +527,95 @@ public class GenericNodeTest
     Assert.assertFalse(gco.checkpointTwice);
     Assert.assertTrue("Timed out", (endTime - startTime) < 5000);
   }
+
+  /**
+   * This tests to make sure that the race condition reported in APEX-83 is fixed.
+   */
+  @Test
+  public void testCheckpointApplicationWindowCountAtleastOnce() throws Exception
+  {
+    testCheckpointApplicationWindowCount(ProcessingMode.AT_LEAST_ONCE);
+  }
+
+  /**
+   * This tests to make sure that the race condition reported in APEX-83 is fixed.
+   */
+  @Test
+  public void testCheckpointApplicationWindowCountAtMostOnce() throws Exception
+  {
+    testCheckpointApplicationWindowCount(ProcessingMode.AT_MOST_ONCE);
+  }
+
+  private void testCheckpointApplicationWindowCount(ProcessingMode processingMode) throws Exception
+  {
+    final long timeoutMillis = 10000L;
+    final long sleepTime = 25L;
+
+    WindowGenerator windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1, "WindowGenerator"), 1024);
+    windowGenerator.setResetWindow(0L);
+    windowGenerator.setFirstWindow(1448909287863L);
+    windowGenerator.setWindowWidth(100);
+    windowGenerator.setCheckpointCount(1, 0);
+
+    GenericOperator go = new GenericOperator();
+
+    DefaultAttributeMap dam = new DefaultAttributeMap();
+    dam.put(OperatorContext.APPLICATION_WINDOW_COUNT, 5);
+    dam.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 5);
+    dam.put(OperatorContext.PROCESSING_MODE, processingMode);
+
+    DelayAsyncFSStorageAgent storageAgent = new DelayAsyncFSStorageAgent(testMeta.getDir(), new Configuration());
+    storageAgent.setDelayMS(200L);
+
+    dam.put(OperatorContext.STORAGE_AGENT, storageAgent);
+
+    TestStatsOperatorContext operatorContext = new TestStatsOperatorContext(0, dam, null);
+    final GenericNode gn = new GenericNode(go, operatorContext);
+    gn.setId(1);
+
+    TestSink testSink = new TestSink();
+
+    gn.connectInputPort("ip1", windowGenerator.acquireReservoir(String.valueOf(gn.id), 1024));
+    gn.connectOutputPort("output", testSink);
+
+    windowGenerator.activate(null);
+
+    Thread t = new Thread()
+    {
+      @Override
+      public void run()
+      {
+        gn.activate();
+        gn.run();
+        gn.deactivate();
+      }
+    };
+
+    t.start();
+
+    long startTime = System.currentTimeMillis();
+    long endTime = 0;
+
+    while (operatorContext.checkpoints.size() < 8 && ((endTime = System.currentTimeMillis()) - startTime) < timeoutMillis) {
+      Thread.sleep(sleepTime);
+    }
+
+    gn.shutdown();
+    t.join();
+
+    windowGenerator.deactivate();
+
+    Assert.assertTrue(!operatorContext.checkpoints.isEmpty());
+
+    for (int index = 0; index < operatorContext.checkpoints.size(); index++) {
+      if (operatorContext.checkpoints.get(index) == null) {
+        continue;
+      }
+
+      Assert.assertEquals(0, operatorContext.checkpoints.get(index).applicationWindowCount);
+      Assert.assertEquals(0, operatorContext.checkpoints.get(index).checkpointWindowCount);
+    }
+  }
+
+  private static final Logger LOG = LoggerFactory.getLogger(GenericNodeTest.class);
 }
