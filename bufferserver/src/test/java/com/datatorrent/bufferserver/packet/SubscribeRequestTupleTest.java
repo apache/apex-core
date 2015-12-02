@@ -19,9 +19,11 @@
 package com.datatorrent.bufferserver.packet;
 
 import java.util.ArrayList;
-import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import static com.datatorrent.bufferserver.packet.SubscribeRequestTuple.getSerializedRequest;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 /**
  *
@@ -42,17 +44,17 @@ public class SubscribeRequestTupleTest
     ArrayList<Integer> partitions = new ArrayList<Integer>();
     partitions.add(5);
     long startingWindowId = 0xcafebabe00000078L;
-    byte[] serial = SubscribeRequestTuple.getSerializedRequest(null, id, down_type, upstream_id, mask, partitions, startingWindowId, 0);
+    byte[] serial = getSerializedRequest(null, id, down_type, upstream_id, mask, partitions, startingWindowId, 0);
     SubscribeRequestTuple tuple = (SubscribeRequestTuple)Tuple.getTuple(serial, 0, serial.length);
-    Assert.assertEquals(tuple.getIdentifier(), id, "Identifier");
-    Assert.assertEquals(tuple.getStreamType(), down_type, "UpstreamType");
-    Assert.assertEquals(tuple.getUpstreamIdentifier(), upstream_id, "UpstreamId");
-    Assert.assertEquals(tuple.getMask(), mask, "Mask");
+    assertEquals(tuple.getIdentifier(), id, "Identifier");
+    assertEquals(tuple.getStreamType(), down_type, "UpstreamType");
+    assertEquals(tuple.getUpstreamIdentifier(), upstream_id, "UpstreamId");
+    assertEquals(tuple.getMask(), mask, "Mask");
 
     int[] parts = tuple.getPartitions();
-    Assert.assertTrue(parts != null && parts.length == 1 && parts[0] == 5);
+    assertTrue(parts != null && parts.length == 1 && parts[0] == 5);
 
-    Assert.assertEquals(Long.toHexString((long)tuple.getBaseSeconds() << 32 | tuple.getWindowId()), Long.toHexString(startingWindowId), "Window");
+    assertEquals((long)tuple.getBaseSeconds() << 32 | tuple.getWindowId(), startingWindowId, "Window");
   }
 
 }

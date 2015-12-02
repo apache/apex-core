@@ -38,18 +38,15 @@ public class VarInt extends com.datatorrent.netlet.util.VarInt
     int result = tmp & 0x7f;
     if ((tmp = data[offset++]) >= 0) {
       result |= tmp << 7;
-    }
-    else {
+    } else {
       result |= (tmp & 0x7f) << 7;
       if ((tmp = data[offset++]) >= 0) {
         result |= tmp << 14;
-      }
-      else {
+      } else {
         result |= (tmp & 0x7f) << 14;
         if ((tmp = data[offset++]) >= 0) {
           result |= tmp << 21;
-        }
-        else {
+        } else {
           result |= (tmp & 0x7f) << 21;
           result |= (tmp = data[offset++]) << 28;
           if (tmp < 0) {

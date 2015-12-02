@@ -22,8 +22,8 @@ package com.datatorrent.bufferserver.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
-import static org.testng.Assert.*;
 
+import static org.testng.Assert.assertEquals;
 
 /**
  *
@@ -33,7 +33,7 @@ public class CodecTest
   @Test
   public void testSomeMethod()
   {
-    byte buffer[] = new byte[10];
+    byte[] buffer = new byte[10];
     int value = 127;
     VarInt.write(value, buffer, 0);
 

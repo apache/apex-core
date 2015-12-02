@@ -25,7 +25,20 @@ package com.datatorrent.bufferserver.packet;
  */
 public enum MessageType
 {
-  NO_MESSAGE(0), PAYLOAD(1), RESET_WINDOW(2), BEGIN_WINDOW(3), END_WINDOW(4), END_STREAM(5), PUBLISHER_REQUEST(6), SUBSCRIBER_REQUEST(7), PURGE_REQUEST(8), RESET_REQUEST(9), CHECKPOINT(10), CODEC_STATE(11), NO_MESSAGE_ODD(127);
+  NO_MESSAGE(0),
+  PAYLOAD(1),
+  RESET_WINDOW(2),
+  BEGIN_WINDOW(3),
+  END_WINDOW(4),
+  END_STREAM(5),
+  PUBLISHER_REQUEST(6),
+  SUBSCRIBER_REQUEST(7),
+  PURGE_REQUEST(8),
+  RESET_REQUEST(9),
+  CHECKPOINT(10),
+  CODEC_STATE(11),
+  NO_MESSAGE_ODD(127);
+
   public static final byte NO_MESSAGE_VALUE = 0;
   public static final byte PAYLOAD_VALUE = 1;
   public static final byte RESET_WINDOW_VALUE = 2;
@@ -81,7 +94,7 @@ public enum MessageType
 
   private final int value;
 
-  private MessageType(int value)
+  MessageType(int value)
   {
     this.value = value;
   }

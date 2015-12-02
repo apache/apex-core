@@ -18,11 +18,11 @@
  */
 package com.datatorrent.bufferserver.util;
 
-import com.datatorrent.netlet.DefaultEventLoop;
-import com.datatorrent.netlet.EventLoop;
-
 import java.io.IOException;
 import java.util.HashMap;
+
+import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.netlet.EventLoop;
 
 /**
  * <p>System class.</p>
@@ -40,8 +40,7 @@ public class System
       if (el == null) {
         try {
           eventloops.put(identifier, el = DefaultEventLoop.createEventLoop(identifier));
-        }
-        catch (IOException io) {
+        } catch (IOException io) {
           throw new RuntimeException(io);
         }
       }
@@ -55,8 +54,7 @@ public class System
       DefaultEventLoop el = eventloops.get(identifier);
       if (el == null) {
         throw new RuntimeException("System with " + identifier + " not setup!");
-      }
-      else {
+      } else {
         el.stop();
       }
     }

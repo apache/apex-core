@@ -21,8 +21,8 @@ package com.datatorrent.bufferserver.util;
 import com.datatorrent.netlet.util.Slice;
 
 /**
- * Wrapper for a {@code byte[]}, which provides read-only access and can "reveal" a partial slice of the underlying array.<p>
- *
+ * Wrapper for a {@code byte[]}, which provides read-only access and can "reveal" a partial slice of the underlying
+ * array.<p>
  *
  * <b>Note:</b> Multibyte accessors all use big-endian order.
  *

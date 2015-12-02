@@ -23,7 +23,7 @@ import java.util.Collection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.bufferserver.packet.SubscribeRequestTuple;
+import static com.datatorrent.bufferserver.packet.SubscribeRequestTuple.getSerializedRequest;
 
 /**
  *
@@ -46,18 +46,11 @@ public abstract class Subscriber extends AuthClient
     this.id = id;
   }
 
-  public void activate(String version, String type, String sourceId, int mask, Collection<Integer> partitions, long windowId, int bufferSize)
+  public void activate(final String version, final String type, final String sourceId, final int mask,
+      final Collection<Integer> partitions, final long windowId, final int bufferSize)
   {
     sendAuthenticate();
-    write(SubscribeRequestTuple.getSerializedRequest(
-            version,
-            id,
-            type,
-            sourceId,
-            mask,
-            partitions,
-            windowId,
-            bufferSize));
+    write(getSerializedRequest(version, id, type, sourceId, mask, partitions, windowId, bufferSize));
   }
 
   @Override

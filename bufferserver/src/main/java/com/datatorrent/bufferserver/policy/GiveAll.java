@@ -33,7 +33,7 @@ import com.datatorrent.bufferserver.util.SerializedData;
  */
 public class GiveAll extends AbstractPolicy
 {
-  final static GiveAll instance = new GiveAll();
+  private static final GiveAll instance = new GiveAll();
 
   /**
    *

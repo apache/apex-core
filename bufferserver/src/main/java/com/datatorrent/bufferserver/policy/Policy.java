@@ -33,13 +33,13 @@ import com.datatorrent.bufferserver.util.SerializedData;
 public interface Policy
 {
   /**
+   * Distributes {@code data} to the set of {@code nodes}
    *
-   *
-   * @param nodes Set of downstream {@link com.datatorrent.bufferserver.PhysicalNode}s
-   * @param data Opaque {@link com.datatorrent.bufferserver.util.SerializedData} to be send
+   * @param nodes Set of downstream {@link PhysicalNode}
+   * @param data Opaque {@link SerializedData} to be send
    * @throws InterruptedException
+   * @return {@code true} if successful, otherwise {@code false}
    */
-
-  public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException;
+  boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException;
 
 }

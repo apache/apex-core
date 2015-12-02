@@ -34,7 +34,8 @@ public class Subscriber extends com.datatorrent.bufferserver.client.Subscriber
 {
   public final ArrayList<Object> resetPayloads = new ArrayList<Object>();
   public AtomicInteger tupleCount = new AtomicInteger(0);
-  public WindowIdHolder firstPayload, lastPayload;
+  public WindowIdHolder firstPayload;
+  public WindowIdHolder lastPayload;
 
   public Subscriber(String id)
   {
@@ -42,7 +43,8 @@ public class Subscriber extends com.datatorrent.bufferserver.client.Subscriber
   }
 
   @Override
-  public void activate(String version, String type, String sourceId, int mask, Collection<Integer> partitions, long windowId, int bufferSize)
+  public void activate(final String version, final String type, final String sourceId, final int mask,
+      final Collection<Integer> partitions, final long windowId, final int bufferSize)
   {
     tupleCount.set(0);
     firstPayload = lastPayload = null;
@@ -66,6 +68,9 @@ public class Subscriber extends com.datatorrent.bufferserver.client.Subscriber
 
       case RESET_WINDOW:
         resetWindow(tuple.getBaseSeconds(), tuple.getWindowWidth());
+        break;
+
+      default:
         break;
     }
   }
