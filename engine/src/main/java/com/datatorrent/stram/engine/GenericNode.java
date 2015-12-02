@@ -41,6 +41,7 @@ import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
+import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
@@ -148,6 +149,7 @@ public class GenericNode extends Node<Operator>
       emitEndWindow();
     }
     else {
+      logger.debug("PUTTING END WINDOW {} TO SINKS", Codec.getStringWindowId(endWindowTuple.getWindowId()));
       for (int s = sinks.length; s-- > 0; ) {
         sinks[s].put(endWindowTuple);
       }
@@ -247,12 +249,19 @@ public class GenericNode extends Node<Operator>
           Map.Entry<String, SweepableReservoir> activePortEntry = buffers.next();
           SweepableReservoir activePort = activePortEntry.getValue();
           Tuple t = activePort.sweep();
+          boolean needResetWindow = false;
           if (t != null) {
             boolean delay = isInputPortConnectedToDelayOperator(activePortEntry.getKey());
 
             if (delay) {
-              logger.debug("#### DELAY #### GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()), t.getBaseSeconds(), windowWidthMillis);
-              t.setWindowId(WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, 1));
+              logger.debug("#### DELAY #### GOT TUPLE TYPE {} from port {} window {} {} {}",
+                  t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()),
+                  t.getBaseSeconds(), windowWidthMillis);
+              long windowAhead = WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, 1);
+              if (WindowGenerator.getBaseSecondsFromWindowId(windowAhead) > t.getBaseSeconds()) {
+                needResetWindow = true;
+              }
+              t.setWindowId(windowAhead);
               logger.debug("#### DELAY #### SET WINDOW ID TO {}", Codec.getStringWindowId(t.getWindowId()));
             } else {
               logger.debug("#### REGULAR #### GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()), firstWindowMillis, windowWidthMillis);
@@ -263,7 +272,18 @@ public class GenericNode extends Node<Operator>
                   activePort.remove();
                   expectingBeginWindow--;
                   receivedEndWindow = 0;
-                  currentWindowId = t.getWindowId();;
+                  currentWindowId = t.getWindowId();
+                  if (needResetWindow) {
+                    // Buffer server code strips out the base seconds from BEGIN_WINDOW and END_WINDOW tuples for
+                    // serialization optimization.  That's why we need a reset window here to tell the buffer server we
+                    // are having a new baseSeconds now.
+                    Tuple resetWindowTuple = new ResetWindowTuple(t.getWindowId());
+                    logger.debug("PUTTING RESET WINDOW {} TO SINKS", Codec.getStringWindowId(t.getWindowId()));
+                    for (int s = sinks.length; s-- > 0; ) {
+                      sinks[s].put(resetWindowTuple);
+                    }
+                  }
+                  logger.debug("PUTTING BEGIN WINDOW {} TO SINKS", Codec.getStringWindowId(t.getWindowId()));
                   for (int s = sinks.length; s-- > 0; ) {
                     sinks[s].put(t);
                   }
