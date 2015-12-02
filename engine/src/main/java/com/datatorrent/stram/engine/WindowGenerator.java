@@ -320,7 +320,18 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
     }
     assert (multiplier >= 0);
     windowId = windowId & WindowGenerator.WINDOW_MASK;
-    return firstWindowMillis + (multiplier * windowWidthMillis * (WindowGenerator.MAX_WINDOW_ID + 1)) + windowId * windowWidthMillis;
+    return firstWindowMillis + (multiplier * baseChangeInterval) + (windowId * windowWidthMillis);
+  }
+
+  /**
+   * Utility function to get the base seconds from a window id
+   *
+   * @param windowId
+   * @return the base seconds for the given window id
+   */
+  public static long getBaseSecondsFromWindowId(long windowId)
+  {
+    return windowId >>> 32;
   }
 
   private class MasterReservoir extends CircularBuffer<Tuple> implements Reservoir

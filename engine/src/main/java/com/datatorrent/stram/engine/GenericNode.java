@@ -21,6 +21,8 @@ package com.datatorrent.stram.engine;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.stram.plan.logical.Operators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +41,7 @@ import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
+import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
@@ -146,6 +149,7 @@ public class GenericNode extends Node<Operator>
       emitEndWindow();
     }
     else {
+      logger.debug("PUTTING END WINDOW {} TO SINKS", Codec.getStringWindowId(endWindowTuple.getWindowId()));
       for (int s = sinks.length; s-- > 0; ) {
         sinks[s].put(endWindowTuple);
       }
@@ -198,6 +202,15 @@ public class GenericNode extends Node<Operator>
     insideWindow = applicationWindowCount != 0;
   }
 
+  private boolean isInputPortConnectedToDelayOperator(String portName)
+  {
+    Operators.PortContextPair<InputPort<?>> pcPair = descriptor.inputPorts.get(portName);
+    if (pcPair == null || pcPair.context == null) {
+      return false;
+    }
+    return pcPair.context.getValue(PortContext.IS_CONNECTED_TO_DELAY_OPERATOR);
+  }
+
   /**
    * Originally this method was defined in an attempt to implement the interface Runnable.
    *
@@ -212,30 +225,65 @@ public class GenericNode extends Node<Operator>
     long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     int totalQueues = inputs.size();
+    int regularQueues = totalQueues;
+    for (String portName : inputs.keySet()) {
+      if (isInputPortConnectedToDelayOperator(portName)) {
+        regularQueues--;
+      }
+    }
 
-    ArrayList<SweepableReservoir> activeQueues = new ArrayList<SweepableReservoir>();
-    activeQueues.addAll(inputs.values());
+    ArrayList<Map.Entry<String, SweepableReservoir>> activeQueues = new ArrayList<>();
+    activeQueues.addAll(inputs.entrySet());
 
     int expectingBeginWindow = activeQueues.size();
     int receivedEndWindow = 0;
+    long firstResetWindow = -1;
 
     TupleTracker tracker;
     LinkedList<TupleTracker> resetTupleTracker = new LinkedList<TupleTracker>();
-
     try {
       do {
-        Iterator<SweepableReservoir> buffers = activeQueues.iterator();
+        Iterator<Map.Entry<String, SweepableReservoir>> buffers = activeQueues.iterator();
   activequeue:
         while (buffers.hasNext()) {
-          SweepableReservoir activePort = buffers.next();
+          Map.Entry<String, SweepableReservoir> activePortEntry = buffers.next();
+          SweepableReservoir activePort = activePortEntry.getValue();
           Tuple t = activePort.sweep();
+          boolean needResetWindow = false;
           if (t != null) {
+            boolean delay = isInputPortConnectedToDelayOperator(activePortEntry.getKey());
+
+            if (delay) {
+              logger.debug("#### DELAY #### GOT TUPLE TYPE {} from port {} window {} {} {}",
+                  t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()),
+                  t.getBaseSeconds(), windowWidthMillis);
+              long windowAhead = WindowGenerator.getAheadWindowId(t.getWindowId(), firstWindowMillis, windowWidthMillis, 1);
+              if (WindowGenerator.getBaseSecondsFromWindowId(windowAhead) > t.getBaseSeconds()) {
+                needResetWindow = true;
+              }
+              t.setWindowId(windowAhead);
+              logger.debug("#### DELAY #### SET WINDOW ID TO {}", Codec.getStringWindowId(t.getWindowId()));
+            } else {
+              logger.debug("#### REGULAR #### GOT TUPLE TYPE {} from port {} window {} {} {}", t.getType(), activePortEntry.getKey(), Codec.getStringWindowId(t.getWindowId()), firstWindowMillis, windowWidthMillis);
+            }
             switch (t.getType()) {
               case BEGIN_WINDOW:
                 if (expectingBeginWindow == totalQueues) {
                   activePort.remove();
                   expectingBeginWindow--;
+                  receivedEndWindow = 0;
                   currentWindowId = t.getWindowId();
+                  if (needResetWindow) {
+                    // Buffer server code strips out the base seconds from BEGIN_WINDOW and END_WINDOW tuples for
+                    // serialization optimization.  That's why we need a reset window here to tell the buffer server we
+                    // are having a new baseSeconds now.
+                    Tuple resetWindowTuple = new ResetWindowTuple(t.getWindowId());
+                    logger.debug("PUTTING RESET WINDOW {} TO SINKS", Codec.getStringWindowId(t.getWindowId()));
+                    for (int s = sinks.length; s-- > 0; ) {
+                      sinks[s].put(resetWindowTuple);
+                    }
+                  }
+                  logger.debug("PUTTING BEGIN WINDOW {} TO SINKS", Codec.getStringWindowId(t.getWindowId()));
                   for (int s = sinks.length; s-- > 0; ) {
                     sinks[s].put(t);
                   }
@@ -245,13 +293,10 @@ public class GenericNode extends Node<Operator>
                     insideWindow = true;
                     operator.beginWindow(currentWindowId);
                   }
-                  receivedEndWindow = 0;
-                }
-                else if (t.getWindowId() == currentWindowId) {
+                } else if (t.getWindowId() == currentWindowId) {
                   activePort.remove();
                   expectingBeginWindow--;
-                }
-                else {
+                } else {
                   buffers.remove();
 
                   /* find the name of the port which got out of sequence tuple */
@@ -279,21 +324,20 @@ public class GenericNode extends Node<Operator>
                       WindowIdActivatedReservoir wiar = new WindowIdActivatedReservoir(port, activePort, currentWindowId);
                       wiar.setSink(sink);
                       inputs.put(port, wiar);
-                      activeQueues.add(wiar);
+                      activeQueues.add(new AbstractMap.SimpleEntry<String, SweepableReservoir>(port, wiar));
                       break activequeue;
-                    }
-                    else {
+                    } else {
                       expectingBeginWindow--;
                       if (++receivedEndWindow == totalQueues) {
                         processEndWindow(null);
-                        activeQueues.addAll(inputs.values());
+                        activeQueues.addAll(inputs.entrySet());
                         expectingBeginWindow = activeQueues.size();
                         break activequeue;
                       }
                     }
                   }
                   else {
-                    logger.error("Catastrophic Error: Out of sequence tuple {} on port {} while expecting {}", Codec.getStringWindowId(t.getWindowId()), port, Codec.getStringWindowId(currentWindowId));
+                    logger.error("Catastrophic Error: Out of sequence {} tuple {} on port {} while expecting {}", t.getType(), Codec.getStringWindowId(t.getWindowId()), port, Codec.getStringWindowId(currentWindowId));
                     System.exit(2);
                   }
                 }
@@ -307,7 +351,7 @@ public class GenericNode extends Node<Operator>
                   if (++receivedEndWindow == totalQueues) {
                     assert (activeQueues.isEmpty());
                     processEndWindow(t);
-                    activeQueues.addAll(inputs.values());
+                    activeQueues.addAll(inputs.entrySet());
                     expectingBeginWindow = activeQueues.size();
                     break activequeue;
                   }
@@ -316,25 +360,25 @@ public class GenericNode extends Node<Operator>
 
               case CHECKPOINT:
                 activePort.remove();
-                long checkpointWindow = t.getWindowId();
-                if (lastCheckpointWindowId < checkpointWindow) {
-                  if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
-                    lastCheckpointWindowId = checkpointWindow;
-                  }
-                  else if (!doCheckpoint) {
-                    if (checkpointWindowCount == 0) {
-                      checkpoint(checkpointWindow);
+                if (!delay) {
+                  long checkpointWindow = t.getWindowId();
+                  if (lastCheckpointWindowId < checkpointWindow) {
+                    if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
                       lastCheckpointWindowId = checkpointWindow;
+                    } else if (!doCheckpoint) {
+                      if (checkpointWindowCount == 0) {
+                        checkpoint(checkpointWindow);
+                        lastCheckpointWindowId = checkpointWindow;
+                      } else {
+                        doCheckpoint = true;
+                      }
                     }
-                    else {
-                      doCheckpoint = true;
-                    }
-                  }
 
-                  for (int s = sinks.length; s-- > 0; ) {
-                    sinks[s].put(t);
+                    for (int s = sinks.length; s-- > 0; ) {
+                      sinks[s].put(t);
+                    }
+                    controlTupleCount++;
                   }
-                  controlTupleCount++;
                 }
                 break;
 
@@ -343,157 +387,188 @@ public class GenericNode extends Node<Operator>
                  * we will receive tuples which are equal to the number of input streams.
                  */
                 activePort.remove();
-                buffers.remove();
-
-                int baseSeconds = t.getBaseSeconds();
-                tracker = null;
-                Iterator<TupleTracker> trackerIterator = resetTupleTracker.iterator();
-                while (trackerIterator.hasNext()) {
-                  tracker = trackerIterator.next();
-                  if (tracker.tuple.getBaseSeconds() == baseSeconds) {
-                    break;
-                  }
-                }
-
-                if (tracker == null) {
-                  tracker = new TupleTracker(t, totalQueues);
-                  resetTupleTracker.add(tracker);
-                }
-                int trackerIndex = 0;
-                while (trackerIndex < tracker.ports.length) {
-                  if (tracker.ports[trackerIndex] == null) {
-                    tracker.ports[trackerIndex++] = activePort;
-                    break;
-                  }
-                  else if (tracker.ports[trackerIndex] == activePort) {
-                    break;
-                  }
-
-                  trackerIndex++;
-                }
-
-                if (trackerIndex == totalQueues) {
-                  trackerIterator = resetTupleTracker.iterator();
+                // ignore delay port
+                if (!delay) {
+                  buffers.remove();
+                  int baseSeconds = t.getBaseSeconds();
+                  tracker = null;
+                  Iterator<TupleTracker> trackerIterator = resetTupleTracker.iterator();
                   while (trackerIterator.hasNext()) {
-                    if (trackerIterator.next().tuple.getBaseSeconds() <= baseSeconds) {
-                      trackerIterator.remove();
+                    tracker = trackerIterator.next();
+                    if (tracker.tuple.getBaseSeconds() == baseSeconds) {
+                      break;
                     }
                   }
-                  for (int s = sinks.length; s-- > 0; ) {
-                    sinks[s].put(t);
-                  }
-                  controlTupleCount++;
 
-                  assert (activeQueues.isEmpty());
-                  activeQueues.addAll(inputs.values());
-                  expectingBeginWindow = activeQueues.size();
-                  break activequeue;
+                  if (tracker == null) {
+                    tracker = new TupleTracker(t, regularQueues);
+                    resetTupleTracker.add(tracker);
+                  }
+                  int trackerIndex = 0;
+                  while (trackerIndex < tracker.ports.length) {
+                    if (tracker.ports[trackerIndex] == null) {
+                      tracker.ports[trackerIndex++] = activePort;
+                      break;
+                    } else if (tracker.ports[trackerIndex] == activePort) {
+                      break;
+                    }
+
+                    trackerIndex++;
+                  }
+
+                  if (trackerIndex == regularQueues) {
+                    trackerIterator = resetTupleTracker.iterator();
+                    while (trackerIterator.hasNext()) {
+                      if (trackerIterator.next().tuple.getBaseSeconds() <= baseSeconds) {
+                        trackerIterator.remove();
+                      }
+                    }
+                    for (int s = sinks.length; s-- > 0; ) {
+                      sinks[s].put(t);
+                    }
+                    controlTupleCount++;
+
+                    if (!activeQueues.isEmpty()) {
+                      // make sure they are all queues from iteration
+                      for (Map.Entry<String, SweepableReservoir> entry : activeQueues) {
+                        if (!isInputPortConnectedToDelayOperator(entry.getKey())) {
+                          assert(false);
+                        }
+                      }
+                      activeQueues.clear();
+                    }
+                    activeQueues.addAll(inputs.entrySet());
+                    expectingBeginWindow = activeQueues.size();
+
+                    if (firstResetWindow == -1) {
+                      if (operator instanceof Operator.DelayOperator) {
+                        // if it's a DelayOperator and this is the first RESET_WINDOW, call firstWindow
+                        logger.warn("Fabricating first window {}", Codec.getStringWindowId(t.getWindowId()));
+
+                        Operator.DelayOperator delayOperator = (Operator.DelayOperator)operator;
+                        Tuple beginWindowTuple = new Tuple(MessageType.BEGIN_WINDOW, t.getWindowId());
+                        Tuple endWindowTuple = new Tuple(MessageType.END_WINDOW, t.getWindowId());
+                        for (Sink<Object> sink : outputs.values()) {
+                          logger.warn("Fabricating BEGIN WINDOW {}", Codec.getStringWindowId(t.getWindowId()));
+                          sink.put(beginWindowTuple);
+                        }
+                        delayOperator.firstWindow(t.getWindowId());
+                        for (Sink<Object> sink : outputs.values()) {
+                          logger.warn("Fabricating END WINDOW {}", Codec.getStringWindowId(t.getWindowId()));
+                          sink.put(endWindowTuple);
+                        }
+                      }
+                      firstResetWindow = t.getWindowId();
+                    }
+                    break activequeue;
+                  }
                 }
                 break;
 
               case END_STREAM:
                 activePort.remove();
                 buffers.remove();
-                for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext(); ) {
-                  Entry<String, SweepableReservoir> e = it.next();
-                  if (e.getValue() == activePort) {
-                    if (!descriptor.inputPorts.isEmpty()) {
-                      descriptor.inputPorts.get(e.getKey()).component.setConnected(false);
-                    }
-                    it.remove();
+                // ignore delay port
+                if (!delay) {
+                  for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext(); ) {
+                    Entry<String, SweepableReservoir> e = it.next();
+                    if (e.getValue() == activePort) {
+                      if (!descriptor.inputPorts.isEmpty()) {
+                        descriptor.inputPorts.get(e.getKey()).component.setConnected(false);
+                      }
+                      it.remove();
 
                     /* check the deferred connection list for any new port that should be connected here */
-                    Iterator<DeferredInputConnection> dici = deferredInputConnections.iterator();
-                    while (dici.hasNext()) {
-                      DeferredInputConnection dic = dici.next();
-                      if (e.getKey().equals(dic.portname)) {
-                        connectInputPort(dic.portname, dic.reservoir);
-                        dici.remove();
-                        activeQueues.add(dic.reservoir);
-                        break activequeue;
-                      }
-                    }
-
-                    break;
-                  }
-                }
-
-                /**
-                 * We are not going to receive begin window on this ever!
-                 */
-                expectingBeginWindow--;
-
-                /**
-                 * Since one of the operators we care about it gone, we should relook at our ports.
-                 * We need to make sure that the END_STREAM comes outside of the window.
-                 */
-                totalQueues--;
-
-                boolean break_activequeue = false;
-                if (totalQueues == 0) {
-                  alive = false;
-                  break_activequeue = true;
-                }
-                else if (activeQueues.isEmpty()) {
-                  assert (!inputs.isEmpty());
-                  processEndWindow(null);
-                  activeQueues.addAll(inputs.values());
-                  expectingBeginWindow = activeQueues.size();
-                  break_activequeue = true;
-                }
-
-                /**
-                 * also make sure that we update the reset tuple tracker if this stream had delivered any reset tuples.
-                 * Check all the reset buffers to see if current input port has already delivered reset tuple. If it has
-                 * then we are waiting for something else to deliver the reset tuple, so just clear current reservoir
-                 * from the list of tracked reservoirs. If the current input port has not delivered the reset tuple, and
-                 * it's the only one which has not, then we consider it delivered and release the reset tuple downstream.
-                 */
-                Tuple tuple = null;
-                for (trackerIterator = resetTupleTracker.iterator(); trackerIterator.hasNext(); ) {
-                  tracker = trackerIterator.next();
-
-                  trackerIndex = 0;
-                  while (trackerIndex < tracker.ports.length) {
-                    if (tracker.ports[trackerIndex] == activePort) {
-                      SweepableReservoir[] ports = new SweepableReservoir[totalQueues];
-                      System.arraycopy(tracker.ports, 0, ports, 0, trackerIndex);
-                      if (trackerIndex < totalQueues) {
-                        System.arraycopy(tracker.ports, trackerIndex + 1, ports, trackerIndex, tracker.ports.length - trackerIndex - 1);
-                      }
-                      tracker.ports = ports;
-                      break;
-                    }
-                    else if (tracker.ports[trackerIndex] == null) {
-                      if (trackerIndex == totalQueues) { /* totalQueues is already adjusted above */
-                        if (tuple == null || tuple.getBaseSeconds() < tracker.tuple.getBaseSeconds()) {
-                          tuple = tracker.tuple;
+                      Iterator<DeferredInputConnection> dici = deferredInputConnections.iterator();
+                      while (dici.hasNext()) {
+                        DeferredInputConnection dic = dici.next();
+                        if (e.getKey().equals(dic.portname)) {
+                          connectInputPort(dic.portname, dic.reservoir);
+                          dici.remove();
+                          activeQueues.add(new AbstractMap.SimpleEntry<>(dic.portname, dic.reservoir));
+                          break activequeue;
                         }
-
-                        trackerIterator.remove();
                       }
+
                       break;
                     }
-                    else {
-                      tracker.ports = Arrays.copyOf(tracker.ports, totalQueues);
-                    }
-
-                    trackerIndex++;
                   }
-                }
+
+                  /**
+                   * We are not going to receive begin window on this ever!
+                   */
+                  expectingBeginWindow--;
+
+                  /**
+                   * Since one of the operators we care about it gone, we should relook at our ports.
+                   * We need to make sure that the END_STREAM comes outside of the window.
+                   */
+                  regularQueues--;
+                  totalQueues--;
+
+                  boolean break_activequeue = false;
+                  if (regularQueues == 0) {
+                    alive = false;
+                    break_activequeue = true;
+                  } else if (activeQueues.isEmpty()) {
+                    assert (!inputs.isEmpty());
+                    processEndWindow(null);
+                    activeQueues.addAll(inputs.entrySet());
+                    expectingBeginWindow = activeQueues.size();
+                    break_activequeue = true;
+                  }
+
+                  /**
+                   * also make sure that we update the reset tuple tracker if this stream had delivered any reset tuples.
+                   * Check all the reset buffers to see if current input port has already delivered reset tuple. If it has
+                   * then we are waiting for something else to deliver the reset tuple, so just clear current reservoir
+                   * from the list of tracked reservoirs. If the current input port has not delivered the reset tuple, and
+                   * it's the only one which has not, then we consider it delivered and release the reset tuple downstream.
+                   */
+                  Tuple tuple = null;
+                  for (Iterator<TupleTracker> trackerIterator = resetTupleTracker.iterator(); trackerIterator.hasNext(); ) {
+                    tracker = trackerIterator.next();
+
+                    int trackerIndex = 0;
+                    while (trackerIndex < tracker.ports.length) {
+                      if (tracker.ports[trackerIndex] == activePort) {
+                        SweepableReservoir[] ports = new SweepableReservoir[regularQueues];
+                        System.arraycopy(tracker.ports, 0, ports, 0, trackerIndex);
+                        if (trackerIndex < regularQueues) {
+                          System.arraycopy(tracker.ports, trackerIndex + 1, ports, trackerIndex, tracker.ports.length - trackerIndex - 1);
+                        }
+                        tracker.ports = ports;
+                        break;
+                      } else if (tracker.ports[trackerIndex] == null) {
+                        if (trackerIndex == regularQueues) { /* regularQueues is already adjusted above */
+                          if (tuple == null || tuple.getBaseSeconds() < tracker.tuple.getBaseSeconds()) {
+                            tuple = tracker.tuple;
+                          }
+
+                          trackerIterator.remove();
+                        }
+                        break;
+                      } else {
+                        tracker.ports = Arrays.copyOf(tracker.ports, regularQueues);
+                      }
+
+                      trackerIndex++;
+                    }
+                  }
 
                 /*
                  * Since we were waiting for a reset tuple on this stream, we should not any longer.
                  */
-                if (tuple != null) {
-                  for (int s = sinks.length; s-- > 0; ) {
-                    sinks[s].put(tuple);
+                  if (tuple != null) {
+                    for (int s = sinks.length; s-- > 0; ) {
+                      sinks[s].put(tuple);
+                    }
+                    controlTupleCount++;
                   }
-                  controlTupleCount++;
-                }
 
-                if (break_activequeue) {
-                  break activequeue;
+                  if (break_activequeue) {
+                    break activequeue;
+                  }
                 }
                 break;
 
@@ -509,8 +584,8 @@ public class GenericNode extends Node<Operator>
         }
         else {
           boolean need2sleep = true;
-          for (SweepableReservoir cb : activeQueues) {
-            if (cb.size() > 0) {
+          for (Map.Entry<String, SweepableReservoir> cb : activeQueues) {
+            if (cb.getValue().size() > 0) {
               need2sleep = false;
               break;
             }
@@ -525,8 +600,7 @@ public class GenericNode extends Node<Operator>
             }
           }
         }
-      }
-      while (alive);
+      } while (alive);
     }
     catch (ShutdownException se) {
       logger.debug("Shutdown requested by the operator when alive = {}.", alive);

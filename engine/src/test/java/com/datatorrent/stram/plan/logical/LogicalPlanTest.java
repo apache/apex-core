@@ -32,6 +32,8 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
+import com.datatorrent.common.util.SimpleDelayOperator;
+import com.datatorrent.stram.StramLocalCluster;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import com.google.common.collect.Maps;
@@ -113,6 +115,91 @@ public class LogicalPlanTest {
        // expected
      }
 
+  }
+
+  @Test
+  public void testIteration()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator opA = dag.addOperator("A", TestGeneratorInputOperator.class);
+    GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
+    GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
+    GenericTestOperator opD = dag.addOperator("D", GenericTestOperator.class);
+    SimpleDelayOperator opDelay = dag.addOperator("opDelay", SimpleDelayOperator.class);
+
+    dag.addStream("AtoB", opA.outport, opB.inport1);
+    dag.addStream("BtoC", opB.outport1, opC.inport1);
+    dag.addStream("CtoD", opC.outport1, opD.inport1);
+    dag.addStream("CtoDelay", opC.outport2, opDelay.input);
+    dag.addStream("DelayToB", opDelay.output, opB.inport2);
+
+    try {
+      final StramLocalCluster localCluster = new StramLocalCluster(dag);
+      localCluster.runAsync();
+      Thread.sleep(10000);
+      localCluster.shutdown();
+    } catch (InterruptedException ex) {
+      // ignore
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
+  public static class FibonacciOperator extends BaseOperator
+  {
+    public long currentNumber = 1;
+    private transient long tempNum;
+    public transient DefaultInputPort<Object> dummyInputPort = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+      }
+    };
+    public transient DefaultInputPort<Long> input = new DefaultInputPort<Long>()
+    {
+      @Override
+      public void process(Long tuple)
+      {
+        tempNum = tuple;
+      }
+    };
+    public transient DefaultOutputPort<Long> output = new DefaultOutputPort<>();
+
+
+    @Override
+    public void endWindow()
+    {
+      output.emit(currentNumber);
+      System.out.println("==============> " + currentNumber);
+      currentNumber += tempNum;
+    }
+  }
+
+  @Test
+  public void testFibonacci()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator dummyInput = dag.addOperator("DUMMY", TestGeneratorInputOperator.class);
+    FibonacciOperator fib = dag.addOperator("FIB", FibonacciOperator.class);
+    SimpleDelayOperator opDelay = dag.addOperator("opDelay", SimpleDelayOperator.class);
+
+    dag.addStream("dummy_to_operator", dummyInput.outport, fib.dummyInputPort);
+    dag.addStream("operator_to_delay", fib.output, opDelay.input);
+    dag.addStream("delay_to_operator", opDelay.output, fib.input);
+
+    try {
+      final StramLocalCluster localCluster = new StramLocalCluster(dag);
+      localCluster.runAsync();
+      Thread.sleep(10000);
+      localCluster.shutdown();
+    } catch (InterruptedException ex) {
+      // ignore
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   public static class ValidationOperator extends BaseOperator {

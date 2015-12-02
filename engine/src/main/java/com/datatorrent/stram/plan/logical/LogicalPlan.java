@@ -1503,6 +1503,16 @@ public class LogicalPlan implements Serializable, DAG
         throw new ValidationException(msg);
       }
 
+      if (sm.source.operatorMeta.getOperator() instanceof Operator.DelayOperator) {
+        String msg = String.format("Locality %s invalid for delay operator %s", Locality.THREAD_LOCAL, sm.source.operatorMeta);
+        throw new ValidationException(msg);
+      }
+      if (om.getOperator() instanceof Operator.DelayOperator) {
+        String msg = String.format("Locality %s invalid for delay operator %s", Locality.THREAD_LOCAL, om);
+        throw new ValidationException(msg);
+      }
+
+
       // gets oio root for input operator for the stream
       Integer oioStreamRoot = getOioRoot(sm.source.operatorMeta);
 
@@ -1576,6 +1586,11 @@ public class LogicalPlan implements Serializable, DAG
     // depth first successors traversal
     for (StreamMeta downStream: om.outputStreams.values()) {
       for (InputPortMeta sink: downStream.sinks) {
+        if (om.getOperator() instanceof Operator.DelayOperator) {
+          // this is an iteration loop, do not treat it as downstream when detecting cycles
+          sink.attributes.put(PortContext.IS_CONNECTED_TO_DELAY_OPERATOR, true);
+          continue;
+        }
         OperatorMeta successor = sink.getOperatorWrapper();
         if (successor == null) {
           continue;

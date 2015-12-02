@@ -46,6 +46,7 @@ public class GenericTestOperator extends BaseOperator {
     @Override
     final public void process(Object t) {
       inport1Tuple = t;
+      LOG.debug("From inport1");
       processInternal(t);
     }
     @Override
@@ -58,6 +59,7 @@ public class GenericTestOperator extends BaseOperator {
   final public transient InputPort<Object> inport2 = new DefaultInputPort<Object>() {
     @Override
     final public void process(Object payload) {
+      LOG.debug("From inport2");
       processInternal(payload);
     }
     @Override
@@ -131,6 +133,9 @@ public class GenericTestOperator extends BaseOperator {
     }
     if (outport1.isConnected()) {
       outport1.emit(o);
+    }
+    if (outport2.isConnected()) {
+      outport2.emit(o);
     }
   }
 
