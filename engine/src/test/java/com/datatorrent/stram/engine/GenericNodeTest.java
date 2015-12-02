@@ -108,7 +108,6 @@ public class GenericNodeTest
     @Override
     public void save(final Object object, final int operatorId, final long windowId) throws IOException
     {
-      LOG.info("Saving");
       //Do nothing
     }
 
