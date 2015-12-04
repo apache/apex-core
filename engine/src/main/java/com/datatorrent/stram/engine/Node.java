@@ -538,7 +538,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
-  protected void calculateNextCheckpointWindow() {
+  protected void calculateNextCheckpointWindow()
+  {
     if (PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
       nextCheckpointWindowCount = (int)Math.ceil((double)(DAG_CHECKPOINT_WINDOW_COUNT - dagCheckpointOffsetCount)/CHECKPOINT_WINDOW_COUNT)*CHECKPOINT_WINDOW_COUNT;
     } else {

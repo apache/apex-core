@@ -97,7 +97,8 @@ public class GenericNodeTest
 
   }
 
-  public static class CheckpointDistanceOperator extends GenericOperator {
+  public static class CheckpointDistanceOperator extends GenericOperator
+  {
     List<Integer> distances = new ArrayList<Integer>();
     int numWindows = 0;
     int maxWindows = 0;
@@ -268,8 +269,7 @@ public class GenericNodeTest
     do {
       Thread.sleep(sleeptime);
       interval += sleeptime;
-    }
-    while ((ab.get() == false) && (interval < maxSleep));
+    } while ((ab.get() == false) && (interval < maxSleep));
 
 
     int controlTupleCount = gn.controlTupleCount;
@@ -402,9 +402,7 @@ public class GenericNodeTest
     do {
       Thread.sleep(sleeptime);
       interval += sleeptime;
-    }
-    //while ((ab.get() == false) && (interval < maxSleep));
-    while ((go.numWindows < maxWindows) && (interval < maxSleep));
+    } while ((go.numWindows < maxWindows) && (interval < maxSleep));
 
     Assert.assertEquals("Number distances", maxWindows, go.numWindows);
     int chkindex = 0;

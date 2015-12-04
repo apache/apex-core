@@ -99,11 +99,13 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   }
 
   @Override
-  public int getWindowsFromCheckpoint() {
+  public int getWindowsFromCheckpoint()
+  {
     return windowsFromCheckpoint;
   }
 
-  public void setWindowsFromCheckpoint(int windowsFromCheckpoint) {
+  public void setWindowsFromCheckpoint(int windowsFromCheckpoint)
+  {
     this.windowsFromCheckpoint = windowsFromCheckpoint;
   }
 
