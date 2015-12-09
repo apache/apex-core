@@ -328,8 +328,11 @@ public class PhysicalPlan implements Serializable
 
       boolean upstreamDeployed = true;
 
-      for (StreamMeta s : n.getInputStreams().values()) {
-        if (s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorMeta())) {
+      for (Map.Entry<InputPortMeta, StreamMeta> entry : n.getInputStreams().entrySet()) {
+        StreamMeta s = entry.getValue();
+        boolean delay = entry.getKey().getValue(LogicalPlan.IS_CONNECTED_TO_DELAY_OPERATOR);
+        // skip delay sources since it's going to be handled as downstream
+        if (!delay && s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorMeta())) {
           pendingNodes.push(n);
           pendingNodes.push(s.getSource().getOperatorMeta());
           upstreamDeployed = false;
@@ -907,7 +910,10 @@ public class PhysicalPlan implements Serializable
 
     for (Map.Entry<InputPortMeta, StreamMeta> ipm : m.logicalOperator.getInputStreams().entrySet()) {
       PMapping sourceMapping = this.logicalToPTOperator.get(ipm.getValue().getSource().getOperatorMeta());
-
+      if (ipm.getValue().getSource().getOperatorMeta().getOperator() instanceof Operator.DelayOperator) {
+        // skip if the source is a DelayOperator
+        continue;
+      }
       if (ipm.getKey().getValue(PortContext.PARTITION_PARALLEL)) {
         if (sourceMapping.partitions.size() < m.partitions.size()) {
           throw new AssertionError("Number of partitions don't match in parallel mapping " + sourceMapping.logicalOperator.getName() + " -> " + m.logicalOperator.getName() + ", " + sourceMapping.partitions.size() + " -> " + m.partitions.size());
@@ -942,11 +948,11 @@ public class PhysicalPlan implements Serializable
                 PTOperator slidingUnifier = StreamMapping.createSlidingUnifier(sourceOut.logicalStream, this,
                   sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT), slidingWindowCount);
                 StreamMapping.addInput(slidingUnifier, sourceOut, null);
-                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, slidingUnifier.outputs.get(0));
+                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, slidingUnifier.outputs.get(0), ipm.getKey().getValue(PortContext.IS_CONNECTED_TO_DELAY_OPERATOR));
                 sourceMapping.outputStreams.get(ipm.getValue().getSource()).slidingUnifiers.add(slidingUnifier);
               }
               else {
-                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut);
+                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut, ipm.getKey().getValue(PortContext.IS_CONNECTED_TO_DELAY_OPERATOR));
               }
               oper.inputs.add(input);
             }
@@ -1445,6 +1451,9 @@ public class PhysicalPlan implements Serializable
     PMapping upstreamPartitioned = null;
 
     for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> e : om.getInputStreams().entrySet()) {
+      if (e.getValue().getSource().getOperatorMeta().getOperator() instanceof Operator.DelayOperator) {
+        continue;
+      }
       PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorMeta());
       if (e.getKey().getValue(PortContext.PARTITION_PARALLEL).equals(true)) {
         // operator partitioned with upstream

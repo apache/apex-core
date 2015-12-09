@@ -99,6 +99,25 @@ public interface Operator extends Component<OperatorContext>
   }
 
   /**
+   * DelayOperator is an operator of which the outgoing streaming window id is incremented by *one* by the
+   * engine, thus allowing loops in the "DAG". The output ports of a DelayOperator, if connected, *must*
+   * immediately connect to an upstream operator in the data flow path. Note that at least one output port of
+   * DelayOperator should be connected in order for the DelayOperator to serve its purpose.
+   *
+   * This is meant for iterative algorithms in the topology. A larger window increment can be simulated by an
+   * implementation of this interface.
+   */
+  interface DelayOperator extends Operator
+  {
+    /**
+     * This method gets called at the first window of the execution.
+     * The implementation is expected to emit tuples for initialization and/or
+     * recovery.
+     */
+    void firstWindow();
+  }
+
+  /**
    * A operator provides ports as a means to consume and produce data tuples.
    * Concrete ports implement derived interfaces.
    */

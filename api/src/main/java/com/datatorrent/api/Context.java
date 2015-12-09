@@ -166,6 +166,13 @@ public interface Context
      */
     Attribute<Class<?>> TUPLE_CLASS = new Attribute<>(new Class2String<>());
 
+    /**
+     * Attribute of input port.
+     * This is a read-only attribute to query whether the input port is connected to a DelayOperator
+     * This is for iterative processing.
+     */
+    Attribute<Boolean> IS_CONNECTED_TO_DELAY_OPERATOR = new Attribute<>(false);
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(PortContext.class);
   }
