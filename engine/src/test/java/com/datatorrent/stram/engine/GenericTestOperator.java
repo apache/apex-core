@@ -132,6 +132,9 @@ public class GenericTestOperator extends BaseOperator {
     if (outport1.isConnected()) {
       outport1.emit(o);
     }
+    if (outport2.isConnected()) {
+      outport2.emit(o);
+    }
   }
 
 }
