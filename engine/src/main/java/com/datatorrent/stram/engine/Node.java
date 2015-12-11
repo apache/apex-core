@@ -486,6 +486,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   void checkpoint(long windowId)
   {
     if (!context.stateless) {
+      if (operator instanceof Operator.CheckpointNotificationListener) {
+        ((Operator.CheckpointNotificationListener)operator).beforeCheckpoint(windowId);
+      }
+
       StorageAgent ba = context.getValue(OperatorContext.STORAGE_AGENT);
       if (ba != null) {
         try {
