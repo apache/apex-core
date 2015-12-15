@@ -1641,8 +1641,15 @@ public class LogicalPlan implements Serializable, DAG
     stack.push(om);
 
     // depth first successors traversal
+    boolean isDelayOperator = om.getOperator() instanceof Operator.DelayOperator;
+    if (isDelayOperator) {
+      if (om.getValue(OperatorContext.APPLICATION_WINDOW_COUNT) != 1) {
+        LOG.warn("detected DelayOperator having APPLICATION_WINDOW_COUNT not equal to 1");
+        invalidDelays.add(Collections.singletonList(om.getName()));
+      }
+    }
+
     for (StreamMeta downStream: om.outputStreams.values()) {
-      boolean isDelayOperator = om.getOperator() instanceof Operator.DelayOperator;
       for (InputPortMeta sink : downStream.sinks) {
         OperatorMeta successor = sink.getOperatorWrapper();
         if (isDelayOperator) {

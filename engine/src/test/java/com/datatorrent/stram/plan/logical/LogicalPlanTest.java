@@ -140,6 +140,30 @@ public class LogicalPlanTest {
     } catch (ValidationException e) {
       // expected
     }
+
+    dag = new LogicalPlan();
+
+    opB = dag.addOperator("B", GenericTestOperator.class);
+    opC = dag.addOperator("C", GenericTestOperator.class);
+    opD = dag.addOperator("D", GenericTestOperator.class);
+    opDelay = dag.addOperator("opDelay", SimpleDelayOperator.class);
+    dag.setAttribute(opDelay, OperatorContext.APPLICATION_WINDOW_COUNT, 2);
+    dag.addStream("BtoC", opB.outport1, opC.inport1);
+    dag.addStream("CtoD", opC.outport1, opD.inport1);
+    dag.addStream("CtoDelay", opC.outport2, opDelay.input);
+    dag.addStream("DelayToC", opDelay.output, opC.inport2);
+
+    invalidDelays = new ArrayList<>();
+    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays);
+    assertEquals("operator invalid delay", 1, invalidDelays.size());
+
+    try {
+      dag.validate();
+      fail("validation should fail");
+    } catch (ValidationException e) {
+      // expected
+    }
+
   }
 
   @Test
