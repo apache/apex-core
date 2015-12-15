@@ -1439,6 +1439,14 @@ public class LogicalPlan implements Serializable, DAG
       throw new ValidationException("Loops in graph: " + cycles);
     }
 
+    List<List<String>> invalidDelays = new ArrayList<>();
+    for (OperatorMeta n : rootOperators) {
+      findInvalidDelays(n, invalidDelays);
+    }
+    if (!invalidDelays.isEmpty()) {
+      throw new ValidationException("Invalid delays in graph: " + invalidDelays);
+    }
+
     for (StreamMeta s: streams.values()) {
       if (s.source == null) {
         throw new ValidationException("Stream source not connected: " + s.getName());
@@ -1626,6 +1634,30 @@ public class LogicalPlan implements Serializable, DAG
         cycles.add(connectedIds);
       }
     }
+  }
+
+  public void findInvalidDelays(OperatorMeta om, List<List<String>> invalidDelays)
+  {
+    stack.push(om);
+
+    // depth first successors traversal
+    for (StreamMeta downStream: om.outputStreams.values()) {
+      boolean isDelayOperator = om.getOperator() instanceof Operator.DelayOperator;
+      for (InputPortMeta sink : downStream.sinks) {
+        OperatorMeta successor = sink.getOperatorWrapper();
+        if (isDelayOperator) {
+          // Check whether all downstream operators are already visited in the path
+          if (successor != null && !stack.contains(successor)) {
+            LOG.warn("detected DelayOperator does not immediately output to a visited operator {}.{}->{}.{}",
+                om.getName(), downStream.getSource().getPortName(), successor.getName(), sink.getPortName());
+            invalidDelays.add(Arrays.asList(om.getName(), successor.getName()));
+          }
+        } else {
+          findInvalidDelays(successor, invalidDelays);
+        }
+      }
+    }
+    stack.pop();
   }
 
   private void validateProcessingMode(OperatorMeta om, Set<OperatorMeta> visited)

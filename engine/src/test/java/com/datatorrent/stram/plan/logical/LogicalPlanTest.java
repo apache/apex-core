@@ -45,7 +45,6 @@ import static org.junit.Assert.*;
 
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.api.*;
-import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -57,7 +56,6 @@ import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.TestNonOptionalOutportInputOperator;
 import com.datatorrent.stram.engine.TestOutputOperator;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
@@ -115,6 +113,33 @@ public class LogicalPlanTest {
        // expected
      }
 
+  }
+
+  @Test
+  public void testInvalidDelayDetection()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
+    GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
+    GenericTestOperator opD = dag.addOperator("D", GenericTestOperator.class);
+    SimpleDelayOperator opDelay = dag.addOperator("opDelay", SimpleDelayOperator.class);
+
+    dag.addStream("BtoC", opB.outport1, opC.inport1);
+    dag.addStream("CtoD", opC.outport1, opD.inport1);
+    dag.addStream("CtoDelay", opC.outport2, opDelay.input);
+    dag.addStream("DelayToD", opDelay.output, opD.inport2);
+
+    List<List<String>> invalidDelays = new ArrayList<>();
+    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays);
+    assertEquals("operator invalid delay", 1, invalidDelays.size());
+
+    try {
+      dag.validate();
+      fail("validation should fail");
+    } catch (ValidationException e) {
+      // expected
+    }
   }
 
   @Test
