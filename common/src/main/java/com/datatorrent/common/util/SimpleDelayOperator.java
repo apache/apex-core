@@ -29,9 +29,10 @@ import com.datatorrent.api.Operator;
  *
  * Since the firstWindow method does not do anything, using this operator as-is means data loss during recovery.  In
  * order to achieve zero data loss during recovery, implementations must persist relevant tuples before the recovery
- * checkpoint for emitting during the first window after recovery.
+ * checkpoint for emitting during the first window after recovery by providing an implementation of the firstWindow
+ * method.
  *
- * Note that the engine will automatically does a +1 on the output window ID since it is a DelayOperator.
+ * Note that the engine automatically does a +1 on the output window ID since it is a DelayOperator.
  */
 public class SimpleDelayOperator<T> extends BaseOperator implements Operator.DelayOperator
 {
