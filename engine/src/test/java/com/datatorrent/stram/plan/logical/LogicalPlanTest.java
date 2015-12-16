@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram.plan.logical;
 
+import com.datatorrent.common.util.BaseDelayOperator;
 import com.datatorrent.common.util.BaseOperator;
 
 import java.io.ByteArrayInputStream;
@@ -32,7 +33,6 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
-import com.datatorrent.common.util.SimpleDelayOperator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
@@ -124,7 +124,7 @@ public class LogicalPlanTest {
     GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
     GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
     GenericTestOperator opD = dag.addOperator("D", GenericTestOperator.class);
-    SimpleDelayOperator opDelay = dag.addOperator("opDelay", SimpleDelayOperator.class);
+    BaseDelayOperator opDelay = dag.addOperator("opDelay", BaseDelayOperator.class);
 
     dag.addStream("BtoC", opB.outport1, opC.inport1);
     dag.addStream("CtoD", opC.outport1, opD.inport1);
@@ -147,7 +147,7 @@ public class LogicalPlanTest {
     opB = dag.addOperator("B", GenericTestOperator.class);
     opC = dag.addOperator("C", GenericTestOperator.class);
     opD = dag.addOperator("D", GenericTestOperator.class);
-    opDelay = dag.addOperator("opDelay", SimpleDelayOperator.class);
+    opDelay = dag.addOperator("opDelay", BaseDelayOperator.class);
     dag.setAttribute(opDelay, OperatorContext.APPLICATION_WINDOW_COUNT, 2);
     dag.addStream("BtoC", opB.outport1, opC.inport1);
     dag.addStream("CtoD", opC.outport1, opD.inport1);
@@ -176,7 +176,7 @@ public class LogicalPlanTest {
     GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
     GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
     GenericTestOperator opD = dag.addOperator("D", GenericTestOperator.class);
-    SimpleDelayOperator opDelay = dag.addOperator("opDelay", SimpleDelayOperator.class);
+    BaseDelayOperator opDelay = dag.addOperator("opDelay", BaseDelayOperator.class);
 
     dag.addStream("AtoB", opA.outport, opB.inport1);
     dag.addStream("BtoC", opB.outport1, opC.inport1);
@@ -230,7 +230,7 @@ public class LogicalPlanTest {
 
     TestGeneratorInputOperator dummyInput = dag.addOperator("DUMMY", TestGeneratorInputOperator.class);
     FibonacciOperator fib = dag.addOperator("FIB", FibonacciOperator.class);
-    SimpleDelayOperator opDelay = dag.addOperator("opDelay", SimpleDelayOperator.class);
+    BaseDelayOperator opDelay = dag.addOperator("opDelay", BaseDelayOperator.class);
 
     dag.addStream("dummy_to_operator", dummyInput.outport, fib.dummyInputPort);
     dag.addStream("operator_to_delay", fib.output, opDelay.input);

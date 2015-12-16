@@ -23,7 +23,7 @@ import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator;
 
 /**
- * SimpleDelayOperator. This is an implementation of the DelayOperator that has one input port and one output
+ * BaseDelayOperator. This is an implementation of the DelayOperator that has one input port and one output
  * port, and does a simple pass-through from the input port to the output port.  Subclass of this operator can
  * override this behavior by overriding processTuple(T tuple).
  *
@@ -34,7 +34,7 @@ import com.datatorrent.api.Operator;
  *
  * Note that the engine automatically does a +1 on the output window ID since it is a DelayOperator.
  */
-public class SimpleDelayOperator<T> extends BaseOperator implements Operator.DelayOperator
+public class BaseDelayOperator<T> extends BaseOperator implements Operator.DelayOperator
 {
   public transient DefaultInputPort<T> input = new DefaultInputPort<T>()
   {
