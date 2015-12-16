@@ -97,13 +97,11 @@ import static java.lang.Thread.sleep;
 public class StreamingAppMasterService extends CompositeService
 {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingAppMasterService.class);
-  private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_KEY_UPDATE_INTERVAL_IN_MS = 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_MAX_LIFETIME = Long.MAX_VALUE / 2;
   private static final long DELEGATION_TOKEN_RENEW_INTERVAL = Long.MAX_VALUE / 2;
-  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL_IN_MS = 24 * 60 * 60 * 1000;
   private static final int NUMBER_MISSED_HEARTBEATS = 30;
-  private static final int MAX_CONTAINER_FAILURES_PER_NODE = 3;
-  private static final long BLACKLIST_REMOVAL_TIME = 60 * 60 * 1000;
   private AMRMClient<ContainerRequest> amRmClient;
   private NMClientAsync nmClient;
   private LogicalPlan dag;
@@ -524,7 +522,7 @@ public class StreamingAppMasterService extends CompositeService
 
     if (UserGroupInformation.isSecurityEnabled()) {
       // TODO :- Need to perform token renewal
-      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL, DELEGATION_TOKEN_MAX_LIFETIME, DELEGATION_TOKEN_RENEW_INTERVAL, DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
+      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL_IN_MS, DELEGATION_TOKEN_MAX_LIFETIME, DELEGATION_TOKEN_RENEW_INTERVAL, DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL_IN_MS);
     }
     this.nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
     addService(nmClient);
@@ -647,8 +645,8 @@ public class StreamingAppMasterService extends CompositeService
     int minVcores = conf.getInt("yarn.scheduler.minimum-allocation-vcores", 0);
     LOG.info("Max mem {}m, Min mem {}m, Max vcores {} and Min vcores {} capabililty of resources in this cluster ", maxMem, minMem, maxVcores, minVcores);
 
-    int maxConsecutiveContainerFailures = conf.getInt("MAX_CONSECUTIVE_CONTAINER_FAILURES", MAX_CONTAINER_FAILURES_PER_NODE);
-    long blacklistRemovalTime = conf.getLong("BLACKLIST_REMOVAL_TIME", BLACKLIST_REMOVAL_TIME);
+    int maxConsecutiveContainerFailures = dag.getValue(LogicalPlan.MAX_CONSECUTIVE_CONTAINER_FAILURES);
+    long blacklistRemovalTime = dag.getValue(LogicalPlan.BLACKLIST_REMOVAL_TIME);
 
     // for locality relaxation fall back
     Map<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> requestedResources = Maps.newHashMap();
@@ -667,39 +665,12 @@ public class StreamingAppMasterService extends CompositeService
     int numRequestedContainers = 0;
     int numReleasedContainers = 0;
     int nextRequestPriority = 0;
-    ResourceRequestHandler resourceRequestor = new ResourceRequestHandler();
+    ResourceRequestHandler resourceRequestor = createResourceRequestor();
 
-    YarnClient clientRMService = YarnClient.createYarnClient();
-
-    try {
-      // YARN-435
-      // we need getClusterNodes to populate the initial node list,
-      // subsequent updates come through the heartbeat response
-      clientRMService.init(conf);
-      clientRMService.start();
-
-      ApplicationReport ar = StramClientUtils.getStartedAppInstanceByName(clientRMService,
-        dag.getAttributes().get(DAG.APPLICATION_NAME),
-        UserGroupInformation.getLoginUser().getUserName(),
-        dag.getAttributes().get(DAG.APPLICATION_ID));
-      if (ar != null) {
-        appDone = true;
-        dnmgr.shutdownDiagnosticsMessage = String.format("Application master failed due to application %s with duplicate application name \"%s\" by the same user \"%s\" is already started.",
-          ar.getApplicationId().toString(), ar.getName(), ar.getUser());
-        LOG.info("Forced shutdown due to {}", dnmgr.shutdownDiagnosticsMessage);
-        finishApplication(FinalApplicationStatus.FAILED, numTotalContainers);
-        return;
-      }
-      resourceRequestor.updateNodeReports(clientRMService.getNodeReports());
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
-    } finally {
-      clientRMService.stop();
+    if(!setupRMService(conf, numTotalContainers, resourceRequestor)) {
+      return;
     }
 
-    // check for previously allocated containers
-    // as of 2.2, containers won't survive AM restart, but this will change in the future - YARN-1490
-    checkContainerStatus();
     FinalApplicationStatus finalStatus = FinalApplicationStatus.SUCCEEDED;
     final InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
       YarnConfiguration.DEFAULT_RM_ADDRESS,
@@ -862,7 +833,7 @@ public class StreamingAppMasterService extends CompositeService
             //ByteBuffer tokens = LaunchContainerRunnable.getTokens(delegationTokenManager, heartbeatListener.getAddress());
             tokens = LaunchContainerRunnable.getTokens(ugi, delegationToken);
           }
-          LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, sca, tokens);
+          LaunchContainerRunnable launchContainer = createLaunchContainerRunnable(allocatedContainer, sca, tokens);
           // Thread launchThread = new Thread(runnableLaunchContainer);
           // launchThreads.add(launchThread);
           // launchThread.start();
@@ -934,7 +905,7 @@ public class StreamingAppMasterService extends CompositeService
           // Reset counter for node failure, if exists
           String hostname = allocatedContainer.container.getNodeId().getHost();
           AtomicInteger failedTimes = failedContainersMap.get(hostname);
-          if(failedTimes != null) {
+          if (failedTimes != null) {
             failedTimes.set(0);
           }
         }
@@ -970,6 +941,70 @@ public class StreamingAppMasterService extends CompositeService
     }
 
     finishApplication(finalStatus, numTotalContainers);
+  }
+
+  /*
+   * Get a new instance of ResourceRequestHandler
+   * This method is introduced for unit testing with mocking
+   * @return A new instance of ResourceRequestHandler
+   */
+  public ResourceRequestHandler createResourceRequestor()
+  {
+    return new ResourceRequestHandler();
+  }
+
+  /*
+   * Performs setup of RM service
+   * This method is introduced for unit testing with mocking
+   * @param Hadoop Configuration object
+   * @param number of allocated containers- initially 0
+   * @param resource request handler object
+   * @return A boolean value indicating if the setup was successful
+   */
+  public boolean setupRMService(final Configuration conf, int numTotalContainers, ResourceRequestHandler resourceRequestor)
+  {
+    YarnClient clientRMService = YarnClient.createYarnClient();
+
+    try {
+      // YARN-435
+      // we need getClusterNodes to populate the initial node list,
+      // subsequent updates come through the heartbeat response
+      clientRMService.init(conf);
+      clientRMService.start();
+
+      ApplicationReport ar = StramClientUtils.getStartedAppInstanceByName(clientRMService,
+        dag.getAttributes().get(DAG.APPLICATION_NAME),
+        UserGroupInformation.getLoginUser().getUserName(),
+        dag.getAttributes().get(DAG.APPLICATION_ID));
+      if (ar != null) {
+        appDone = true;
+        dnmgr.shutdownDiagnosticsMessage = String.format("Application master failed due to application %s with duplicate application name \"%s\" by the same user \"%s\" is already started.",
+          ar.getApplicationId().toString(), ar.getName(), ar.getUser());
+        LOG.info("Forced shutdown due to {}", dnmgr.shutdownDiagnosticsMessage);
+        finishApplication(FinalApplicationStatus.FAILED, numTotalContainers);
+        return false;
+      }
+      resourceRequestor.updateNodeReports(clientRMService.getNodeReports());
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
+    } finally {
+      clientRMService.stop();
+    }
+
+    // check for previously allocated containers
+    // as of 2.2, containers won't survive AM restart, but this will change in the future - YARN-1490
+    checkContainerStatus();
+    return true;
+  }
+
+  /*
+   * Create a new instance of Runnable Container
+   * This method is added for mocking in Unit tests
+   * @return A new instance of LaunchContainerRunnable
+   */
+  public LaunchContainerRunnable createLaunchContainerRunnable(Container allocatedContainer, StreamingContainerAgent sca, ByteBuffer tokens)
+  {
+    return new LaunchContainerRunnable(allocatedContainer, nmClient, sca, tokens);
   }
 
   private void finishApplication(FinalApplicationStatus finalStatus, int numTotalContainers) throws YarnException, IOException
@@ -1067,6 +1102,60 @@ public class StreamingAppMasterService extends CompositeService
     }
 
     return amRmClient.allocate(0);
+  }
+
+  public StreamingContainerManager getStreamingContainerAgent()
+  {
+    return dnmgr;
+  }
+
+  public void setStreamingContainerAgent(StreamingContainerManager dnmgr)
+  {
+    this.dnmgr = dnmgr;
+  }
+
+  public LogicalPlan getDag()
+  {
+    return dag;
+  }
+
+  public void setDag(LogicalPlan dag)
+  {
+    this.dag = dag;
+  }
+
+  public AMRMClient<ContainerRequest> getAmRmClient()
+  {
+    return amRmClient;
+  }
+
+  public void setAmRmClient(AMRMClient<ContainerRequest> amRmClient)
+  {
+    this.amRmClient = amRmClient;
+  }
+
+  public boolean isAppDone()
+  {
+    return appDone;
+  }
+
+  public void setAppDone(boolean appDone)
+  {
+    this.appDone = appDone;
+  }
+
+  public ConcurrentMap<String, AtomicInteger> getFailedContainersMap()
+  {
+    return failedContainersMap;
+  }
+
+  public List<String> getBlacklistedNodes()
+  {
+    List<String> blacklistedNodes = new LinkedList<>();
+    for (Pair<Long, List<String>> pair : blacklistedNodesQueueWithTimeStamp) {
+      blacklistedNodes.addAll(pair.getSecond());
+    }
+    return blacklistedNodes;
   }
 
   private class NMCallbackHandler implements NMClientAsync.CallbackHandler
