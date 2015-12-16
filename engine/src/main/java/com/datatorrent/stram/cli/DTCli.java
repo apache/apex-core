@@ -3435,8 +3435,13 @@ public class DTCli
       return;
     }
     String requiredAppPackageName = cp.getAppPackageName();
+    String requiredAppPackageGroupId = cp.getAppPackageGroupId();
     if (requiredAppPackageName != null && !requiredAppPackageName.equals(ap.getAppPackageName())) {
       throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName + "\". The app package given has the name of \"" + ap.getAppPackageName() + "\"");
+    }
+    if (requiredAppPackageGroupId != null && !requiredAppPackageGroupId.equals(ap.getAppPackageGroupId())) {
+      throw new CliException("Config package requires an app package group id of \"" + requiredAppPackageGroupId +
+          "\". The app package given has the groupId of \"" + ap.getAppPackageGroupId() + "\"");
     }
     String requiredAppPackageMinVersion = cp.getAppPackageMinVersion();
     if (requiredAppPackageMinVersion != null && VersionInfo.compare(requiredAppPackageMinVersion, ap.getAppPackageVersion()) > 0) {

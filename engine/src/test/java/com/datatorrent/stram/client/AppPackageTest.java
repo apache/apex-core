@@ -82,6 +82,7 @@ public class AppPackageTest
   @Test
   public void testAppPackage() throws Exception
   {
+    Assert.assertEquals("com.example", json.getString("appPackageGroupId"));
     Assert.assertEquals("mydtapp", json.getString("appPackageName"));
     Assert.assertEquals("1.0-SNAPSHOT", json.getString("appPackageVersion"));
     Assert.assertEquals("3.2.0-incubating", json.getString("dtEngineVersion"));

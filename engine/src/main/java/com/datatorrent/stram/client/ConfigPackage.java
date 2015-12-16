@@ -39,6 +39,7 @@ public class ConfigPackage extends JarFile implements Closeable
 
   public static final String ATTRIBUTE_DT_CONF_PACKAGE_NAME = "DT-Conf-Package-Name";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_NAME = "DT-App-Package-Name";
+  public static final String ATTRIBUTE_DT_APP_PACKAGE_GROUP_ID = "DT-App-Package-Group-Id";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_MIN_VERSION = "DT-App-Package-Min-Version";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_MAX_VERSION = "DT-App-Package-Max-Version";
   public static final String ATTRIBUTE_DT_CONF_PACKAGE_DESCRIPTION = "DT-Conf-Package-Description";
@@ -47,6 +48,7 @@ public class ConfigPackage extends JarFile implements Closeable
 
   private final String configPackageName;
   private final String appPackageName;
+  private final String appPackageGroupId;
   private final String appPackageMinVersion;
   private final String appPackageMaxVersion;
   private final String configPackageDescription;
@@ -74,6 +76,7 @@ public class ConfigPackage extends JarFile implements Closeable
     Attributes attr = manifest.getMainAttributes();
     configPackageName = attr.getValue(ATTRIBUTE_DT_CONF_PACKAGE_NAME);
     appPackageName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_NAME);
+    appPackageGroupId = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_GROUP_ID);
     appPackageMinVersion = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_MIN_VERSION);
     appPackageMaxVersion = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_MAX_VERSION);
     configPackageDescription = attr.getValue(ATTRIBUTE_DT_CONF_PACKAGE_DESCRIPTION);
@@ -120,6 +123,11 @@ public class ConfigPackage extends JarFile implements Closeable
   public String getAppPackageName()
   {
     return appPackageName;
+  }
+
+  public String getAppPackageGroupId()
+  {
+    return appPackageGroupId;
   }
 
   public String getAppPackageMinVersion()
