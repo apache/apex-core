@@ -328,9 +328,8 @@ public class PhysicalPlan implements Serializable
       boolean upstreamDeployed = true;
 
       for (Map.Entry<InputPortMeta, StreamMeta> entry : n.getInputStreams().entrySet()) {
-        InputPortMeta port = entry.getKey();
         StreamMeta s = entry.getValue();
-        boolean delay = port.getValue(PortContext.IS_CONNECTED_TO_DELAY_OPERATOR);
+        boolean delay = entry.getKey().getValue(PortContext.IS_CONNECTED_TO_DELAY_OPERATOR);
         if (!delay && s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorMeta())) {
           pendingNodes.push(n);
           pendingNodes.push(s.getSource().getOperatorMeta());

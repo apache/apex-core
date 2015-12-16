@@ -18,15 +18,22 @@
  */
 package com.datatorrent.common.util;
 
-import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator;
 
 /**
- * SimpleDelayOperator
+ * SimpleDelayOperator. This is an implementation of the DelayOperator that has one input port and one output
+ * port, and does a simple pass-through from the input port to the output port.  Subclass of this operator can
+ * override this behavior by overriding processTuple(T tuple).
+ *
+ * Since the firstWindow method does not do anything, using this operator as-is means data loss during recovery.  In
+ * order to achieve zero data loss during recovery, implementations must persist relevant tuples before the recovery
+ * checkpoint for emitting during the first window after recovery.
+ *
+ * Note that the engine will automatically does a +1 on the output window ID since it is a DelayOperator.
  */
-public class SimpleDelayOperator<T> implements Operator.DelayOperator
+public class SimpleDelayOperator<T> extends BaseOperator implements Operator.DelayOperator
 {
   public transient DefaultInputPort<T> input = new DefaultInputPort<T>()
   {
@@ -49,23 +56,4 @@ public class SimpleDelayOperator<T> implements Operator.DelayOperator
   {
   }
 
-  @Override
-  public void beginWindow(long windowId)
-  {
-  }
-
-  @Override
-  public void endWindow()
-  {
-  }
-
-  @Override
-  public void setup(Context.OperatorContext context)
-  {
-  }
-
-  @Override
-  public void teardown()
-  {
-  }
 }

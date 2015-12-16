@@ -1920,12 +1920,6 @@ public class StreamingContainerManager implements PlanContext
     if (operator.getState() == PTOperator.State.ACTIVE && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
       // if the checkpoint is ahead, then it is not blocked but waiting for activation (state-less recovery, at-most-once)
       if (ctx.committedWindowId.longValue() >= operator.getRecoveryCheckpoint().windowId) {
-        LOG.info("Marking operator {} blocked: time since last windowId change={}, timeout={}, committed windowId={}, recovery windowId={}",
-            operator,
-            ctx.currentTms - operator.stats.lastWindowIdChangeTms,
-            operator.stats.windowProcessingTimeoutMillis,
-            Codec.getStringWindowId(ctx.committedWindowId.longValue()),
-            Codec.getStringWindowId(operator.getRecoveryCheckpoint().windowId));
         ctx.blocked.add(operator);
       }
     }
