@@ -58,6 +58,7 @@ import com.datatorrent.stram.engine.TestNonOptionalOutportInputOperator;
 import com.datatorrent.stram.engine.TestOutputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 
@@ -167,7 +168,7 @@ public class LogicalPlanTest {
   }
 
   @Test
-  public void testIteration()
+  public void testValidDelay()
   {
     LogicalPlan dag = new LogicalPlan();
 
@@ -182,21 +183,12 @@ public class LogicalPlanTest {
     dag.addStream("CtoD", opC.outport1, opD.inport1);
     dag.addStream("CtoDelay", opC.outport2, opDelay.input);
     dag.addStream("DelayToB", opDelay.output, opB.inport2);
-
-    try {
-      final StramLocalCluster localCluster = new StramLocalCluster(dag);
-      localCluster.runAsync();
-      Thread.sleep(10000);
-      localCluster.shutdown();
-    } catch (InterruptedException ex) {
-      // ignore
-    } catch (Exception ex) {
-      throw new RuntimeException(ex);
-    }
+    dag.validate();
   }
 
   public static class FibonacciOperator extends BaseOperator
   {
+    public static List<Long> results = new ArrayList<>();
     public long currentNumber = 1;
     private transient long tempNum;
     public transient DefaultInputPort<Object> dummyInputPort = new DefaultInputPort<Object>()
@@ -216,18 +208,23 @@ public class LogicalPlanTest {
     };
     public transient DefaultOutputPort<Long> output = new DefaultOutputPort<>();
 
+    @Override
+    public void setup(OperatorContext context)
+    {
+      results.clear();
+    }
 
     @Override
     public void endWindow()
     {
       output.emit(currentNumber);
-      System.out.println("==============> " + currentNumber);
+      results.add(currentNumber);
       currentNumber += tempNum;
     }
   }
 
   @Test
-  public void testFibonacci()
+  public void testFibonacci() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
 
@@ -239,16 +236,18 @@ public class LogicalPlanTest {
     dag.addStream("operator_to_delay", fib.output, opDelay.input);
     dag.addStream("delay_to_operator", opDelay.output, fib.input);
 
-    try {
-      final StramLocalCluster localCluster = new StramLocalCluster(dag);
-      localCluster.runAsync();
-      Thread.sleep(10000);
-      localCluster.shutdown();
-    } catch (InterruptedException ex) {
-      // ignore
-    } catch (Exception ex) {
-      throw new RuntimeException(ex);
-    }
+    final StramLocalCluster localCluster = new StramLocalCluster(dag);
+    localCluster.runAsync();
+    StramTestSupport.awaitCompletion(new StramTestSupport.WaitCondition()
+    {
+      @Override
+      public boolean isComplete()
+      {
+        return FibonacciOperator.results.size() >= 10;
+      }
+    }, 10000);
+    Assert.assertArrayEquals(new Long[]{1L, 1L, 2L, 3L, 5L, 8L, 13L, 21L, 34L, 55L},
+        FibonacciOperator.results.subList(0, 10).toArray());
   }
 
   public static class ValidationOperator extends BaseOperator {
