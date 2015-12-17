@@ -20,6 +20,8 @@ package com.datatorrent.api;
 
 import java.io.IOException;
 
+import com.datatorrent.api.Attribute.AttributeMap;
+
 /**
  * Interface to define writing/reading checkpoint state of any operator.
  *
@@ -76,5 +78,21 @@ public interface StorageAgent
    * @throws IOException
    */
   public long[] getWindowIds(int operatorId) throws IOException;
+
+  /**
+   * Interface to pass application attributes to storage agent
+   * 
+   *
+   */
+  public interface ApplicationAwareStorageAgent extends StorageAgent
+  {
+   
+    /**
+     * Passes attributes of application to storage agent
+     * 
+     * @param map attributes of application
+     */
+    public void setApplicationAttributes(AttributeMap map);
+  }
 
 }
