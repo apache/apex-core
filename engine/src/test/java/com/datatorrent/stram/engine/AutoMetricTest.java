@@ -25,7 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-import org.apache.hadoop.conf.Configuration;
+import javax.validation.constraints.NotNull;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -34,17 +35,21 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.hadoop.conf.Configuration;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import com.datatorrent.api.*;
+import com.datatorrent.api.AutoMetric;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Stats.OperatorStats;
-
+import com.datatorrent.api.StatsListener;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
-import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.AutoMetricTest.TestOperator.TestStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -307,6 +312,33 @@ public class AutoMetricTest
     Assert.assertNotNull("default aggregator injected", o1meta.getMetricAggregatorMeta().getAggregator());
   }
 
+  @Test
+  public void testDefaultMetricsAggregator() throws Exception
+  {
+    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(new Configuration());
+
+    TestGeneratorInputOperator inputOperator = dag.addOperator("input", TestGeneratorInputOperator.class);
+
+    CountDownLatch latch = new CountDownLatch(1);
+    OperatorAndAggregator o1 = dag.addOperator("o1", new OperatorAndAggregator(latch));
+
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    dag.addStream("TestTuples", inputOperator.outport, o1.inport1);
+
+    lpc.prepareDAG(dag, null, "AutoMetricTest");
+
+    LogicalPlan.OperatorMeta o1meta = dag.getOperatorMeta("o1");
+    Assert.assertNotNull("default aggregator injected", o1meta.getMetricAggregatorMeta().getAggregator());
+
+    lpc.prepareDAG(dag, null, "AutoMetricTest");
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.runAsync();
+    latch.await();
+    Assert.assertEquals("progress", 1, o1.result.get("progress"));
+    lc.shutdown();
+  }
+
   private static class MockAggregator implements AutoMetric.Aggregator, Serializable
   {
     long cachedSum = -1;
@@ -358,6 +390,31 @@ public class AutoMetricTest
     public int getMyMetric()
     {
       return 3;
+    }
+  }
+
+  public static class OperatorAndAggregator extends OperatorWithMetrics implements AutoMetric.Aggregator
+  {
+    Map<String, Object> result = Maps.newHashMap();
+
+    private final transient CountDownLatch latch;
+
+    private OperatorAndAggregator()
+    {
+      latch = null;
+    }
+
+    OperatorAndAggregator(@NotNull CountDownLatch latch)
+    {
+      this.latch = Preconditions.checkNotNull(latch);
+    }
+
+    @Override
+    public Map<String, Object> aggregate(long windowId, Collection<AutoMetric.PhysicalMetricsContext> physicalMetrics)
+    {
+      result.put("progress", physicalMetrics.iterator().next().getMetrics().get("progress"));
+      latch.countDown();
+      return result;
     }
   }
 

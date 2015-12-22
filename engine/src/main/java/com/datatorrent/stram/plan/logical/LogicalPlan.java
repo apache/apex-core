@@ -839,6 +839,9 @@ public class LogicalPlan implements Serializable, DAG
     protected void populateAggregatorMeta()
     {
       AutoMetric.Aggregator aggregator = getValue(OperatorContext.METRICS_AGGREGATOR);
+      if (aggregator == null && operator instanceof AutoMetric.Aggregator) {
+        aggregator = new MetricAggregatorMeta.MetricsAggregatorProxy(this);
+      }
       if (aggregator == null) {
         MetricsAggregator defAggregator = null;
         Set<String> metricNames = Sets.newHashSet();
@@ -2015,39 +2018,4 @@ public class LogicalPlan implements Serializable, DAG
     return result;
   }
 
-  public final class MetricAggregatorMeta implements Serializable
-  {
-    private final AutoMetric.Aggregator aggregator;
-    private final AutoMetric.DimensionsScheme dimensionsScheme;
-
-    protected MetricAggregatorMeta(AutoMetric.Aggregator aggregator,
-                                   AutoMetric.DimensionsScheme dimensionsScheme)
-    {
-      this.aggregator = aggregator;
-      this.dimensionsScheme = dimensionsScheme;
-    }
-
-    public AutoMetric.Aggregator getAggregator()
-    {
-      return this.aggregator;
-    }
-
-    public String[] getDimensionAggregatorsFor(String logicalMetricName)
-    {
-      if (dimensionsScheme == null) {
-        return null;
-      }
-      return dimensionsScheme.getDimensionAggregationsFor(logicalMetricName);
-    }
-
-    public String[] getTimeBuckets()
-    {
-      if (dimensionsScheme == null) {
-        return null;
-      }
-      return dimensionsScheme.getTimeBuckets();
-    }
-
-    private static final long serialVersionUID = 201604271719L;
-  }
 }

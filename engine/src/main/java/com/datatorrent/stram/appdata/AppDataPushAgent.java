@@ -47,6 +47,7 @@ import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.WebsocketAppDataPusher;
 import com.datatorrent.stram.api.AppDataPusher;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.MetricAggregatorMeta;
 import com.datatorrent.stram.webapp.LogicalOperatorInfo;
 
 /**
@@ -253,7 +254,7 @@ public class AppDataPushAgent extends AbstractService
       result.put("appName", dnmgr.getApplicationAttributes().get(DAGContext.APPLICATION_NAME));
       result.put("logicalOperatorName", operatorMeta.getName());
 
-      LogicalPlan.MetricAggregatorMeta metricAggregatorMeta = operatorMeta.getMetricAggregatorMeta();
+      MetricAggregatorMeta metricAggregatorMeta = operatorMeta.getMetricAggregatorMeta();
       JSONArray valueSchemas = new JSONArray();
       for (Map.Entry<String, Object> entry : aggregates.entrySet()) {
         String metricName = entry.getKey();
