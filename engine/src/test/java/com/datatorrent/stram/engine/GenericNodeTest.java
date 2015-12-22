@@ -277,7 +277,7 @@ public class GenericNodeTest
     gn.connectInputPort("ip1", reservoir1);
     gn.connectInputPort("ip2", reservoir2);
     gn.connectOutputPort("op", output);
-    gn.firstWindowMillis = 0L;
+    gn.firstWindowMillis = 0;
     gn.windowWidthMillis = 100;
 
     final AtomicBoolean ab = new AtomicBoolean(false);
