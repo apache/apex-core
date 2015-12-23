@@ -65,6 +65,7 @@ import com.datatorrent.api.annotation.ApplicationAnnotation;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.ModuleMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -2114,9 +2115,22 @@ public class LogicalPlanConfiguration {
     if (dag.getAttributes().get(Context.DAGContext.APPLICATION_NAME) == null) {
       dag.setAttribute(Context.DAGContext.APPLICATION_NAME, appName);
     }
+
+    // Expand the modules within the dag recursively
+    setModuleProperties(dag, appName);
+    flattenDAG(dag, conf);
+
     // inject external operator configuration
     setOperatorConfiguration(dag, appConfs, appName);
     setStreamConfiguration(dag, appConfs, appName);
+  }
+
+  private void flattenDAG(LogicalPlan dag, Configuration conf)
+  {
+    for (ModuleMeta moduleMeta : dag.getAllModules()) {
+      moduleMeta.flattenModule(dag, conf);
+    }
+    dag.applyStreamLinks();
   }
 
   public static Properties readProperties(String filePath) throws IOException
@@ -2138,7 +2152,7 @@ public class LogicalPlanConfiguration {
   public Map<String, String> getProperties(OperatorMeta ow, String appName) {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
     List<OperatorConf> opConfs = getMatchingChildConf(appConfs, ow.getName(), StramElement.OPERATOR);
-    return getProperties(ow, opConfs, appName);
+    return getProperties(getPropertyArgs(ow), opConfs, appName);
   }
 
   private Map<String,String> getApplicationProperties(List<AppConf> appConfs){
@@ -2153,17 +2167,17 @@ public class LogicalPlanConfiguration {
   /**
    * Get the configuration opProps for the given operator.
    * These can be operator specific settings or settings from matching templates.
-   * @param ow
+   * @param pa
    * @param opConfs
    * @param appName
    */
-  private Map<String, String> getProperties(OperatorMeta ow, List<OperatorConf> opConfs, String appName)
+  private Map<String, String> getProperties(PropertyArgs pa, List<OperatorConf> opConfs, String appName)
   {
     Map<String, String> opProps = Maps.newHashMap();
     Map<String, TemplateConf> templates = stramConf.getChildren(StramElement.TEMPLATE);
     // list of all templates that match operator, ordered by priority
     if (!templates.isEmpty()) {
-      TreeMap<Integer, TemplateConf> matchingTemplates = getMatchingTemplates(ow, appName, templates);
+      TreeMap<Integer, TemplateConf> matchingTemplates = getMatchingTemplates(pa, appName, templates);
       if (matchingTemplates != null && !matchingTemplates.isEmpty()) {
         // combined map of prioritized template settings
         for (TemplateConf t : matchingTemplates.descendingMap().values()) {
@@ -2197,23 +2211,46 @@ public class LogicalPlanConfiguration {
     return refTemplates;
   }
 
+  private static class PropertyArgs
+  {
+    String name;
+    String className;
+
+    public PropertyArgs(String name, String className)
+    {
+      this.name = name;
+      this.className = className;
+    }
+  }
+
+  private PropertyArgs getPropertyArgs(OperatorMeta om)
+  {
+    return new PropertyArgs(om.getName(), om.getOperator().getClass().getName());
+  }
+
+  private PropertyArgs getPropertyArgs(ModuleMeta mm)
+  {
+    return new PropertyArgs(mm.getName(), mm.getModule().getClass().getName());
+  }
+
   /**
    * Produce the collections of templates that apply for the given id.
-   * @param ow
+   * @param pa
    * @param appName
    * @param templates
    * @return TreeMap<Integer, TemplateConf>
    */
-  private TreeMap<Integer, TemplateConf> getMatchingTemplates(OperatorMeta ow, String appName, Map<String, TemplateConf> templates) {
+  private TreeMap<Integer, TemplateConf> getMatchingTemplates(PropertyArgs pa, String appName, Map<String, TemplateConf> templates)
+  {
     TreeMap<Integer, TemplateConf> tm = Maps.newTreeMap();
     for (TemplateConf t : templates.values()) {
-      if ((t.idRegExp != null && ow.getName().matches(t.idRegExp))) {
+      if ((t.idRegExp != null && pa.name.matches(t.idRegExp))) {
         tm.put(1, t);
       } else if (appName != null && t.appNameRegExp != null
           && appName.matches(t.appNameRegExp)) {
         tm.put(2, t);
       } else if (t.classNameRegExp != null
-          && ow.getOperator().getClass().getName().matches(t.classNameRegExp)) {
+          && pa.className.matches(t.classNameRegExp)) {
         tm.put(3, t);
       }
     }
@@ -2238,6 +2275,26 @@ public class LogicalPlanConfiguration {
     }
   }
 
+  /**
+   * Generic helper function to inject properties on the object.
+   *
+   * @param obj
+   * @param properties
+   * @param <T>
+   * @return
+   */
+  public static <T> T setObjectProperties(T obj, Map<String, String> properties)
+  {
+    try {
+      BeanUtils.populate(obj, properties);
+      return obj;
+    } catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Error setting operator properties", e);
+    } catch (InvocationTargetException e) {
+      throw new IllegalArgumentException("Error setting operator properties", e);
+    }
+  }
+
   public static StreamingApplication setApplicationProperties(StreamingApplication application, Map<String, String> properties)
   {
     try {
@@ -2249,9 +2306,9 @@ public class LogicalPlanConfiguration {
     }
   }
 
-  public static BeanMap getOperatorProperties(Operator operator)
+  public static BeanMap getObjectProperties(Object obj)
   {
-    return new BeanMap(operator);
+    return new BeanMap(obj);
   }
 
   /**
@@ -2266,9 +2323,23 @@ public class LogicalPlanConfiguration {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(applicationName, StramElement.APPLICATION);
     for (OperatorMeta ow : dag.getAllOperators()) {
       List<OperatorConf> opConfs = getMatchingChildConf(appConfs, ow.getName(), StramElement.OPERATOR);
-      Map<String, String> opProps = getProperties(ow, opConfs, applicationName);
+      Map<String, String> opProps = getProperties(getPropertyArgs(ow), opConfs, applicationName);
       setOperatorProperties(ow.getOperator(), opProps);
     }
+  }
+
+  /**
+   * Set any properties from configuration on the modules in the DAG. This
+   * method may throw unchecked exception if the configuration contains
+   * properties that are invalid for a module.
+   *
+   * @param dag
+   * @param applicationName
+   */
+  public void setModuleProperties(LogicalPlan dag, String applicationName)
+  {
+    List<AppConf> appConfs = stramConf.getMatchingChildConf(applicationName, StramElement.APPLICATION);
+    setModuleConfiguration(dag, appConfs, applicationName);
   }
 
   /**
@@ -2298,7 +2369,7 @@ public class LogicalPlanConfiguration {
       // Set the operator attributes
       setAttributes(opConfs, ow.getAttributes());
       // Set the operator opProps
-      Map<String, String> opProps = getProperties(ow, opConfs, appName);
+      Map<String, String> opProps = getProperties(getPropertyArgs(ow), opConfs, appName);
       setOperatorProperties(ow.getOperator(), opProps);
 
       // Set the port attributes
@@ -2324,6 +2395,15 @@ public class LogicalPlanConfiguration {
         }
       }
       ow.populateAggregatorMeta();
+    }
+  }
+
+  private void setModuleConfiguration(final LogicalPlan dag, List<AppConf> appConfs, String appName)
+  {
+    for (final ModuleMeta mw : dag.getAllModules()) {
+      List<OperatorConf> opConfs = getMatchingChildConf(appConfs, mw.getName(), StramElement.OPERATOR);
+      Map<String, String> opProps = getProperties(getPropertyArgs(mw), opConfs, appName);
+      setObjectProperties(mw.getModule(), opProps);
     }
   }
 

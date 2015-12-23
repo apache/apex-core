@@ -88,7 +88,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
    * @param dag
    * @return
    */
-  public static Map<String, Object> convertToMap(LogicalPlan dag)
+  public static Map<String, Object> convertToMap(LogicalPlan dag, boolean includeModules)
   {
     HashMap<String, Object> result = new HashMap<String, Object>();
     ArrayList<Object> operatorArray = new ArrayList< Object>();
@@ -200,6 +200,15 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         streamDetailMap.put("locality", streamMeta.getLocality().name());
       }
     }
+
+    if (includeModules) {
+      ArrayList<Map<String, Object>> modulesArray = new ArrayList<>();
+      result.put("modules", modulesArray);
+      for(LogicalPlan.ModuleMeta meta : dag.getAllModules()) {
+        modulesArray.add(getLogicalModuleDetails(dag, meta));
+      }
+    }
+
     return result;
   }
 
@@ -212,7 +221,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       String operatorKey = LogicalPlanConfiguration.OPERATOR_PREFIX + operatorMeta.getName();
       Operator operator = operatorMeta.getOperator();
       props.setProperty(operatorKey + "." + LogicalPlanConfiguration.OPERATOR_CLASSNAME, operator.getClass().getName());
-      BeanMap operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operator);
+      BeanMap operatorProperties = LogicalPlanConfiguration.getObjectProperties(operator);
       @SuppressWarnings("rawtypes")
       Iterator entryIterator = operatorProperties.entryIterator();
       while (entryIterator.hasNext()) {
@@ -323,13 +332,43 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
 
   public static JSONObject convertToJsonObject(LogicalPlan dag)
   {
-    return new JSONObject(convertToMap(dag));
+    return new JSONObject(convertToMap(dag, false));
   }
 
   @Override
-  public void serialize(LogicalPlan dag, JsonGenerator jg, SerializerProvider sp) throws IOException, JsonProcessingException
+  public void serialize(LogicalPlan dag, JsonGenerator jg, SerializerProvider sp) throws IOException,
+      JsonProcessingException
   {
-    jg.writeObject(convertToMap(dag));
+    jg.writeObject(convertToMap(dag, false));
+  }
+
+  /**
+   * Return information about operators and inner modules of a module.
+   *
+   * @param dag        top level DAG
+   * @param moduleMeta module information. DAG within module is used for constructing response.
+   * @return
+   */
+  private static Map<String, Object> getLogicalModuleDetails(LogicalPlan dag, LogicalPlan.ModuleMeta moduleMeta)
+  {
+    Map<String, Object> moduleDetailMap = new HashMap<String, Object>();
+    ArrayList<String> operatorArray = new ArrayList<>();
+    moduleDetailMap.put("name", moduleMeta.getName());
+    moduleDetailMap.put("className", moduleMeta.getModule().getClass().getName());
+
+    moduleDetailMap.put("operators", operatorArray);
+    for (OperatorMeta operatorMeta : moduleMeta.getDag().getAllOperators()) {
+      if (operatorMeta.getModuleName() == null) {
+        String fullName = moduleMeta.getFullName() + LogicalPlan.MODULE_NAMESPACE_SEPARATOR + operatorMeta.getName();
+        operatorArray.add(fullName);
+      }
+    }
+    ArrayList<Map<String, Object>> modulesArray = new ArrayList<>();
+    moduleDetailMap.put("modules", modulesArray);
+    for (LogicalPlan.ModuleMeta meta : moduleMeta.getDag().getAllModules()) {
+      modulesArray.add(getLogicalModuleDetails(dag, meta));
+    }
+    return moduleDetailMap;
   }
 
 }
