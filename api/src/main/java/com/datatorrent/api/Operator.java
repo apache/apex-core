@@ -113,11 +113,8 @@ public interface Operator extends Component<OperatorContext>
      * This method gets called at the first window of the execution.
      * The implementation is expected to emit tuples for initialization and/or
      * recovery.
-     *
-     * @param windowId the window id of the first window
      */
-    void firstWindow(long windowId);
-
+    void firstWindow();
   }
 
   /**

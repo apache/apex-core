@@ -21,20 +21,39 @@ package com.datatorrent.common.util;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.Operator;
+
 /**
- * DefaultDelayOperator. This is the version of BaseDelayOperator that provides no data loss during recovery. It
- * incurs a run-time cost per tuple, and all tuples of the checkpoint window will be part of the checkpoint state.
- * Therefore if your application can tolerate data loss at recovery, BaseDelayOperator should be used instead.
+ * DefaultDelayOperator. This is an implementation of the DelayOperator that has one input port and one output
+ * port, and does a simple pass-through from the input port to the output port, while recording the tuples in memory
+ * as checkpoint state.  Subclass of this operator can override this behavior by overriding processTuple(T tuple).
+ *
+ * Note that the engine automatically does a +1 on the output window ID since it is a DelayOperator.
+ *
+ * This DelayOperator provides no data loss during recovery, but it incurs a run-time cost per tuple, and all tuples
+ * of the checkpoint window will be part of the checkpoint state.
  */
-public class DefaultDelayOperator<T> extends BaseDelayOperator<T>
+public class DefaultDelayOperator<T> extends BaseOperator implements Operator.DelayOperator
 {
+  public transient DefaultInputPort<T> input = new DefaultInputPort<T>()
+  {
+    @Override
+    public void process(T tuple)
+    {
+      processTuple(tuple);
+    }
+  };
+
+  public transient DefaultOutputPort<T> output = new DefaultOutputPort<T>();
+
   protected List<T> lastWindowTuples = new ArrayList<>();
 
-  @Override
   protected void processTuple(T tuple)
   {
     lastWindowTuples.add(tuple);
-    super.processTuple(tuple);
+    output.emit(tuple);
   }
 
   @Override
@@ -44,12 +63,11 @@ public class DefaultDelayOperator<T> extends BaseDelayOperator<T>
   }
 
   @Override
-  public void firstWindow(long windowId)
+  public void firstWindow()
   {
     for (T tuple : lastWindowTuples) {
       output.emit(tuple);
     }
-    super.firstWindow(windowId);
   }
 
 }

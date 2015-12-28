@@ -1910,7 +1910,7 @@ public class LogicalPlan implements Serializable, DAG
       }
       // strongly connected (cycle) if more than one node in stack
       if (connectedIds.size() > 1) {
-        LOG.error("detected cycle from node {}: {}", om.name, connectedIds);
+        LOG.debug("detected cycle from node {}: {}", om.name, connectedIds);
         cycles.add(connectedIds);
       }
     }
@@ -1924,7 +1924,7 @@ public class LogicalPlan implements Serializable, DAG
     boolean isDelayOperator = om.getOperator() instanceof Operator.DelayOperator;
     if (isDelayOperator) {
       if (om.getValue(OperatorContext.APPLICATION_WINDOW_COUNT) != 1) {
-        LOG.error("detected DelayOperator having APPLICATION_WINDOW_COUNT not equal to 1");
+        LOG.debug("detected DelayOperator having APPLICATION_WINDOW_COUNT not equal to 1");
         invalidDelays.add(Collections.singletonList(om.getName()));
       }
     }
@@ -1935,7 +1935,7 @@ public class LogicalPlan implements Serializable, DAG
         if (isDelayOperator) {
           // Check whether all downstream operators are already visited in the path
           if (successor != null && !stack.contains(successor)) {
-            LOG.error("detected DelayOperator does not immediately output to a visited operator {}.{}->{}.{}",
+            LOG.debug("detected DelayOperator does not immediately output to a visited operator {}.{}->{}.{}",
                 om.getName(), downStream.getSource().getPortName(), successor.getName(), sink.getPortName());
             invalidDelays.add(Arrays.asList(om.getName(), successor.getName()));
           }

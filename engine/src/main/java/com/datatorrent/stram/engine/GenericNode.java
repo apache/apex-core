@@ -226,6 +226,7 @@ public class GenericNode extends Node<Operator>
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     int totalQueues = inputs.size();
     int regularQueues = totalQueues;
+    // regularQueues is the number of queues that are not connected to a DelayOperator
     for (String portName : inputs.keySet()) {
       if (isInputPortConnectedToDelayOperator(portName)) {
         regularQueues--;
@@ -237,7 +238,7 @@ public class GenericNode extends Node<Operator>
 
     int expectingBeginWindow = activeQueues.size();
     int receivedEndWindow = 0;
-    long firstResetWindow = -1;
+    long firstWindowId = -1;
 
     TupleTracker tracker;
     LinkedList<TupleTracker> resetTupleTracker = new LinkedList<TupleTracker>();
@@ -441,7 +442,7 @@ public class GenericNode extends Node<Operator>
                     activeQueues.addAll(inputs.entrySet());
                     expectingBeginWindow = activeQueues.size();
 
-                    if (firstResetWindow == -1) {
+                    if (firstWindowId == -1) {
                       if (delay) {
                         for (int s = sinks.length; s-- > 0; ) {
                           sinks[s].put(t);
@@ -455,12 +456,12 @@ public class GenericNode extends Node<Operator>
                         for (Sink<Object> sink : outputs.values()) {
                           sink.put(beginWindowTuple);
                         }
-                        delayOperator.firstWindow(t.getWindowId());
+                        delayOperator.firstWindow();
                         for (Sink<Object> sink : outputs.values()) {
                           sink.put(endWindowTuple);
                         }
                       }
-                      firstResetWindow = t.getWindowId();
+                      firstWindowId = t.getWindowId();
                     }
                     break activequeue;
                   }
@@ -470,7 +471,7 @@ public class GenericNode extends Node<Operator>
               case END_STREAM:
                 activePort.remove();
                 buffers.remove();
-                if (firstResetWindow == -1) {
+                if (firstWindowId == -1) {
                   // this is for recovery from a checkpoint for DelayOperator
                   if (delay) {
                     // if it's a DelayOperator and this is the first RESET_WINDOW (start) or END_STREAM (recovery),
@@ -481,12 +482,12 @@ public class GenericNode extends Node<Operator>
                     for (Sink<Object> sink : outputs.values()) {
                       sink.put(beginWindowTuple);
                     }
-                    delayOperator.firstWindow(t.getWindowId());
+                    delayOperator.firstWindow();
                     for (Sink<Object> sink : outputs.values()) {
                       sink.put(endWindowTuple);
                     }
                   }
-                  firstResetWindow = t.getWindowId();
+                  firstWindowId = t.getWindowId();
                 }
                 for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext(); ) {
                   Entry<String, SweepableReservoir> e = it.next();
@@ -545,8 +546,7 @@ public class GenericNode extends Node<Operator>
                  * it's the only one which has not, then we consider it delivered and release the reset tuple downstream.
                  */
                 Tuple tuple = null;
-                for (Iterator<TupleTracker> trackerIterator = resetTupleTracker.iterator(); trackerIterator
-                    .hasNext(); ) {
+                for (Iterator<TupleTracker> trackerIterator = resetTupleTracker.iterator(); trackerIterator.hasNext(); ) {
                   tracker = trackerIterator.next();
 
                   int trackerIndex = 0;
