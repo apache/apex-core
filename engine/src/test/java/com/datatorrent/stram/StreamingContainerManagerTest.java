@@ -19,6 +19,7 @@
 package com.datatorrent.stram;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.Future;
@@ -33,6 +34,8 @@ import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import com.datatorrent.api.AutoMetric;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -40,6 +43,7 @@ import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.annotation.Stateless;
+import com.datatorrent.common.metric.AutoMetricBuiltInTransport;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
@@ -75,7 +79,6 @@ import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
 
 import org.apache.commons.lang.StringUtils;
-import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.eclipse.jetty.websocket.WebSocket;
 
@@ -904,7 +907,7 @@ public class StreamingContainerManagerTest
   public void testAppDataPush() throws Exception
   {
     final String topic = "xyz";
-    final List<JSONObject> messages = new ArrayList<JSONObject>();
+    final List<String> messages = new ArrayList<>();
     EmbeddedWebSocketServer server = new EmbeddedWebSocketServer(0);
     server.setWebSocket(new WebSocket.OnTextMessage()
     {
@@ -912,11 +915,7 @@ public class StreamingContainerManagerTest
       @Override
       public void onMessage(String data)
       {
-        try {
-          messages.add(new JSONObject(data));
-        } catch (JSONException ex) {
-          throw new RuntimeException(ex);
-        }
+        messages.add(data);
       }
 
       @Override
@@ -935,10 +934,9 @@ public class StreamingContainerManagerTest
       TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
       GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
       dag.addStream("o1.outport", o1.outport, o2.inport1);
-      dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, "builtin:" + topic);
+      dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, new AutoMetricBuiltInTransport(topic));
       dag.setAttribute(LogicalPlan.GATEWAY_CONNECT_ADDRESS, "localhost:" + port);
       StramLocalCluster lc = new StramLocalCluster(dag);
-      //lc.runAsync();
       StreamingContainerManager dnmgr = lc.dnmgr;
       StramAppContext appContext = new StramTestSupport.TestAppContext();
 
@@ -948,8 +946,7 @@ public class StreamingContainerManagerTest
       Thread.sleep(1000);
       Assert.assertTrue(messages.size() > 0);
       pushAgent.close();
-      JSONObject message = messages.get(0);
-      System.out.println("Got this message: " + message.toString(2));
+      JSONObject message = new JSONObject(messages.get(0));
       Assert.assertEquals(topic, message.getString("topic"));
       Assert.assertEquals("publish", message.getString("type"));
       JSONObject data = message.getJSONObject("data");
@@ -969,5 +966,48 @@ public class StreamingContainerManagerTest
     } finally {
       server.stop();
     }
+  }
+
+  public static class TestMetricTransport implements AutoMetric.Transport, Serializable
+  {
+    private String prefix;
+    private static List<String> messages = new ArrayList<>();
+
+    public TestMetricTransport(String prefix)
+    {
+      this.prefix = prefix;
+    }
+
+    @Override
+    public void push(String jsonData) throws IOException
+    {
+      messages.add(prefix + ":" + jsonData);
+    }
+
+    @Override
+    public long getSchemaResendInterval()
+    {
+      return 0;
+    }
+  }
+
+  @Test
+  public void testCustomMetricsTransport() throws Exception
+  {
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    dag.addStream("o1.outport", o1.outport, o2.inport1);
+    dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, new TestMetricTransport("xyz"));
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    StreamingContainerManager dnmgr = lc.dnmgr;
+    StramAppContext appContext = new StramTestSupport.TestAppContext();
+
+    AppDataPushAgent pushAgent = new AppDataPushAgent(dnmgr, appContext);
+    pushAgent.init();
+    pushAgent.pushData();
+    Assert.assertTrue(TestMetricTransport.messages.size() > 0);
+    pushAgent.close();
+    String msg = TestMetricTransport.messages.get(0);
+    Assert.assertTrue(msg.startsWith("xyz:"));
   }
 }

@@ -18,48 +18,51 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.common.util.PubSubWebSocketClient;
-import com.datatorrent.stram.api.AppDataPusher;
 import java.io.IOException;
+import java.io.Serializable;
+
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.AutoMetric;
+import com.datatorrent.common.util.PubSubWebSocketClient;
+
 /**
- * <p>WebsocketAppDataPusher class.</p>
+ * <p>PubSubWebSocketMetricTransport class.</p>
  *
  * @since 3.0.0
  */
-public class WebsocketAppDataPusher implements AppDataPusher
+public class PubSubWebSocketMetricTransport implements AutoMetric.Transport, Serializable
 {
   private final String topic;
-  private long resendSchemaInterval = 10000; // 10 seconds
+  private final long schemaResendInterval;
   protected PubSubWebSocketClient client;
 
-
-  public WebsocketAppDataPusher(PubSubWebSocketClient wsClient, String topic)
+  public PubSubWebSocketMetricTransport(PubSubWebSocketClient wsClient, String topic, long schemaResendInterval)
   {
     client = wsClient;
     this.topic = topic;
-  }
-
-  public void setResendSchemaInterval(long resendSchemaInterval)
-  {
-    this.resendSchemaInterval = resendSchemaInterval;
+    this.schemaResendInterval = schemaResendInterval;
   }
 
   @Override
-  public void push(JSONObject msg) throws IOException
+  public void push(String msg) throws IOException
   {
-    client.publish(topic, msg);
+    try {
+      client.publish(topic, new JSONObject(msg));
+    } catch (JSONException ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   @Override
-  public long getResendSchemaInterval()
+  public long getSchemaResendInterval()
   {
-    return resendSchemaInterval;
+    return schemaResendInterval;
   }
 
-  private static final Logger LOG = LoggerFactory.getLogger(WebsocketAppDataPusher.class);
-
+  private static final Logger LOG = LoggerFactory.getLogger(PubSubWebSocketMetricTransport.class);
+  private static final long serialVersionUID = 201512301008L;
 }

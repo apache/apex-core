@@ -536,7 +536,7 @@ public class StreamingAppMasterService extends CompositeService
     this.heartbeatListener = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
     addService(heartbeatListener);
 
-    String appDataPushTransport = dag.getValue(LogicalPlan.METRICS_TRANSPORT);
+    AutoMetric.Transport appDataPushTransport = dag.getValue(LogicalPlan.METRICS_TRANSPORT);
     if (appDataPushTransport != null) {
       this.appDataPushAgent = new AppDataPushAgent(dnmgr, appContext);
       addService(this.appDataPushAgent);
