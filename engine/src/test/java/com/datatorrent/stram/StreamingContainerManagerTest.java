@@ -36,6 +36,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import com.datatorrent.api.AutoMetric;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -77,6 +78,7 @@ import com.datatorrent.stram.support.StramTestSupport.EmbeddedWebSocketServer;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
+import com.datatorrent.stram.webapp.LogicalOperatorInfo;
 
 import org.apache.commons.lang.StringUtils;
 import org.codehaus.jettison.json.JSONObject;
@@ -1009,5 +1011,87 @@ public class StreamingContainerManagerTest
     pushAgent.close();
     String msg = TestMetricTransport.messages.get(0);
     Assert.assertTrue(msg.startsWith("xyz:"));
+  }
+
+  public static class HighLatencyTestOperator extends GenericTestOperator
+  {
+    private long firstWindowMillis;
+    private long windowWidthMillis;
+    private long currentWindowId;
+    private long latency;
+
+    @Override
+    public void setup(OperatorContext context)
+    {
+      firstWindowMillis = System.currentTimeMillis();
+      // this is an approximation because there is no way to get to the actual value in the DAG
+
+      windowWidthMillis = context.getValue(Context.DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
+    }
+
+    @Override
+    public void beginWindow(long windowId)
+    {
+      currentWindowId = windowId;
+    }
+
+    @Override
+    public void endWindow()
+    {
+      long sleepMillis = latency -
+          (System.currentTimeMillis() - WindowGenerator.getWindowMillis(currentWindowId, firstWindowMillis, windowWidthMillis));
+
+      if (sleepMillis > 0) {
+        try {
+          Thread.sleep(sleepMillis);
+        } catch (InterruptedException ex) {
+          // move on
+        }
+      }
+    }
+
+    public void setLatency(long latency)
+    {
+      this.latency = latency;
+    }
+
+  }
+
+  @Test
+  public void testLatency() throws Exception
+  {
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    HighLatencyTestOperator o3 = dag.addOperator("o3", HighLatencyTestOperator.class);
+    GenericTestOperator o4 = dag.addOperator("o4", GenericTestOperator.class);
+    long latency = 5000; // 5 seconds
+    o3.setLatency(latency);
+    dag.addStream("o1.outport", o1.outport, o2.inport1, o3.inport1);
+    dag.addStream("o2.outport1", o2.outport1, o4.inport1);
+    dag.addStream("o3.outport1", o3.outport1, o4.inport2);
+    dag.setAttribute(Context.DAGContext.STATS_MAX_ALLOWABLE_WINDOWS_LAG, 2); // 1 second
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    StreamingContainerManager dnmgr = lc.dnmgr;
+    lc.runAsync();
+    Thread.sleep(10000);
+    LogicalOperatorInfo o1Info = dnmgr.getLogicalOperatorInfo("o1");
+    LogicalOperatorInfo o2Info = dnmgr.getLogicalOperatorInfo("o2");
+    LogicalOperatorInfo o3Info = dnmgr.getLogicalOperatorInfo("o3");
+    LogicalOperatorInfo o4Info = dnmgr.getLogicalOperatorInfo("o4");
+
+    Assert.assertEquals("Input operator latency must be zero", 0, o1Info.latencyMA);
+    Assert.assertTrue("Latency must be greater than or equal to zero", o2Info.latencyMA >= 0);
+    Assert.assertTrue("Actual latency must be greater than the artificially introduced latency",
+        o3Info.latencyMA > latency);
+    Assert.assertTrue("Latency must be greater than or equal to zero", o4Info.latencyMA >= 0);
+    StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
+    Assert.assertArrayEquals("Critical Path must be the path in the DAG that includes the HighLatencyTestOperator",
+        new Integer[]{o1Info.partitions.iterator().next(),
+            o3Info.partitions.iterator().next(),
+            o4Info.partitions.iterator().next()},
+        criticalPathInfo.path.toArray());
+    Assert.assertTrue("Whole DAG latency must be greater than the artificially introduced latency",
+        criticalPathInfo.latency > latency);
+    lc.shutdown();
   }
 }
