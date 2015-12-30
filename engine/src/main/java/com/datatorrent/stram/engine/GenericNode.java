@@ -138,13 +138,12 @@ public class GenericNode extends Node<Operator>
    */
   protected void processEndWindow(Tuple endWindowTuple)
   {
-    endWindowEmitTime = System.currentTimeMillis();
-
     if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
       insideWindow = false;
       operator.endWindow();
       applicationWindowCount = 0;
     }
+    endWindowEmitTime = System.currentTimeMillis();
 
     if (endWindowTuple == null) {
       emitEndWindow();
@@ -636,8 +635,8 @@ public class GenericNode extends Node<Operator>
      * TODO: as using a listener callback
      */
     if (insideWindow && !shutdown) {
-      endWindowEmitTime = System.currentTimeMillis();
       operator.endWindow();
+      endWindowEmitTime = System.currentTimeMillis();
       if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
         applicationWindowCount = 0;
       }

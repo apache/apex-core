@@ -122,13 +122,13 @@ public class InputNode extends Node<InputOperator>
               break;
 
             case END_WINDOW:
-              endWindowEmitTime = System.currentTimeMillis();
               insideStreamingWindow = false;
               if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
                 insideApplicationWindow = false;
                 operator.endWindow();
                 applicationWindowCount = 0;
               }
+              endWindowEmitTime = System.currentTimeMillis();
 
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
@@ -218,8 +218,8 @@ public class InputNode extends Node<InputOperator>
     }
 
     if (insideApplicationWindow) {
-      endWindowEmitTime = System.currentTimeMillis();
       operator.endWindow();
+      endWindowEmitTime = System.currentTimeMillis();
       if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
         applicationWindowCount = 0;
       }

@@ -1356,6 +1356,15 @@ public class PhysicalPlan implements Serializable
     return this.logicalToPTOperator.get(logicalOperator).getAllOperators();
   }
 
+  public List<PTOperator> getLeafOperators()
+  {
+    List<PTOperator> operators = new ArrayList<>();
+    for (OperatorMeta opMeta : dag.getLeafOperators()) {
+      operators.addAll(getAllOperators(opMeta));
+    }
+    return operators;
+  }
+
   public boolean hasMapping(OperatorMeta om) {
     return this.logicalToPTOperator.containsKey(om);
   }
