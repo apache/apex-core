@@ -330,6 +330,7 @@ public class PhysicalPlan implements Serializable
       for (Map.Entry<InputPortMeta, StreamMeta> entry : n.getInputStreams().entrySet()) {
         StreamMeta s = entry.getValue();
         boolean delay = entry.getKey().getValue(LogicalPlan.IS_CONNECTED_TO_DELAY_OPERATOR);
+        // skip delay sources since it's going to be handled as downstream
         if (!delay && s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorMeta())) {
           pendingNodes.push(n);
           pendingNodes.push(s.getSource().getOperatorMeta());
@@ -1448,14 +1449,10 @@ public class PhysicalPlan implements Serializable
     PMapping upstreamPartitioned = null;
 
     for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> e : om.getInputStreams().entrySet()) {
-      PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorMeta());
-      if (m == null) {
-        if (e.getValue().getSource().getOperatorMeta().getOperator() instanceof Operator.DelayOperator) {
-          continue;
-        } else {
-          throw new RuntimeException("Encountered unknown operator");
-        }
+      if (e.getValue().getSource().getOperatorMeta().getOperator() instanceof Operator.DelayOperator) {
+        continue;
       }
+      PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorMeta());
       if (e.getKey().getValue(PortContext.PARTITION_PARALLEL).equals(true)) {
         // operator partitioned with upstream
         if (upstreamPartitioned != null) {
