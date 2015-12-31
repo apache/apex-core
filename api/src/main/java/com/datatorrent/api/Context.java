@@ -334,10 +334,10 @@ public interface Context
      */
     Attribute<String> APPLICATION_DATA_LINK = new Attribute<String>(new String2String());
     /**
-     * Transport to push the stats and the metrics, "builtin:{topic}" if STRAM should push the data directly
-     * using websocket with the given topic
+     * Transport to push the stats and the metrics.
+     * If using the built-in transport, please use an AutoMetricBuiltInTransport object
      */
-    Attribute<String> METRICS_TRANSPORT = new Attribute<String>(new String2String());
+    Attribute<AutoMetric.Transport> METRICS_TRANSPORT = new Attribute<>(new Object2String<AutoMetric.Transport>());
     /**
      * Application instance identifier. An application with the same name can run in multiple instances, each with a
      * unique identifier. The identifier is set by the client that submits the application and can be used in operators
