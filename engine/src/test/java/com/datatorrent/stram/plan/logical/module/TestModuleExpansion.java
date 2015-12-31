@@ -18,8 +18,11 @@
  */
 package com.datatorrent.stram.plan.logical.module;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import org.junit.Assert;
@@ -27,15 +30,19 @@ import org.junit.Test;
 
 import org.apache.hadoop.conf.Configuration;
 
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Module;
+import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.common.util.BaseOperator;
+import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
@@ -97,6 +104,23 @@ public class TestModuleExpansion
     }
   }
 
+  static class TestPartitioner implements Partitioner<DummyOperator>, Serializable
+  {
+    @Override
+    public Collection<Partition<DummyOperator>> definePartitions(Collection<Partition<DummyOperator>> partitions, PartitioningContext context)
+    {
+      ArrayList<Partition<DummyOperator>> lst = new ArrayList();
+      lst.add(partitions.iterator().next());
+      return lst;
+    }
+
+    @Override
+    public void partitioned(Map<Integer, Partition<DummyOperator>> partitions)
+    {
+
+    }
+  }
+
   static class Level1Module implements Module
   {
     private int level1ModuleProp = 0;
@@ -105,12 +129,26 @@ public class TestModuleExpansion
     public final transient ProxyInputPort<Integer> mIn = new ProxyInputPort<>();
     @OutputPortFieldAnnotation(optional = true)
     public final transient ProxyOutputPort<Integer> mOut = new ProxyOutputPort<>();
+    private int memory = 512;
+    private int portMemory = 2;
 
     @Override
     public void populateDAG(DAG dag, Configuration conf)
     {
       DummyOperator o1 = dag.addOperator("O1", new DummyOperator());
       o1.setOperatorProp(level1ModuleProp);
+
+      /** set various attribute on the operator for testing */
+      Attribute.AttributeMap attr = dag.getMeta(o1).getAttributes();
+      attr.put(OperatorContext.MEMORY_MB, memory);
+      attr.put(OperatorContext.APPLICATION_WINDOW_COUNT, 2);
+      attr.put(OperatorContext.LOCALITY_HOST, "host1");
+      attr.put(OperatorContext.PARTITIONER, new TestPartitioner());
+      attr.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 120);
+      attr.put(OperatorContext.STATELESS, true);
+      attr.put(OperatorContext.SPIN_MILLIS, 20);
+
+      dag.setInputPortAttribute(o1.in, Context.PortContext.BUFFER_MEMORY_MB, portMemory);
       mIn.set(o1.in);
       mOut.set(o1.out1);
     }
@@ -123,6 +161,26 @@ public class TestModuleExpansion
     public void setLevel1ModuleProp(int level1ModuleProp)
     {
       this.level1ModuleProp = level1ModuleProp;
+    }
+
+    public int getMemory()
+    {
+      return memory;
+    }
+
+    public void setMemory(int memory)
+    {
+      this.memory = memory;
+    }
+
+    public int getPortMemory()
+    {
+      return portMemory;
+    }
+
+    public void setPortMemory(int portMemory)
+    {
+      this.portMemory = portMemory;
     }
   }
 
@@ -145,15 +203,19 @@ public class TestModuleExpansion
     public void populateDAG(DAG dag, Configuration conf)
     {
       Level1Module m1 = dag.addModule("M1", new Level1Module());
+      m1.setMemory(1024);
+      m1.setPortMemory(1);
       m1.setLevel1ModuleProp(level2ModuleAProp1);
 
       Level1Module m2 = dag.addModule("M2", new Level1Module());
+      m2.setMemory(2048);
+      m2.setPortMemory(2);
       m2.setLevel1ModuleProp(level2ModuleAProp2);
 
       DummyOperator o1 = dag.addOperator("O1", new DummyOperator());
       o1.setOperatorProp(level2ModuleAProp3);
 
-      dag.addStream("M1_M2&O1", m1.mOut, m2.mIn, o1.in);
+      dag.addStream("M1_M2&O1", m1.mOut, m2.mIn, o1.in).setLocality(DAG.Locality.CONTAINER_LOCAL);
 
       mIn.set(m1.mIn);
       mOut1.set(m2.mOut);
@@ -213,13 +275,15 @@ public class TestModuleExpansion
       o1.setOperatorProp(level2ModuleBProp1);
 
       Level1Module m1 = dag.addModule("M1", new Level1Module());
+      m1.setMemory(4096);
+      m1.setPortMemory(3);
       m1.setLevel1ModuleProp(level2ModuleBProp2);
 
       DummyOperator o2 = dag.addOperator("O2", new DummyOperator());
       o2.setOperatorProp(level2ModuleBProp3);
 
-      dag.addStream("O1_M1", o1.out1, m1.mIn);
-      dag.addStream("O1_O2", o1.out2, o2.in);
+      dag.addStream("O1_M1", o1.out1, m1.mIn).setLocality(DAG.Locality.THREAD_LOCAL);
+      dag.addStream("O1_O2", o1.out2, o2.in).setLocality(DAG.Locality.RACK_LOCAL);
 
       mIn.set(o1.in);
       mOut1.set(m1.mOut);
@@ -370,6 +434,15 @@ public class TestModuleExpansion
     validateSeperateStream(dag, componentName("Md", "O1_O2"), componentName("Md", "O1"), componentName("Md", "O2"));
     validateSeperateStream(dag, "Ma_Mb", componentName("Ma", "M2", "O1"), componentName("Mb", "O1"));
     validateSeperateStream(dag, "O1_O2", "O1", "O2", componentName("Me", "O1"));
+
+    /* Verify that stream locality is set correctly in top level dag */
+    validateStreamLocality(dag, componentName("Mc", "M1_M2&O1"), DAG.Locality.CONTAINER_LOCAL);
+    validateStreamLocality(dag, componentName("Mb", "O1_M1"), DAG.Locality.THREAD_LOCAL);
+    validateStreamLocality(dag, componentName("Mb", "O1_O2"), DAG.Locality.RACK_LOCAL);
+    validateStreamLocality(dag, componentName("Mc", "M1_M2&O1"), DAG.Locality.CONTAINER_LOCAL);
+    validateStreamLocality(dag, componentName("Md", "O1_M1"), DAG.Locality.THREAD_LOCAL);
+    validateStreamLocality(dag, componentName("Me", "s1"), null);
+
   }
 
   private void validateSeperateStream(LogicalPlan dag, String streamName, String inputOperatorName,
@@ -441,6 +514,18 @@ public class TestModuleExpansion
     validateOperatorParent(dag, componentName("Md", "O1"), "Md");
     validateOperatorParent(dag, componentName("Md", "M1", "O1"), componentName("Md", "M1"));
     validateOperatorParent(dag, componentName("Md", "O2"), "Md");
+
+    validateOperatorAttribute(dag, componentName("Ma", "M1", "O1"), 1024);
+    validateOperatorAttribute(dag, componentName("Ma", "M2", "O1"), 2048);
+    validateOperatorAttribute(dag, componentName("Mb", "M1", "O1"), 4096);
+    validateOperatorAttribute(dag, componentName("Mc", "M1", "O1"), 1024);
+    validateOperatorAttribute(dag, componentName("Mc", "M2", "O1"), 2048);
+
+    validatePortAttribute(dag, componentName("Ma", "M1", "O1"), 1);
+    validatePortAttribute(dag, componentName("Ma", "M2", "O1"), 2);
+    validatePortAttribute(dag, componentName("Mb", "M1", "O1"), 3);
+    validatePortAttribute(dag, componentName("Mc", "M1", "O1"), 1);
+    validatePortAttribute(dag, componentName("Mc", "M2", "O1"), 2);
   }
 
   private void validateOperatorParent(LogicalPlan dag, String operatorName, String parentModuleName)
@@ -549,4 +634,41 @@ public class TestModuleExpansion
     lpc.prepareDAG(dag, null, "ModuleApp");
     dag.validate();
   }
+
+  /**
+   * Verify attributes populated on DummyOperator from Level1 module
+   */
+  private void validateOperatorAttribute(LogicalPlan dag, String name, int memory)
+  {
+    LogicalPlan.OperatorMeta oMeta = dag.getOperatorMeta(name);
+    Attribute.AttributeMap attrs = oMeta.getAttributes();
+    Assert.assertEquals((int)attrs.get(OperatorContext.MEMORY_MB), memory);
+    Assert.assertEquals("Application window id is 2 ", (int)attrs.get(OperatorContext.APPLICATION_WINDOW_COUNT), 2);
+    Assert.assertEquals("Locality host is host1", attrs.get(OperatorContext.LOCALITY_HOST), "host1");
+    Assert.assertEquals(attrs.get(OperatorContext.PARTITIONER).getClass(), TestPartitioner.class);
+    Assert.assertEquals("Checkpoint window count ", (int)attrs.get(OperatorContext.CHECKPOINT_WINDOW_COUNT), 120);
+    Assert.assertEquals("Operator is stateless ", attrs.get(OperatorContext.STATELESS), true);
+    Assert.assertEquals("SPIN MILLIS is set to 20 ", (int)attrs.get(OperatorContext.SPIN_MILLIS), 20);
+
+  }
+
+  /**
+   * Validate attribute set on the port of DummyOperator in Level1Module
+   */
+  private void validatePortAttribute(LogicalPlan dag, String name, int memory)
+  {
+    LogicalPlan.InputPortMeta imeta = dag.getOperatorMeta(name).getInputStreams().keySet().iterator().next();
+    Assert.assertEquals(memory, (int)imeta.getAttributes().get(Context.PortContext.BUFFER_MEMORY_MB));
+  }
+
+  /**
+   * validate if stream attributes are copied or not
+   */
+  private void validateStreamLocality(LogicalPlan dag, String name, DAG.Locality locality)
+  {
+    LogicalPlan.StreamMeta meta = dag.getStream(name);
+    Assert.assertTrue("Metadata for stream is available ", meta != null);
+    Assert.assertEquals("Locality is " + locality, meta.getLocality(), locality);
+  }
+
 }
