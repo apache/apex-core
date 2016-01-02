@@ -107,9 +107,15 @@ public class OiOStream implements Stream, SweepableReservoir
    * It's an error to have more than one tuple active on OiO.
    */
   @Override
-  public int size()
+  public int size(final boolean dataTupleAware)
   {
     return 1;
+  }
+
+  @Override
+  public boolean isEmpty()
+  {
+    return false;
   }
 
   @Override

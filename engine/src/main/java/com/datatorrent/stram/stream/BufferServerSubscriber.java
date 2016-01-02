@@ -21,6 +21,7 @@ package com.datatorrent.stram.stream;
 import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
@@ -239,6 +240,21 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
     BufferReservoir(int capacity)
     {
       super(capacity);
+    }
+
+    @Override
+    public int size(final boolean dataTupleAware)
+    {
+      int size = size();
+      if (dataTupleAware) {
+        Iterator<Object> iterator = getFrozenIterator();
+        while (iterator.hasNext()) {
+          if (iterator.next() instanceof Tuple) {
+            size--;
+          }
+        }
+      }
+      return size;
     }
 
     @Override

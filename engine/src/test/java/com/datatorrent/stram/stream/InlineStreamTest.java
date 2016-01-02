@@ -111,7 +111,7 @@ public class InlineStreamTest
     };
     node2.connectOutputPort("output", sink);
 
-    DefaultReservoir reservoir1 = new DefaultReservoir("input", 1024 * 5);
+    AbstractReservoir reservoir1 = AbstractReservoir.newReservoir("input", 1024 * 5);
     node1.connectInputPort("input", reservoir1);
 
     Map<Integer, Node<?>> activeNodes = new ConcurrentHashMap<Integer, Node<?>>();
@@ -139,8 +139,8 @@ public class InlineStreamTest
       @Override
       public boolean isComplete()
       {
-        logger.debug("stream size={}", stream.size());
-        return stream.size() == 0;
+        logger.debug("stream {} empty {}, size {}", stream, stream.isEmpty(), stream.size(false));
+        return stream.isEmpty();
       }
     };
 
