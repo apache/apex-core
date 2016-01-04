@@ -56,7 +56,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <configuration>
-          <maxAllowedViolations>149</maxAllowedViolations>
+          <maxAllowedViolations>114</maxAllowedViolations>
         </configuration>
       </plugin>
     </plugins>

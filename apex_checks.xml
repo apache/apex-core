@@ -101,6 +101,7 @@
 
     <module name="LineLength">
       <property name="max" value="120"/>
+      <property name="severity" value="warning"/>
     </module>
 
     <module name="OneStatementPerLine"/>
