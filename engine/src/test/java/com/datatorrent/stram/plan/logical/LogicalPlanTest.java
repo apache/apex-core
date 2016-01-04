@@ -174,11 +174,7 @@ public class LogicalPlanTest {
     dag.addStream("BtoC", opB.outport1, opC.inport1);
     dag.addStream("CtoD", opC.outport1, opD.inport1);
     dag.addStream("CtoDelay", opC.outport2, opDelay.input).setLocality(Locality.THREAD_LOCAL);
-    dag.addStream("DelayToC", opDelay.output, opC.inport2).setLocality(Locality.THREAD_LOCAL);;
-
-    invalidDelays = new ArrayList<>();
-    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays);
-    assertEquals("operator invalid delay", 1, invalidDelays.size());
+    dag.addStream("DelayToC", opDelay.output, opC.inport2).setLocality(Locality.THREAD_LOCAL);
 
     try {
       dag.validate();
