@@ -259,6 +259,16 @@ public class GenericNode extends Node<Operator>
             switch (t.getType()) {
               case BEGIN_WINDOW:
                 if (expectingBeginWindow == totalQueues) {
+                  // This is the first begin window tuple among all ports
+                  if (isInputPortConnectedToDelayOperator(activePortEntry.getKey())) {
+                    // We need to wait for the first BEGIN_WINDOW from a port not connected to DelayOperator before
+                    // we can do anything with it, because otherwise if a CHECKPOINT tuple arrives from
+                    // upstream after the BEGIN_WINDOW tuple for the next window from the delay operator, it would end
+                    // up checkpointing in the middle of the window.  This code is assuming we have at least one
+                    // input port that is not connected to a DelayOperator, and we might have to change this later.
+                    // In the future, this condition will not be needed if we get rid of the CHECKPOINT tuple.
+                    continue;
+                  }
                   activePort.remove();
                   expectingBeginWindow--;
                   receivedEndWindow = 0;
