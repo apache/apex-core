@@ -33,7 +33,8 @@ import java.lang.annotation.Target;
 @Documented
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ApplicationAnnotation {
+public @interface ApplicationAnnotation
+{
   
   /**
    * <p>Compile time application alias.</p> 

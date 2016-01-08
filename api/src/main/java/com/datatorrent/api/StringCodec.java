@@ -22,12 +22,13 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.StringUtils;
 
 import com.datatorrent.netlet.util.DTThrowable;
-import java.util.*;
 
 /**
  * This interface is essentially serializer/deserializer interface which works with String as
@@ -166,7 +167,7 @@ public interface StringCodec<T>
 
       try {
         @SuppressWarnings("unchecked")
-        Class<? extends T> clazz = (Class<? extends T>) Thread.currentThread().getContextClassLoader().loadClass(parts[0]);
+        Class<? extends T> clazz = (Class<? extends T>)Thread.currentThread().getContextClassLoader().loadClass(parts[0]);
         if (parts.length == 1) {
           return clazz.newInstance();
         }
@@ -174,8 +175,7 @@ public interface StringCodec<T>
         //String[] properties = parts[1].split(separator, 2);
         if (parts.length == 2) {
           return clazz.getConstructor(String.class).newInstance(parts[1]);
-        }
-        else {
+        } else {
           T object = clazz.getConstructor(String.class).newInstance(parts[1]);
           HashMap<String, String> hashMap = new HashMap<String, String>();
           for (int i = 2; i < parts.length; i++) {
@@ -185,8 +185,7 @@ public interface StringCodec<T>
           BeanUtils.populate(object, hashMap);
           return object;
         }
-      }
-      catch (Throwable cause) {
+      } catch (Throwable cause) {
         DTThrowable.rethrow(cause);
       }
 
@@ -354,8 +353,7 @@ public interface StringCodec<T>
         @SuppressWarnings({"rawtypes", "unchecked"})
         Class<? extends T> clazz = (Class)Thread.currentThread().getContextClassLoader().loadClass(string);
         return clazz;
-      }
-      catch (Throwable cause) {
+      } catch (Throwable cause) {
         DTThrowable.rethrow(cause);
       }
 

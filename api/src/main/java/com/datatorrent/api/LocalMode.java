@@ -37,7 +37,7 @@ public abstract class LocalMode
    *
    * @return
    */
-  abstract public DAG getDAG();
+  public abstract DAG getDAG();
 
   /**
    * <p>
@@ -46,7 +46,7 @@ public abstract class LocalMode
    * @return
    * @throws java.lang.Exception
    */
-  abstract public DAG cloneDAG() throws Exception;
+  public abstract DAG cloneDAG() throws Exception;
 
   /**
    * Build the logical plan through the given streaming application instance and/or from configuration.
@@ -64,7 +64,7 @@ public abstract class LocalMode
    * @throws Exception
    * @since 0.3.5
    */
-  abstract public DAG prepareDAG(StreamingApplication app, Configuration conf) throws Exception;
+  public abstract DAG prepareDAG(StreamingApplication app, Configuration conf) throws Exception;
 
   /**
    * <p>
@@ -72,7 +72,7 @@ public abstract class LocalMode
    *
    * @return
    */
-  abstract public Controller getController();
+  public abstract Controller getController();
 
   public interface Controller
   {

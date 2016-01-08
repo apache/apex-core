@@ -18,18 +18,19 @@
  */
 package com.datatorrent.api;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.Partitioner.PartitioningContext;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
-import com.google.common.collect.Sets;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 
 /**
  * <p>
@@ -204,8 +205,7 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
       Partition<?> p;
       if (iterator.hasNext()) {
         p = iterator.next();
-      }
-      else {
+      } else {
         iterator = partitions.iterator();
         p = iterator.next();
       }
@@ -213,8 +213,7 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
       PartitionKeys pks = p.getPartitionKeys().get(inputPort);
       if (pks == null) {
         p.getPartitionKeys().put(inputPort, new PartitionKeys(partitionMask, Sets.newHashSet(i)));
-      }
-      else {
+      } else {
         pks.partitions.add(i);
       }
     }

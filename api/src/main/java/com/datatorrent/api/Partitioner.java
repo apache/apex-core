@@ -67,8 +67,8 @@ public interface Partitioner<T>
   public class PartitionKeys implements java.io.Serializable
   {
     private static final long serialVersionUID = 201312271835L;
-    final public int mask;
-    final public Set<Integer> partitions;
+    public final int mask;
+    public final Set<Integer> partitions;
 
     public PartitionKeys(int mask, Set<Integer> partitions)
     {

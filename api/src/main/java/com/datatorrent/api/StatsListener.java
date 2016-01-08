@@ -20,7 +20,10 @@ package com.datatorrent.api;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.List;
 
 import com.datatorrent.api.Stats.OperatorStats;
@@ -78,6 +81,7 @@ public interface StatsListener
      * The Object to identify the response
      */
     public Object getResponseId();
+
     /*
      * The data payload that needs to be sent back
      */
@@ -95,12 +99,19 @@ public interface StatsListener
       * @return
       */
     List<OperatorStats> getLastWindowedStats();
+
     int getOperatorId();
+
     long getCurrentWindowId();
+
     long getTuplesProcessedPSMA();
+
     long getTuplesEmittedPSMA();
+
     double getCpuPercentageMA();
+
     long getLatencyMA();
+
     List<OperatorResponse> getOperatorResponse();
   }
 

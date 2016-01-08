@@ -23,9 +23,9 @@ import java.util.Set;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static org.junit.Assert.*;
 
-import com.datatorrent.api.Attribute;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 /**
  *
@@ -47,7 +47,7 @@ public class AttributeMapTest
   {
     hello,
     howdy
-  };
+  }
 
   interface iface
   {
