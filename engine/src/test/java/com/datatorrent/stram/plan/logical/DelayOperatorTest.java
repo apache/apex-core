@@ -188,6 +188,10 @@ public class DelayOperatorTest
       output.emit(currentNumber);
       results.add(currentNumber);
       currentNumber += tempNum;
+      if (currentNumber <= 0) {
+        // overflow
+        currentNumber = 1;
+      }
     }
 
   }
