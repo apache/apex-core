@@ -31,9 +31,7 @@ import javax.validation.ValidationException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.FixMethodOrder;
 import org.junit.Test;
-import org.junit.runners.MethodSorters;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
@@ -45,7 +43,6 @@ import com.datatorrent.common.util.DefaultDelayOperator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.support.StramTestSupport;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
