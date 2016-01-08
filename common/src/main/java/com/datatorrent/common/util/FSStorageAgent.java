@@ -18,15 +18,27 @@
  */
 package com.datatorrent.common.util;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectStreamException;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.net.URI;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CreateFlag;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.Options;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -35,7 +47,6 @@ import com.google.common.collect.Lists;
 
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.netlet.util.DTThrowable;
 
 /**
@@ -71,12 +82,10 @@ public class FSStorageAgent implements StorageAgent, Serializable
 
       if (pathUri.getScheme() != null) {
         fileContext = FileContext.getFileContext(pathUri, conf == null ? new Configuration() : conf);
-      }
-      else {
+      } else {
         fileContext = FileContext.getFileContext(conf == null ? new Configuration() : conf);
       }
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
   }
@@ -95,27 +104,23 @@ public class FSStorageAgent implements StorageAgent, Serializable
         Options.CreateOpts.CreateParent.createParent());
       store(stream, object);
       stateSaved = true;
-    }
-    catch (Throwable t) {
+    } catch (Throwable t) {
       logger.debug("while saving {} {}", operatorId, window, t);
       stateSaved = false;
       DTThrowable.rethrow(t);
-    }
-    finally {
+    } finally {
       try {
         if (stream != null) {
           stream.close();
         }
-      }
-      catch (IOException ie) {
+      } catch (IOException ie) {
         stateSaved = false;
         throw new RuntimeException(ie);
-      }
-      finally {
+      } finally {
         if (stateSaved) {
           logger.debug("Saving {}: {}", operatorId, window);
           fileContext.rename(lPath, new Path(path + Path.SEPARATOR + operatorIdStr + Path.SEPARATOR + window),
-            Options.Rename.OVERWRITE);
+              Options.Rename.OVERWRITE);
         }
       }
     }
@@ -130,8 +135,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
     FSDataInputStream stream = fileContext.open(lPath);
     try {
       return retrieve(stream);
-    }
-    finally {
+    } finally {
       stream.close();
     }
   }

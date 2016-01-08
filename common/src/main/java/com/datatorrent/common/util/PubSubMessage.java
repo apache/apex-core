@@ -53,7 +53,8 @@ public class PubSubMessage<T>
       return identifier;
     }
 
-    public static PubSubMessageType getPubSubMessageType(String identifier) {
+    public static PubSubMessageType getPubSubMessageType(String identifier)
+    {
       PubSubMessageType pubSubMessageType = null;
       for (PubSubMessageType value : PubSubMessageType.values()) {
         if (value.getIdentifier().equals(identifier)) {

@@ -98,8 +98,7 @@ public class MetricsAggregator implements AutoMetric.Aggregator, Serializable
     String aggregatorDesc;
     if (aggregatorName == null) {
       aggregatorDesc = aggregator.getClass().getName();
-    }
-    else {
+    } else {
       aggregatorDesc = aggregatorName.value();
     }
     return aggregatorDesc + aggregatorMetricSeparator + metric;
@@ -129,13 +128,13 @@ public class MetricsAggregator implements AutoMetric.Aggregator, Serializable
    *                           be used for the result of aggregators[i].
    */
   public void addAggregators(@NotNull String metric, @NotNull SingleMetricAggregator[] aggregators,
-                             @NotNull String[] logicalMetricNames)
+      @NotNull String[] logicalMetricNames)
   {
     Preconditions.checkNotNull(metric, "metric");
     Preconditions.checkNotNull(aggregators, "aggregators");
     Preconditions.checkNotNull(logicalMetricNames, "logicalMetricNames");
-    Preconditions.checkArgument(aggregators.length == logicalMetricNames.length, "different length aggregators and" +
-      " logical names");
+    Preconditions.checkArgument(aggregators.length == logicalMetricNames.length,
+        "different length aggregators and logical names");
     addAggregatorsHelper(metric, aggregators, logicalMetricNames);
   }
 
@@ -149,8 +148,7 @@ public class MetricsAggregator implements AutoMetric.Aggregator, Serializable
     for (int i = 0; i < aggregators.length; i++) {
 
       String resultName = (logicalMetricNames == null || logicalMetricNames[i] == null) ?
-        (aggregators.length == 1 ? metric : deriveLogicalMetricName(metric, aggregators[i]))
-        : logicalMetricNames[i];
+          (aggregators.length == 1 ? metric : deriveLogicalMetricName(metric, aggregators[i])) : logicalMetricNames[i];
 
       laggregators.add(new LogicalMetricMeta(aggregators[i], resultName));
     }

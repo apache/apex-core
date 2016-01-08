@@ -22,8 +22,8 @@ import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,37 +58,21 @@ public class SerializableObject implements Serializable
       Constructor<? extends SerializableObject> constructor = this.getClass().getConstructor(this.getClass());
       try {
         constructor.setAccessible(true);
-      }
-      catch (SecurityException ex) {
+      } catch (SecurityException ex) {
         logger.warn("Accessing copy constructor {} failed.", constructor, ex);
       }
       try {
         return constructor.newInstance(this);
-      }
-      catch (InstantiationException ex) {
+      } catch (ReflectiveOperationException | IllegalArgumentException ex) {
         throw new RuntimeException("Instantiation using copy constructor failed!", ex);
       }
-      catch (IllegalAccessException ex) {
-        throw new RuntimeException("Instantiation using copy constructor failed!", ex);
-      }
-      catch (IllegalArgumentException ex) {
-        throw new RuntimeException("Instantiation using copy constructor failed!", ex);
-      }
-      catch (InvocationTargetException ex) {
-        throw new RuntimeException("Instantiation using copy constructor failed!", ex);
-      }
-    }
-    catch (NoSuchMethodException snme) {
+    } catch (NoSuchMethodException snme) {
       logger.debug("No copy constructor detected for class {}, trying default constructor.", this.getClass().getSimpleName());
       try {
         SerializableObject newInstance = this.getClass().newInstance();
         transferStateTo(newInstance);
         return newInstance;
-      }
-      catch (IllegalAccessException ex) {
-        throw new RuntimeException("Deserialization using default constructor failed!", ex);
-      }
-      catch (InstantiationException ex) {
+      } catch (ReflectiveOperationException ex) {
         throw new RuntimeException("Deserialization using default constructor failed!", ex);
       }
     }
@@ -108,27 +92,20 @@ public class SerializableObject implements Serializable
         if (!(Modifier.isFinal(modifiers) && Modifier.isTransient(modifiers) || Modifier.isStatic(modifiers))) {
           try {
             field.setAccessible(true);
-          }
-          catch (SecurityException ex) {
+          } catch (SecurityException ex) {
             logger.warn("Cannot set field {} accessible.", field, ex);
           }
           try {
             field.set(dest, field.get(this));
-          }
-          catch (IllegalArgumentException ex) {
+          } catch (IllegalArgumentException ex) {
             throw new RuntimeException("Getter/Setter argument failed using reflection on " + field, ex);
-          }
-          catch (IllegalAccessException ex) {
+          } catch (IllegalAccessException ex) {
             throw new RuntimeException("Getter/Setter access failed using reflection on " + field, ex);
           }
           if (!field.getType().isPrimitive()) {
             try {
               field.set(this, null);
-            }
-            catch (IllegalArgumentException ex) {
-              logger.warn("Failed to set field {} to null; generally it's harmless, but with reference counted data structure this may be an issue.", field, ex);
-            }
-            catch (IllegalAccessException ex) {
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
               logger.warn("Failed to set field {} to null; generally it's harmless, but with reference counted data structure this may be an issue.", field, ex);
             }
           }
