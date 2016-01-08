@@ -18,26 +18,37 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.common.util.BaseOperator;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import java.util.*;
-
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 
-import com.datatorrent.api.*;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.common.util.BaseOperator;
+import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.MockContainer.MockOperatorStats;
 import com.datatorrent.stram.StreamingContainerManager.UpdateCheckpointsContext;
 import com.datatorrent.stram.api.Checkpoint;
@@ -63,11 +74,13 @@ public class CheckpointTest
   @Rule
   public TestMeta testMeta = new TestMeta();
 
-  private static class MockInputOperator extends BaseOperator implements InputOperator
+  private static class MockInputOperator extends BaseOperator implements InputOperator, Operator.CheckpointNotificationListener
   {
     @OutputPortFieldAnnotation( optional = true)
     public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
     private transient int windowCount;
+
+    private int checkpointState;
 
     @Override
     public void beginWindow(long windowId)
@@ -79,6 +92,22 @@ public class CheckpointTest
 
     @Override
     public void emitTuples()
+    {
+    }
+
+    @Override
+    public void beforeCheckpoint(long windowId)
+    {
+      ++checkpointState;
+    }
+
+    @Override
+    public void checkpointed(long windowId)
+    {
+    }
+
+    @Override
+    public void committed(long windowId)
     {
     }
   }
@@ -454,5 +483,39 @@ public class CheckpointTest
 
   }
 
+  @Test
+  public void testBeforeCheckpointNotification() throws IOException, ClassNotFoundException
+  {
+    FSStorageAgent storageAgent = new FSStorageAgent(testMeta.getPath(), null);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, storageAgent);
+    dag.setAttribute(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 1);
+    dag.setAttribute(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 50);
+
+    MockInputOperator o1 = dag.addOperator("o1", new MockInputOperator());
+
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    dag.setAttribute(o2, OperatorContext.STATELESS, true);
+
+    dag.addStream("o1.outport", o1.outport, o2.inport1);
+
+    StramLocalCluster sc = new StramLocalCluster(dag);
+    sc.setHeartbeatMonitoringEnabled(false);
+    sc.run();
+
+    StreamingContainerManager dnm = sc.dnmgr;
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+    List<PTOperator> o1ps = plan.getOperators(dag.getMeta(o1));
+    Assert.assertEquals("Number partitions", 1, o1ps.size());
+
+    PTOperator o1p1 = o1ps.get(0);
+    long[] ckWIds = storageAgent.getWindowIds(o1p1.getId());
+    Arrays.sort(ckWIds);
+    int expectedState = 0;
+    for (long windowId : ckWIds) {
+      Object ckState = storageAgent.load(o1p1.getId(), windowId);
+      Assert.assertEquals("Checkpointed state class", MockInputOperator.class, ckState.getClass());
+      Assert.assertEquals("Checkpoint state", expectedState++, ((MockInputOperator)ckState).checkpointState);
+    }
+  }
 
 }

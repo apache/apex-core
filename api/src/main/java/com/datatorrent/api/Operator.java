@@ -224,6 +224,7 @@ public interface Operator extends Component<OperatorContext>
    * Operators must implement this interface if they are interested in being notified as
    * soon as the operator state is checkpointed or committed.
    *
+   * @deprecated Use {@link CheckpointNotificationListener} instead
    * @since 0.3.2
    */
   public static interface CheckpointListener
@@ -268,6 +269,31 @@ public interface Operator extends Component<OperatorContext>
      */
     public void handleIdleTime();
 
+  }
+
+  /**
+   * Operators that need to be notified about checkpoint events should implement this interface.
+   *
+   * The notification callbacks in this interface are called outside window boundaries so the operators should not
+   * attempt to send any tuples in these callbacks.
+   *
+   */
+  interface CheckpointNotificationListener extends CheckpointListener
+  {
+    /**
+     * Notify the operator before a checkpoint is performed.
+     *
+     * Operators may need to perform certain tasks before a checkpoint such as calling flush on a stream to write out
+     * pending data. Having this notification helps operators perform such operations optimally by doing them once
+     * before checkpoint as opposed to doing them at the end of every window.
+     *
+     * The method will be called before the checkpoint is performed. It will be called after
+     * {@link Operator#endWindow()} call of the window preceding the checkpoint and before the checkpoint is
+     * actually performed.
+     *
+     * @param windowId The window id of the window preceding the checkpoint
+     */
+    void beforeCheckpoint(long windowId);
   }
 
 }
