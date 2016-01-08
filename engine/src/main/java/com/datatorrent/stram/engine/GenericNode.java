@@ -302,17 +302,7 @@ public class GenericNode extends Node<Operator>
                 }
                 else {
                   buffers.remove();
-
-                  /* find the name of the port which got out of sequence tuple */
-                  String port = null;
-                  for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
-                    if (e.getValue() == activePort) {
-                      port = e.getKey();
-                    }
-                  }
-
-                  assert (port != null); /* we should always find the port */
-
+                  String port = activePortEntry.getKey();
                   if (PROCESSING_MODE == ProcessingMode.AT_MOST_ONCE) {
                     if (t.getWindowId() < currentWindowId) {
                       /*
