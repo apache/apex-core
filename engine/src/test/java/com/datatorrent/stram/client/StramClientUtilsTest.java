@@ -76,6 +76,21 @@ public class StramClientUtilsTest
     Assert.assertEquals("1111 123 xxx foobar yyy", prop.get("var.result"));
   }
 
+  @Test
+  public void testEvalConfiguration() throws Exception
+  {
+    Configuration conf = new Configuration();
+    conf.set("a.b.c", "123");
+    conf.set("x.y.z", "foobar");
+    conf.set("sub.result", "1111 ${a.b.c} xxx ${x.y.z} yyy");
+    conf.set("script.result", "1111 {% (_prop[\"a.b.c\"] * _prop[\"a.b.c\"]).toFixed(0) %} xxx");
+
+    StramClientUtils.evalConfiguration(conf);
+
+    Assert.assertEquals("1111 123 xxx foobar yyy", conf.get("sub.result"));
+    Assert.assertEquals("1111 15129 xxx", conf.get("script.result"));
+  }
+
   private String getHostString(String host) throws UnknownHostException
   {
     InetAddress address = InetAddress.getByName(host);
