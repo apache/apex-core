@@ -18,7 +18,9 @@
  */
 package com.datatorrent.common.codec;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Map;
 
 import org.codehaus.jackson.JsonGenerator;
@@ -65,8 +67,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
             }
 
           });
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           logger.error("Caught exception when instantiating codec for class {}", entry.getKey().getName(), ex);
         }
       }
@@ -80,8 +81,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
     ByteArrayInputStream bis = new ByteArrayInputStream(data.buffer, data.offset, data.length);
     try {
       return mapper.readValue(bis, Object.class);
-    }
-    catch (Exception ioe) {
+    } catch (Exception ioe) {
       throw new RuntimeException(ioe);
     }
   }
@@ -95,8 +95,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
       mapper.writeValue(bos, o);
       byte[] bytes = bos.toByteArray();
       return new Slice(bytes, 0, bytes.length);
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
   }

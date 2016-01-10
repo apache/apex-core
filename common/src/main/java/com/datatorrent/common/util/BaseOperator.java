@@ -21,8 +21,6 @@ package com.datatorrent.common.util;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator;
 
-import com.datatorrent.common.util.SerializableObject;
-
 /**
  * Base class for operator implementations that provides empty implementations
  * for all interface methods.

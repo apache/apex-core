@@ -36,11 +36,13 @@ public class PubSubMessageCodec<T>
 
   private final ObjectMapper mapper;
 
-  public PubSubMessageCodec(ObjectMapper mapper) {
+  public PubSubMessageCodec(ObjectMapper mapper)
+  {
     this.mapper = mapper;
   }
 
-  public String formatMessage(PubSubMessage<T> pubSubMessage) throws IOException {
+  public String formatMessage(PubSubMessage<T> pubSubMessage) throws IOException
+  {
     HashMap<String, Object> map = new HashMap<String, Object>();
     map.put(PubSubMessage.TYPE_KEY, pubSubMessage.getType().getIdentifier());
     map.put(PubSubMessage.TOPIC_KEY, pubSubMessage.getTopic());
@@ -59,7 +61,8 @@ public class PubSubMessageCodec<T>
    * @throws IOException
    */
   @SuppressWarnings({"unchecked"})
-  public PubSubMessage<T> parseMessage(String message) throws IOException {
+  public PubSubMessage<T> parseMessage(String message) throws IOException
+  {
     HashMap<String, Object> map = mapper.readValue(message, HashMap.class);
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
     pubSubMessage.setType(PubSubMessageType.getPubSubMessageType((String)map.get(PubSubMessage.TYPE_KEY)));

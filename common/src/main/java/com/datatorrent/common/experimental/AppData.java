@@ -18,16 +18,18 @@
  */
 package com.datatorrent.common.experimental;
 
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.Operator;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
 import org.apache.hadoop.classification.InterfaceStability;
+
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.Operator;
 
 /**
  * Interface for App Data support. Experimental only. This interface will likely change in the near future.
@@ -96,6 +98,7 @@ public interface AppData
      * @return The connection url used by the AppData Query or Result operator.
      */
     public String getAppDataURL();
+
     /**
      * Returns the topic that the appdata Query or Result operator sends data to.
      * @return The topic that the appdata Query or Result operator sends data to.
@@ -110,7 +113,10 @@ public interface AppData
   @Target(ElementType.TYPE)
   @Retention(RetentionPolicy.RUNTIME)
   @Inherited
-  public @interface AppendQueryIdToTopic{boolean value() default false;}
+  public @interface AppendQueryIdToTopic
+  {
+    boolean value() default false;
+  }
 
   /**
    * Marker annotation for specifying appdata query ports.

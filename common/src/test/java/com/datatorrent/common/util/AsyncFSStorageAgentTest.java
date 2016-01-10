@@ -22,14 +22,15 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.Path;
 
 import com.google.common.collect.Maps;
 
@@ -85,7 +86,7 @@ public class AsyncFSStorageAgentTest
     testMeta.storageAgent.save(data, 1, 1);
     testMeta.storageAgent.copyToHDFS(1, 1);
     @SuppressWarnings("unchecked")
-    Map<Integer, String> decoded = (Map<Integer, String>) testMeta.storageAgent.load(1, 1);
+    Map<Integer, String> decoded = (Map<Integer, String>)testMeta.storageAgent.load(1, 1);
     Assert.assertEquals("dataOf1", data, decoded);
   }
 
@@ -107,10 +108,10 @@ public class AsyncFSStorageAgentTest
     testMeta.storageAgent.save(dataOf2, 2, 1);
     testMeta.storageAgent.copyToHDFS(2, 1);
     @SuppressWarnings("unchecked")
-    Map<Integer, String> decoded1 = (Map<Integer, String>) testMeta.storageAgent.load(1, 1);
+    Map<Integer, String> decoded1 = (Map<Integer, String>)testMeta.storageAgent.load(1, 1);
 
     @SuppressWarnings("unchecked")
-    Map<Integer, String> decoded2 = (Map<Integer, String>) testMeta.storageAgent.load(2, 1);
+    Map<Integer, String> decoded2 = (Map<Integer, String>)testMeta.storageAgent.load(2, 1);
     Assert.assertEquals("data of 1", dataOf1, decoded1);
     Assert.assertEquals("data of 2", dataOf2, decoded2);
   }

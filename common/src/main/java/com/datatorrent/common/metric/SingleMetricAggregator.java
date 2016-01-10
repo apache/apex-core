@@ -19,6 +19,7 @@
 package com.datatorrent.common.metric;
 
 import java.util.Collection;
+
 /**
  * <p>SingleMetricAggregator interface.</p>
  *
