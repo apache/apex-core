@@ -54,7 +54,8 @@ public interface DAG extends DAGContext, Serializable
    * significant performance gains. Optimizations are subject to resource
    * availability.
    */
-  enum Locality {
+  enum Locality
+  {
     /**
      * Adjacent operators should be deployed into the same executing thread,
      * effectively serializing the computation. This setting is beneficial

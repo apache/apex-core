@@ -85,8 +85,7 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
   {
     try {
       return count;
-    }
-    finally {
+    } finally {
       if (reset) {
         count = 0;
       }

@@ -25,7 +25,12 @@ import java.util.Map;
 
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.StringCodec.*;
+import com.datatorrent.api.StringCodec.Class2String;
+import com.datatorrent.api.StringCodec.Collection2String;
+import com.datatorrent.api.StringCodec.Integer2String;
+import com.datatorrent.api.StringCodec.Map2String;
+import com.datatorrent.api.StringCodec.Object2String;
+import com.datatorrent.api.StringCodec.String2String;
 import com.datatorrent.api.annotation.Stateless;
 
 /**
@@ -292,7 +297,7 @@ public interface Context
      * by this construct is conveyed to tracker application and influences the aggregations done on it by the tracker.
      */
     Attribute<AutoMetric.DimensionsScheme> METRICS_DIMENSIONS_SCHEME = new Attribute<AutoMetric.DimensionsScheme>(new
-      Object2String<AutoMetric.DimensionsScheme>());
+        Object2String<AutoMetric.DimensionsScheme>());
 
     /**
      * Return the operator runtime id.

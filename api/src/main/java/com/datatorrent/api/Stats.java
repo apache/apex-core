@@ -47,6 +47,7 @@ public interface Stats extends Serializable
       return "CheckpointStats{" + "checkpointStartTime=" + checkpointStartTime + ", checkpointTime=" + checkpointTime + '}';
     }
   }
+
   public static class OperatorStats implements Stats
   {
     public long windowId;
