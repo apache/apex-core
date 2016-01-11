@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -31,6 +32,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -342,6 +344,11 @@ public class StramClient
       localJarFiles.addAll(resources);
     }
 
+    Map<String, Boolean> extraResources = dag.getJarResources();
+    if (extraResources.size() != 0) {
+      localJarFiles.addAll(extraResources.keySet());
+    }
+
     YarnClusterMetrics clusterMetrics = yarnClient.getYarnClusterMetrics();
     LOG.info("Got Cluster metric info from ASM"
       + ", numNodeManagers=" + clusterMetrics.getNumNodeManagers());
@@ -454,6 +461,16 @@ public class StramClient
         appPath = new Path(configuredAppPath);
       }
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[]{}));
+
+      // Now that the extra libs are copied, delete if it is required
+      for (Map.Entry<String, Boolean> jars : extraResources.entrySet()) {
+        if (jars.getValue()) {
+          File file = new File(jars.getKey());
+          if (!file.delete()) {
+            LOG.warn("Failed to delete the jar: {}", jars.getKey());
+          }
+        }
+      }
 
       LOG.info("libjars: {}", libJarsCsv);
       dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
