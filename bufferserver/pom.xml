@@ -48,10 +48,8 @@
       </plugin>
       -->
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
-        <configuration>
-          <consoleOutput>true</consoleOutput>
-        </configuration>
       </plugin>
     </plugins>
   </build>
