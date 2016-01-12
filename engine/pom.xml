@@ -33,6 +33,10 @@
 
   <name>Apache Apex (incubating) Stream Processing Engine</name>
 
+  <properties>
+    <checkstyle.console>false</checkstyle.console>
+  </properties>
+
   <build>
     <finalName>${project.artifactId}</finalName>
     <plugins>
@@ -146,6 +150,7 @@
         <artifactId>maven-checkstyle-plugin</artifactId>
         <configuration>
           <maxAllowedViolations>3224</maxAllowedViolations>
+          <logViolationsToConsole>${checkstyle.console}</logViolationsToConsole>
         </configuration>
       </plugin>
       <plugin>
