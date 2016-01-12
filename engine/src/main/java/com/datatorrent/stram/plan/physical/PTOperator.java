@@ -81,6 +81,7 @@ public class PTOperator implements java.io.Serializable
     public final PartitionKeys partitions;
     public final PTOutput source;
     public final String portName;
+    public final boolean delay;
 
     /**
      *
@@ -90,7 +91,7 @@ public class PTOperator implements java.io.Serializable
      * @param partitions
      * @param source
      */
-    protected PTInput(String portName, StreamMeta logicalStream, PTOperator target, PartitionKeys partitions, PTOutput source)
+    protected PTInput(String portName, StreamMeta logicalStream, PTOperator target, PartitionKeys partitions, PTOutput source, boolean delay)
     {
       this.logicalStream = logicalStream;
       this.target = target;
@@ -98,6 +99,7 @@ public class PTOperator implements java.io.Serializable
       this.source = source;
       this.portName = portName;
       this.source.sinks.add(this);
+      this.delay = delay;
     }
 
     /**

@@ -347,7 +347,7 @@ public class StreamMapping implements java.io.Serializable
     // link to upstream output(s) for this stream
     for (PTOutput upstreamOut : sourceOper.outputs) {
       if (upstreamOut.logicalStream == streamMeta) {
-        PTInput input = new PTInput(ipm.getPortName(), streamMeta, oper, pks, upstreamOut);
+        PTInput input = new PTInput(ipm.getPortName(), streamMeta, oper, pks, upstreamOut, ipm.getValue(LogicalPlan.IS_CONNECTED_TO_DELAY_OPERATOR));
         oper.inputs.add(input);
       }
     }
@@ -356,7 +356,7 @@ public class StreamMapping implements java.io.Serializable
   public static void addInput(PTOperator target, PTOutput upstreamOut, PartitionKeys pks)
   {
     StreamMeta lStreamMeta = upstreamOut.logicalStream;
-    PTInput input = new PTInput("<merge#" + lStreamMeta.getSource().getPortName() + ">", lStreamMeta, target, pks, upstreamOut);
+    PTInput input = new PTInput("<merge#" + lStreamMeta.getSource().getPortName() + ">", lStreamMeta, target, pks, upstreamOut, false);
     target.inputs.add(input);
   }
 

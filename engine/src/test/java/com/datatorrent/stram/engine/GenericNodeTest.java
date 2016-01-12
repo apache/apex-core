@@ -277,6 +277,8 @@ public class GenericNodeTest
     gn.connectInputPort("ip1", reservoir1);
     gn.connectInputPort("ip2", reservoir2);
     gn.connectOutputPort("op", output);
+    gn.firstWindowMillis = 0;
+    gn.windowWidthMillis = 100;
 
     final AtomicBoolean ab = new AtomicBoolean(false);
     Thread t = new Thread()
@@ -382,6 +384,8 @@ public class GenericNodeTest
     gn.connectInputPort("ip1", reservoir1);
     gn.connectInputPort("ip2", reservoir2);
     gn.connectOutputPort("op", Sink.BLACKHOLE);
+    gn.firstWindowMillis = 0;
+    gn.windowWidthMillis = 100;
 
     final AtomicBoolean ab = new AtomicBoolean(false);
     Thread t = new Thread()
@@ -493,6 +497,8 @@ public class GenericNodeTest
 
     in.connectInputPort("ip1", windowGenerator.acquireReservoir(String.valueOf(in.id), 1024));
     in.connectOutputPort("output", testSink);
+    in.firstWindowMillis = 0;
+    in.windowWidthMillis = 100;
 
     windowGenerator.activate(null);
 
@@ -551,9 +557,13 @@ public class GenericNodeTest
     final long sleepTime = 25L;
 
     WindowGenerator windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1, "WindowGenerator"), 1024);
-    windowGenerator.setResetWindow(0L);
-    windowGenerator.setFirstWindow(1448909287863L);
-    windowGenerator.setWindowWidth(100);
+    long resetWindow = 0L;
+    long firstWindowMillis = 1448909287863L;
+    int windowWidth = 100;
+
+    windowGenerator.setResetWindow(resetWindow);
+    windowGenerator.setFirstWindow(firstWindowMillis);
+    windowGenerator.setWindowWidth(windowWidth);
     windowGenerator.setCheckpointCount(1, 0);
 
     GenericOperator go = new GenericOperator();
@@ -576,6 +586,8 @@ public class GenericNodeTest
 
     gn.connectInputPort("ip1", windowGenerator.acquireReservoir(String.valueOf(gn.id), 1024));
     gn.connectOutputPort("output", testSink);
+    gn.firstWindowMillis = firstWindowMillis;
+    gn.windowWidthMillis = windowWidth;
 
     windowGenerator.activate(null);
 
