@@ -46,6 +46,16 @@ public abstract class StramUtils
     }
   }
 
+  public static Class<?> classForName(String className)
+  {
+    try {
+      return Thread.currentThread().getContextClassLoader().loadClass(className);
+    }
+    catch (ClassNotFoundException e) {
+      throw new IllegalArgumentException("Class not found: " + className, e);
+    }
+  }
+
   public static <T> T newInstance(Class<T> clazz)
   {
     try {

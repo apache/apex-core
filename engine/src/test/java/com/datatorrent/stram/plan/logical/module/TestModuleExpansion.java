@@ -18,16 +18,22 @@
  */
 package com.datatorrent.stram.plan.logical.module;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.Attribute;
@@ -42,13 +48,18 @@ import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.common.util.BaseOperator;
+import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.SliderTest;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
+import static org.junit.Assert.fail;
+
 public class TestModuleExpansion
 {
-  static class DummyInputOperator extends BaseOperator implements InputOperator
+  public static class DummyInputOperator extends BaseOperator implements InputOperator
   {
     private int inputOperatorProp = 0;
 
@@ -72,7 +83,7 @@ public class TestModuleExpansion
     }
   }
 
-  static class DummyOperator extends BaseOperator
+  public static class DummyOperator extends BaseOperator
   {
     private int operatorProp = 0;
 
@@ -121,7 +132,7 @@ public class TestModuleExpansion
     }
   }
 
-  static class Level1Module implements Module
+  public static class Level1Module implements Module
   {
     private int level1ModuleProp = 0;
 
@@ -184,7 +195,7 @@ public class TestModuleExpansion
     }
   }
 
-  static class Level2ModuleA implements Module
+  public static class Level2ModuleA implements Module
   {
     private int level2ModuleAProp1 = 0;
     private int level2ModuleAProp2 = 0;
@@ -253,7 +264,7 @@ public class TestModuleExpansion
     }
   }
 
-  static class Level2ModuleB implements Module
+  public static class Level2ModuleB implements Module
   {
     private int level2ModuleBProp1 = 0;
     private int level2ModuleBProp2 = 0;
@@ -321,7 +332,7 @@ public class TestModuleExpansion
     }
   }
 
-  static class Level3Module implements Module
+  public static class Level3Module implements Module
   {
 
     public final transient ProxyInputPort<Integer> mIn = new ProxyInputPort<>();
@@ -671,4 +682,78 @@ public class TestModuleExpansion
     Assert.assertEquals("Locality is " + locality, meta.getLocality(), locality);
   }
 
+  @Test
+  public void testLoadFromPropertiesFile() throws IOException
+  {
+    Properties props = new Properties();
+    String resourcePath = "/testModuleTopology.properties";
+    InputStream is = this.getClass().getResourceAsStream(resourcePath);
+    if (is == null) {
+      fail("Could not load " + resourcePath);
+    }
+    props.load(is);
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration(new Configuration(false))
+      .addFromProperties(props, null);
+
+    LogicalPlan dag = new LogicalPlan();
+    pb.populateDAG(dag);
+    pb.prepareDAG(dag, null, "testApplication");
+    dag.validate();
+    validateTopLevelOperators(dag);
+    validateTopLevelStreams(dag);
+    validatePublicMethods(dag);
+  }
+
+  @Test
+  public void testLoadFromJson() throws Exception
+  {
+    String resourcePath = "/testModuleTopology.json";
+    InputStream is = this.getClass().getResourceAsStream(resourcePath);
+    if (is == null) {
+      fail("Could not load " + resourcePath);
+    }
+    StringWriter writer = new StringWriter();
+
+    IOUtils.copy(is, writer);
+    JSONObject json = new JSONObject(writer.toString());
+
+    Configuration conf = new Configuration(false);
+    conf.set(StreamingApplication.DT_PREFIX + "operator.operator3.prop.myStringProperty", "o3StringFromConf");
+
+    LogicalPlanConfiguration planConf = new LogicalPlanConfiguration(conf);
+    LogicalPlan dag = planConf.createFromJson(json, "testLoadFromJson");
+    planConf.prepareDAG(dag, null, "testApplication");
+    dag.validate();
+    validateTopLevelOperators(dag);
+    validateTopLevelStreams(dag);
+    validatePublicMethods(dag);
+  }
+
+  public static class InputModule implements Module
+  {
+    ProxyOutputPort<Integer> out = new ProxyOutputPort<>();
+
+    @Override
+    public void populateDAG(DAG dag, Configuration conf)
+    {
+      DummyInputOperator in = dag.addOperator("input", new DummyInputOperator());
+      out.set(in.out);
+    }
+  }
+
+  @Test
+  public void testRootModule() {
+    Configuration conf = new Configuration(false);
+    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(conf);
+    LogicalPlan dag = new LogicalPlan();
+    InputModule inm = dag.addModule("IN", new InputModule());
+    DummyOperator out = dag.addOperator("last", new DummyOperator());
+    dag.addStream("s1", inm.out, out.in);
+    lpc.prepareDAG(dag, null, "ModuleApp");
+    dag.validate();
+
+    List<LogicalPlan.OperatorMeta> root = dag.getRootOperators();
+    Assert.assertEquals("Single root operator in the DAG ", root.size(), 1);
+    Assert.assertEquals("Root operators name is IN", "IN$input", root.get(0).getName());
+  }
 }

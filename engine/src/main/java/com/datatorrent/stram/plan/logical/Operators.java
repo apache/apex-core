@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram.plan.logical;
 
+import com.datatorrent.api.Module;
 import com.datatorrent.common.experimental.AppData;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator;
@@ -80,8 +81,13 @@ public abstract class Operators
     }
   };
 
-  public static void describe(Operator operator, OperatorDescriptor descriptor)
+  public static void describe(Object operator, OperatorDescriptor descriptor)
   {
+    if (!(Operator.class.isAssignableFrom(operator.getClass()) ||
+      Module.class.isAssignableFrom(operator.getClass()))) {
+      throw new IllegalArgumentException("Object should be module or operator");
+    }
+
     for (Class<?> c = operator.getClass(); c != Object.class; c = c.getSuperclass())
     {
       Field[] fields = c.getDeclaredFields();

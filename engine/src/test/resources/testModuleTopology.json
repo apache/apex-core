@@ -1,0 +1,141 @@
+{
+  "operators": [
+    {
+      "name": "O1",
+      "class": "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$DummyInputOperator",
+      "properties": {
+        "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$DummyInputOperator": {
+          "inputOperatorProp": "1"
+        }
+      }
+    },
+    {
+      "name": "O2",
+      "class": "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$DummyOperator",
+      "properties": {
+        "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$DummyOperator": {
+          "operatorProp": "2"
+        }
+      }
+    },
+    {
+      "name": "Ma",
+      "class": "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$Level2ModuleA",
+      "properties": {
+        "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$Level2ModuleA": {
+          "level2ModuleAProp1": "11",
+          "level2ModuleAProp2": "12",
+          "level2ModuleAProp3": "13"
+        }
+      }
+    },
+    {
+      "name": "Mb",
+      "class": "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$Level2ModuleB",
+      "properties": {
+        "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$Level2ModuleB": {
+          "level2ModuleBProp1": "21",
+          "level2ModuleBProp2": "22",
+          "level2ModuleBProp3": "23"
+        }
+      }
+    },
+    {
+      "name": "Mc",
+      "class": "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$Level2ModuleA",
+      "properties": {
+        "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$Level2ModuleA": {
+          "level2ModuleAProp1": "31",
+          "level2ModuleAProp2": "32",
+          "level2ModuleAProp3": "33"
+        }
+      }
+    },
+    {
+      "name": "Md",
+      "class": "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$Level2ModuleB",
+      "properties": {
+        "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$Level2ModuleB": {
+          "level2ModuleBProp1": "41",
+          "level2ModuleBProp2": "42",
+          "level2ModuleBProp3": "43"
+        }
+      }
+    },
+    {
+      "name": "Me",
+      "class": "com.datatorrent.stram.plan.logical.module.TestModuleExpansion$Level3Module"
+    }
+  ],
+  "streams": [
+    {
+      "name": "O1_O2",
+      "source": {
+        "operatorName": "O1",
+        "portName": "out"
+      },
+      "sinks": [
+        {
+          "operatorName": "O2",
+          "portName": "in"
+        },
+        {
+          "operatorName": "Me",
+          "portName": "mIn"
+        }
+      ]
+    },
+    {
+      "name": "O2_Ma",
+      "source": {
+        "operatorName": "O2",
+        "portName": "out1"
+      },
+      "sinks": [
+        {
+          "operatorName": "Ma",
+          "portName": "mIn"
+        }
+      ]
+    },
+    {
+      "name": "Ma_Mb",
+      "source": {
+        "operatorName": "Ma",
+        "portName": "mOut1"
+      },
+      "sinks": [
+        {
+          "operatorName": "Mb",
+          "portName": "mIn"
+        }
+      ]
+    },
+    {
+      "name": "Ma_Md",
+      "source": {
+        "operatorName": "Ma",
+        "portName": "mOut2"
+      },
+      "sinks": [
+        {
+          "operatorName": "Md",
+          "portName": "mIn"
+        }
+      ]
+    },
+    {
+      "name": "Mb_Mc",
+      "source": {
+        "operatorName": "Mb",
+        "portName": "mOut2"
+      },
+      "sinks": [
+        {
+          "operatorName": "Mc",
+          "portName": "mIn"
+        }
+      ]
+    }
+  ]
+}
