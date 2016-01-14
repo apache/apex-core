@@ -22,14 +22,15 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.Path;
 
 import com.google.common.collect.Maps;
 
@@ -50,8 +51,7 @@ public class FSStorageAgentTest
       applicationPath = "target/" + description.getClassName() + "/" + description.getMethodName();
       try {
         FileUtils.forceMkdir(new File("target/" + description.getClassName()));
-      }
-      catch (IOException e) {
+      } catch (IOException e) {
         throw new RuntimeException(e);
       }
       storageAgent = new FSStorageAgent(applicationPath, null);
@@ -65,8 +65,7 @@ public class FSStorageAgentTest
     {
       try {
         FileUtils.deleteDirectory(new File("target/" + description.getClassName()));
-      }
-      catch (IOException e) {
+      } catch (IOException e) {
         throw new RuntimeException(e);
       }
     }
@@ -84,7 +83,7 @@ public class FSStorageAgentTest
     data.put(3, "three");
     testMeta.storageAgent.save(data, 1, 1);
     @SuppressWarnings("unchecked")
-    Map<Integer, String> decoded = (Map<Integer, String>) testMeta.storageAgent.load(1, 1);
+    Map<Integer, String> decoded = (Map<Integer, String>)testMeta.storageAgent.load(1, 1);
     Assert.assertEquals("dataOf1", data, decoded);
   }
 
@@ -104,10 +103,10 @@ public class FSStorageAgentTest
     testMeta.storageAgent.save(dataOf1, 1, 1);
     testMeta.storageAgent.save(dataOf2, 2, 1);
     @SuppressWarnings("unchecked")
-    Map<Integer, String> decoded1 = (Map<Integer, String>) testMeta.storageAgent.load(1, 1);
+    Map<Integer, String> decoded1 = (Map<Integer, String>)testMeta.storageAgent.load(1, 1);
 
     @SuppressWarnings("unchecked")
-    Map<Integer, String> decoded2 = (Map<Integer, String>) testMeta.storageAgent.load(2, 1);
+    Map<Integer, String> decoded2 = (Map<Integer, String>)testMeta.storageAgent.load(2, 1);
     Assert.assertEquals("data of 1", dataOf1, decoded1);
     Assert.assertEquals("data of 2", dataOf2, decoded2);
   }

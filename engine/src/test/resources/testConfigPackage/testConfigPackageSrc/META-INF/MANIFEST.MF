@@ -5,6 +5,7 @@ Built-By: dtdeveloper
 Build-Jdk: 1.6.0_45
 DT-App-Package-Max-Version: 1.9999
 DT-App-Package-Min-Version: 1.0
+DT-App-Package-Group-Id: com.example
 DT-App-Package-Name: mydtapp
 DT-Conf-Package-Description: My DataTorrent Application Configuration 
  Description

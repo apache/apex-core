@@ -845,6 +845,9 @@ public class LogicalPlan implements Serializable, DAG
     protected void populateAggregatorMeta()
     {
       AutoMetric.Aggregator aggregator = getValue(OperatorContext.METRICS_AGGREGATOR);
+      if (aggregator == null && operator instanceof AutoMetric.Aggregator) {
+        aggregator = new MetricAggregatorMeta.MetricsAggregatorProxy(this);
+      }
       if (aggregator == null) {
         MetricsAggregator defAggregator = null;
         Set<String> metricNames = Sets.newHashSet();
@@ -911,6 +914,45 @@ public class LogicalPlan implements Serializable, DAG
       }
       this.metricAggregatorMeta = new MetricAggregatorMeta(aggregator,
         getValue(OperatorContext.METRICS_DIMENSIONS_SCHEME));
+    }
+
+    /**
+     * Copy attribute from source attributeMap to destination attributeMap.
+     *
+     * @param dest  destination attribute map.
+     * @param source source attribute map.
+     */
+    private void copyAttributes(AttributeMap dest, AttributeMap source)
+    {
+      for (Entry<Attribute<?>, ?> a : source.entrySet()) {
+        dest.put((Attribute<Object>)a.getKey(), a.getValue());
+      }
+    }
+
+    /**
+     * Copy attribute of operator and port from provided operatorMeta. This function requires
+     * operatorMeta argument is for the same operator.
+     *
+     * @param operatorMeta copy attribute from this OperatorMeta to the object.
+     */
+    private void copyAttributesFrom(OperatorMeta operatorMeta)
+    {
+      if (operator != operatorMeta.getOperator()) {
+        throw new IllegalArgumentException("Operator meta is not for the same operator ");
+      }
+
+      // copy operator attributes
+      copyAttributes(attributes, operatorMeta.getAttributes());
+
+      // copy Input port attributes
+      for (Map.Entry<InputPort<?>, InputPortMeta> entry : operatorMeta.getPortMapping().inPortMap.entrySet()) {
+        copyAttributes(getPortMapping().inPortMap.get(entry.getKey()).attributes, entry.getValue().attributes);
+      }
+
+      // copy Output port attributes
+      for (Map.Entry<OutputPort<?>, OutputPortMeta> entry : operatorMeta.getPortMapping().outPortMap.entrySet()) {
+        copyAttributes(getPortMapping().outPortMap.get(entry.getKey()).attributes, entry.getValue().attributes);
+      }
     }
 
     private class PortMapping implements Operators.OperatorDescriptor
@@ -1365,8 +1407,9 @@ public class LogicalPlan implements Serializable, DAG
     String name;
     for (OperatorMeta operatorMeta : subDag.getAllOperators()) {
       name = subDAGName + MODULE_NAMESPACE_SEPARATOR + operatorMeta.getName();
-      this.addOperator(name, operatorMeta.getOperator());
-      OperatorMeta operatorMetaNew = this.getOperatorMeta(name);
+      Operator op = this.addOperator(name, operatorMeta.getOperator());
+      OperatorMeta operatorMetaNew = this.getMeta(op);
+      operatorMetaNew.copyAttributesFrom(operatorMeta);
       operatorMetaNew.setModuleName(operatorMeta.getModuleName() == null ? subDAGName :
           subDAGName + MODULE_NAMESPACE_SEPARATOR + operatorMeta.getModuleName());
     }
@@ -1380,7 +1423,8 @@ public class LogicalPlan implements Serializable, DAG
       InputPort[] inputPorts = ports.toArray(new InputPort[]{});
 
       name = subDAGName + MODULE_NAMESPACE_SEPARATOR + streamMeta.getName();
-      this.addStream(name, sourceMeta.getPortObject(), inputPorts);
+      StreamMeta streamMetaNew = this.addStream(name, sourceMeta.getPortObject(), inputPorts);
+      streamMetaNew.setLocality(streamMeta.getLocality());
     }
   }
 
@@ -2074,39 +2118,4 @@ public class LogicalPlan implements Serializable, DAG
     return result;
   }
 
-  public final class MetricAggregatorMeta implements Serializable
-  {
-    private final AutoMetric.Aggregator aggregator;
-    private final AutoMetric.DimensionsScheme dimensionsScheme;
-
-    protected MetricAggregatorMeta(AutoMetric.Aggregator aggregator,
-                                   AutoMetric.DimensionsScheme dimensionsScheme)
-    {
-      this.aggregator = aggregator;
-      this.dimensionsScheme = dimensionsScheme;
-    }
-
-    public AutoMetric.Aggregator getAggregator()
-    {
-      return this.aggregator;
-    }
-
-    public String[] getDimensionAggregatorsFor(String logicalMetricName)
-    {
-      if (dimensionsScheme == null) {
-        return null;
-      }
-      return dimensionsScheme.getDimensionAggregationsFor(logicalMetricName);
-    }
-
-    public String[] getTimeBuckets()
-    {
-      if (dimensionsScheme == null) {
-        return null;
-      }
-      return dimensionsScheme.getTimeBuckets();
-    }
-
-    private static final long serialVersionUID = 201604271719L;
-  }
 }

@@ -39,7 +39,7 @@ https://www.datatorrent.com/download/
 [Apex JIRA](https://issues.apache.org/jira/browse/APEXCORE) issue tracking system is used for this project.
 You can submit new issues and track the progress of existing issues at https://malhar.atlassian.net/projects/APEX.
 
-When working with JIRA to submit pull requests, please use [smart commits](https://confluence.atlassian.com/display/AOD/Processing+JIRA+issues+with+commit+messages) feature by specifying APEX-XXXX in the commit messages.
+When working with JIRA to submit pull requests, please use [smart commits](https://confluence.atlassian.com/display/AOD/Processing+JIRA+issues+with+commit+messages) feature by specifying APEXCORE-XXXX in the commit messages.
 It helps us link commits with issues being tracked for easy reference.  And example commit might look like this:
 
     git commit -am "APEXCORE-1234 #comment Task completed ahead of schedule #resolve"

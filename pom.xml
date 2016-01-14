@@ -35,6 +35,7 @@
 
   <name>Apache Apex (incubating)</name>
   <url>http://apex.incubator.apache.org</url>
+  <inceptionYear>2015</inceptionYear>
 
   <organization>
     <name>Apache Software Foundation</name>
@@ -306,7 +307,7 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>6.13</version>
+              <version>6.14</version>
             </dependency>
           </dependencies>
           <executions>
@@ -336,7 +337,7 @@
         <plugin>
           <groupId>com.github.siom79.japicmp</groupId>
           <artifactId>japicmp-maven-plugin</artifactId>
-          <version>0.6.1</version>
+          <version>0.6.2</version>
           <configuration>
             <parameter>
               <onlyModified>true</onlyModified>

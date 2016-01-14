@@ -19,6 +19,7 @@
   </licenses>
   
   <properties>
+    <apex.apppackage.groupid>${groupId}</apex.apppackage.groupid>
     <apex.apppackage.name>myapexapp</apex.apppackage.name>
     <apex.apppackage.minversion>1.0.0</apex.apppackage.minversion>
     <apex.apppackage.maxversion>1.9999.9999</apex.apppackage.maxversion>
@@ -106,6 +107,7 @@
                </archiverConfig>                  
                <archive>
                  <manifestEntries>
+                   <DT-App-Package-Group-Id>${apex.apppackage.groupid}</DT-App-Package-Group-Id>
                    <DT-App-Package-Name>${apex.apppackage.name}</DT-App-Package-Name>
                    <DT-App-Package-Min-Version>${apex.apppackage.minversion}</DT-App-Package-Min-Version>
                    <DT-App-Package-Max-Version>${apex.apppackage.maxversion}</DT-App-Package-Max-Version>

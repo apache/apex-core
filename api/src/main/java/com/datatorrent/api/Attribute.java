@@ -189,7 +189,7 @@ public class Attribute<T> implements Serializable
       public DefaultAttributeMap clone() throws CloneNotSupportedException
       {
         DefaultAttributeMap clone = (DefaultAttributeMap)super.clone();
-        clone.map = (HashMap< Attribute< ?>, Object>)map.clone();
+        clone.map = (HashMap<Attribute<?>, Object>)map.clone();
         return clone;
       }
 
@@ -255,8 +255,7 @@ public class Attribute<T> implements Serializable
               result.put(attribute, context.getValue(attribute));
             }
           }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           DTThrowable.rethrow(ex);
         }
         return result;
@@ -298,17 +297,13 @@ public class Attribute<T> implements Serializable
                   Class<?> klass = attribute.defaultValue.getClass();
                   if (klass == String.class) {
                     codec = new String2String();
-                  }
-                  else if (klass == Integer.class) {
+                  } else if (klass == Integer.class) {
                     codec = new Integer2String();
-                  }
-                  else if (klass == Long.class) {
+                  } else if (klass == Long.class) {
                     codec = new Long2String();
-                  }
-                  else if (klass == Boolean.class) {
+                  } else if (klass == Boolean.class) {
                     codec = new Boolean2String();
-                  }
-                  else if (Enum.class.isAssignableFrom(klass)) {
+                  } else if (Enum.class.isAssignableFrom(klass)) {
                     codec = new Enum2String(klass);
                   }
                 }
@@ -322,8 +317,7 @@ public class Attribute<T> implements Serializable
               set.add(attribute);
             }
           }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           DTThrowable.rethrow(ex);
         }
         map.put(clazz, set);

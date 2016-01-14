@@ -18,12 +18,14 @@
  */
 package com.datatorrent.common.codec;
 
-import com.datatorrent.api.StringCodec;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.datatorrent.api.StringCodec;
 
 public class JsonStreamCodecTest
 {

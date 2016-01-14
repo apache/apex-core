@@ -18,7 +18,12 @@
  */
 package com.datatorrent.api;
 
-import java.lang.annotation.*;
+import java.io.IOException;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.Collection;
 import java.util.Map;
 
@@ -106,4 +111,22 @@ public @interface AutoMetric
     String[] getDimensionAggregationsFor(String logicalMetricName);
   }
 
+  /**
+   * Interface of transport for STRAM to push metrics data
+   */
+  interface Transport
+  {
+    /**
+     * Pushes the metrics data (in JSON) to the transport.
+     *
+     * @param jsonData The metric data in JSON to be pushed to this transport
+     */
+    void push(String jsonData) throws IOException;
+
+    /**
+     * Returns the number of milliseconds for resending the metric schema. The schema will need to be resent for
+     * unreliable transport. Return 0 if the schema does not need to be resent.
+     */
+    long getSchemaResendInterval();
+  }
 }

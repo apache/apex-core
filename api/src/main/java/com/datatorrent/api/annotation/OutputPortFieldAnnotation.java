@@ -24,8 +24,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.datatorrent.api.Context;
-
 /**
  *
  * Annotation for output ports on streaming operators.<p>
@@ -35,7 +33,8 @@ import com.datatorrent.api.Context;
 @Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface OutputPortFieldAnnotation {
+public @interface OutputPortFieldAnnotation
+{
   /**
    * <p>optional.</p>
    */

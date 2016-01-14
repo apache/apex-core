@@ -65,7 +65,7 @@ public interface Component<CONTEXT extends Context>
    * @param <COMPLEMENT>
    * @since 0.3.2
    */
-  public static abstract class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
+  public abstract static class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
   {
     public final COMPONENT component;
 

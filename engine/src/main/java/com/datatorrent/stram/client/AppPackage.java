@@ -44,12 +44,14 @@ public class AppPackage extends JarFile
   public static final String ATTRIBUTE_DT_ENGINE_VERSION = "DT-Engine-Version";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_NAME = "DT-App-Package-Name";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_VERSION = "DT-App-Package-Version";
+  public static final String ATTRIBUTE_DT_APP_PACKAGE_GROUP_ID = "DT-App-Package-Group-Id";
   public static final String ATTRIBUTE_CLASS_PATH = "Class-Path";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_DISPLAY_NAME = "DT-App-Package-Display-Name";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_DESCRIPTION = "DT-App-Package-Description";
 
   private final String appPackageName;
   private final String appPackageVersion;
+  private final String appPackageGroupId;
   private final String dtEngineVersion;
   private final String appPackageDescription;
   private final String appPackageDisplayName;
@@ -129,12 +131,13 @@ public class AppPackage extends JarFile
     Attributes attr = manifest.getMainAttributes();
     appPackageName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_NAME);
     appPackageVersion = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_VERSION);
+    appPackageGroupId = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_GROUP_ID);
     dtEngineVersion = attr.getValue(ATTRIBUTE_DT_ENGINE_VERSION);
     appPackageDisplayName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DISPLAY_NAME);
     appPackageDescription = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DESCRIPTION);
     String classPathString = attr.getValue(ATTRIBUTE_CLASS_PATH);
     if (appPackageName == null || appPackageVersion == null || classPathString == null) {
-      throw new IOException("Not a valid app package.  Class-Path is missing from MANIFEST.MF");
+      throw new IOException("Not a valid app package.  App Package Name or Version or Class-Path is missing from MANIFEST.MF");
     }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
     directory = contentFolder;
@@ -232,6 +235,11 @@ public class AppPackage extends JarFile
   public String getAppPackageVersion()
   {
     return appPackageVersion;
+  }
+
+  public String getAppPackageGroupId()
+  {
+    return appPackageGroupId;
   }
 
   public String getAppPackageDescription()
