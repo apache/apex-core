@@ -88,6 +88,26 @@
   <build>
     <plugins>
       <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>replaceTextVersions</id>
+            <phase>none</phase>
+            <configuration>
+              <tasks>
+                <replace token= "${project.version}" value="${newVersion}" dir="${basedir}">
+                  <include name="apex-app-archetype/README.md"/>
+                  <include name="apex-conf-archetype/README.md"/>
+                </replace>
+              </tasks>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>com.mycila</groupId>
         <artifactId>license-maven-plugin</artifactId>
         <version>2.11</version>
