@@ -659,7 +659,6 @@ public class StramClientUtils
       engine.eval("var _prop = {}");
       for (Map.Entry<String, String> entry : vars) {
         String evalString = String.format("_prop[\"%s\"] = \"%s\"", StringEscapeUtils.escapeJava(entry.getKey()), StringEscapeUtils.escapeJava(entry.getValue()));
-        LOG.debug("Evaluating: {}", evalString);
         engine.eval(evalString);
       }
     } catch (ScriptException ex) {
@@ -706,6 +705,18 @@ public class StramClientUtils
         newValue.append(value.substring(cursor));
         target.put(entry.getKey(), newValue.toString());
       }
+    }
+  }
+
+  public static void evalConfiguration(Configuration conf)
+  {
+    Properties props = new Properties();
+    for (Map.Entry entry : conf) {
+      props.put(entry.getKey(), entry.getValue());
+    }
+    evalProperties(props, conf);
+    for (Map.Entry<Object, Object> entry : props.entrySet()) {
+      conf.set((String)entry.getKey(), (String)entry.getValue());
     }
   }
 

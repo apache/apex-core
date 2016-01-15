@@ -435,6 +435,7 @@ public class StramAppLauncher
         conf.set(entry.getKey(), entry.getValue());
       }
     }
+    StramClientUtils.evalConfiguration(conf);
     return conf;
   }
 
