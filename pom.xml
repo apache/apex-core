@@ -64,6 +64,9 @@
     <!-- do not change jetty version as later versions have problems with DefaultServlet -->
     <jetty.version>8.1.10.v20130312</jetty.version>
     <license.skip>true</license.skip>
+    <findbugs.xmlOutput>true</findbugs.xmlOutput>
+    <findbugs.failOnError>false</findbugs.failOnError>
+    <findbugs.skip>false</findbugs.skip>
     <postNoticeText>The initial developer of the original code is&#xA;DataTorrent, Inc. (http://www.datatorrent.com)&#xA;Copyright (c) 2012 - 2015. All Rights Reserved.</postNoticeText>
   </properties>
 
@@ -190,6 +193,25 @@
             <exclude>**/NOTICE.vm</exclude>
           </excludes>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>findbugs-maven-plugin</artifactId>
+        <version>3.0.3</version>
+        <configuration>
+          <includeTests>true</includeTests>
+          <xmlOutput>${findbugs.xmlOutput}</xmlOutput>
+          <failOnError>${findbugs.failOnError}</failOnError>
+          <skip>${findbugs.skip}</skip>
+        </configuration>
+        <executions>
+          <execution>
+            <phase></phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
     <pluginManagement>
