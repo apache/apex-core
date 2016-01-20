@@ -1407,9 +1407,10 @@ public class LogicalPlanConfiguration {
       }
     }
 
-    private String getClassNameReqd() {
+    private String getClassNameReqd(boolean force)
+    {
       String className = properties.getProperty(OPERATOR_CLASSNAME);
-      if (className == null) {
+      if (className == null && force) {
         throw new IllegalArgumentException(String.format("Operator '%s' is missing property '%s'", getId(), LogicalPlanConfiguration.OPERATOR_CLASSNAME));
       }
       return className;
@@ -1997,6 +1998,32 @@ public class LogicalPlanConfiguration {
     return dag;
   }
 
+  private Object getObject(String nodeClassName, String jsonStr) throws IOException, IllegalAccessException, InstantiationException
+  {
+    Class nodeClass = StramUtils.classForName(nodeClassName);
+    if (!(Operator.class.isAssignableFrom(nodeClass) || Module.class.isAssignableFrom(nodeClass))) {
+      throw new IllegalArgumentException("Argument is not a operator or module");
+    }
+
+    if (jsonStr != null) {
+      ObjectMapper mapper = ObjectMapperFactory.getOperatorValueDeserializer();
+      return mapper.readValue("{\"" + nodeClass.getName() + "\":" + jsonStr + "}", nodeClass);
+    } else {
+      return nodeClass.newInstance();
+    }
+  }
+
+  private Object addModuleOrOperator(Object o, LogicalPlan dag, String name)
+  {
+    if (o instanceof Module) {
+      return dag.addModule(name, (Module)o);
+    } else if (o instanceof Operator) {
+      return dag.addOperator(name, (Operator)o);
+    }
+
+    throw new IllegalArgumentException("Object is not instance of Module or Operator");
+  }
+
   /**
    * Populate the logical plan structure from properties.
    * @param dag
@@ -2017,28 +2044,22 @@ public class LogicalPlanConfiguration {
 
     Map<String, OperatorConf> operators = appConf.getChildren(StramElement.OPERATOR);
 
-    Map<OperatorConf, Operator> nodeMap = Maps.newHashMapWithExpectedSize(operators.size());
+    Map<OperatorConf, Object> nodeMap = Maps.newHashMapWithExpectedSize(operators.size());
     // add all operators first
     for (Map.Entry<String, OperatorConf> nodeConfEntry : operators.entrySet()) {
       OperatorConf nodeConf = nodeConfEntry.getValue();
       if (!WILDCARD.equals(nodeConf.id)) {
-        Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(), Operator.class);
+        Class<?> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(true));
         String optJson = nodeConf.getProperties().get(nodeClass.getName());
-        Operator nd = null;
         try {
-          if (optJson != null) {
-            // if there is a special key which is the class name, it means the operator is serialized in json format
-            ObjectMapper mapper = ObjectMapperFactory.getOperatorValueDeserializer();
-            nd = mapper.readValue("{\"" + nodeClass.getName() + "\":" + optJson + "}", nodeClass);
-            dag.addOperator(nodeConfEntry.getKey(), nd);
-          } else {
-            nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
-          }
-          setOperatorProperties(nd, nodeConf.getProperties());
-        } catch (IOException e) {
-          throw new IllegalArgumentException("Error setting operator properties " + e.getMessage(), e);
+          Object o = getObject(nodeClass.getName(), optJson);
+          addModuleOrOperator(o, dag, nodeConfEntry.getKey());
+          setObjectProperties(o, nodeConf.getProperties());
+          nodeMap.put(nodeConf, o);
+        } catch (Exception ex) {
+          ex.printStackTrace();
+          throw new IllegalArgumentException(ex);
         }
-        nodeMap.put(nodeConf, nd);
       }
     }
 
@@ -2063,13 +2084,11 @@ public class LogicalPlanConfiguration {
             portName = e.getKey();
           }
         }
-        Operator sourceDecl = nodeMap.get(streamConf.sourceNode);
-        Operators.PortMappingDescriptor sourcePortMap = new Operators.PortMappingDescriptor();
-        Operators.describe(sourceDecl, sourcePortMap);
-        sd.setSource(sourcePortMap.outputPorts.get(portName).component);
+        Operator.OutputPort outputPort = getOutputPort(nodeMap, streamConf, portName);
+        sd.setSource(outputPort);
 
         if (schemaClass != null) {
-          dag.setOutputPortAttribute(sourcePortMap.outputPorts.get(portName).component, PortContext.TUPLE_CLASS, schemaClass);
+          dag.setOutputPortAttribute(outputPort, PortContext.TUPLE_CLASS, schemaClass);
         }
       }
 
@@ -2080,13 +2099,11 @@ public class LogicalPlanConfiguration {
             portName = e.getKey();
           }
         }
-        Operator targetDecl = nodeMap.get(targetNode);
-        Operators.PortMappingDescriptor targetPortMap = new Operators.PortMappingDescriptor();
-        Operators.describe(targetDecl, targetPortMap);
-        sd.addSink(targetPortMap.inputPorts.get(portName).component);
+        Operator.InputPort inputPort = getInputPort(nodeMap, targetNode, portName);
+        sd.addSink(inputPort);
 
         if (schemaClass != null) {
-          dag.setInputPortAttribute(targetPortMap.inputPorts.get(portName).component, PortContext.TUPLE_CLASS, schemaClass);
+          dag.setInputPortAttribute(inputPort, PortContext.TUPLE_CLASS, schemaClass);
         }
       }
     }
@@ -2448,4 +2465,31 @@ public class LogicalPlanConfiguration {
     }
   }
 
+  Operator.OutputPort getOutputPort(Map<OperatorConf, Object> nodeMap,
+                                    StreamConf streamConf,
+                                    String portName)
+  {
+    Object sourceDecl = nodeMap.get(streamConf.sourceNode);
+    if (sourceDecl == null) {
+      throw new IllegalArgumentException("Source name is not available " + streamConf.sourceNode);
+    }
+
+    Operators.PortMappingDescriptor sourcePortMap = new Operators.PortMappingDescriptor();
+    Operators.describe(sourceDecl, sourcePortMap);
+    return sourcePortMap.outputPorts.get(portName).component;
+  }
+
+  Operator.InputPort getInputPort(Map<OperatorConf, Object> nodeMap,
+                                  OperatorConf operatorConf,
+                                  String portName)
+  {
+    Object targetDecl = nodeMap.get(operatorConf);
+    if (targetDecl == null) {
+      throw new IllegalArgumentException("Target name is not available " + operatorConf.getId());
+    }
+
+    Operators.PortMappingDescriptor targetPortMap = new Operators.PortMappingDescriptor();
+    Operators.describe(targetDecl, targetPortMap);
+    return targetPortMap.inputPorts.get(portName).component;
+  }
 }
