@@ -159,8 +159,6 @@ public class LogicalPlan implements Serializable, DAG
   public final Map<String, ModuleMeta> modules = new LinkedHashMap<>();
   private final List<OperatorMeta> rootOperators = new ArrayList<OperatorMeta>();
   private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
-  private transient int nodeIndex = 0; // used for cycle validation
-  private transient Stack<OperatorMeta> stack = new Stack<OperatorMeta>(); // used for cycle validation
   private transient Map<String, ArrayListMultimap<OutputPort<?>, InputPort<?>>> streamLinks = new HashMap<>();
 
   @Override
@@ -1540,6 +1538,7 @@ public class LogicalPlan implements Serializable, DAG
     return this.operators.get(operatorName);
   }
 
+  @Override
   public ModuleMeta getModuleMeta(String moduleName)
   {
     return this.modules.get(moduleName);
@@ -1557,6 +1556,7 @@ public class LogicalPlan implements Serializable, DAG
     throw new IllegalArgumentException("Operator not associated with the DAG: " + operator);
   }
 
+  @Override
   public ModuleMeta getMeta(Module module)
   {
     for (ModuleMeta m : getAllModules()) {
@@ -1624,6 +1624,24 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     return classNames;
+  }
+
+  public static class ValidationContext
+  {
+    public int nodeIndex = 0;
+    public Stack<OperatorMeta> stack = new Stack<OperatorMeta>();
+    public Stack<OperatorMeta> path = new Stack<OperatorMeta>();
+    public List<Set<OperatorMeta>> stronglyConnected = new ArrayList<>();
+    public OperatorMeta invalidLoopAt;
+    public List<Set<OperatorMeta>> invalidCycles = new ArrayList<>();
+  }
+
+  public void resetNIndex()
+  {
+    for (OperatorMeta om : getAllOperators()) {
+      om.lowlink = null;
+      om.nindex = null;
+    }
   }
 
   /**
@@ -1752,21 +1770,20 @@ public class LogicalPlan implements Serializable, DAG
         throw new ValidationException("At least one output port must be connected: " + n.name);
       }
     }
-    stack = new Stack<OperatorMeta>();
 
-    List<List<String>> cycles = new ArrayList<List<String>>();
+    ValidationContext validatonContext = new ValidationContext();
     for (OperatorMeta n: operators.values()) {
       if (n.nindex == null) {
-        findStronglyConnected(n, cycles);
+        findStronglyConnected(n, validatonContext);
       }
     }
-    if (!cycles.isEmpty()) {
-      throw new ValidationException("Loops in graph: " + cycles);
+    if (!validatonContext.invalidCycles.isEmpty()) {
+      throw new ValidationException("Loops in graph: " + validatonContext.invalidCycles);
     }
 
     List<List<String>> invalidDelays = new ArrayList<>();
     for (OperatorMeta n : rootOperators) {
-      findInvalidDelays(n, invalidDelays);
+      findInvalidDelays(n, invalidDelays, new Stack<OperatorMeta>());
     }
     if (!invalidDelays.isEmpty()) {
       throw new ValidationException("Invalid delays in graph: " + invalidDelays);
@@ -1908,59 +1925,72 @@ public class LogicalPlan implements Serializable, DAG
    * @param om
    * @param cycles
    */
-  public void findStronglyConnected(OperatorMeta om, List<List<String>> cycles)
+  public void findStronglyConnected(OperatorMeta om, ValidationContext ctx)
   {
-    om.nindex = nodeIndex;
-    om.lowlink = nodeIndex;
-    nodeIndex++;
-    stack.push(om);
+    om.nindex = ctx.nodeIndex;
+    om.lowlink = ctx.nodeIndex;
+    ctx.nodeIndex++;
+    ctx.stack.push(om);
+    ctx.path.push(om);
 
     // depth first successors traversal
     for (StreamMeta downStream: om.outputStreams.values()) {
       for (InputPortMeta sink: downStream.sinks) {
-        if (om.getOperator() instanceof Operator.DelayOperator) {
-          // this is an iteration loop, do not treat it as downstream when detecting cycles
-          sink.attributes.put(IS_CONNECTED_TO_DELAY_OPERATOR, true);
-          continue;
-        }
         OperatorMeta successor = sink.getOperatorWrapper();
         if (successor == null) {
           continue;
         }
         // check for self referencing node
         if (om == successor) {
-          cycles.add(Collections.singletonList(om.name));
+          ctx.invalidCycles.add(Collections.singleton(om));
         }
         if (successor.nindex == null) {
           // not visited yet
-          findStronglyConnected(successor, cycles);
+          findStronglyConnected(successor, ctx);
           om.lowlink = Math.min(om.lowlink, successor.lowlink);
         }
-        else if (stack.contains(successor)) {
+        else if (ctx.stack.contains(successor)) {
           om.lowlink = Math.min(om.lowlink, successor.nindex);
+          boolean isDelayLoop = false;
+          for (int i=ctx.path.size(); i>0; i--) {
+            OperatorMeta om2 = ctx.path.get(i-1);
+            if (om2.getOperator() instanceof Operator.DelayOperator) {
+              isDelayLoop = true;
+            }
+            if (om2 == successor) {
+              break;
+            }
+          }
+          if (!isDelayLoop) {
+            ctx.invalidLoopAt = successor;
+          }
         }
       }
     }
 
     // pop stack for all root operators
     if (om.lowlink.equals(om.nindex)) {
-      List<String> connectedIds = new ArrayList<String>();
-      while (!stack.isEmpty()) {
-        OperatorMeta n2 = stack.pop();
-        connectedIds.add(n2.name);
+      Set<OperatorMeta> connectedSet = new LinkedHashSet<>(ctx.stack.size());
+      while (!ctx.stack.isEmpty()) {
+        OperatorMeta n2 = ctx.stack.pop();
+        connectedSet.add(n2);
         if (n2 == om) {
           break; // collected all connected operators
         }
       }
       // strongly connected (cycle) if more than one node in stack
-      if (connectedIds.size() > 1) {
-        LOG.debug("detected cycle from node {}: {}", om.name, connectedIds);
-        cycles.add(connectedIds);
+      if (connectedSet.size() > 1) {
+        ctx.stronglyConnected.add(connectedSet);
+        if (connectedSet.contains(ctx.invalidLoopAt)) {
+          ctx.invalidCycles.add(connectedSet);
+        }
       }
     }
+    ctx.path.pop();
+
   }
 
-  public void findInvalidDelays(OperatorMeta om, List<List<String>> invalidDelays)
+  public void findInvalidDelays(OperatorMeta om, List<List<String>> invalidDelays, Stack<OperatorMeta> stack)
   {
     stack.push(om);
 
@@ -1977,6 +2007,7 @@ public class LogicalPlan implements Serializable, DAG
       for (InputPortMeta sink : downStream.sinks) {
         OperatorMeta successor = sink.getOperatorWrapper();
         if (isDelayOperator) {
+          sink.attributes.put(IS_CONNECTED_TO_DELAY_OPERATOR, true);
           // Check whether all downstream operators are already visited in the path
           if (successor != null && !stack.contains(successor)) {
             LOG.debug("detected DelayOperator does not immediately output to a visited operator {}.{}->{}.{}",
@@ -1984,7 +2015,7 @@ public class LogicalPlan implements Serializable, DAG
             invalidDelays.add(Arrays.asList(om.getName(), successor.getName()));
           }
         } else {
-          findInvalidDelays(successor, invalidDelays);
+          findInvalidDelays(successor, invalidDelays, stack);
         }
       }
     }

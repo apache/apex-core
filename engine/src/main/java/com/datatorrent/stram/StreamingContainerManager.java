@@ -35,6 +35,7 @@ import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Objects;
 import com.google.common.base.Predicate;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -159,6 +160,7 @@ public class StreamingContainerManager implements PlanContext
   private long lastResourceRequest = 0;
   private final Map<String, StreamingContainerAgent> containers = new ConcurrentHashMap<String, StreamingContainerAgent>();
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
+  private Map<OperatorMeta, Set<OperatorMeta>> checkpointGroups;
   private final Map<Long, Set<PTOperator>> shutdownOperators = new HashMap<>();
   private CriticalPathInfo criticalPathInfo;
   private final ConcurrentMap<PTOperator, PTOperator> reportStats = Maps.newConcurrentMap();
@@ -812,6 +814,7 @@ public class StreamingContainerManager implements PlanContext
     Collection<OperatorMeta> logicalOperators = getLogicalPlan().getAllOperators();
     //for backward compatibility
     for (OperatorMeta operatorMeta : logicalOperators) {
+      @SuppressWarnings("deprecation")
       Context.CountersAggregator aggregator = operatorMeta.getValue(OperatorContext.COUNTERS_AGGREGATOR);
       if (aggregator == null) {
         continue;
@@ -825,6 +828,7 @@ public class StreamingContainerManager implements PlanContext
         }
       }
       if (counters.size() > 0) {
+        @SuppressWarnings("deprecation")
         Object aggregate = aggregator.aggregate(counters);
         latestLogicalCounters.put(operatorMeta.getName(), aggregate);
       }
@@ -857,6 +861,8 @@ public class StreamingContainerManager implements PlanContext
         if (windowMetrics == null) {
           windowMetrics = new LinkedBlockingQueue<Pair<Long, Map<String, Object>>>(METRIC_QUEUE_SIZE)
           {
+            private static final long serialVersionUID = 1L;
+
             @Override
             public boolean add(Pair<Long, Map<String, Object>> longMapPair)
             {
@@ -1134,7 +1140,7 @@ public class StreamingContainerManager implements PlanContext
     cs.container.setAllocatedVCores(0);
 
     // resolve dependencies
-    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
+    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, false, getCheckpointGroups());
     for (PTOperator oper : cs.container.getOperators()) {
       updateRecoveryCheckpoints(oper, ctx);
     }
@@ -1881,31 +1887,18 @@ public class StreamingContainerManager implements PlanContext
     public final Set<PTOperator> blocked = new LinkedHashSet<PTOperator>();
     public final long currentTms;
     public final boolean recovery;
+    public final Map<OperatorMeta, Set<OperatorMeta>> checkpointGroups;
 
     public UpdateCheckpointsContext(Clock clock)
     {
-      this.currentTms = clock.getTime();
-      this.recovery = false;
+      this(clock, false, Collections.<OperatorMeta, Set<OperatorMeta>>emptyMap());
     }
 
-    public UpdateCheckpointsContext(Clock clock, boolean recovery)
+    public UpdateCheckpointsContext(Clock clock, boolean recovery, Map<OperatorMeta, Set<OperatorMeta>> checkpointGroups)
     {
       this.currentTms = clock.getTime();
       this.recovery = recovery;
-    }
-
-  }
-
-  private void addVisited(PTOperator operator, UpdateCheckpointsContext ctx)
-  {
-    ctx.visited.add(operator);
-    for (PTOperator.PTOutput out : operator.getOutputs()) {
-      for (PTOperator.PTInput sink : out.sinks) {
-        PTOperator sinkOperator = sink.target;
-        if (!ctx.visited.contains(sinkOperator)) {
-          addVisited(sinkOperator, ctx);
-        }
-      }
+      this.checkpointGroups = checkpointGroups;
     }
   }
 
@@ -1933,20 +1926,55 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    long maxCheckpoint = operator.getRecentCheckpoint().windowId;
-    if (ctx.recovery && maxCheckpoint == Stateless.WINDOW_ID && operator.isOperatorStateLess()) {
-      long currentWindowId = WindowGenerator.getWindowId(ctx.currentTms, this.vars.windowStartMillis, this.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
-      maxCheckpoint = currentWindowId;
+    // the most recent checkpoint eligible for recovery based on downstream state
+    Checkpoint maxCheckpoint = Checkpoint.INITIAL_CHECKPOINT;
+
+    Set<OperatorMeta> checkpointGroup = ctx.checkpointGroups.get(operator.getOperatorMeta());
+    if (checkpointGroup == null) {
+      checkpointGroup = Collections.singleton(operator.getOperatorMeta());
     }
-    ctx.visited.add(operator);
+    // find intersection of checkpoints that group can collectively move to
+    TreeSet<Checkpoint> commonCheckpoints = new TreeSet<>(new Checkpoint.CheckpointComparator());
+    synchronized (operator.checkpoints) {
+      commonCheckpoints.addAll(operator.checkpoints);
+    }
+    Set<PTOperator> groupOpers = new HashSet<>(checkpointGroup.size());
+    if (checkpointGroup.size() > 1) {
+      for (OperatorMeta om : checkpointGroup) {
+        Collection<PTOperator> operators = plan.getAllOperators(om);
+        for (PTOperator groupOper : operators) {
+          synchronized (groupOper.checkpoints) {
+            commonCheckpoints.retainAll(groupOper.checkpoints);
+          }
+          // visit all downstream operators of the group
+          ctx.visited.add(groupOper);
+          groupOpers.add(groupOper);
+        }
+      }
+      // highest common checkpoint
+      if (!commonCheckpoints.isEmpty()) {
+        maxCheckpoint = commonCheckpoints.last();
+      }
+    } else {
+      // without logical grouping, treat partitions as independent
+      // this is especially important for parallel partitioning
+      ctx.visited.add(operator);
+      groupOpers.add(operator);
+      maxCheckpoint = operator.getRecentCheckpoint();
+      if (ctx.recovery && maxCheckpoint.windowId == Stateless.WINDOW_ID && operator.isOperatorStateLess()) {
+        long currentWindowId = WindowGenerator.getWindowId(ctx.currentTms, this.vars.windowStartMillis, this.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
+        maxCheckpoint = new Checkpoint(currentWindowId, 0, 0);
+      }
+    }
 
     // DFS downstream operators
-    if (operator.getOperatorMeta().getOperator() instanceof Operator.DelayOperator) {
-      addVisited(operator, ctx);
-    } else {
-      for (PTOperator.PTOutput out : operator.getOutputs()) {
+    for (PTOperator groupOper : groupOpers) {
+      for (PTOperator.PTOutput out : groupOper.getOutputs()) {
         for (PTOperator.PTInput sink : out.sinks) {
           PTOperator sinkOperator = sink.target;
+          if (groupOpers.contains(sinkOperator)) {
+            continue; // downstream operator within group
+          }
           if (!ctx.visited.contains(sinkOperator)) {
             // downstream traversal
             updateRecoveryCheckpoints(sinkOperator, ctx);
@@ -1954,7 +1982,7 @@ public class StreamingContainerManager implements PlanContext
           // recovery window id cannot move backwards
           // when dynamically adding new operators
           if (sinkOperator.getRecoveryCheckpoint().windowId >= operator.getRecoveryCheckpoint().windowId) {
-            maxCheckpoint = Math.min(maxCheckpoint, sinkOperator.getRecoveryCheckpoint().windowId);
+            maxCheckpoint = Checkpoint.min(maxCheckpoint, sinkOperator.getRecoveryCheckpoint());
           }
 
           if (ctx.blocked.contains(sinkOperator)) {
@@ -1967,33 +1995,43 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    // checkpoint frozen during deployment
-    if (ctx.recovery || operator.getState() != PTOperator.State.PENDING_DEPLOY) {
-      // remove previous checkpoints
-      Checkpoint c1 = Checkpoint.INITIAL_CHECKPOINT;
-      synchronized (operator.checkpoints) {
-        if (!operator.checkpoints.isEmpty() && (operator.checkpoints.getFirst()).windowId <= maxCheckpoint) {
-          c1 = operator.checkpoints.getFirst();
-          Checkpoint c2;
-          while (operator.checkpoints.size() > 1 && ((c2 = operator.checkpoints.get(1)).windowId) <= maxCheckpoint) {
-            operator.checkpoints.removeFirst();
-            //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getName(), c1);
-            this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1.windowId));
-            c1 = c2;
-          }
-        }
-        else {
-          if (ctx.recovery && operator.checkpoints.isEmpty() && operator.isOperatorStateLess()) {
-            LOG.debug("Adding checkpoint for stateless operator {} {}", operator, Codec.getStringWindowId(maxCheckpoint));
-            c1 = operator.addCheckpoint(maxCheckpoint, this.vars.windowStartMillis);
-          }
-        }
+    // find the common checkpoint that is <= downstream recovery checkpoint
+    if (!commonCheckpoints.contains(maxCheckpoint)) {
+      if (!commonCheckpoints.isEmpty()) {
+        maxCheckpoint = Objects.firstNonNull(commonCheckpoints.floor(maxCheckpoint), maxCheckpoint);
       }
-      //LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getName(), c1, operator.checkpoints});
-      operator.setRecoveryCheckpoint(c1);
     }
-    else {
-      LOG.debug("Skipping checkpoint update {} during {}", operator, operator.getState());
+
+    for (PTOperator groupOper : groupOpers) {
+      // checkpoint frozen during deployment
+      if (ctx.recovery || groupOper.getState() != PTOperator.State.PENDING_DEPLOY) {
+        // remove previous checkpoints
+        Checkpoint c1 = Checkpoint.INITIAL_CHECKPOINT;
+        LinkedList<Checkpoint> checkpoints = groupOper.checkpoints;
+        synchronized (checkpoints) {
+          if (!checkpoints.isEmpty() && (checkpoints.getFirst()).windowId <= maxCheckpoint.windowId) {
+            c1 = checkpoints.getFirst();
+            Checkpoint c2;
+            while (checkpoints.size() > 1 && ((c2 = checkpoints.get(1)).windowId) <= maxCheckpoint.windowId) {
+              checkpoints.removeFirst();
+              //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getName(), c1);
+              this.purgeCheckpoints.add(new Pair<PTOperator, Long>(groupOper, c1.windowId));
+              c1 = c2;
+            }
+          }
+          else {
+            if (ctx.recovery && checkpoints.isEmpty() && groupOper.isOperatorStateLess()) {
+              LOG.debug("Adding checkpoint for stateless operator {} {}", groupOper, Codec.getStringWindowId(maxCheckpoint.windowId));
+              c1 = groupOper.addCheckpoint(maxCheckpoint.windowId, this.vars.windowStartMillis);
+            }
+          }
+        }
+        //LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getName(), c1, operator.checkpoints});
+        groupOper.setRecoveryCheckpoint(c1);
+      }
+      else {
+        LOG.debug("Skipping checkpoint update {} during {}", groupOper, groupOper.getState());
+      }
     }
 
   }
@@ -2009,13 +2047,32 @@ public class StreamingContainerManager implements PlanContext
     return this.vars.windowStartMillis;
   }
 
+  private Map<OperatorMeta, Set<OperatorMeta>> getCheckpointGroups()
+  {
+    if (this.checkpointGroups == null) {
+      this.checkpointGroups = new HashMap<>();
+      LogicalPlan dag = this.plan.getLogicalPlan();
+      dag.resetNIndex();
+      LogicalPlan.ValidationContext vc = new LogicalPlan.ValidationContext();
+      for (OperatorMeta om : dag.getRootOperators()) {
+        this.plan.getLogicalPlan().findStronglyConnected(om, vc);
+      }
+      for (Set<OperatorMeta> checkpointGroup : vc.stronglyConnected) {
+        for (OperatorMeta om : checkpointGroup) {
+          this.checkpointGroups.put(om, checkpointGroup);
+        }
+      }
+    }
+    return checkpointGroups;
+  }
+
   /**
    * Visit all operators to update current checkpoint based on updated downstream state.
    * Purge older checkpoints that are no longer needed.
    */
   private long updateCheckpoints(boolean recovery)
   {
-    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, recovery);
+    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, recovery, getCheckpointGroups());
     for (OperatorMeta logicalOperator : plan.getLogicalPlan().getRootOperators()) {
       //LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
       List<PTOperator> operators = plan.getOperators(logicalOperator);

@@ -20,7 +20,11 @@ package com.datatorrent.stram.plan.logical;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
@@ -32,7 +36,13 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+
+import org.apache.hadoop.yarn.util.Clock;
+import org.apache.hadoop.yarn.util.SystemClock;
+
+import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
@@ -42,8 +52,17 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.common.util.DefaultDelayOperator;
 import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.StreamingContainerManager.UpdateCheckpointsContext;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -75,7 +94,7 @@ public class DelayOperatorTest
     GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
     GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
     GenericTestOperator opD = dag.addOperator("D", GenericTestOperator.class);
-    DefaultDelayOperator opDelay = dag.addOperator("opDelay", DefaultDelayOperator.class);
+    DefaultDelayOperator<Object> opDelay = dag.addOperator("opDelay", DefaultDelayOperator.class);
 
     dag.addStream("BtoC", opB.outport1, opC.inport1);
     dag.addStream("CtoD", opC.outport1, opD.inport1);
@@ -83,7 +102,7 @@ public class DelayOperatorTest
     dag.addStream("DelayToD", opDelay.output, opD.inport2);
 
     List<List<String>> invalidDelays = new ArrayList<>();
-    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays);
+    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays, new Stack<OperatorMeta>());
     assertEquals("operator invalid delay", 1, invalidDelays.size());
 
     try {
@@ -106,7 +125,7 @@ public class DelayOperatorTest
     dag.addStream("DelayToC", opDelay.output, opC.inport2);
 
     invalidDelays = new ArrayList<>();
-    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays);
+    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays, new Stack<OperatorMeta>());
     assertEquals("operator invalid delay", 1, invalidDelays.size());
 
     try {
@@ -373,5 +392,68 @@ public class DelayOperatorTest
         Arrays.copyOfRange(new TreeSet<>(FibonacciOperator.results).toArray(), 0, 20));
   }
 
+  @Rule
+  public TestMeta testMeta = new TestMeta();
+
+  @Test
+  public void testCheckpointUpdate()
+  {
+    LogicalPlan dag = StramTestSupport.createDAG(testMeta);
+
+    TestGeneratorInputOperator opA = dag.addOperator("A", TestGeneratorInputOperator.class);
+    GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
+    GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
+    GenericTestOperator opD = dag.addOperator("D", GenericTestOperator.class);
+    DefaultDelayOperator<Object> opDelay = dag.addOperator("opDelay", new DefaultDelayOperator<>());
+
+    dag.addStream("AtoB", opA.outport, opB.inport1);
+    dag.addStream("BtoC", opB.outport1, opC.inport1);
+    dag.addStream("CtoD", opC.outport1, opD.inport1);
+    dag.addStream("CtoDelay", opC.outport2, opDelay.input);
+    dag.addStream("DelayToB", opDelay.output, opB.inport2);
+    dag.validate();
+
+    dag.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = scm.getPhysicalPlan();
+    // set all operators as active to enable recovery window id update
+    for (PTOperator oper : plan.getAllOperators().values()) {
+      oper.setState(PTOperator.State.ACTIVE);
+    }
+
+    Clock clock = new SystemClock();
+
+    PTOperator opA1 = plan.getOperators(dag.getMeta(opA)).get(0);
+    PTOperator opB1 = plan.getOperators(dag.getMeta(opB)).get(0);
+    PTOperator opC1 = plan.getOperators(dag.getMeta(opC)).get(0);
+    PTOperator opDelay1 = plan.getOperators(dag.getMeta(opDelay)).get(0);
+    PTOperator opD1 = plan.getOperators(dag.getMeta(opD)).get(0);
+
+    Checkpoint cp3 = new Checkpoint(3L, 0, 0);
+    Checkpoint cp5 = new Checkpoint(5L, 0, 0);
+    Checkpoint cp4 = new Checkpoint(4L, 0, 0);
+
+    opB1.checkpoints.add(cp3);
+    opC1.checkpoints.add(cp3);
+    opC1.checkpoints.add(cp4);
+    opDelay1.checkpoints.add(cp3);
+    opDelay1.checkpoints.add(cp5);
+    opD1.checkpoints.add(cp5);
+    // construct grouping that would be supplied through LogicalPlan
+    Set<OperatorMeta> stronglyConnected = Sets.newHashSet(dag.getMeta(opB), dag.getMeta(opC), dag.getMeta(opDelay));
+    Map<OperatorMeta, Set<OperatorMeta>> groups = new HashMap<>();
+    for (OperatorMeta om : stronglyConnected) {
+      groups.put(om, stronglyConnected);
+    }
+
+    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, false, groups);
+    scm.updateRecoveryCheckpoints(opB1, ctx);
+
+    Assert.assertEquals("checkpoint " + opA1, Checkpoint.INITIAL_CHECKPOINT, opA1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + opB1, cp3, opC1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + opC1, cp3, opC1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + opD1, cp5, opD1.getRecoveryCheckpoint());
+
+  }
 
 }
