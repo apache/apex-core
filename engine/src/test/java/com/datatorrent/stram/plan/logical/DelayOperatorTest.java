@@ -96,7 +96,7 @@ public class DelayOperatorTest
     GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
     GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
     GenericTestOperator opD = dag.addOperator("D", GenericTestOperator.class);
-    DefaultDelayOperator opDelay = dag.addOperator("opDelay", DefaultDelayOperator.class);
+    DefaultDelayOperator<Object> opDelay = dag.addOperator("opDelay", DefaultDelayOperator.class);
 
     dag.addStream("BtoC", opB.outport1, opC.inport1);
     dag.addStream("CtoD", opC.outport1, opD.inport1);
@@ -104,7 +104,7 @@ public class DelayOperatorTest
     dag.addStream("DelayToD", opDelay.output, opD.inport2);
 
     List<List<String>> invalidDelays = new ArrayList<>();
-    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays);
+    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays, new Stack<OperatorMeta>());
     assertEquals("operator invalid delay", 1, invalidDelays.size());
 
     try {
@@ -127,7 +127,7 @@ public class DelayOperatorTest
     dag.addStream("DelayToC", opDelay.output, opC.inport2);
 
     invalidDelays = new ArrayList<>();
-    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays);
+    dag.findInvalidDelays(dag.getMeta(opB), invalidDelays, new Stack<OperatorMeta>());
     assertEquals("operator invalid delay", 1, invalidDelays.size());
 
     try {
@@ -450,8 +450,7 @@ public class DelayOperatorTest
     Assert.assertEquals("checkpoint " + opA1, Checkpoint.INITIAL_CHECKPOINT, opA1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + opB1, cp3, opC1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + opC1, cp3, opC1.getRecoveryCheckpoint());
-    Assert.assertEquals("checkpoint " + opD1, cp3, opC1.getRecoveryCheckpoint());
-
+    Assert.assertEquals("checkpoint " + opD1, cp5, opD1.getRecoveryCheckpoint());
 
   }
 
