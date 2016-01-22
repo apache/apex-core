@@ -169,6 +169,7 @@ public class StreamingContainerManager implements PlanContext
   private RecoveryHandler recoveryHandler;
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
+  private final ConcurrentMap<PTOperator, PTOperator> slowestUpstreamOp = new ConcurrentHashMap<>();
   private long committedWindowId;
   // (operator id, port name) to timestamp
   private final Map<Pair<Integer, String>, Long> operatorPortLastEndWindowTimestamps = Maps.newConcurrentMap();
@@ -764,6 +765,7 @@ public class StreamingContainerManager implements PlanContext
         Set<Integer> endWindowStatsOperators = endWindowStatsMap.keySet();
 
         aggregateMetrics(windowId, endWindowStatsMap);
+        criticalPathInfo = findCriticalPath();
 
         if (allCurrentOperators.containsAll(endWindowStatsOperators)) {
           if (endWindowStatsMap.size() < numOperators) {
@@ -776,22 +778,6 @@ public class StreamingContainerManager implements PlanContext
             }
           }
           else {
-            // collected data from all operators for this window id.  start latency calculation
-            List<OperatorMeta> rootOperatorMetas = plan.getLogicalPlan().getRootOperators();
-            Set<PTOperator> endWindowStatsVisited = new HashSet<PTOperator>();
-            Set<PTOperator> leafOperators = new HashSet<PTOperator>();
-            for (OperatorMeta root : rootOperatorMetas) {
-              List<PTOperator> rootOperators = plan.getOperators(root);
-              for (PTOperator rootOperator : rootOperators) {
-                // DFS for visiting the operators for latency calculation
-                LOG.debug("Calculating latency starting from operator {}", rootOperator.getId());
-                calculateLatency(rootOperator, endWindowStatsMap, endWindowStatsVisited, leafOperators);
-              }
-            }
-            CriticalPathInfo cpi = new CriticalPathInfo();
-            //LOG.debug("Finding critical path...");
-            cpi.latency = findCriticalPath(endWindowStatsMap, leafOperators, cpi.path);
-            criticalPathInfo = cpi;
             endWindowStatsOperatorMap.remove(windowId);
             currentEndWindowStatsWindowId = windowId;
           }
@@ -913,106 +899,28 @@ public class StreamingContainerManager implements PlanContext
     return logicalMetrics.get(operatorName);
   }
 
-  private void calculateLatency(PTOperator oper, Map<Integer, EndWindowStats> endWindowStatsMap, Set<PTOperator> endWindowStatsVisited, Set<PTOperator> leafOperators)
+  private CriticalPathInfo findCriticalPath()
   {
-    endWindowStatsVisited.add(oper);
-    OperatorStatus operatorStatus = oper.stats;
-
-    EndWindowStats endWindowStats = endWindowStatsMap.get(oper.getId());
-    if (endWindowStats == null) {
-      LOG.info("End window stats is null for operator {}, probably a new operator after partitioning", oper);
-      return;
-    }
-
-    // find the maximum end window emit time from all input ports
-    long upstreamMaxEmitTimestamp = -1;
-    PTOperator upstreamMaxEmitTimestampOperator = null;
-    for (PTOperator.PTInput input : oper.getInputs()) {
-      if (null != input.source.source) {
-        PTOperator upstreamOp = input.source.source;
-        EndWindowStats upstreamEndWindowStats = endWindowStatsMap.get(upstreamOp.getId());
-        if (upstreamEndWindowStats == null) {
-          LOG.info("End window stats is null for operator {}", oper);
-          return;
-        }
-        long adjustedEndWindowEmitTimestamp = upstreamEndWindowStats.emitTimestamp;
-        MovingAverageLong rpcLatency = rpcLatencies.get(upstreamOp.getContainer().getExternalId());
-        if (rpcLatency != null) {
-          adjustedEndWindowEmitTimestamp += rpcLatency.getAvg();
-        }
-        if (adjustedEndWindowEmitTimestamp > upstreamMaxEmitTimestamp) {
-          upstreamMaxEmitTimestamp = adjustedEndWindowEmitTimestamp;
-          upstreamMaxEmitTimestampOperator = upstreamOp;
-        }
+    CriticalPathInfo result = null;
+    List<PTOperator> leafOperators = plan.getLeafOperators();
+    for (PTOperator leafOperator : leafOperators) {
+      CriticalPathInfo cpi = new CriticalPathInfo();
+      findCriticalPathHelper(leafOperator, cpi);
+      if (result == null || result.latency < cpi.latency) {
+        result = cpi;
       }
     }
-
-    if (upstreamMaxEmitTimestamp > 0) {
-      long adjustedEndWindowEmitTimestamp = endWindowStats.emitTimestamp;
-      MovingAverageLong rpcLatency = rpcLatencies.get(oper.getContainer().getExternalId());
-      if (rpcLatency != null) {
-        adjustedEndWindowEmitTimestamp += rpcLatency.getAvg();
-      }
-      if (upstreamMaxEmitTimestamp <= adjustedEndWindowEmitTimestamp) {
-        LOG.debug("Adding {} to latency MA for {}", adjustedEndWindowEmitTimestamp - upstreamMaxEmitTimestamp, oper);
-        operatorStatus.latencyMA.add(adjustedEndWindowEmitTimestamp - upstreamMaxEmitTimestamp);
-      } else {
-        operatorStatus.latencyMA.add(0);
-        if (lastLatencyWarningTime < System.currentTimeMillis() - LATENCY_WARNING_THRESHOLD_MILLIS) {
-          LOG.warn("Latency calculation for this operator may not be correct because upstream end window timestamp is greater than this operator's end window timestamp: {} ({}) > {} ({}). Please verify that the system clocks are in sync in your cluster. You can also try tweaking the RPC_LATENCY_COMPENSATION_SAMPLES application attribute (currently set to {}).",
-                  upstreamMaxEmitTimestamp, upstreamMaxEmitTimestampOperator, adjustedEndWindowEmitTimestamp, oper, this.vars.rpcLatencyCompensationSamples);
-          lastLatencyWarningTime = System.currentTimeMillis();
-        }
-      }
-    }
-
-    if (oper.getOutputs().isEmpty()) {
-      // it is a leaf operator
-      leafOperators.add(oper);
-    }
-    else {
-      for (PTOperator.PTOutput output : oper.getOutputs()) {
-        for (PTOperator.PTInput input : output.sinks) {
-          if (input.target != null) {
-            PTOperator downStreamOp = input.target;
-            if (!endWindowStatsVisited.contains(downStreamOp)) {
-              calculateLatency(downStreamOp, endWindowStatsMap, endWindowStatsVisited, leafOperators);
-            }
-          }
-        }
-      }
-    }
+    return result;
   }
-  /*
-   * returns cumulative latency
-   */
-  private long findCriticalPath(Map<Integer, EndWindowStats> endWindowStatsMap, Set<PTOperator> operators, LinkedList<Integer> criticalPath)
-  {
-    long maxEndWindowTimestamp = 0;
-    PTOperator maxOperator = null;
-    for (PTOperator operator : operators) {
-      EndWindowStats endWindowStats = endWindowStatsMap.get(operator.getId());
-      if (maxEndWindowTimestamp < endWindowStats.emitTimestamp) {
-        maxEndWindowTimestamp = endWindowStats.emitTimestamp;
-        maxOperator = operator;
-      }
-    }
-    if (maxOperator == null) {
-      return 0;
-    }
-    criticalPath.addFirst(maxOperator.getId());
-    OperatorStatus operatorStatus = maxOperator.stats;
 
-    operators.clear();
-    if (maxOperator.getInputs() == null || maxOperator.getInputs().isEmpty()) {
-      return operatorStatus.latencyMA.getAvg();
+  private void findCriticalPathHelper(PTOperator operator, CriticalPathInfo cpi)
+  {
+    cpi.latency += operator.stats.getLatencyMA();
+    cpi.path.addFirst(operator.getId());
+    PTOperator slowestUpstreamOperator = slowestUpstreamOp.get(operator);
+    if (slowestUpstreamOperator != null) {
+      findCriticalPathHelper(slowestUpstreamOperator, cpi);
     }
-    for (PTOperator.PTInput input : maxOperator.getInputs()) {
-      if (null != input.source.source) {
-        operators.add(input.source.source);
-      }
-    }
-    return operatorStatus.latencyMA.getAvg() + findCriticalPath(endWindowStatsMap, operators, criticalPath);
   }
 
   public int processEvents()
@@ -1332,7 +1240,7 @@ public class StreamingContainerManager implements PlanContext
     switch (oper.getState()) {
       case ACTIVE:
         // Commented out the warning below because it's expected when the operator does something
-        // quickly and goes out of commission, it will report SHUTDOWN correcly whereas this code
+        // quickly and goes out of commission, it will report SHUTDOWN correctly whereas this code
         // is incorrectly expecting ACTIVE to be reported.
         //LOG.warn("status out of sync {} expected {} remote {}", oper, oper.getState(), ds);
         // operator expected active, check remote status
@@ -1357,12 +1265,14 @@ public class StreamingContainerManager implements PlanContext
                 deactivatedOpers.add(oper);
               }
               sca.undeployOpers.add(oper.getId());
+              slowestUpstreamOp.remove(oper);
               // record operator stop event
               recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
               break;
             case FAILED:
               processOperatorFailure(oper);
               sca.undeployOpers.add(oper.getId());
+              slowestUpstreamOp.remove(oper);
               recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
               break;
             case ACTIVE:
@@ -1380,6 +1290,7 @@ public class StreamingContainerManager implements PlanContext
         else {
           // operator is currently deployed, request undeploy
           sca.undeployOpers.add(oper.getId());
+          slowestUpstreamOp.remove(oper);
         }
         break;
       case PENDING_DEPLOY:
@@ -1402,6 +1313,7 @@ public class StreamingContainerManager implements PlanContext
         if (ds != null) {
           // operator was removed and needs to be undeployed from container
           sca.undeployOpers.add(oper.getId());
+          slowestUpstreamOp.remove(oper);
           recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
         }
     }
@@ -1694,6 +1606,42 @@ public class StreamingContainerManager implements PlanContext
               endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
             }
             endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
+
+            if (!oper.getInputs().isEmpty()) {
+              long latency = Long.MAX_VALUE;
+              long adjustedEndWindowEmitTimestamp = endWindowStats.emitTimestamp;
+              MovingAverageLong rpcLatency = rpcLatencies.get(oper.getContainer().getExternalId());
+              if (rpcLatency != null) {
+                adjustedEndWindowEmitTimestamp += rpcLatency.getAvg();
+              }
+              PTOperator slowestUpstream = null;
+              for (PTInput input : oper.getInputs()) {
+                PTOperator upstreamOp = input.source.source;
+                EndWindowStats ews = endWindowStatsMap.get(upstreamOp.getId());
+                long portLatency;
+                if (ews == null) {
+                  // This is when the operator is likely to be behind too many windows. We need to give an estimate for
+                  // latency at this point, by looking at the number of windows behind
+                  int widthMillis = plan.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS);
+                  portLatency = (upstreamOp.stats.currentWindowId.get() - oper.stats.currentWindowId.get()) * widthMillis;
+                } else {
+                  MovingAverageLong upstreamRPCLatency = rpcLatencies.get(upstreamOp.getContainer().getExternalId());
+                  portLatency = adjustedEndWindowEmitTimestamp - ews.emitTimestamp;
+                  if (upstreamRPCLatency != null) {
+                    portLatency -= upstreamRPCLatency.getAvg();
+                  }
+                }
+                if (portLatency < 0) {
+                  portLatency = 0;
+                }
+                if (latency > portLatency) {
+                  latency = portLatency;
+                  slowestUpstream = upstreamOp;
+                }
+              }
+              status.latencyMA.add(latency);
+              slowestUpstreamOp.put(oper, slowestUpstream);
+            }
 
             Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
             int numOperators = plan.getAllOperators().size();
