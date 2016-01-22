@@ -19,6 +19,7 @@
 package com.datatorrent.stram.plan.logical;
 
 import com.datatorrent.common.util.BaseOperator;
+import com.datatorrent.common.util.DefaultDelayOperator;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -35,6 +36,7 @@ import javax.validation.constraints.Pattern;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -43,7 +45,6 @@ import static org.junit.Assert.*;
 
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.api.*;
-import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -61,10 +62,12 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 
-public class LogicalPlanTest {
+public class LogicalPlanTest
+{
 
   @Test
-  public void testCycleDetection() {
+  public void testCycleDetection()
+  {
      LogicalPlan dag = new LogicalPlan();
 
      //NodeConf operator1 = b.getOrAddNode("operator1");
@@ -91,20 +94,20 @@ public class LogicalPlanTest {
        // expected, stream can have single input/output only
      }
 
-     List<List<String>> cycles = new ArrayList<List<String>>();
-     dag.findStronglyConnected(dag.getMeta(operator7), cycles);
-     assertEquals("operator self reference", 1, cycles.size());
-     assertEquals("operator self reference", 1, cycles.get(0).size());
-     assertEquals("operator self reference", dag.getMeta(operator7).getName(), cycles.get(0).get(0));
+     LogicalPlan.ValidationContext vc = new LogicalPlan.ValidationContext();
+     dag.findStronglyConnected(dag.getMeta(operator7), vc);
+     assertEquals("operator self reference", 1, vc.invalidCycles.size());
+     assertEquals("operator self reference", 1, vc.invalidCycles.get(0).size());
+     assertEquals("operator self reference", dag.getMeta(operator7), vc.invalidCycles.get(0).iterator().next());
 
      // 3 operator cycle
-     cycles.clear();
-     dag.findStronglyConnected(dag.getMeta(operator4), cycles);
-     assertEquals("3 operator cycle", 1, cycles.size());
-     assertEquals("3 operator cycle", 3, cycles.get(0).size());
-     assertTrue("operator2", cycles.get(0).contains(dag.getMeta(operator2).getName()));
-     assertTrue("operator3", cycles.get(0).contains(dag.getMeta(operator3).getName()));
-     assertTrue("operator4", cycles.get(0).contains(dag.getMeta(operator4).getName()));
+     vc = new LogicalPlan.ValidationContext();
+     dag.findStronglyConnected(dag.getMeta(operator4), vc);
+     assertEquals("3 operator cycle", 1, vc.invalidCycles.size());
+     assertEquals("3 operator cycle", 3, vc.invalidCycles.get(0).size());
+     assertTrue("operator2", vc.invalidCycles.get(0).contains(dag.getMeta(operator2)));
+     assertTrue("operator3", vc.invalidCycles.get(0).contains(dag.getMeta(operator3)));
+     assertTrue("operator4", vc.invalidCycles.get(0).contains(dag.getMeta(operator4)));
 
      try {
        dag.validate();
@@ -115,13 +118,44 @@ public class LogicalPlanTest {
 
   }
 
-  public static class ValidationOperator extends BaseOperator {
+  @Test
+  public void testCycleDetectionWithDelay()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator opA = dag.addOperator("A", TestGeneratorInputOperator.class);
+    GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
+    GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
+    GenericTestOperator opD = dag.addOperator("D", GenericTestOperator.class);
+    DefaultDelayOperator<Object> opDelay = dag.addOperator("opDelay", new DefaultDelayOperator<>());
+    DefaultDelayOperator<Object> opDelay2 = dag.addOperator("opDelay2", new DefaultDelayOperator<>());
+
+    dag.addStream("AtoB", opA.outport, opB.inport1);
+    dag.addStream("BtoC", opB.outport1, opC.inport1);
+    dag.addStream("CtoD", opC.outport1, opD.inport1);
+    dag.addStream("CtoDelay", opC.outport2, opDelay.input);
+    dag.addStream("DtoDelay", opD.outport1, opDelay2.input);
+    dag.addStream("DelayToB", opDelay.output, opB.inport2);
+    dag.addStream("Delay2ToC", opDelay2.output, opC.inport2);
+
+    LogicalPlan.ValidationContext vc = new LogicalPlan.ValidationContext();
+    dag.findStronglyConnected(dag.getMeta(opA), vc);
+
+    Assert.assertEquals("No invalid cycle", Collections.emptyList(), vc.invalidCycles);
+    Set<OperatorMeta> exp = Sets.newHashSet(dag.getMeta(opDelay2), dag.getMeta(opDelay), dag.getMeta(opC), dag.getMeta(opB), dag.getMeta(opD));
+    Assert.assertEquals("cycle", exp, vc.stronglyConnected.get(0));
+  }
+
+
+  public static class ValidationOperator extends BaseOperator
+  {
     public final transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>();
 
     public final transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>();
   }
 
-  public static class CounterOperator extends BaseOperator {
+  public static class CounterOperator extends BaseOperator
+  {
     final public transient InputPort<Object> countInputPort = new DefaultInputPort<Object>() {
       @Override
       final public void process(Object payload) {
@@ -130,8 +164,8 @@ public class LogicalPlanTest {
   }
 
   @Test
-  public void testLogicalPlanSerialization() throws Exception {
-
+  public void testLogicalPlanSerialization() throws Exception
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
@@ -188,7 +222,8 @@ public class LogicalPlanTest {
     Assert.assertEquals("", 2, dag.getAllOperators().size());
   }
 
-  public static class ValidationTestOperator extends BaseOperator implements InputOperator {
+  public static class ValidationTestOperator extends BaseOperator implements InputOperator
+  {
     @NotNull
     @Pattern(regexp=".*malhar.*", message="Value has to contain 'malhar'!")
     private String stringField1;
@@ -271,8 +306,8 @@ public class LogicalPlanTest {
   }
 
   @Test
-  public void testOperatorValidation() {
-
+  public void testOperatorValidation()
+  {
     ValidationTestOperator bean = new ValidationTestOperator();
     bean.stringField1 = "malhar1";
     bean.intField1 = 1;
@@ -348,7 +383,8 @@ public class LogicalPlanTest {
   }
 
   @OperatorAnnotation(partitionable = false)
-  public static class TestOperatorAnnotationOperator extends BaseOperator {
+  public static class TestOperatorAnnotationOperator extends BaseOperator
+  {
 
     @InputPortFieldAnnotation( optional = true)
     final public transient DefaultInputPort<Object> input1 = new DefaultInputPort<Object>() {
@@ -358,11 +394,13 @@ public class LogicalPlanTest {
     };
   }
 
-  class NoInputPortOperator extends BaseOperator {
+  class NoInputPortOperator extends BaseOperator
+  {
   }
 
   @Test
-  public void testValidationForNonInputRootOperator() {
+  public void testValidationForNonInputRootOperator()
+  {
     LogicalPlan dag = new LogicalPlan();
     NoInputPortOperator x = dag.addOperator("x", new NoInputPortOperator());
     try {
@@ -374,8 +412,8 @@ public class LogicalPlanTest {
   }
 
   @OperatorAnnotation(partitionable = false)
-  public static class TestOperatorAnnotationOperator2 extends BaseOperator implements Partitioner<TestOperatorAnnotationOperator2> {
-
+  public static class TestOperatorAnnotationOperator2 extends BaseOperator implements Partitioner<TestOperatorAnnotationOperator2>
+  {
     @Override
     public Collection<Partition<TestOperatorAnnotationOperator2>> definePartitions(Collection<Partition<TestOperatorAnnotationOperator2>> partitions, PartitioningContext context)
     {
@@ -389,7 +427,8 @@ public class LogicalPlanTest {
   }
 
   @Test
-  public void testOperatorAnnotation() {
+  public void testOperatorAnnotation()
+  {
     LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input = dag.addOperator("input1", TestGeneratorInputOperator.class);
     TestOperatorAnnotationOperator operator = dag.addOperator("operator1", TestOperatorAnnotationOperator.class);
@@ -430,8 +469,8 @@ public class LogicalPlanTest {
   }
 
   @Test
-  public void testPortConnectionValidation() {
-
+  public void testPortConnectionValidation()
+  {
     LogicalPlan dag = new LogicalPlan();
 
     TestNonOptionalOutportInputOperator input = dag.addOperator("input1", TestNonOptionalOutportInputOperator.class);
@@ -459,7 +498,8 @@ public class LogicalPlanTest {
   }
 
   @Test
-  public void testAtMostOnceProcessingModeValidation() {
+  public void testAtMostOnceProcessingModeValidation()
+  {
     LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
@@ -489,8 +529,9 @@ public class LogicalPlanTest {
 
   }
 
-    @Test
-  public void testExactlyOnceProcessingModeValidation() {
+  @Test
+  public void testExactlyOnceProcessingModeValidation()
+  {
     LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
@@ -527,7 +568,8 @@ public class LogicalPlanTest {
   }
 
   @Test
-  public void testLocalityValidation() {
+  public void testLocalityValidation()
+  {
     LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
@@ -549,7 +591,8 @@ public class LogicalPlanTest {
     dag.validate();
   }
 
-  private class TestAnnotationsOperator extends BaseOperator implements InputOperator {
+  private class TestAnnotationsOperator extends BaseOperator implements InputOperator
+  {
     //final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
     @OutputPortFieldAnnotation( optional=false)
@@ -562,7 +605,8 @@ public class LogicalPlanTest {
     }
   }
 
-  private class TestAnnotationsOperator2 extends BaseOperator implements InputOperator{
+  private class TestAnnotationsOperator2 extends BaseOperator implements InputOperator
+  {
     // multiple ports w/o annotation, one of them must be connected
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
@@ -573,7 +617,8 @@ public class LogicalPlanTest {
     }
   }
 
-  private class TestAnnotationsOperator3 extends BaseOperator implements InputOperator{
+  private class TestAnnotationsOperator3 extends BaseOperator implements InputOperator
+  {
     // multiple ports w/o annotation, one of them must be connected
     @OutputPortFieldAnnotation( optional=true)
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
@@ -587,7 +632,8 @@ public class LogicalPlanTest {
   }
 
   @Test
-  public void testOutputPortAnnotation() {
+  public void testOutputPortAnnotation()
+  {
     LogicalPlan dag = new LogicalPlan();
     TestAnnotationsOperator ta1 = dag.addOperator("testAnnotationsOperator", new TestAnnotationsOperator());
 
@@ -623,7 +669,8 @@ public class LogicalPlanTest {
    * Operator that can be used with default Java serialization instead of Kryo
    */
   @DefaultSerializer(JavaSerializer.class)
-  public static class JdkSerializableOperator extends BaseOperator implements Serializable {
+  public static class JdkSerializableOperator extends BaseOperator implements Serializable
+  {
     private static final long serialVersionUID = -4024202339520027097L;
 
     public abstract class SerializableInputPort<T> implements InputPort<T>, Sink<T>, java.io.Serializable {
@@ -673,7 +720,8 @@ public class LogicalPlanTest {
   }
 
   @Test
-  public void testJdkSerializableOperator() throws Exception {
+  public void testJdkSerializableOperator() throws Exception
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.addOperator("o1", new JdkSerializableOperator());
 
@@ -785,7 +833,8 @@ public class LogicalPlanTest {
     }
   }
 
-  public static class TestPortCodecOperator extends BaseOperator {
+  public static class TestPortCodecOperator extends BaseOperator
+  {
     public transient final DefaultInputPort<Object> inport1 = new DefaultInputPort<Object>()
     {
       @Override
