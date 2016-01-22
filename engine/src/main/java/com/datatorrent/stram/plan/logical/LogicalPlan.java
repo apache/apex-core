@@ -1636,6 +1636,14 @@ public class LogicalPlan implements Serializable, DAG
     public List<Set<OperatorMeta>> invalidCycles = new ArrayList<>();
   }
 
+  public void resetNIndex()
+  {
+    for (OperatorMeta om : getAllOperators()) {
+      om.lowlink = null;
+      om.nindex = null;
+    }
+  }
+
   /**
    * Validate the plan. Includes checks that required ports are connected,
    * required configuration parameters specified, graph free of cycles etc.

@@ -2049,6 +2049,7 @@ public class StreamingContainerManager implements PlanContext
     if (this.checkpointGroups == null) {
       this.checkpointGroups = new HashMap<>();
       LogicalPlan dag = this.plan.getLogicalPlan();
+      dag.resetNIndex();
       LogicalPlan.ValidationContext vc = new LogicalPlan.ValidationContext();
       for (OperatorMeta om : dag.getRootOperators()) {
         this.plan.getLogicalPlan().findStronglyConnected(om, vc);
