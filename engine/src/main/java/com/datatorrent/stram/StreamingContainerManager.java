@@ -1033,6 +1033,14 @@ public class StreamingContainerManager implements PlanContext
         }
       }
       o.stats.lastWindowedStats = stats;
+      o.stats.operatorResponses = null;
+      if (!o.stats.responses.isEmpty()) {
+        o.stats.operatorResponses = new ArrayList<>();
+        StatsListener.OperatorResponse operatorResponse;
+        while ((operatorResponse = o.stats.responses.poll()) != null) {
+          o.stats.operatorResponses.add(operatorResponse);
+        }
+      }
       if (o.stats.lastWindowedStats != null) {
         // call listeners only with non empty window list
         if (o.statsListeners != null) {
@@ -1530,10 +1538,7 @@ public class StreamingContainerManager implements PlanContext
             LOG.debug(" Got back the response {} for the request {}", obj, obj.getResponseId());
           }
           else {       // This is to identify user requests
-            if (oper.stats.operatorResponses == null) {
-              oper.stats.operatorResponses = new ArrayList<StatsListener.OperatorResponse>();
-            }
-            oper.stats.operatorResponses.add(obj);
+            oper.stats.responses.add(obj);
           }
         }
       }

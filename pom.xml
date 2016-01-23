@@ -64,7 +64,6 @@
     <!-- do not change jetty version as later versions have problems with DefaultServlet -->
     <jetty.version>8.1.10.v20130312</jetty.version>
     <license.skip>true</license.skip>
-    <checkstyle.console>false</checkstyle.console>
     <postNoticeText>The initial developer of the original code is&#xA;DataTorrent, Inc. (http://www.datatorrent.com)&#xA;Copyright (c) 2012 - 2015. All Rights Reserved.</postNoticeText>
   </properties>
 
@@ -316,16 +315,11 @@
               <goals>
                 <goal>check</goal>
               </goals>
-              <configuration>
-                <failOnViolation>true</failOnViolation>
-                <logViolationsToConsole>${checkstyle.console}</logViolationsToConsole>
-              </configuration>
             </execution>
           </executions>
           <configuration>
             <configLocation>apex_checks.xml</configLocation>
             <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
-            <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
             <includeTestSourceDirectory>true</includeTestSourceDirectory>
           </configuration>
         </plugin>

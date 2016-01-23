@@ -206,10 +206,11 @@ public class PhysicalPlan implements Serializable
       p.statsListeners = this.statsHandlers;
     }
 
+    /**
+     * Return all partitions and unifiers, except MxN unifiers
+     * @return
+     */
     private Collection<PTOperator> getAllOperators() {
-//      if (partitions.size() == 1) {
-//        return Collections.singletonList(partitions.get(0));
-//      }
       Collection<PTOperator> c = new ArrayList<PTOperator>(partitions.size() + 1);
       c.addAll(partitions);
       for (StreamMapping ug : outputStreams.values()) {
@@ -394,7 +395,7 @@ public class PhysicalPlan implements Serializable
         for (StreamMeta s : n.getOutputStreams().values()) {
           if (s.getPersistOperator() != null) {
             InputPortMeta persistInputPort = s.getPersistOperatorInputPort();
-            StreamCodecWrapperForPersistance persistCodec = (StreamCodecWrapperForPersistance) persistInputPort.getAttributes().get(PortContext.STREAM_CODEC);
+            StreamCodecWrapperForPersistance<?> persistCodec = (StreamCodecWrapperForPersistance<?>) persistInputPort.getAttributes().get(PortContext.STREAM_CODEC);
             if (persistCodec == null)
               continue;
             // Logging is enabled for the stream
@@ -406,10 +407,10 @@ public class PhysicalPlan implements Serializable
           // Check partitioning for persist operators per sink too
           for (Entry<InputPortMeta, InputPortMeta> entry : s.sinkSpecificPersistInputPortMap.entrySet()) {
             InputPortMeta persistInputPort = entry.getValue();
-            StreamCodec codec = persistInputPort.getAttributes().get(PortContext.STREAM_CODEC);
+            StreamCodec<?> codec = persistInputPort.getAttributes().get(PortContext.STREAM_CODEC);
             if (codec != null) {
               if (codec instanceof StreamCodecWrapperForPersistance) {
-                StreamCodecWrapperForPersistance persistCodec = (StreamCodecWrapperForPersistance) codec;
+                StreamCodecWrapperForPersistance<?> persistCodec = (StreamCodecWrapperForPersistance<?>) codec;
                 updatePersistOperatorWithSinkPartitions(persistInputPort, s.sinkSpecificPersistOperatorMap.get(entry.getKey()), persistCodec, entry.getKey());
               }
             }
@@ -421,7 +422,7 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  private void updatePersistOperatorWithSinkPartitions(InputPortMeta persistInputPort, OperatorMeta persistOperatorMeta, StreamCodecWrapperForPersistance persistCodec, InputPortMeta sinkPortMeta)
+  private void updatePersistOperatorWithSinkPartitions(InputPortMeta persistInputPort, OperatorMeta persistOperatorMeta, StreamCodecWrapperForPersistance<?> persistCodec, InputPortMeta sinkPortMeta)
   {
     Collection<PTOperator> ptOperators = getOperators(sinkPortMeta.getOperatorWrapper());
     Collection<PartitionKeys> partitionKeysList = new ArrayList<PartitionKeys>();
@@ -440,7 +441,7 @@ public class PhysicalPlan implements Serializable
       for (OperatorMeta n : dag.getAllOperators()) {
         for (StreamMeta s : n.getOutputStreams().values()) {
           if (s.getPersistOperator() != null) {
-            Map<InputPortMeta, StreamCodec<Object>> inputStreamCodecs = new HashMap<InputPortMeta, StreamCodec<Object>>();
+            Map<InputPortMeta, StreamCodec<?>> inputStreamCodecs = new HashMap<>();
             // Logging is enabled for the stream
             for (InputPortMeta portMeta : s.getSinksToPersist()) {
               InputPort<?> port = portMeta.getPortObject();
@@ -455,7 +456,7 @@ public class PhysicalPlan implements Serializable
                   }
                 }
                 if (!alreadyAdded) {
-                  inputStreamCodecs.put(portMeta, (StreamCodec<Object>) inputStreamCodec);
+                  inputStreamCodecs.put(portMeta, inputStreamCodec);
                 }
               }
             }
@@ -469,8 +470,9 @@ public class PhysicalPlan implements Serializable
               // Create Wrapper codec for Stream persistence using all unique
               // stream codecs
               // Logger should write merged or union of all input stream codecs
-              StreamCodec<Object> specifiedCodecForLogger = (s.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC) != null) ? (StreamCodec<Object>) s.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC) : (StreamCodec<Object>) s.getPersistOperatorInputPort().getPortObject().getStreamCodec();
-              StreamCodecWrapperForPersistance<Object> codec = new StreamCodecWrapperForPersistance<Object>(inputStreamCodecs, specifiedCodecForLogger);
+              StreamCodec<?> specifiedCodecForLogger = (s.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC) != null) ? s.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC) : s.getPersistOperatorInputPort().getPortObject().getStreamCodec();
+              @SuppressWarnings({ "unchecked", "rawtypes" })
+              StreamCodecWrapperForPersistance<Object> codec = new StreamCodecWrapperForPersistance(inputStreamCodecs, specifiedCodecForLogger);
               streamMetaToCodecMap.put(s, codec);
             }
           }
