@@ -342,17 +342,16 @@ public class DelayOperatorTest
     FailableFibonacciOperator.results.clear();
     FailableFibonacciOperator.failureSimulated = false;
     final StramLocalCluster localCluster = new StramLocalCluster(dag);
+    localCluster.setPerContainerBufferServer(true);
     localCluster.setExitCondition(new Callable<Boolean>()
     {
       @Override
       public Boolean call() throws Exception
       {
-        //System.out.println("############### checking " + FailableFibonacciOperator.results.size());
-        return FailableFibonacciOperator.results.size() >= 50;
+        return FailableFibonacciOperator.results.size() >= 30;
       }
     });
     localCluster.run(60000);
-    System.out.println("RESULTS: " + FailableFibonacciOperator.results);
     Assert.assertTrue("failure should be invoked", FailableFibonacciOperator.failureSimulated);
     Assert.assertArrayEquals(Arrays.copyOfRange(new TreeSet<>(Arrays.asList(FIBONACCI_NUMBERS)).toArray(), 0, 20),
         Arrays.copyOfRange(new TreeSet<>(FibonacciOperator.results).toArray(), 0, 20));
@@ -377,6 +376,7 @@ public class DelayOperatorTest
     FibonacciOperator.results.clear();
     FailableDelayOperator.failureSimulated = false;
     final StramLocalCluster localCluster = new StramLocalCluster(dag);
+    localCluster.setPerContainerBufferServer(true);
     localCluster.setExitCondition(new Callable<Boolean>()
     {
       @Override
