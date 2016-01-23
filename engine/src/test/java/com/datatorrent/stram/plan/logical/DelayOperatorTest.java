@@ -35,7 +35,6 @@ import javax.validation.ValidationException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -451,7 +450,6 @@ public class DelayOperatorTest
     Assert.assertEquals("checkpoint " + opB1, cp3, opC1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + opC1, cp3, opC1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + opD1, cp5, opD1.getRecoveryCheckpoint());
-
   }
 
 }

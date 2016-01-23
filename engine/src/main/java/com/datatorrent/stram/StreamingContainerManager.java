@@ -1968,6 +1968,7 @@ public class StreamingContainerManager implements PlanContext
         maxCheckpoint = new Checkpoint(currentWindowId, 0, 0);
       }
     }
+LOG.debug("group: {}", groupOpers);
 
     // DFS downstream operators
     for (PTOperator groupOper : groupOpers) {
@@ -2028,7 +2029,8 @@ public class StreamingContainerManager implements PlanContext
             }
           }
         }
-        //LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getName(), c1, operator.checkpoints});
+        LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {groupOper.getName(), c1, groupOper
+            .checkpoints});
         groupOper.setRecoveryCheckpoint(c1);
       }
       else {
