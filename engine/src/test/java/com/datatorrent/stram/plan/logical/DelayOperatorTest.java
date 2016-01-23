@@ -321,7 +321,6 @@ public class DelayOperatorTest
         FibonacciOperator.results.subList(0, 10).toArray());
   }
 
-  @Ignore // Out of sequence BEGIN_WINDOW tuple on Travis. Will tackle in the next version
   @Test
   public void testFibonacciRecovery1() throws Exception
   {
