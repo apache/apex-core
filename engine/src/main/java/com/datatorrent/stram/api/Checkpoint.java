@@ -18,6 +18,8 @@
  */
 package com.datatorrent.stram.api;
 
+import java.util.Comparator;
+
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.bufferserver.util.Codec;
 
@@ -100,6 +102,15 @@ public class Checkpoint implements com.datatorrent.api.Stats.Checkpoint
   public long getWindowId()
   {
     return windowId;
+  }
+
+  public static class CheckpointComparator implements Comparator<Checkpoint>
+  {
+    @Override
+    public int compare(Checkpoint o1, Checkpoint o2)
+    {
+      return Long.compare(o1.windowId, o2.windowId);
+    }
   }
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
