@@ -72,6 +72,9 @@ import static org.junit.Assert.fail;
  */
 public class DelayOperatorTest
 {
+  @Rule
+  public TestMeta testMeta = new TestMeta();
+
   private static Lock sequential = new ReentrantLock();
 
   @Before
@@ -324,7 +327,7 @@ public class DelayOperatorTest
   @Test
   public void testFibonacciRecovery1() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
+    LogicalPlan dag = StramTestSupport.createDAG(testMeta);
 
     TestGeneratorInputOperator dummyInput = dag.addOperator("DUMMY", TestGeneratorInputOperator.class);
     FailableFibonacciOperator fib = dag.addOperator("FIB", FailableFibonacciOperator.class);
@@ -355,11 +358,10 @@ public class DelayOperatorTest
         Arrays.copyOfRange(new TreeSet<>(FibonacciOperator.results).toArray(), 0, 20));
   }
 
-  @Ignore // Out of sequence BEGIN_WINDOW tuple on Travis. Will tackle in the next version
   @Test
   public void testFibonacciRecovery2() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
+    LogicalPlan dag = StramTestSupport.createDAG(testMeta);
 
     TestGeneratorInputOperator dummyInput = dag.addOperator("DUMMY", TestGeneratorInputOperator.class);
     FibonacciOperator fib = dag.addOperator("FIB", FibonacciOperator.class);
@@ -390,9 +392,6 @@ public class DelayOperatorTest
     Assert.assertArrayEquals(Arrays.copyOfRange(new TreeSet<>(Arrays.asList(FIBONACCI_NUMBERS)).toArray(), 0, 20),
         Arrays.copyOfRange(new TreeSet<>(FibonacciOperator.results).toArray(), 0, 20));
   }
-
-  @Rule
-  public TestMeta testMeta = new TestMeta();
 
   @Test
   public void testCheckpointUpdate()
