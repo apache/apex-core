@@ -1939,6 +1939,7 @@ public class StreamingContainerManager implements PlanContext
       commonCheckpoints.addAll(operator.checkpoints);
     }
     Set<PTOperator> groupOpers = new HashSet<>(checkpointGroup.size());
+    boolean pendingDeploy = operator.getState() == PTOperator.State.PENDING_DEPLOY;
     if (checkpointGroup.size() > 1) {
       for (OperatorMeta om : checkpointGroup) {
         Collection<PTOperator> operators = plan.getAllOperators(om);
@@ -1949,6 +1950,7 @@ public class StreamingContainerManager implements PlanContext
           // visit all downstream operators of the group
           ctx.visited.add(groupOper);
           groupOpers.add(groupOper);
+          pendingDeploy |= operator.getState() == PTOperator.State.PENDING_DEPLOY;
         }
       }
       // highest common checkpoint
@@ -2005,7 +2007,7 @@ LOG.debug("group: {}", groupOpers);
 
     for (PTOperator groupOper : groupOpers) {
       // checkpoint frozen during deployment
-      if (ctx.recovery || groupOper.getState() != PTOperator.State.PENDING_DEPLOY) {
+      if (!pendingDeploy || ctx.recovery) {
         // remove previous checkpoints
         Checkpoint c1 = Checkpoint.INITIAL_CHECKPOINT;
         LinkedList<Checkpoint> checkpoints = groupOper.checkpoints;
