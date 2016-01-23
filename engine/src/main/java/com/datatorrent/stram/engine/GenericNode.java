@@ -251,8 +251,7 @@ public class GenericNode extends Node<Operator>
           SweepableReservoir activePort = activePortEntry.getValue();
           Tuple t = activePort.sweep();
           if (t != null) {
-            logger.info("###### GOT TUPLE {} window {} from {}", t.getType(),
-                Codec.getStringWindowId(t.getWindowId()), activePortEntry.getKey());
+            //logger.info("###### GOT TUPLE {} window {} from {}", t.getType(),Codec.getStringWindowId(t.getWindowId()), activePortEntry.getKey());
             boolean delay = (operator instanceof Operator.DelayOperator);
             long windowAhead = 0;
             if (delay) {
