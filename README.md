@@ -34,15 +34,15 @@ https://www.datatorrent.com/download/
 
 ##Issue tracking
 
-(Note that we will be moving to the Apache JIRA system soon.)
+[JIRA](https://issues.apache.org/jira/browse/APEXCORE) issue tracking system is used for this project.
+You can submit new issues and track the progress of existing issues at https://issues.apache.org/jira/browse/APEXCORE
 
-[Apex JIRA](https://issues.apache.org/jira/browse/APEXCORE) issue tracking system is used for this project.
-You can submit new issues and track the progress of existing issues at https://malhar.atlassian.net/projects/APEX.
+Please include the JIRA ticket number into the commit messages. It will automatically add the commit message to the JIRA ticket(s) and help link the commit with the issue(s) being tracked for easy reference.
+An example commit might look like this:
 
-When working with JIRA to submit pull requests, please use [smart commits](https://confluence.atlassian.com/display/AOD/Processing+JIRA+issues+with+commit+messages) feature by specifying APEXCORE-XXXX in the commit messages.
-It helps us link commits with issues being tracked for easy reference.  And example commit might look like this:
+    git commit -am "APEXCORE-1234 Task completed ahead of schedule"
 
-    git commit -am "APEXCORE-1234 #comment Task completed ahead of schedule #resolve"
+JIRA tickets should be resolved and fix version field set by the committer merging the pull request.
 
 ##License
 
