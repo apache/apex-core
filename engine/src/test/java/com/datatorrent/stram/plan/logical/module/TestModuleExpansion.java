@@ -341,6 +341,9 @@ public class TestModuleExpansion
       mIn.set(op.in);
       mOut1.set(m1.mOut1);
       mOut2.set(m2.mOut);
+
+      dag.addJarResource("FirstTestJar.jar", true);
+      dag.addJarResource("SecondTestJar.jar", false);
     }
   }
 
@@ -398,6 +401,22 @@ public class TestModuleExpansion
     validateTopLevelOperators(dag);
     validateTopLevelStreams(dag);
     validatePublicMethods(dag);
+  }
+
+  @Test
+  public void testModuleExtraJar()
+  {
+    StreamingApplication app = new NestedModuleApp();
+    Configuration conf = new Configuration(false);
+    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(conf);
+    LogicalPlan dag = new LogicalPlan();
+    lpc.prepareDAG(dag, app, "ModuleApp");
+
+    Map<String, Boolean> jarResources = dag.getJarResources();
+    Assert.assertTrue(jarResources.containsKey("FirstTestJar.jar"));
+    Assert.assertTrue(jarResources.get("FirstTestJar.jar"));
+    Assert.assertTrue(jarResources.containsKey("SecondTestJar.jar"));
+    Assert.assertFalse(jarResources.get("SecondTestJar.jar"));
   }
 
   private void validateTopLevelStreams(LogicalPlan dag)

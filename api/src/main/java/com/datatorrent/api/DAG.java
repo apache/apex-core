@@ -197,6 +197,15 @@ public interface DAG extends DAGContext, Serializable
   <T extends Module> T addModule(String name, T module);
 
   /**
+   * This adds a jar resource to the classpath for every operator.
+   *
+   * @param jarPath The local jar path which needs to be added to classpath of operator.
+   * @param deleteOnCopy Whether to delete the local jar after copying to HDFS.
+   */
+  @InterfaceStability.Evolving
+  void addJarResource(String jarPath, boolean deleteOnCopy);
+
+  /**
    * <p>addStream.</p>
    * @param id Identifier of the stream that will be used to identify stream in DAG
    * @return

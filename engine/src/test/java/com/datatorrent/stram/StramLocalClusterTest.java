@@ -22,14 +22,24 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Map;
 
 import org.junit.*;
+import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.LocalMode;
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.StramLocalCluster.MockComponentFactory;
 import com.datatorrent.stram.api.Checkpoint;
@@ -89,6 +99,7 @@ public class StramLocalClusterTest
 
     StramLocalCluster localCluster = new StramLocalCluster(dag);
     localCluster.setHeartbeatMonitoringEnabled(false);
+
     localCluster.run();
 
     Assert.assertTrue(outFile + " exists", outFile.exists());
@@ -263,6 +274,86 @@ public class StramLocalClusterTest
     Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Checkpoint[] {new Checkpoint(3L, 0, 0)}), ptNode2.checkpoints);
 
     localCluster.shutdown();
+  }
+
+  @Test public void testDynamicLoading() throws IOException, ClassNotFoundException
+  {
+    final String generatedJar = generatejar();
+
+    StreamingApplication app = new StreamingApplication()
+    {
+      @Override public void populateDAG(DAG dag, Configuration conf)
+      {
+        TestGeneratorInputOperator genNode = dag.addOperator("genNode", TestGeneratorInputOperator.class);
+        genNode.setMaxTuples(2);
+
+        DynamicLoader dynamicLoader = dag.addOperator("DynamicLoader", new DynamicLoader());
+        dynamicLoader.setClass("POJO");
+
+        dag.addStream("fromNode1", genNode.outport, dynamicLoader.in);
+
+        dag.addJarResource(generatedJar, false);
+      }
+    };
+
+    LocalMode.runApp(app, 10000);
+  }
+
+  public static class DynamicLoader extends BaseOperator
+  {
+    private String classToLoad;
+
+    public transient final DefaultInputPort in = new DefaultInputPort()
+    {
+      @Override public void process(Object tuple)
+      {
+
+      }
+    };
+
+    @Override public void setup(Context.OperatorContext context)
+    {
+      try {
+        Thread.currentThread().getContextClassLoader().loadClass(classToLoad);
+        Assert.assertTrue(true);
+      } catch (ClassNotFoundException e) {
+        Assert.fail(e.getMessage());
+      }
+
+      try {
+        Class.forName(classToLoad, true, Thread.currentThread().getContextClassLoader());
+        Assert.assertTrue(true);
+      } catch (ClassNotFoundException e) {
+        Assert.fail(e.getMessage());
+      }
+    }
+
+    public void setClass(String aClass)
+    {
+      this.classToLoad = aClass;
+    }
+  }
+
+  private String generatejar()
+  {
+    String jarDir = "src/test/resources/dynamicJar";
+
+    try {
+      Process p = Runtime.getRuntime().exec(new String[] { "javac", "POJO.java" }, null, new File(jarDir));
+      IOUtils.copy(p.getInputStream(), System.out);
+      IOUtils.copy(p.getErrorStream(), System.err);
+      Assert.assertEquals(0, p.waitFor());
+
+      p = Runtime.getRuntime()
+          .exec(new String[] { "jar", "-cf", "testPOJO.jar", "POJO.class" }, null, new File(jarDir));
+      IOUtils.copy(p.getInputStream(), System.out);
+      IOUtils.copy(p.getErrorStream(), System.err);
+      Assert.assertEquals(0, p.waitFor());
+
+      return new File(jarDir + "/testPOJO.jar").getAbsolutePath();
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
 }
