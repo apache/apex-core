@@ -92,22 +92,30 @@ public class StramAppLauncher
     String getName();
 
     String getDisplayName();
+
+    String getDescription();
   }
 
   public static class PropertyFileAppFactory implements AppFactory
   {
     final File propertyFile;
+    final Properties properties;
 
     public PropertyFileAppFactory(File file)
     {
       this.propertyFile = file;
+      try {
+        this.properties = LogicalPlanConfiguration.readProperties(propertyFile.getAbsolutePath());
+      } catch (IOException e) {
+        throw new IllegalArgumentException("Failed to load: " + this + "\n" + e.getMessage(), e);
+      }
     }
 
     @Override
     public LogicalPlan createApp(LogicalPlanConfiguration conf)
     {
       try {
-        return conf.createFromProperties(LogicalPlanConfiguration.readProperties(propertyFile.getAbsolutePath()), getName());
+        return conf.createFromProperties(properties, getName());
       }
       catch (IOException e) {
         throw new IllegalArgumentException("Failed to load: " + this + "\n" + e.getMessage(), e);
@@ -130,6 +138,12 @@ public class StramAppLauncher
     public String getDisplayName()
     {
       return getName();
+    }
+
+    @Override
+    public String getDescription()
+    {
+      return properties.getProperty("description", "");
     }
 
   }
@@ -185,6 +199,12 @@ public class StramAppLauncher
     {
       String displayName = json.optString("displayName", null);
       return displayName == null ? getName() : displayName;
+    }
+
+    @Override
+    public String getDescription()
+    {
+      return json.optString("description", "");
     }
   }
 
@@ -395,6 +415,13 @@ public class StramAppLauncher
               else {
                 return classFileName;
               }
+            }
+
+            @Override
+            public String getDescription()
+            {
+              ApplicationAnnotation an = clazz.getAnnotation(ApplicationAnnotation.class);
+              return (an != null) ? an.description() : "";
             }
 
             @Override
