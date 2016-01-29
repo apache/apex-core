@@ -26,6 +26,8 @@ import com.datatorrent.api.AutoMetric;
 /**
  * AutoMetricBuiltinTransport. This will be replaced by the internal websocket pubsub transport
  * provided here: {@link com.datatorrent.stram.PubSubWebSocketMetricTransport}.
+ *
+ * @since 3.3.0
  */
 public class AutoMetricBuiltInTransport implements AutoMetric.Transport, Serializable
 {
