@@ -31,6 +31,8 @@ import com.datatorrent.api.AutoMetric;
 /**
  * A class that encapsulates {@link AutoMetric.Aggregator} and {@link AutoMetric.DimensionsScheme} of a particular
  * operator.
+ *
+ * @since 3.3.0
  */
 public final class MetricAggregatorMeta implements Serializable
 {

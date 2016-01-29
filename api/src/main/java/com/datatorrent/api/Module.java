@@ -32,6 +32,8 @@ import com.datatorrent.api.Operator.Unifier;
  * will be called by the platform, and DAG populated by the module will be
  * replace in place of the module.
  *
+ *
+ * @since 3.3.0
  */
 @InterfaceStability.Evolving
 public interface Module

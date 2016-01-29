@@ -34,6 +34,8 @@ import com.datatorrent.api.Operator;
  *
  * This DelayOperator provides no data loss during recovery, but it incurs a run-time cost per tuple, and all tuples
  * of the checkpoint window will be part of the checkpoint state.
+ *
+ * @since 3.3.0
  */
 public class DefaultDelayOperator<T> extends BaseOperator implements Operator.DelayOperator
 {
