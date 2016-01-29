@@ -38,7 +38,6 @@
   </properties>
 
   <build>
-    <finalName>${project.artifactId}</finalName>
     <plugins>
       <!-- Publish tests jar -->
       <plugin>
