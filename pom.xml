@@ -30,7 +30,7 @@
 
   <groupId>org.apache.apex</groupId>
   <artifactId>apex</artifactId>
-  <version>3.3.0-incubating-SNAPSHOT</version>
+  <version>3.4.0-incubating-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Apex (incubating)</name>
