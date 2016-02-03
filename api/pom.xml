@@ -52,13 +52,13 @@
       <plugin>
         <groupId>com.github.siom79.japicmp</groupId>
         <artifactId>japicmp-maven-plugin</artifactId>
-        <version>0.5.3</version>
+        <version>0.6.2</version>
         <configuration>
           <oldVersion>
             <dependency>
-              <groupId>com.datatorrent</groupId>
-              <artifactId>dt-api</artifactId>
-              <version>3.0.0</version>
+              <groupId>${project.groupId}</groupId>
+              <artifactId>${project.artifactId}</artifactId>
+              <version>3.2.0-incubating</version>
             </dependency>
           </oldVersion>
           <newVersion>
@@ -69,7 +69,7 @@
           <parameter>
             <onlyModified>true</onlyModified>
             <accessModifier>protected</accessModifier>
-            <breakBuildOnModifications>false</breakBuildOnModifications>
+            <breakBuildOnModifications>true</breakBuildOnModifications>
             <breakBuildOnBinaryIncompatibleModifications>true</breakBuildOnBinaryIncompatibleModifications>
             <onlyBinaryIncompatible>false</onlyBinaryIncompatible>
             <includeSynthetic>false</includeSynthetic>
