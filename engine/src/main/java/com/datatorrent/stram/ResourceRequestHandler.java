@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -84,6 +85,7 @@ public class ResourceRequestHandler
   private final Map<String, NodeReport> nodeReportMap = Maps.newHashMap();
   private final Map<Set<PTOperator>, String> nodeLocalMapping = Maps.newHashMap();
   private final Map<String, String> nodeToRack = Maps.newHashMap();
+  private final Map<PTContainer, String> antiAffinityMapping = Maps.newHashMap();
 
   public void clearNodeMapping()
   {
@@ -108,6 +110,23 @@ public class ResourceRequestHandler
     }
   }
 
+  public List<String> getNodesExceptHost(List<String> hostNames)
+  {
+    List<String> nodesList = new ArrayList<String>();
+
+    for (String host : nodeReportMap.keySet()) {
+      // Split node name and port
+      String[] parts = host.split(":");
+      if (parts.length > 0) {
+        if (hostNames.contains(parts[0]) || hostNames.contains(host)) {
+          continue;
+        }
+        nodesList.add(parts[0]);
+      }
+    }
+    return nodesList;
+  }
+
   public String getHost(ContainerStartRequest csr, boolean first)
   {
     String host = null;
@@ -117,6 +136,7 @@ public class ResourceRequestHandler
         HostOperatorSet grpObj = oper.getNodeLocalOperators();
         host = nodeLocalMapping.get(grpObj.getOperatorSet());
         if (host != null) {
+          antiAffinityMapping.put(c, host);
           return host;
         }
         if (grpObj.getHost() != null) {
@@ -145,6 +165,7 @@ public class ResourceRequestHandler
           int vCoresAvailable = report.getCapability().getVirtualCores() - report.getUsed().getVirtualCores();
           if (memAvailable >= aggrMemory && vCoresAvailable >= vCores) {
             nodeLocalMapping.put(nodeLocalSet, host);
+            antiAffinityMapping.put(c, host);
             return host;
           }
         }
@@ -153,11 +174,22 @@ public class ResourceRequestHandler
 
     // the host requested didn't have the resources so looking for other hosts
     host = null;
+    List<String> antiHosts = new ArrayList<>();
+    List<String> antiPreferredHosts = new ArrayList<>();
+    if (c.getStrictAntiPrefs() != null && !c.getStrictAntiPrefs().isEmpty()) {
+      // Check if containers are allocated already for the anti-affinity
+      // containers
+      populateAntiHostList(c, antiHosts);
+    }
+    if (c.getPreferredAntiPrefs() != null && !c.getPreferredAntiPrefs().isEmpty()) {
+      populateAntiHostList(c, antiPreferredHosts);
+    }
+    LOG.info("Strict anti-affinity = {}", antiHosts);
     for (PTOperator oper : c.getOperators()) {
       HostOperatorSet grpObj = oper.getNodeLocalOperators();
       Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
-      if (nodeLocalSet.size() > 1) {
-        LOG.debug("Finding new host for {}", nodeLocalSet);
+      if (nodeLocalSet.size() > 1 || (c.getStrictAntiPrefs() != null)) {
+        LOG.info("Finding new host for {}", nodeLocalSet);
         int aggrMemory = c.getRequiredMemoryMB();
         int vCores = c.getRequiredVCores();
         Set<PTContainer> containers = Sets.newHashSet();
@@ -170,19 +202,67 @@ public class ResourceRequestHandler
             containers.add(nodeLocalOper.getContainer());
           }
         }
-        for (Map.Entry<String, NodeReport> nodeEntry : nodeReportMap.entrySet()) {
-          int memAvailable = nodeEntry.getValue().getCapability().getMemory() - nodeEntry.getValue().getUsed().getMemory();
-          int vCoresAvailable = nodeEntry.getValue().getCapability().getVirtualCores() - nodeEntry.getValue().getUsed().getVirtualCores();
-          if (memAvailable >= aggrMemory && vCoresAvailable >= vCores) {
-            host = nodeEntry.getKey();
-            grpObj.setHost(host);
-            nodeLocalMapping.put(nodeLocalSet, host);
-            return host;
-          }
+        host = assignHost(host, antiHosts, antiPreferredHosts, grpObj, nodeLocalSet, aggrMemory, vCores);
+
+        if (host == null && !antiPreferredHosts.isEmpty()) {
+          // Drop the preferred constraint and try allocation
+          antiPreferredHosts.clear();
+          host = assignHost(host, antiHosts, antiPreferredHosts, grpObj, nodeLocalSet, aggrMemory, vCores);
         }
       }
     }
+    if (host != null) {
+      antiAffinityMapping.put(c, host);
+    }
+    LOG.info("Found host {}", host);
     return host;
+  }
+
+  public void populateAntiHostList(PTContainer c, List<String> antiHosts)
+  {
+    for (PTContainer container : c.getStrictAntiPrefs()) {
+      if (antiAffinityMapping.containsKey(container)) {
+        antiHosts.add(antiAffinityMapping.get(container));
+      } else {
+        // Check if there is an anti-affinity with host locality
+        String antiHost = getAntiHostsList(container);
+        if (antiHost != null) {
+          antiHosts.add(antiHost);
+        }
+      }
+    }
+  }
+
+  public String getAntiHostsList(PTContainer container)
+  {
+    for (PTOperator oper : container.getOperators()) {
+      HostOperatorSet grpObj = oper.getNodeLocalOperators();
+      String host = nodeLocalMapping.get(grpObj.getOperatorSet());
+      if (host != null) {
+        return host;
+      }
+      if (grpObj.getHost() != null) {
+        host = grpObj.getHost();
+        return host;
+      }
+    }
+    return null;
+  }
+
+  public String assignHost(String host, List<String> antiHosts, List<String> antiPreferredHosts, HostOperatorSet grpObj, Set<PTOperator> nodeLocalSet, int aggrMemory, int vCores)
+  {
+    for (Map.Entry<String, NodeReport> nodeEntry : nodeReportMap.entrySet()) {
+      int memAvailable = nodeEntry.getValue().getCapability().getMemory() - nodeEntry.getValue().getUsed().getMemory();
+      int vCoresAvailable = nodeEntry.getValue().getCapability().getVirtualCores() - nodeEntry.getValue().getUsed().getVirtualCores();
+      if (memAvailable >= aggrMemory && vCoresAvailable >= vCores && !antiHosts.contains(nodeEntry.getKey()) && !antiPreferredHosts.contains(nodeEntry.getKey())) {
+        host = nodeEntry.getKey();
+        grpObj.setHost(host);
+        nodeLocalMapping.put(nodeLocalSet, host);
+
+        return host;
+      }
+    }
+    return null;
   }
 
 }

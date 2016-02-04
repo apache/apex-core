@@ -32,7 +32,6 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.Map.Entry;
 
-
 import javax.validation.ValidationException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -60,6 +59,7 @@ import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.StringCodec.JsonStringCodec;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
 
 import com.datatorrent.stram.StramUtils;
@@ -2435,7 +2435,7 @@ public class LogicalPlanConfiguration {
           else {
             if (processedAttributes.add(attribute)) {
               String val = e.getValue();
-              if (val.trim().charAt(0) == '{') {
+              if (val.trim().charAt(0) == '{' && !(attribute.codec instanceof JsonStringCodec)) {
                 // complex attribute in json
                 attributeMap.put(attribute, jsonCodec.fromString(val));
               } else {

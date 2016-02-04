@@ -28,6 +28,7 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StringCodec.Class2String;
 import com.datatorrent.api.StringCodec.Collection2String;
 import com.datatorrent.api.StringCodec.Integer2String;
+import com.datatorrent.api.StringCodec.JsonStringCodec;
 import com.datatorrent.api.StringCodec.Map2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
@@ -469,6 +470,11 @@ public interface Context
      * Only supports string codecs that have a constructor with no arguments
      */
     Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>>(new Map2String<Class<?>, Class<? extends StringCodec<?>>>(",", "=", new Class2String<Object>(), new Class2String<StringCodec<?>>()));
+    /**
+     * Affinity rules for specifying affinity and anti-affinity between logical operators
+     */
+    Attribute<AffinityRulesSet> AFFINITY_RULES_SET = new Attribute<AffinityRulesSet>(new JsonStringCodec<AffinityRulesSet>(AffinityRulesSet.class));
+
     @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(DAGContext.class);
   }

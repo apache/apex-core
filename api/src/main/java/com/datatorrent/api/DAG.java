@@ -250,6 +250,24 @@ public interface DAG extends DAGContext, Serializable
   public abstract <T> void setAttribute(Operator operator, Attribute<T> key, T value);
 
   /**
+   * Set affinity between operators
+   * @param locality
+   * @param relaxLocality
+   * @param first operator
+   * @param one or more operators
+   */
+  public abstract void setAffinity(Locality locality, boolean relaxLocality, String firstOperator, String... operators);
+
+  /**
+   * Set Anti affinity between operators
+   * @param locality
+   * @param relaxLocality
+   * @param first operator
+   * @param one or more operators
+   */
+  public abstract  void setAntiAffinity(Locality locality, boolean relaxLocality, String firstOperator, String... operators);
+
+  /**
    * <p>setOutputPortAttribute.</p>
    */
   public abstract <T> void setOutputPortAttribute(Operator.OutputPort<?> port, Attribute<T> key, T value);

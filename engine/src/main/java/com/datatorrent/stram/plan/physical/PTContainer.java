@@ -20,7 +20,9 @@ package com.datatorrent.stram.plan.physical;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
@@ -46,6 +48,8 @@ import com.datatorrent.stram.Journal.Recoverable;
 public class PTContainer implements java.io.Serializable
 {
   private static final long serialVersionUID = 201312112033L;
+  private final Set<PTContainer> strictAntiPrefs = new HashSet<>();
+  private final Set<PTContainer> preferredAntiPrefs = new HashSet<>();
 
   public final static Recoverable SET_CONTAINER_STATE = new SetContainerState();
 
@@ -295,5 +299,15 @@ public class PTContainer implements java.io.Serializable
         append("state", this.getState()).
         append("operators", this.operators).
         toString();
+  }
+
+  public Set<PTContainer> getPreferredAntiPrefs()
+  {
+    return preferredAntiPrefs;
+  }
+
+  public Set<PTContainer> getStrictAntiPrefs()
+  {
+    return strictAntiPrefs;
   }
 }
