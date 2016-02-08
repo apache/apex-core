@@ -28,33 +28,33 @@
   <includeBaseDirectory>false</includeBaseDirectory>
   <fileSets>
     <fileSet>
-      <directory>${basedir}/target/</directory>
+      <directory>${project.build.directory}</directory>
       <outputDirectory>/app</outputDirectory>
       <includes>
-        <include>${project.artifactId}-${project.version}.jar</include>
+        <include>${artifact.artifactId}-${artifact.version}.jar</include>
       </includes>
     </fileSet>
     <fileSet>
-      <directory>${basedir}/target/deps</directory>
+      <directory>${project.build.directory}/deps</directory>
       <outputDirectory>/lib</outputDirectory>
     </fileSet>
     <fileSet>
-      <directory>${basedir}/src/site/conf</directory>
+      <directory>${project.basedir}/src/site/conf</directory>
       <outputDirectory>/conf</outputDirectory>
       <includes>
         <include>*.xml</include>
       </includes>
     </fileSet>
     <fileSet>
-      <directory>${basedir}/src/main/resources/META-INF</directory>
+      <directory>${project.basedir}/src/main/resources/META-INF</directory>
       <outputDirectory>/META-INF</outputDirectory>
     </fileSet>
     <fileSet>
-      <directory>${basedir}/src/main/resources/app</directory>
+      <directory>${project.basedir}/src/main/resources/app</directory>
       <outputDirectory>/app</outputDirectory>
     </fileSet>
     <fileSet>
-      <directory>${basedir}/src/main/resources/resources</directory>
+      <directory>${project.basedir}/src/main/resources/resources</directory>
       <outputDirectory>/resources</outputDirectory>
     </fileSet>
   </fileSets>
