@@ -146,6 +146,12 @@
       </plugin>
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <maven.home>${maven.home}</maven.home>
+            <maven.multiModuleProjectDirectory>${maven.home}</maven.multiModuleProjectDirectory>
+          </systemPropertyVariables>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
