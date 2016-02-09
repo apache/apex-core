@@ -511,6 +511,8 @@ public class StramLocalCluster implements Runnable, Controller
       lsc.triggerHeartbeat();
     }
 
+    dnmgr.teardown();
+
     LOG.info("Application finished.");
     if (!perContainerBufferServer) {
       StreamingContainer.eventloop.stop(bufferServer);
