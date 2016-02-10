@@ -57,7 +57,7 @@
             <dependency>
               <groupId>org.apache.apex</groupId>
               <artifactId>apex-api</artifactId>
-              <version>3.2.0-incubating</version>
+              <version>3.3.0-incubating</version>
             </dependency>
           </oldVersion>
           <newVersion>
