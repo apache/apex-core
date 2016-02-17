@@ -130,9 +130,7 @@ abstract public class StramTestSupport
   /**
    * Create an appPackage zip using the sample appPackage located in
    * src/test/resources/testAppPackage/testAppPackageSrc.
-   * @param file  The file whose path will be used to create the appPackage zip
    * @return      The File object that can be used in the AppPackage constructor.
-   * @throws net.lingala.zip4j.exception.ZipException
    */
   public static File createAppPackageFile()
   {
@@ -479,16 +477,16 @@ abstract public class StramTestSupport
     final long startTime = System.currentTimeMillis();
     final String gatewayAddress = "localhost:9090";
 
-    public TestAppContext(int appid, int numJobs, int numTasks, int numAttempts)
+    public TestAppContext(Attribute.AttributeMap attributeMap, int appid, int numJobs, int numTasks, int numAttempts)
     {
-      super(new Attribute.AttributeMap.DefaultAttributeMap(), null); // this needs to be done in a proper way - may cause application errors.
+      super(attributeMap, null); // this needs to be done in a proper way - may cause application errors.
       this.appID = ApplicationId.newInstance(0, appid);
       this.appAttemptID = ApplicationAttemptId.newInstance(this.appID, numAttempts);
     }
 
-    public TestAppContext()
+    public TestAppContext(Attribute.AttributeMap attributeMap)
     {
-      this(0, 1, 1, 1);
+      this(attributeMap, 0, 1, 1, 1);
     }
 
     @Override

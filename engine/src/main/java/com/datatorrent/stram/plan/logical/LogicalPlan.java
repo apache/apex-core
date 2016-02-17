@@ -1923,7 +1923,7 @@ public class LogicalPlan implements Serializable, DAG
    * @see <a href="http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm">http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm</a>
    *
    * @param om
-   * @param cycles
+   * @param ctx
    */
   public void findStronglyConnected(OperatorMeta om, ValidationContext ctx)
   {

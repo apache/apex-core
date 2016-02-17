@@ -938,7 +938,7 @@ public class StreamingContainerManagerTest
       dag.setAttribute(LogicalPlan.GATEWAY_CONNECT_ADDRESS, "localhost:" + port);
       StramLocalCluster lc = new StramLocalCluster(dag);
       StreamingContainerManager dnmgr = lc.dnmgr;
-      StramAppContext appContext = new StramTestSupport.TestAppContext();
+      StramAppContext appContext = new StramTestSupport.TestAppContext(dag.getAttributes());
 
       AppDataPushAgent pushAgent = new AppDataPushAgent(dnmgr, appContext);
       pushAgent.init();
@@ -1000,7 +1000,7 @@ public class StreamingContainerManagerTest
     dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, new TestMetricTransport("xyz"));
     StramLocalCluster lc = new StramLocalCluster(dag);
     StreamingContainerManager dnmgr = lc.dnmgr;
-    StramAppContext appContext = new StramTestSupport.TestAppContext();
+    StramAppContext appContext = new StramTestSupport.TestAppContext(dag.getAttributes());
 
     AppDataPushAgent pushAgent = new AppDataPushAgent(dnmgr, appContext);
     pushAgent.init();
