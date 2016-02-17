@@ -60,7 +60,7 @@ public class AppInfo {
   protected boolean gatewayConnected;
   protected List<AppDataSource> appDataSources;
   protected Map<String, Object> metrics;
-  public Map<String, Object> attributes;
+  public Map<String, String> attributes;
   public String appMasterTrackingUrl;
   public String version;
   public AppStats stats;
@@ -215,9 +215,9 @@ public class AppInfo {
     this.stats = context.getStats();
     this.gatewayAddress = context.getGatewayAddress();
     this.version = VersionInfo.getBuildVersion();
-    this.attributes = new TreeMap<String, Object>();
+    this.attributes = new TreeMap<>();
     for (Map.Entry<Attribute<Object>, Object> entry : AttributeMap.AttributeInitializer.getAllAttributes(context, DAGContext.class).entrySet()) {
-      this.attributes.put(entry.getKey().getSimpleName(), entry.getValue());
+      this.attributes.put(entry.getKey().getSimpleName(), entry.getKey().codec.toString(entry.getValue()));
     }
     this.gatewayConnected = context.isGatewayConnected();
     this.appDataSources = context.getAppDataSources();

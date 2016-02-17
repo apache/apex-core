@@ -134,6 +134,11 @@ public interface StringCodec<T>
    * string as an argument.If properties are specified then properties will be set on the object. The properties
    * are defined in property=value format separated by colon(:)
    *
+   * Note that the {@link #toString(Object) toString} method is by default NOT the proper reverse of the {@link
+   * #fromString(String) fromString} method. In order for the {@link #toString(Object) toString} method to become a
+   * proper reverse of the {@link #fromString(String) fromString} method, T's {@link T#toString() toString} method
+   * must output null or <Constructor_String> or the <Constructor_String>:<Property_String> format as stated above.
+   *
    * @param <T> Type of the object which is converted to/from String
    */
   public class Object2String<T> implements StringCodec<T>, Serializable
@@ -195,6 +200,9 @@ public interface StringCodec<T>
     @Override
     public String toString(T pojo)
     {
+      if (pojo == null) {
+        return null;
+      }
       String arg = pojo.toString();
       if (arg == null) {
         return pojo.getClass().getCanonicalName();
