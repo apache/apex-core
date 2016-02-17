@@ -2837,7 +2837,7 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  public Map<String, Object> getPortAttributes(String operatorId, String portName)
+  public Attribute.AttributeMap getPortAttributes(String operatorId, String portName)
   {
     OperatorMeta logicalOperator = plan.getLogicalPlan().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
@@ -2848,24 +2848,21 @@ public class StreamingContainerManager implements PlanContext
     Operators.describe(logicalOperator.getOperator(), portMap);
     PortContextPair<InputPort<?>> inputPort = portMap.inputPorts.get(portName);
     if (inputPort != null) {
-      HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
       InputPortMeta portMeta = logicalOperator.getMeta(inputPort.component);
-      Map<Attribute<Object>, Object> rawAttributes = Attribute.AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
-      for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
-        portAttributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
+      try {
+        return portMeta.getAttributes().clone();
+      } catch (CloneNotSupportedException ex) {
+        throw new RuntimeException("Cannot clone port attributes", ex);
       }
-      return portAttributeMap;
-    }
-    else {
+    } else {
       PortContextPair<OutputPort<?>> outputPort = portMap.outputPorts.get(portName);
       if (outputPort != null) {
-        HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
         OutputPortMeta portMeta = logicalOperator.getMeta(outputPort.component);
-        Map<Attribute<Object>, Object> rawAttributes = Attribute.AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
-        for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
-          portAttributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
+        try {
+          return portMeta.getAttributes().clone();
+        } catch (CloneNotSupportedException ex) {
+          throw new RuntimeException("Cannot clone port attributes", ex);
         }
-        return portAttributeMap;
       }
       throw new IllegalArgumentException("Invalid port name " + portName);
     }
