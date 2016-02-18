@@ -602,10 +602,11 @@ public class StramWebServices
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
-    HashMap<String, Object> map = new HashMap<String, Object>();
+    HashMap<String, String> map = new HashMap<>();
     for (Entry<Attribute<?>, Object> entry : dagManager.getOperatorAttributes(operatorName).entrySet()) {
-      if (attributeName == null || entry.getKey().name.equals(attributeName)) {
-        map.put(entry.getKey().name, entry.getValue());
+      if (attributeName == null || entry.getKey().getSimpleName().equals(attributeName)) {
+        Entry<Attribute<Object>, Object> entry1 = (Entry<Attribute<Object>, Object>)(Entry)entry;
+        map.put(entry1.getKey().getSimpleName(), entry1.getKey().codec.toString(entry1.getValue()));
       }
     }
     return new JSONObject(map);
@@ -616,10 +617,11 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getApplicationAttributes(@QueryParam("attributeName") String attributeName)
   {
-    HashMap<String, Object> map = new HashMap<String, Object>();
+    HashMap<String, String> map = new HashMap<>();
     for (Entry<Attribute<?>, Object> entry : dagManager.getApplicationAttributes().entrySet()) {
-      if (attributeName == null || entry.getKey().name.equals(attributeName)) {
-        map.put(entry.getKey().name, entry.getValue());
+      if (attributeName == null || entry.getKey().getSimpleName().equals(attributeName)) {
+        Entry<Attribute<Object>, Object> entry1 = (Entry<Attribute<Object>, Object>)(Entry)entry;
+        map.put(entry1.getKey().getSimpleName(), entry1.getKey().codec.toString(entry1.getValue()));
       }
     }
     return new JSONObject(map);
@@ -736,7 +738,14 @@ public class StramWebServices
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
-    return new JSONObject(dagManager.getPortAttributes(operatorName, portName));
+    HashMap<String, String> map = new HashMap<>();
+    for (Entry<Attribute<?>, Object> entry : dagManager.getPortAttributes(operatorName, portName).entrySet()) {
+      if (attributeName == null || entry.getKey().getSimpleName().equals(attributeName)) {
+        Entry<Attribute<Object>, Object> entry1 = (Entry<Attribute<Object>, Object>)(Entry)entry;
+        map.put(entry1.getKey().getSimpleName(), entry1.getKey().codec.toString(entry1.getValue()));
+      }
+    }
+    return new JSONObject(map);
   }
 
   @GET
