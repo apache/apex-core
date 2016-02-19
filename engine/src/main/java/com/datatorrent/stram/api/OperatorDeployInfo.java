@@ -76,6 +76,12 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
+  @Override
+  public int getWindowsFromCheckpoint()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
   public enum OperatorType
   {
     INPUT, UNIFIER, GENERIC, OIO

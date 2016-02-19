@@ -88,6 +88,7 @@ public class OiONode extends GenericNode
           break;
 
         case CHECKPOINT:
+          dagCheckpointOffsetCount = 0;
           if (lastCheckpointWindowId < t.getWindowId() && !doCheckpoint) {
             if (checkpointWindowCount == 0) {
               checkpoint(t.getWindowId());

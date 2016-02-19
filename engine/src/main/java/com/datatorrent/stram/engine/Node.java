@@ -55,6 +55,7 @@ import com.google.common.math.IntMath;
 
 import com.datatorrent.api.AutoMetric;
 import com.datatorrent.api.Component;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
@@ -99,6 +100,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public static final String OUTPUT = "output";
   protected int APPLICATION_WINDOW_COUNT; /* this is write once variable */
 
+  protected int DAG_CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
+
   protected int CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
 
   protected boolean DATA_TUPLE_AWARE; /* this is write once variable */
@@ -118,6 +121,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected Checkpoint checkpoint;
   public int applicationWindowCount;
   public int checkpointWindowCount;
+  public int nextCheckpointWindowCount;
+  public int dagCheckpointOffsetCount;
   protected int controlTupleCount;
   public final OperatorContext context;
   public final BlockingQueue<StatsListener.OperatorResponse> commandResponse;
@@ -540,9 +545,20 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       }
     }
 
+    calculateNextCheckpointWindow();
+    dagCheckpointOffsetCount = 0;
     checkpoint = new Checkpoint(windowId, applicationWindowCount, checkpointWindowCount);
     if (operator instanceof Operator.CheckpointListener) {
       ((Operator.CheckpointListener) operator).checkpointed(windowId);
+    }
+  }
+
+  protected void calculateNextCheckpointWindow()
+  {
+    if (PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
+      nextCheckpointWindowCount = ((DAG_CHECKPOINT_WINDOW_COUNT - dagCheckpointOffsetCount + CHECKPOINT_WINDOW_COUNT - 1)/CHECKPOINT_WINDOW_COUNT) * CHECKPOINT_WINDOW_COUNT;
+    } else {
+      nextCheckpointWindowCount = 1;
     }
   }
 
@@ -598,6 +614,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       int slidingWindowCount = context.getValue(OperatorContext.SLIDE_BY_WINDOW_COUNT);
       APPLICATION_WINDOW_COUNT = IntMath.gcd(APPLICATION_WINDOW_COUNT, slidingWindowCount);
     }
+    DAG_CHECKPOINT_WINDOW_COUNT = context.getValue(Context.DAGContext.CHECKPOINT_WINDOW_COUNT);
     CHECKPOINT_WINDOW_COUNT = context.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
     Collection<StatsListener> statsListeners = context.getValue(OperatorContext.STATS_LISTENERS);
 

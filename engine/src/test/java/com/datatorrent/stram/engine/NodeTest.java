@@ -214,11 +214,15 @@ public class NodeTest
 
     };
 
+    node.activate();
+
     synchronized (StorageAgentImpl.calls) {
       StorageAgentImpl.calls.clear();
       node.checkpoint(0);
       Assert.assertEquals("Calls to StorageAgent", 0, StorageAgentImpl.calls.size());
     }
+
+    node.deactivate();
   }
 
   @Test
@@ -243,11 +247,15 @@ public class NodeTest
 
     };
 
+    node.activate();
+
     synchronized (StorageAgentImpl.calls) {
       StorageAgentImpl.calls.clear();
       node.checkpoint(0);
       Assert.assertEquals("Calls to StorageAgent", 1, StorageAgentImpl.calls.size());
     }
+
+    node.deactivate();
   }
 
 }

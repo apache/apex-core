@@ -54,6 +54,7 @@ import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.stram.api.Checkpoint;
+import com.datatorrent.common.util.ScheduledExecutorService;
 import com.datatorrent.stram.tuple.EndStreamTuple;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -162,6 +163,7 @@ public class GenericNodeTest
 
   public static class GenericOperator implements Operator
   {
+    Context.OperatorContext context;
     long beginWindowId;
     long endWindowId;
     public final transient DefaultInputPort<Object> ip1 = new DefaultInputPort<Object>()
@@ -201,15 +203,30 @@ public class GenericNodeTest
     @Override
     public void setup(Context.OperatorContext context)
     {
-      throw new UnsupportedOperationException("Not supported yet.");
+      this.context = context;
     }
 
     @Override
     public void teardown()
     {
-      throw new UnsupportedOperationException("Not supported yet.");
     }
 
+  }
+
+  public static class CheckpointDistanceOperator extends GenericOperator
+  {
+    List<Integer> distances = new ArrayList<Integer>();
+    int numWindows = 0;
+    int maxWindows = 0;
+
+    @Override
+    public void beginWindow(long windowId)
+    {
+      super.beginWindow(windowId);
+      if (numWindows++ < maxWindows) {
+        distances.add(context.getWindowsFromCheckpoint());
+      }
+    }
   }
 
   public static class GenericCheckpointOperator extends GenericOperator implements CheckpointListener
@@ -406,8 +423,7 @@ public class GenericNodeTest
     do {
       Thread.sleep(sleeptime);
       interval += sleeptime;
-    }
-    while ((ab.get() == false) && (interval < maxSleep));
+    } while ((ab.get() == false) && (interval < maxSleep));
 
 
     int controlTupleCount = gn.controlTupleCount;
@@ -626,6 +642,105 @@ public class GenericNodeTest
       Assert.assertEquals(0, operatorContext.checkpoints.get(index).applicationWindowCount);
       Assert.assertEquals(0, operatorContext.checkpoints.get(index).checkpointWindowCount);
     }
+  }
+
+  @Test
+  public void testDefaultCheckPointDistance() throws InterruptedException
+  {
+    testCheckpointDistance(Context.DAGContext.CHECKPOINT_WINDOW_COUNT.defaultValue, Context.OperatorContext.CHECKPOINT_WINDOW_COUNT.defaultValue);
+  }
+
+  @Test
+  public void testDAGGreaterCheckPointDistance() throws InterruptedException
+  {
+    testCheckpointDistance(7, 5);
+  }
+
+  @Test
+  public void testOpGreaterCheckPointDistance() throws InterruptedException
+  {
+    testCheckpointDistance(3, 5);
+  }
+
+  private void testCheckpointDistance(int dagCheckPoint, int opCheckPoint) throws InterruptedException
+  {
+    int windowWidth = 50;
+    long sleeptime = 25L;
+    int maxWindows = 60;
+    // Adding some extra time for the windows to finish
+    long maxSleep = windowWidth * maxWindows + 5000;
+
+    ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(1, "default");
+    final WindowGenerator windowGenerator = new WindowGenerator(executorService, 1024);
+    windowGenerator.setWindowWidth(windowWidth);
+    windowGenerator.setFirstWindow(executorService.getCurrentTimeMillis());
+    windowGenerator.setCheckpointCount(dagCheckPoint, 0);
+    //GenericOperator go = new GenericOperator();
+    CheckpointDistanceOperator go = new CheckpointDistanceOperator();
+    go.maxWindows = maxWindows;
+
+    List<Integer> checkpoints = new ArrayList<Integer>();
+
+    int window = 0;
+    while (window < maxWindows) {
+      window = (int)Math.ceil((double)(window + 1)/dagCheckPoint) * dagCheckPoint;
+      window = (int)Math.ceil((double)window/opCheckPoint) * opCheckPoint;
+      checkpoints.add(window);
+    }
+
+    final StreamContext stcontext = new StreamContext("s1");
+    DefaultAttributeMap attrMap = new DefaultAttributeMap();
+    attrMap.put(Context.DAGContext.CHECKPOINT_WINDOW_COUNT, dagCheckPoint);
+    attrMap.put(Context.OperatorContext.CHECKPOINT_WINDOW_COUNT, opCheckPoint);
+    final OperatorContext context = new com.datatorrent.stram.engine.OperatorContext(0, attrMap, null);
+    final GenericNode gn = new GenericNode(go, context);
+    gn.setId(1);
+
+    //DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
+    //DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
+
+    //gn.connectInputPort("ip1", reservoir1);
+    //gn.connectInputPort("ip2", reservoir2);
+    gn.connectInputPort("ip1", windowGenerator.acquireReservoir("ip1", 1024));
+    gn.connectInputPort("ip2", windowGenerator.acquireReservoir("ip2", 1024));
+    gn.connectOutputPort("op", Sink.BLACKHOLE);
+
+    final AtomicBoolean ab = new AtomicBoolean(false);
+    Thread t = new Thread()
+    {
+      @Override
+      public void run()
+      {
+        gn.setup(context);
+        windowGenerator.activate(stcontext);
+        gn.activate();
+        ab.set(true);
+        gn.run();
+        windowGenerator.deactivate();
+        gn.deactivate();
+        gn.teardown();
+      }
+    };
+    t.start();
+
+    long interval = 0;
+    do {
+      Thread.sleep(sleeptime);
+      interval += sleeptime;
+    } while ((go.numWindows < maxWindows) && (interval < maxSleep));
+
+    Assert.assertEquals("Number distances", maxWindows, go.numWindows);
+    int chkindex = 0;
+    int nextCheckpoint = checkpoints.get(chkindex++);
+    for (int i = 0; i < maxWindows; ++i) {
+      if ((i + 1) > nextCheckpoint) {
+        nextCheckpoint = checkpoints.get(chkindex++);
+      }
+      Assert.assertEquals("Windows from checkpoint for " + i, nextCheckpoint - i, (int)go.distances.get(i));
+    }
+
+    gn.shutdown();
+    t.join();
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(GenericNodeTest.class);
