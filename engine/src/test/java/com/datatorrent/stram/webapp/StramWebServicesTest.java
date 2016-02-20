@@ -46,6 +46,7 @@ import com.sun.jersey.test.framework.WebAppDescriptor;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -60,6 +61,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
 
 import com.datatorrent.api.Context;
+import com.datatorrent.common.metric.AutoMetricBuiltInTransport;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StreamingContainerManager;
@@ -133,9 +135,10 @@ public class StramWebServicesTest extends JerseyTest
         String workingDir = new File("target", StramWebServicesTest.class.getName()).getAbsolutePath();
         dag.setAttribute(LogicalPlan.APPLICATION_PATH, workingDir);
         dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir, null));
+        dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, new AutoMetricBuiltInTransport("xyz"));
         final DummyStreamingContainerManager streamingContainerManager = new DummyStreamingContainerManager(dag);
 
-        appContext = new TestAppContext();
+        appContext = new TestAppContext(dag.getAttributes());
         bind(JAXBContextResolver.class);
         bind(StramWebServices.class);
         bind(GenericExceptionHandler.class);
@@ -330,6 +333,20 @@ public class StramWebServicesTest extends JerseyTest
       StramTestSupport.checkStringMatch(
               "error string exists and shouldn't", "", responseStr);
     }
+  }
+
+
+  @Test
+  public void testAttributes() throws Exception
+  {
+    WebResource r = resource();
+    ClientResponse response = r.path(StramWebServices.PATH + "/")
+        .accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+    assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+    JSONObject json = response.getEntity(JSONObject.class);
+    JSONObject attrs = json.getJSONObject("attributes");
+    Assert.assertEquals(AutoMetricBuiltInTransport.class.getName() + ":xyz",
+        attrs.getString(Context.DAGContext.METRICS_TRANSPORT.getSimpleName()));
   }
 
   @Test

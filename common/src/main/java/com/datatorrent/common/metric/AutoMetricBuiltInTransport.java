@@ -48,6 +48,12 @@ public class AutoMetricBuiltInTransport implements AutoMetric.Transport, Seriali
   }
 
   @Override
+  public String toString()
+  {
+    return this.topic;
+  }
+
+  @Override
   public void push(String jsonData) throws IOException
   {
     throw new UnsupportedOperationException("This class is a placeholder and is supposed to replaced by internal " +
