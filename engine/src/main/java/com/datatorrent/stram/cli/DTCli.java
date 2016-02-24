@@ -2920,7 +2920,7 @@ public class DTCli
 
   private File copyToLocal(String[] files) throws IOException
   {
-    File tmpDir = new File("/tmp/datatorrent/" + ManagementFactory.getRuntimeMXBean().getName());
+    File tmpDir = new File(System.getProperty("java.io.tmpdir") + "/datatorrent/" + ManagementFactory.getRuntimeMXBean().getName());
     tmpDir.mkdirs();
     for (int i = 0; i < files.length; i++) {
       try {
