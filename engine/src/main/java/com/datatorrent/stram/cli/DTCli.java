@@ -641,12 +641,12 @@ public class DTCli
       new Arg[]{new FileArg("app-package-file"), new Arg("operator-class")},
       null,
       "Get operator properties within the given app package"));
-    globalCommands.put("list-application-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.APPLICATION),
-      null, null, "Lists the application attributes"));
-    globalCommands.put("list-operator-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.OPERATOR),
-      null, null, "Lists the operator attributes"));
-    globalCommands.put("list-port-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.PORT), null, null,
-      "Lists the port attributes"));
+    globalCommands.put("list-default-app-attributes", new CommandSpec(new ListDefaultAttributesCommand(AttributesType.APPLICATION),
+        null, null, "Lists the default application attributes"));
+    globalCommands.put("list-default-operator-attributes", new CommandSpec(new ListDefaultAttributesCommand(AttributesType.OPERATOR),
+        null, null, "Lists the default operator attributes"));
+    globalCommands.put("list-default-port-attributes", new CommandSpec(new ListDefaultAttributesCommand(AttributesType.PORT),
+        null, null, "Lists the default port attributes"));
 
     //
     // Connected command specification starts here
@@ -3807,11 +3807,11 @@ public class DTCli
     APPLICATION, OPERATOR, PORT
   }
 
-  private class ListAttributesCommand implements Command
+  private class ListDefaultAttributesCommand implements Command
   {
     private final AttributesType type;
 
-    protected ListAttributesCommand(@NotNull AttributesType type)
+    protected ListDefaultAttributesCommand(@NotNull AttributesType type)
     {
       this.type = Preconditions.checkNotNull(type);
     }
