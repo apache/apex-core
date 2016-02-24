@@ -296,13 +296,13 @@ public class DataList
         @Override
         public void run()
         {
-          boolean atLeastOneListenerHasDataToSend;
-          do {
-            atLeastOneListenerHasDataToSend = false;
-            for (DataListener dl : all_listeners) {
-              atLeastOneListenerHasDataToSend |= dl.addedData();
-            }
-          } while (atLeastOneListenerHasDataToSend);
+          boolean atLeastOneListenerHasDataToSend = false;
+          for (DataListener dl : all_listeners) {
+            atLeastOneListenerHasDataToSend |= dl.addedData();
+          }
+          if (atLeastOneListenerHasDataToSend) {
+            future = autoFlushExecutor.submit(this);
+          }
         }
       });
     }
