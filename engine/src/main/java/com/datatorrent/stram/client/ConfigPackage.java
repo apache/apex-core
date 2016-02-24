@@ -19,6 +19,7 @@
 package com.datatorrent.stram.client;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.jar.*;
 import net.lingala.zip4j.core.ZipFile;
@@ -96,7 +97,7 @@ public class ConfigPackage extends JarFile implements Closeable
     if (zipFile.isEncrypted()) {
       throw new ZipException("Encrypted conf package not supported yet");
     }
-    File newDirectory = new File("/tmp/dt-configPackage-" + Long.toString(System.nanoTime()));
+    File newDirectory = Files.createTempDirectory("dt-configPackage-").toFile();
     newDirectory.mkdirs();
     directory = newDirectory.getAbsolutePath();
     zipFile.extractAll(directory);
