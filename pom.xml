@@ -63,6 +63,7 @@
     <jersey.version>1.9</jersey.version>
     <!-- do not change jetty version as later versions have problems with DefaultServlet -->
     <jetty.version>8.1.10.v20130312</jetty.version>
+    <project.old.version>3.3.0-incubating</project.old.version>
     <license.skip>true</license.skip>
     <findbugs.xmlOutput>true</findbugs.xmlOutput>
     <findbugs.failOnError>false</findbugs.failOnError>
@@ -353,16 +354,31 @@
         <plugin>
           <groupId>com.github.siom79.japicmp</groupId>
           <artifactId>japicmp-maven-plugin</artifactId>
-          <version>0.6.2</version>
+          <version>0.7.0</version>
           <configuration>
+            <oldVersion>
+              <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>${project.artifactId}</artifactId>
+                <version>${project.old.version}</version>
+              </dependency>
+            </oldVersion>
+            <newVersion>
+              <file>
+                <path>${project.build.directory}/${project.artifactId}-${project.version}.jar</path>
+              </file>
+            </newVersion>
             <parameter>
               <onlyModified>true</onlyModified>
               <accessModifier>protected</accessModifier>
-              <breakBuildOnModifications>false</breakBuildOnModifications>
-              <breakBuildOnBinaryIncompatibleModifications>true</breakBuildOnBinaryIncompatibleModifications>
+              <breakBuildBasedOnSemanticVersioning>true</breakBuildBasedOnSemanticVersioning>
               <onlyBinaryIncompatible>false</onlyBinaryIncompatible>
               <includeSynthetic>false</includeSynthetic>
               <ignoreMissingClasses>false</ignoreMissingClasses>
+              <excludes>
+                <exclude>@org.apache.hadoop.classification.InterfaceStability$Evolving</exclude>
+                <exclude>@org.apache.hadoop.classification.InterfaceStability$Unstable</exclude>
+              </excludes>
             </parameter>
           </configuration>
           <executions>
