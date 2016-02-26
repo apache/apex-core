@@ -18,7 +18,13 @@
  */
 package com.datatorrent.stram.engine;
 
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import org.slf4j.Logger;
@@ -33,11 +39,10 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.ShutdownException;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -156,6 +161,10 @@ public class GenericNode extends Node<Operator>
       controlTupleCount++;
     }
 
+    if (doCheckpoint) {
+      dagCheckpointOffsetCount = (dagCheckpointOffsetCount + 1) % DAG_CHECKPOINT_WINDOW_COUNT;
+    }
+
     if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
       checkpointWindowCount = 0;
       if (doCheckpoint) {
@@ -240,6 +249,8 @@ public class GenericNode extends Node<Operator>
     int receivedEndWindow = 0;
     long firstWindowId = -1;
 
+    calculateNextCheckpointWindow();
+
     TupleTracker tracker;
     LinkedList<TupleTracker> resetTupleTracker = new LinkedList<TupleTracker>();
     try {
@@ -290,6 +301,8 @@ public class GenericNode extends Node<Operator>
                     sinks[s].put(t);
                   }
                   controlTupleCount++;
+
+                  context.setWindowsFromCheckpoint(nextCheckpointWindowCount--);
 
                   if (applicationWindowCount == 0) {
                     insideWindow = true;
@@ -360,6 +373,7 @@ public class GenericNode extends Node<Operator>
                 activePort.remove();
                 long checkpointWindow = t.getWindowId();
                 if (lastCheckpointWindowId < checkpointWindow) {
+                  dagCheckpointOffsetCount = 0;
                   if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
                     lastCheckpointWindowId = checkpointWindow;
                   }
