@@ -647,6 +647,10 @@ public class DTCli
         null, null, "Lists the default operator attributes"));
     globalCommands.put("list-default-port-attributes", new CommandSpec(new ListDefaultAttributesCommand(AttributesType.PORT),
         null, null, "Lists the default port attributes"));
+    globalCommands.put("clean-app-directories", new CommandSpec(new CleanAppDirectoriesCommand(),
+        new Arg[]{new Arg("duration-in-millis")},
+        null,
+        "Clean up data directories of applications that terminated the given milliseconds ago"));
 
     //
     // Connected command specification starts here
@@ -3830,6 +3834,23 @@ public class DTCli
         //get port attributes
         result = TypeDiscoverer.getPortAttributes();
       }
+      printJson(result);
+    }
+  }
+
+  private class CleanAppDirectoriesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      JSONObject result = new JSONObject();
+      JSONArray appArray = new JSONArray();
+      List<ApplicationReport> apps = StramClientUtils.cleanAppDirectories(yarnClient, conf, fs,
+          System.currentTimeMillis() - Long.valueOf(args[1]));
+      for (ApplicationReport app : apps) {
+        appArray.put(app.getApplicationId().toString());
+      }
+      result.put("applications", appArray);
       printJson(result);
     }
   }
