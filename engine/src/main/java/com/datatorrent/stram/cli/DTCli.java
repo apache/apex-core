@@ -641,12 +641,16 @@ public class DTCli
       new Arg[]{new FileArg("app-package-file"), new Arg("operator-class")},
       null,
       "Get operator properties within the given app package"));
-    globalCommands.put("list-application-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.APPLICATION),
-      null, null, "Lists the application attributes"));
-    globalCommands.put("list-operator-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.OPERATOR),
-      null, null, "Lists the operator attributes"));
-    globalCommands.put("list-port-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.PORT), null, null,
-      "Lists the port attributes"));
+    globalCommands.put("list-default-app-attributes", new CommandSpec(new ListDefaultAttributesCommand(AttributesType.APPLICATION),
+        null, null, "Lists the default application attributes"));
+    globalCommands.put("list-default-operator-attributes", new CommandSpec(new ListDefaultAttributesCommand(AttributesType.OPERATOR),
+        null, null, "Lists the default operator attributes"));
+    globalCommands.put("list-default-port-attributes", new CommandSpec(new ListDefaultAttributesCommand(AttributesType.PORT),
+        null, null, "Lists the default port attributes"));
+    globalCommands.put("clean-app-directories", new CommandSpec(new CleanAppDirectoriesCommand(),
+        new Arg[]{new Arg("duration-in-millis")},
+        null,
+        "Clean up data directories of applications that terminated the given milliseconds ago"));
 
     //
     // Connected command specification starts here
@@ -2920,7 +2924,7 @@ public class DTCli
 
   private File copyToLocal(String[] files) throws IOException
   {
-    File tmpDir = new File("/tmp/datatorrent/" + ManagementFactory.getRuntimeMXBean().getName());
+    File tmpDir = new File(System.getProperty("java.io.tmpdir") + "/datatorrent/" + ManagementFactory.getRuntimeMXBean().getName());
     tmpDir.mkdirs();
     for (int i = 0; i < files.length; i++) {
       try {
@@ -3807,11 +3811,11 @@ public class DTCli
     APPLICATION, OPERATOR, PORT
   }
 
-  private class ListAttributesCommand implements Command
+  private class ListDefaultAttributesCommand implements Command
   {
     private final AttributesType type;
 
-    protected ListAttributesCommand(@NotNull AttributesType type)
+    protected ListDefaultAttributesCommand(@NotNull AttributesType type)
     {
       this.type = Preconditions.checkNotNull(type);
     }
@@ -3830,6 +3834,23 @@ public class DTCli
         //get port attributes
         result = TypeDiscoverer.getPortAttributes();
       }
+      printJson(result);
+    }
+  }
+
+  private class CleanAppDirectoriesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      JSONObject result = new JSONObject();
+      JSONArray appArray = new JSONArray();
+      List<ApplicationReport> apps = StramClientUtils.cleanAppDirectories(yarnClient, conf, fs,
+          System.currentTimeMillis() - Long.valueOf(args[1]));
+      for (ApplicationReport app : apps) {
+        appArray.put(app.getApplicationId().toString());
+      }
+      result.put("applications", appArray);
       printJson(result);
     }
   }

@@ -38,6 +38,8 @@ import org.apache.xbean.asm5.Opcodes;
  *
  * Keep in mind it is NOT thread safe
  *
+ *
+ * @since 3.3.0
  */
 public class FastClassIndexReader
 {

@@ -387,7 +387,8 @@ public class StramClientUtils
       fs = newFileSystemInstance(conf);
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
       // load global settings from DFS
-      targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", UserGroupInformation.getLoginUser().getShortUserName()));
+      targetGlobalFile = new File(String.format("%s/dt-site-global-%s.xml", System.getProperty("java.io.tmpdir"),
+          UserGroupInformation.getLoginUser().getShortUserName()));
       org.apache.hadoop.fs.Path hdfsGlobalPath = new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE);
       LOG.debug("Copying global dt-site.xml from {} to {}", hdfsGlobalPath, targetGlobalFile.getAbsolutePath());
       fs.copyToLocalFile(hdfsGlobalPath, new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
@@ -811,6 +812,34 @@ public class StramClientUtils
       rmAddresses.add(socketAddress);
     }
     return rmAddresses;
+  }
+
+  public static List<ApplicationReport> cleanAppDirectories(YarnClient clientRMService, Configuration conf, FileSystem fs, long finishedBefore)
+      throws IOException, YarnException
+  {
+    List<ApplicationReport> result = new ArrayList<>();
+    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE),
+        EnumSet.of(YarnApplicationState.FAILED,
+            YarnApplicationState.FINISHED,
+            YarnApplicationState.KILLED));
+    Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
+    for (ApplicationReport ar : applications) {
+      long finishTime = ar.getFinishTime();
+      if (finishTime < finishedBefore) {
+        try {
+          Path appPath = new Path(appsBasePath, ar.getApplicationId().toString());
+          if (fs.isDirectory(appPath)) {
+            LOG.debug("Deleting finished application data for {}", ar.getApplicationId());
+            fs.delete(appPath, true);
+            result.add(ar);
+          }
+        } catch (Exception ex) {
+          LOG.warn("Cannot delete application data for {}", ar.getApplicationId(), ex);
+          continue;
+        }
+      }
+    }
+    return result;
   }
 
 }

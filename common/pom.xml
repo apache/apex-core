@@ -37,20 +37,6 @@
       <plugin>
         <groupId>com.github.siom79.japicmp</groupId>
         <artifactId>japicmp-maven-plugin</artifactId>
-        <configuration>
-          <oldVersion>
-            <dependency>
-              <groupId>org.apache.apex</groupId>
-              <artifactId>apex-common</artifactId>
-              <version>3.2.0-incubating</version>
-            </dependency>
-          </oldVersion>
-          <newVersion>
-            <file>
-              <path>${project.build.directory}/${project.artifactId}-${project.version}.jar</path>
-            </file>
-          </newVersion>
-        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

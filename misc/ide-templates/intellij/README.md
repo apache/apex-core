@@ -4,7 +4,7 @@ Importing APEX Code Style in IntelliJ
 With IntelliJ you can either import settings globally for all the workspaces or apply the style to a specific project.
 
 ##Import settings globally
-To share settings between all the workspaces you can import the `apex-style.jar` which contains the apex-style.
+To share settings between all the workspaces you can import the `apex-style.jar` which contains the apex-style. This file can be found under the .settings sub-folder in this folder.
 
 ####To import the settings from the jar archive
 1. On the main menu, choose File | Import Settings.

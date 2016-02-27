@@ -199,6 +199,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPhysicalPlan() throws Exception
   {
+    init();
     Map<String, Object> result = new HashMap<String, Object>();
     result.put("operators", dagManager.getOperatorInfoList());
     result.put("streams", dagManager.getStreamInfoList());
@@ -279,6 +280,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorClasses(@QueryParam("q") String searchTerm, @QueryParam("parent") String parent)
   {
+    init();
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
 
@@ -316,6 +318,7 @@ public class StramWebServices
   @SuppressWarnings("unchecked")
   public JSONObject describeOperator(@PathParam("className") String className)
   {
+    init();
     if (className == null) {
       throw new UnsupportedOperationException();
     }
@@ -338,6 +341,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject shutdown()
   {
+    init();
     LOG.debug("Shutdown requested");
     dagManager.shutdownAllContainers("Shutdown requested externally.");
     return new JSONObject();
@@ -359,6 +363,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject startRecording(@PathParam("opId") int opId, String content) throws JSONException
   {
+    init();
     LOG.debug("Start recording on {} requested", opId);
     JSONObject response = new JSONObject();
     long numWindows = 0;
@@ -377,6 +382,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject startRecording(@PathParam("opId") int opId, @PathParam("portName") String portName, String content) throws JSONException
   {
+    init();
     LOG.debug("Start recording on {}.{} requested", opId, portName);
     JSONObject response = new JSONObject();
     long numWindows = 0;
@@ -395,6 +401,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject stopRecording(@PathParam("opId") int opId)
   {
+    init();
     LOG.debug("Start recording on {} requested", opId);
     JSONObject response = new JSONObject();
     dagManager.stopRecording(opId, null);
@@ -406,6 +413,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject stopRecording(@PathParam("opId") int opId, @PathParam("portName") String portName)
   {
+    init();
     LOG.debug("Stop recording on {}.{} requested", opId, portName);
     JSONObject response = new JSONObject();
     dagManager.stopRecording(opId, portName);
@@ -478,6 +486,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject killContainer(@PathParam("containerId") String containerId)
   {
+    init();
     JSONObject response = new JSONObject();
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
       LOG.info("Received a kill request on application master container. Exiting.");
@@ -508,6 +517,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getLogicalOperators() throws Exception
   {
+    init();
     LogicalOperatorsInfo nodeList = new LogicalOperatorsInfo();
     nodeList.operators = dagManager.getLogicalOperatorInfoList();
     return new JSONObject(objectMapper.writeValueAsString(nodeList));
@@ -518,6 +528,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getLogicalOperator(@PathParam("operatorName") String operatorName) throws Exception
   {
+    init();
     OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
       throw new NotFoundException();
@@ -532,6 +543,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorAggregation(@PathParam("operatorName") String operatorName) throws Exception
   {
+    init();
     OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
       throw new NotFoundException();
@@ -598,14 +610,16 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorAttributes(@PathParam("operatorName") String operatorName, @QueryParam("attributeName") String attributeName)
   {
+    init();
     OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
-    HashMap<String, Object> map = new HashMap<String, Object>();
+    HashMap<String, String> map = new HashMap<>();
     for (Entry<Attribute<?>, Object> entry : dagManager.getOperatorAttributes(operatorName).entrySet()) {
-      if (attributeName == null || entry.getKey().name.equals(attributeName)) {
-        map.put(entry.getKey().name, entry.getValue());
+      if (attributeName == null || entry.getKey().getSimpleName().equals(attributeName)) {
+        Entry<Attribute<Object>, Object> entry1 = (Entry<Attribute<Object>, Object>)(Entry)entry;
+        map.put(entry1.getKey().getSimpleName(), entry1.getKey().codec.toString(entry1.getValue()));
       }
     }
     return new JSONObject(map);
@@ -616,10 +630,12 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getApplicationAttributes(@QueryParam("attributeName") String attributeName)
   {
-    HashMap<String, Object> map = new HashMap<String, Object>();
+    init();
+    HashMap<String, String> map = new HashMap<>();
     for (Entry<Attribute<?>, Object> entry : dagManager.getApplicationAttributes().entrySet()) {
-      if (attributeName == null || entry.getKey().name.equals(attributeName)) {
-        map.put(entry.getKey().name, entry.getValue());
+      if (attributeName == null || entry.getKey().getSimpleName().equals(attributeName)) {
+        Entry<Attribute<Object>, Object> entry1 = (Entry<Attribute<Object>, Object>)(Entry)entry;
+        map.put(entry1.getKey().getSimpleName(), entry1.getKey().codec.toString(entry1.getValue()));
       }
     }
     return new JSONObject(map);
@@ -630,6 +646,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPorts(@PathParam("operatorName") String operatorName)
   {
+    init();
     OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
     Set<LogicalPlan.InputPortMeta> inputPorts;
     Set<LogicalPlan.OutputPortMeta> outputPorts;
@@ -701,6 +718,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPort(@PathParam("operatorName") String operatorName, @PathParam("portName") String portName)
   {
+    init();
     OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
     Set<LogicalPlan.InputPortMeta> inputPorts;
     Set<LogicalPlan.OutputPortMeta> outputPorts;
@@ -732,11 +750,19 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortAttributes(@PathParam("operatorName") String operatorName, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
   {
+    init();
     OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
-    return new JSONObject(dagManager.getPortAttributes(operatorName, portName));
+    HashMap<String, String> map = new HashMap<>();
+    for (Entry<Attribute<?>, Object> entry : dagManager.getPortAttributes(operatorName, portName).entrySet()) {
+      if (attributeName == null || entry.getKey().getSimpleName().equals(attributeName)) {
+        Entry<Attribute<Object>, Object> entry1 = (Entry<Attribute<Object>, Object>)(Entry)entry;
+        map.put(entry1.getKey().getSimpleName(), entry1.getKey().codec.toString(entry1.getValue()));
+      }
+    }
+    return new JSONObject(map);
   }
 
   @GET
@@ -788,6 +814,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") int operatorId, @QueryParam("propertyName") String propertyName, @QueryParam("waitTime") long waitTime)
   {
+    init();
     if (waitTime == 0) {
       waitTime = WAIT_TIME;
     }
@@ -812,6 +839,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getLogicalPlan(@QueryParam("includeModules") String includeModules) throws JSONException, IOException
   {
+    init();
     return new JSONObject(objectMapper.writeValueAsString(LogicalPlanSerializer.convertToMap(
         dagManager.getLogicalPlan(), includeModules != null)));
   }
@@ -822,6 +850,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject logicalPlanModification(JSONObject request)
   {
+    init();
     JSONObject response = new JSONObject();
     try {
       JSONArray jsonArray = request.getJSONArray("requests");

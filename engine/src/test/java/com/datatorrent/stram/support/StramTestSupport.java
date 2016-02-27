@@ -33,9 +33,16 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 
-import net.lingala.zip4j.core.ZipFile;
-import net.lingala.zip4j.model.ZipParameters;
-import org.apache.commons.io.FileUtils;
+import org.codehaus.plexus.DefaultPlexusContainer;
+import org.codehaus.plexus.PlexusContainer;
+import org.codehaus.plexus.logging.BaseLoggerManager;
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.websocket.WebSocket;
+import org.eclipse.jetty.websocket.WebSocketServlet;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.Assert;
@@ -43,9 +50,15 @@ import org.junit.rules.TestWatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.util.Clock;
+import org.apache.maven.cli.MavenCli;
+import org.apache.maven.cli.logging.Slf4jLogger;
+
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StramLocalCluster;
@@ -59,18 +72,9 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.stram.webapp.AppInfo;
-import org.apache.commons.io.IOUtils;
 
-import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.util.Clock;
-import org.eclipse.jetty.server.Connector;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.websocket.WebSocket;
-import org.eclipse.jetty.websocket.WebSocketServlet;
+import net.lingala.zip4j.core.ZipFile;
+import net.lingala.zip4j.model.ZipParameters;
 
 /**
  * Bunch of utilities shared between tests.
@@ -78,6 +82,24 @@ import org.eclipse.jetty.websocket.WebSocketServlet;
 abstract public class StramTestSupport
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramTestSupport.class);
+  private static MavenCli mavenCli = new MavenCli()
+  {
+    @Override
+    protected void customizeContainer(PlexusContainer container)
+    {
+      ((DefaultPlexusContainer)container).setLoggerManager(
+          new BaseLoggerManager()
+          {
+            @Override
+            protected org.codehaus.plexus.logging.Logger createLogger(String s)
+            {
+              return new Slf4jLogger(LOG);
+            }
+          }
+      );
+    }
+  };
+  private static final String workingDirectory = "src/test/resources/testAppPackage/mydtapp/";
   public static final long DEFAULT_TIMEOUT_MILLIS = 30000;
 
   public static Object generateTuple(Object payload, int windowId)
@@ -130,37 +152,18 @@ abstract public class StramTestSupport
   /**
    * Create an appPackage zip using the sample appPackage located in
    * src/test/resources/testAppPackage/testAppPackageSrc.
-   * @param file  The file whose path will be used to create the appPackage zip
    * @return      The File object that can be used in the AppPackage constructor.
-   * @throws net.lingala.zip4j.exception.ZipException
    */
   public static File createAppPackageFile()
   {
-    String appPackageDir = "src/test/resources/testAppPackage/mydtapp";
-    String command = "mvn clean package -DskipTests";
-    try {
-      Process p = Runtime.getRuntime().exec(command, null, new File(appPackageDir));
-      IOUtils.copy(p.getInputStream(), System.out);
-      IOUtils.copy(p.getErrorStream(), System.err);
-      Assert.assertEquals(0, p.waitFor());
-    } catch (Exception ex) {
-      throw new RuntimeException(ex);
-    }
-    return new File(appPackageDir, "target/mydtapp-1.0-SNAPSHOT.apa");
+    Assert.assertEquals(0, mavenCli.doMain(new String[] {"clean", "package", "-DskipTests"},
+        workingDirectory, System.out, System.err));
+    return new File(workingDirectory, "target/mydtapp-1.0-SNAPSHOT.apa");
   }
 
   public static void removeAppPackageFile()
   {
-    String appPackageDir = "src/test/resources/testAppPackage/mydtapp";
-    String command = "mvn clean";
-    try {
-      Process p = Runtime.getRuntime().exec(command, null, new File(appPackageDir));
-      IOUtils.copy(p.getInputStream(), System.out);
-      IOUtils.copy(p.getErrorStream(), System.err);
-      Assert.assertEquals(0, p.waitFor());
-    } catch (Exception ex) {
-      throw new RuntimeException(ex);
-    }
+    Assert.assertEquals(0, mavenCli.doMain(new String[]{"clean"}, workingDirectory, System.out, System.err));
   }
 
   /**
@@ -479,16 +482,16 @@ abstract public class StramTestSupport
     final long startTime = System.currentTimeMillis();
     final String gatewayAddress = "localhost:9090";
 
-    public TestAppContext(int appid, int numJobs, int numTasks, int numAttempts)
+    public TestAppContext(Attribute.AttributeMap attributeMap, int appid, int numJobs, int numTasks, int numAttempts)
     {
-      super(new Attribute.AttributeMap.DefaultAttributeMap(), null); // this needs to be done in a proper way - may cause application errors.
+      super(attributeMap, null); // this needs to be done in a proper way - may cause application errors.
       this.appID = ApplicationId.newInstance(0, appid);
       this.appAttemptID = ApplicationAttemptId.newInstance(this.appID, numAttempts);
     }
 
-    public TestAppContext()
+    public TestAppContext(Attribute.AttributeMap attributeMap)
     {
-      this(0, 1, 1, 1);
+      this(attributeMap, 0, 1, 1, 1);
     }
 
     @Override

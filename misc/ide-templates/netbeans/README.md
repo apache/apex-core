@@ -1,7 +1,7 @@
 Importing APEX Code Style in NetBeans
 =====================================
 NetBeans supports importing settings bundled in a zip. 
-This directory contains apex-style.zip which contains Apex format and import order configurations.
+This sub-directory .settings in this directory contains apex-style.zip which contains Apex format and import order configurations.
 
 ##To import Apex code style
 1. On the main menu, choose NetBeans | Preferences.

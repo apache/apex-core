@@ -21,6 +21,7 @@ package com.datatorrent.stram.client;
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.jar.*;
 import net.lingala.zip4j.core.ZipFile;
@@ -120,8 +121,8 @@ public class AppPackage extends JarFile
       FileUtils.forceMkdir(contentFolder);
       cleanOnClose = false;
     } else {
-      cleanOnClose =  true;
-      contentFolder = new File("/tmp/dt-appPackage-" + Long.toString(System.nanoTime()));
+      cleanOnClose = true;
+      contentFolder = Files.createTempDirectory("dt-appPackage-").toFile();
     }
 
     Manifest manifest = getManifest();
