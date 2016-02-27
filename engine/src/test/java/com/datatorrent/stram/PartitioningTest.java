@@ -260,7 +260,7 @@ public class PartitioningTest
 
     };
     StramTestSupport.awaitCompletion(c, 10000);
-    Assert.assertTrue("Number partitions " + ow, c.isComplete());
+    Assert.assertTrue("Number partitions match " + ow, c.isComplete());
     return lc.getPlanOperators(ow);
   }
 
