@@ -447,3 +447,9 @@ ports.
 1. Invoke constructor; non-transients initialized.
 2. Copy state from checkpoint -- initialized values from step 1 are
 replaced.
+
+
+Malhar Operator Library
+==========================
+
+To see the full list of Apex Malhar operators along with related documentation, visit [Apex Malhar on Github](https://github.com/apache/incubator-apex-malhar)
