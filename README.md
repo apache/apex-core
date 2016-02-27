@@ -11,6 +11,8 @@ Please visit the [documentation section](http://apex.incubator.apache.org/docs.h
 
 [Malhar](https://github.com/apache/incubator-apex-malhar) is a library of application building blocks and examples that will help you build out your first Apex application quickly.
 
+Documentation build and hosting process is explained in [docs/README.md].
+
 ##Contributing
 
 This project welcomes new contributors.  If you would like to help by adding new features, enhancements or fixing bugs, check out the [contributing guidelines](http://apex.incubator.apache.org/contributing.html).
