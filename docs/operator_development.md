@@ -287,7 +287,7 @@ Code
 
 The source code for the tutorial can be found here:
 
-[https://github.com/DataTorrent/examples/tree/master/tutorials/operatorTutorial](https://www.google.com/url?q=https://github.com/DataTorrent/examples/tree/master/tutorials/operatorTutorial&sa=D&usg=AFQjCNHAAgSpNprHJVvy9GSjdlD1uwU7jw)
+[https://github.com/DataTorrent/examples/tree/master/tutorials/operatorTutorial](https://github.com/DataTorrent/examples/tree/master/tutorials/operatorTutorial)
 
 
 Operator Reference <a name="operator_reference"></a>
@@ -447,3 +447,9 @@ ports.
 1. Invoke constructor; non-transients initialized.
 2. Copy state from checkpoint -- initialized values from step 1 are
 replaced.
+
+
+Malhar Operator Library
+==========================
+
+To see the full list of Apex Malhar operators along with related documentation, visit [Apex Malhar on Github](https://github.com/apache/incubator-apex-malhar)

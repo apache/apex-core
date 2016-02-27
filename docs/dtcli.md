@@ -1,12 +1,7 @@
 Apache Apex Command Line Interface
 ================================================================================
 
-dtCli, the Apache Apex command line interface, can be used to launch, monitor, and manage
-Apache Apex applications.  dtCli is a wrapper around the [REST API](dtgateway_api.md) provided by dtGatway, and
-provides a developer friendly way of interacting with Apache Apex platform. The CLI enables a much higher level of feature set by
-hiding deep details of REST API.  Another advantage of dtCli is to provide scope, by connecting and executing commands in a context
-of specific application.  dtCli enables easy integration with existing enterprise toolset for automated application monitoring
-and management.  Currently the following high level tasks are supported.
+dtCli, the Apache Apex command line interface, can be used to launch, monitor, and manage Apache Apex applications.  It provides a developer friendly way of interacting with Apache Apex platform.  Another advantage of dtCli is to provide scope, by connecting and executing commands in a context of specific application.  dtCli enables easy integration with existing enterprise toolset for automated application monitoring and management.  Currently the following high level tasks are supported.
 
 -   Launch or kill applications
 -   View system metrics including load, throughput, latency, etc.
@@ -19,7 +14,7 @@ and management.  Currently the following high level tasks are supported.
 
 ## dtcli Commands
 
-dtCli can be launched by running following command on the same machine where dtGatway was installed
+dtCli can be launched by running following command
 
     dtcli
 
