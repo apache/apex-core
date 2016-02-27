@@ -1,0 +1,15 @@
+site_name: Apache Apex Documentation
+site_favicon: favicon.ico
+theme: readthedocs
+pages:
+- Apache Apex: index.md
+- Apache Apex-Malhar: apex_malhar.md
+- Development:
+    - Development Setup: apex_development_setup.md
+    - Applications: application_development.md
+    - Application Packages: application_packages.md
+    - Configuration Packages: configuration_packages.md
+    - Operators: operator_development.md
+    - AutoMetric API: autometrics.md
+- Operations:
+    - dtCli: dtcli.md

@@ -107,7 +107,7 @@ other IDEs, like Eclipse or IntelliJ, is similar.
 # Writing Your Own App Package
 
 
-Please refer to the [Creating Apps](create.md) on the basics on how to write an Apache Apex application.  In your AppPackage project, you can add custom operators (refer to [Operator Development Guide](https://www.datatorrent.com/docs/guides/OperatorDeveloperGuide.html)), project dependencies, default and required configuration properties, pre-set configurations and other metadata.
+Please refer to the [Creating Apps](http://docs.datatorrent.com/create/) on the basics on how to write an Apache Apex application.  In your AppPackage project, you can add custom operators (refer to [Operator Development Guide](operator_development.md), project dependencies, default and required configuration properties, pre-set configurations and other metadata.
 
 ## Adding (and removing) project dependencies
 
@@ -398,8 +398,6 @@ property:
 
         dt.attr.APPLICATION_NAME
 
-There are also other properties that can be set.  For details on
-properties, refer to the [Operation and Installation Guide](https://www.datatorrent.com/docs/guides/OperationandInstallationGuide.html).
 
 In this example, property some_name_1 is a required property which
 must be set at launch time, or it must be set by a pre-set configuration
@@ -623,12 +621,12 @@ Here is an example of launching an application through curl:
  lications/MyFirstApplication/launch
 ```
 
-Please refer to the [Gateway API reference](https://www.google.com/url?q=https://www.datatorrent.com/docs/guides/DTGatewayAPISpecification.html&sa=D&usg=AFQjCNEWfN7-e7fd6MoWZjmJUE3GW7UwdQ) for the complete specification of the REST API.
+Please refer to the [Gateway API](http://docs.datatorrent.com/dtgateway_api/) for the complete specification of the REST API.
 
 # Examining and Launching Application Packages Through Apex CLI
 
 If you are working with Application Packages in the local filesystem and
-do not want to deal with dtGateway, you can use the Apex Command Line Interface (dtcli).  Please refer to the [Gateway API](dtgateway_api.md)
+do not want to deal with dtGateway, you can use the Apex Command Line Interface (dtcli).  Please refer to the [Gateway API](http://docs.datatorrent.com/dtgateway_api/)
 to see samples for these commands.
 
 ## Getting Application Package Meta Information
