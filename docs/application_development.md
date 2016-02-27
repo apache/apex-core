@@ -1,50 +1,16 @@
 Application Developer Guide
 ===========================
 
-Real-time big data processing is not only important but has become
-critical for businesses which depend on accurate and timely analysis of
-their business data. A few businesses have yielded to very expensive
-solutions like building an in-house, real-time analytics infrastructure
-supported by an internal development team, or buying expensive
-proprietary software. A large number of businesses are dealing with the
-requirement just by trying to make Hadoop do their batch jobs in smaller
-iterations. Over the last few years, Hadoop has become ubiquitous in the
-big data processing space, replacing expensive proprietary hardware and
-software solutions for massive data processing with very cost-effective,
-fault-tolerant, open-sourced, and commodity-hardware-based solutions.
-While Hadoop has been a game changer for companies, it is primarily a
-batch-oriented system, and does not yet have a viable option for
-real-time data processing.  Most companies with real-time data
-processing end up having to build customized solutions in addition to
-their Hadoop infrastructure.
-
- 
-
-The DataTorrent platform is designed to process massive amounts of
-real-time events natively in Hadoop. This can be event ingestion,
-processing, and aggregation for real-time data analytics, or can be
-real-time business logic decisioning such as cell tower load balancing,
-real-time ads bidding, or fraud detection.  The platform has the ability
-to repair itself in real-time (without data loss) if hardware fails, and
-adapt to changes in load by adding and removing computing resources
-automatically.
-
-
-
-DataTorrent is a native Hadoop application. It runs as a YARN
-(Hadoop 2.x) application and leverages Hadoop as a distributed operating
-system. All the basic distributed operating system capabilities of
-Hadoop like resource allocation (Resource Manager, distributed file system (HDFS),
-multi-tenancy, security, fault-tolerance, scalability, etc.
-are supported natively in all streaming applications.  Just as Hadoop
-for map-reduce handles all the details of the application allowing you
-to only focus on writing the application (the mapper and reducer
-functions), the platform handles all the details of streaming execution,
-allowing you to only focus on your business logic. Using the platform
-removes the need to maintain separate clusters for real-time
-applications.
-
-
+The Apex platform is designed to process massive amounts of
+real-time events natively in Hadoop.  It runs as a YARN (Hadoop 2.x) 
+application and leverages Hadoop as a distributed operating
+system.  All the basic distributed operating system capabilities of
+Hadoop like resource management (YARN), distributed file system (HDFS),
+multi-tenancy, security, fault-tolerance, and scalability are supported natively 
+in all the Apex applications.  The platform handles all the details of the application 
+execution, including dynamic scaling, state checkpointing and recovery, event 
+processing guarantees, etc. allowing you to focus on writing your application logic without
+mixing operational and functional concerns.
 
 In the platform, building a streaming application can be extremely
 easy and intuitive.  The application is represented as a Directed
@@ -56,25 +22,24 @@ processing is not available in the Operator Library, one can easily
 write a custom operator. We refer those interested in creating their own
 operators to the [Operator Development Guide](operator_development.md).
 
+
 Running A Test Application
 =======================================
 
-This chapter will help you with a quick start on running an
-application. If you are starting with the platform for the first time,
-it would be informative to open an existing application and see it run.
-Do the following steps to run the PI demo, which computes the value of
-PI  in a simple
-manner:
+If you are starting with the Apex platform for the first time,
+it can be informative to launch an existing application and see it run.
+One of the simplest examples provided in [Apex Malhar](apex_malhar.md) is a Pi demo application,
+which computes the value of PI using random numbers.  After [setting up development environment](apex_development_setup.md)
+Pi demo can be launched as follows:
 
-1.  Open up platform files in your IDE (for example NetBeans, or Eclipse)
-2.  Open Demos project
-3.  Open Test Packages and run ApplicationTest.java in pi package
-4.  See the results in your system console
-
+1.  Open up Apex Malhar files in your IDE (for example Eclipse, IntelliJ, NetBeans, etc)
+2.  Navigate to `demos/pi/src/test/java/com/datatorrent/demos/ApplicationTest.java`
+3.  Run the test for ApplicationTest.java
+4.  View the output in system console
 
 
-Congratulations, you just ran your first real-time streaming demo
-:) This demo is very simple and has four operators. The first operator
+Congratulations, you just ran your first real-time streaming demo :) 
+This demo is very simple and has four operators. The first operator
 emits random integers between 0 to 30, 000. The second operator receives
 these coefficients and emits a hashmap with x and y values each time it
 receives two values. The third operator takes these values and computes
@@ -118,6 +83,7 @@ strongly encourage you to read these to familiarize yourself with the
 platform. In the remaining part of this document we will go through
 details needed for you to develop and run streaming applications in
 Malhar.
+
 
 Test Application: Yahoo! Finance Quotes
 ----------------------------------------------------
@@ -622,7 +588,7 @@ attribute APPLICATION_WINDOW_COUNT.
 In the rest of this chapter we will run through the process of
 running this application. We assume that  you are familiar with details
 of your Hadoop infrastructure. For installation
-details please refer to the [Installation Guide](installation.md).
+details please refer to the [Installation Guide](http://docs.datatorrent.com/installation/).
 
 
 Running a Test Application
@@ -1449,7 +1415,7 @@ not impact functionality of the operator. Users can change certain
 attributes in runtime. Users cannot add attributes to operators; they
 are pre-defined by the platform. They are interpreted by the platform
 and thus cannot be defined in user created code (like properties).
-Details of attributes are covered in  [Configuration Guide](configuration.md).
+Details of attributes are covered in  [Configuration Guide](http://docs.datatorrent.com/configuration/).
 
 ### Operator State
 
@@ -1857,10 +1823,7 @@ Hadoop is a multi-tenant distributed operating system. Security is
 an intrinsic element of multi-tenancy as without it a cluster cannot be
 reasonably be shared among enterprise applications. Streaming
 applications follow all multi-tenancy security models used in Hadoop as
-they are native Hadoop applications. For details refer to the
-[Operation and Installation
-Guide](https://www.datatorrent.com/docs/guides/OperationandInstallationGuide.html)
-.
+they are native Hadoop applications.
 
 Security
 ---------------------
@@ -2824,7 +2787,7 @@ is not yet available.
 
 
 
-9: Dynamic Application Modifications
+Dynamic Application Modifications
 =================================================
 
 Dynamic application modifications are being worked on and most of
@@ -2872,7 +2835,7 @@ Dynamic modifications to applications are foundational part of the
 platform. They enable users to build layers over the applications. Users
 can also save all the changes done since the application launch, and
 therefore predictably get the application to its current state. For
-details refer to  [Configuration Guide](configuration.md)
+details refer to  [Configuration Guide](http://docs.datatorrent.com/configuration/)
 .
 
 
@@ -2881,54 +2844,11 @@ details refer to  [Configuration Guide](configuration.md)
 
 
 
-
-User Interface
-===========================
-
-The platform provides a rich user interface. This includes tools
-to monitor the application system metrics (throughput, latency, resource
-utilization, etc.); dashboards for application data, replay, errors; and
-a Developer studio for application creation, launch etc. For details
-refer to  [UI Console Guide](dtmanage.md).
-
-
-
 Demos
 ==================
 
-In this section we list some of the demos that come packaged with
-installer. The source code for the demos is available in the open-source
+The source code for the demos is available in the open-source
 [Apache Apex-Malhar repository](https://github.com/apache/incubator-apex-malhar).
 All of these do computations in real-time. Developers are encouraged to
 review them as they use various features of the platform and provide an
 opportunity for quick learning.
-
-1.  Computation of PI:
-    Computes PI by generating a random location on X-Y plane and
-    measuring how often it lies within the unit circle centered
-    at (0,0).
-2.  Yahoo! Finance quote computation:
-    Computes ticker quote, 1-day chart (per min), and simple moving
-    averages (per 5 min).
-3.  Echoserver Reads messages from a
-    network connection and echoes them back out.
-4.  Twitter top N tweeted urls: Computes
-    top N tweeted urls over last 5 minutes
-5.  Twitter trending hashtags: Computes
-    the top Twitter Hashtags over the last 5 minutes
-6.  Twitter top N frequent words:
-    Computes top N frequent words in a sliding window
-7.  Word count: Computes word count for
-    all words within a large file
-8.  Mobile location tracker: Tracks
-    100,000 cell phones within an area code moving at car speed (jumping
-    cell phone towers every 1-5 seconds).
-9.  Frauddetect: Analyzes a stream of
-    credit card merchant transactions.
-10. Mroperator:Contains several
-    map-reduce applications.
-11. R: Analyzes a synthetic stream of
-    eruption event data for the Old Faithful
-    geyser (https://en.wikipedia.org/wiki/Old_Faithful).
-12. Machinedata: Analyzes a synthetic
-    stream of events to determine health of a machine.  

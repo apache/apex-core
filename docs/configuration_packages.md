@@ -91,13 +91,13 @@ Example:
 ```
   <groupId>com.example</groupId>
   <version>1.0.0</version>
-  <artifactId>mydtconf</artifactId>
+  <artifactId>mycustomconf</artifactId>
   <packaging>jar</packaging>
   <!-- change these to the appropriate values -->
-  <name>My DataTorrent Application Configuration</name>
-  <description>My DataTorrent Application Configuration Description</description>
+  <name>My Custom Application Configuration</name>
+  <description>My Custom Application Configuration Description</description>
   <properties>
-    <datatorrent.apppackage.name>mydtapp</datatorrent.apppackage.name>
+    <datatorrent.apppackage.name>mycustomapp</datatorrent.apppackage.name>
     <datatorrent.apppackage.minversion>1.0.0</datatorrent.apppackage.minversion>
    <datatorrent.apppackage.maxversion>1.9999.9999</datatorrent.apppackage.maxversion>
     <datatorrent.appconf.classpath>classpath/*</datatorrent.appconf.classpath>
