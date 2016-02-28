@@ -518,7 +518,51 @@ public class StramRecoveryTest
     Assert.assertTrue("timedout", timedout.get());
 
     rp.close();
+
+    String rpcTimeout = System.getProperty(RecoverableRpcProxy.RPC_TIMEOUT);
+    String rpcRetryDelay = System.getProperty(RecoverableRpcProxy.RETRY_DELAY);
+    String rpcRetryTimeout = System.getProperty(RecoverableRpcProxy.RETRY_TIMEOUT);
+
+    System.setProperty(RecoverableRpcProxy.RPC_TIMEOUT, Integer.toString(500));
+    System.setProperty(RecoverableRpcProxy.RETRY_DELAY, Long.toString(100));
+    System.setProperty(RecoverableRpcProxy.RETRY_TIMEOUT, Long.toString(500));
+
+    timedout.set(false);
+    uri = RecoverableRpcProxy.toConnectURI(address);
+    recoveryHandler.writeConnectUri(uri.toString());
+
+    rp = new RecoverableRpcProxy(appPath, conf);
+    protocolProxy = rp.getProxy();
+    protocolProxy.log("containerId", "msg");
+    try {
+      protocolProxy.log("containerId", "timeout");
+      Assert.fail("expected socket timeout");
+    } catch (java.net.SocketTimeoutException e) {
+      // expected
+    }
+    Assert.assertTrue("timedout", timedout.get());
+    rp.close();
+
+    timedout.set(false);
+    System.setProperty(RecoverableRpcProxy.RETRY_TIMEOUT, Long.toString(1500));
+
+    uri = RecoverableRpcProxy.toConnectURI(address);
+    recoveryHandler.writeConnectUri(uri.toString());
+
+    protocolProxy.log("containerId", "timeout");
+    Assert.assertTrue("timedout", timedout.get());
+
+
+    restoreSystemProperty(RecoverableRpcProxy.RPC_TIMEOUT, rpcTimeout);
+    restoreSystemProperty(RecoverableRpcProxy.RETRY_DELAY, rpcRetryDelay);
+    restoreSystemProperty(RecoverableRpcProxy.RETRY_TIMEOUT, rpcRetryTimeout);
+
     server.stop();
+  }
+
+  private static String restoreSystemProperty(final String key, final String value)
+  {
+    return (value == null)? System.clearProperty(key) : System.setProperty(key, value);
   }
 
 }
