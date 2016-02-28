@@ -555,7 +555,7 @@ public class StreamingAppMasterService extends CompositeService
 
     // write the connect address for containers to DFS
     InetSocketAddress connectAddress = NetUtils.getConnectAddress(this.heartbeatListener.getAddress());
-    URI connectUri = new URI("stram", null, connectAddress.getHostName(), connectAddress.getPort(), null, null, null);
+    URI connectUri = RecoverableRpcProxy.toConnectURI(connectAddress);
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), getConfig());
     recoveryHandler.writeConnectUri(connectUri.toString());
 

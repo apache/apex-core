@@ -29,6 +29,7 @@ import java.nio.charset.Charset;
 import static java.lang.Thread.sleep;
 
 import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,18 +52,28 @@ import java.util.List;
  */
 public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler, Closeable
 {
-  private final static Logger LOG = LoggerFactory.getLogger(RecoverableRpcProxy.class);
+  private static final Logger LOG = LoggerFactory.getLogger(RecoverableRpcProxy.class);
+
+  public static final String RPC_TIMEOUT = "com.datatorrent.stram.rpc.timeout";
+  public static final String RETRY_TIMEOUT = "com.datatorrent.stram.rpc.retry.timeout";
+  public static final String RETRY_DELAY = "com.datatorrent.stram.rpc.delay.timeout";
+
   public static final String QP_retryTimeoutMillis = "retryTimeoutMillis";
   public static final String QP_retryDelayMillis = "retryDelayMillis";
   public static final String QP_rpcTimeout = "rpcTimeout";
+
+  private static final int RETRY_TIMEOUT_DEFAULT = 30000;
+  private static final int RETRY_DELAY_DEFAULT = 10000;
+  private static final int RPC_TIMEOUT_DEFAULT = 5000;
+
   private final Configuration conf;
   private final String appPath;
   private StreamingContainerUmbilicalProtocol umbilical;
   private String lastConnectURI;
   private long lastCompletedCallTms;
-  private long retryTimeoutMillis = 30000;
-  private long retryDelayMillis = 10000;
-  private int rpcTimeout = 5000;
+  private long retryTimeoutMillis = Long.getLong(RETRY_TIMEOUT, RETRY_TIMEOUT_DEFAULT);
+  private long retryDelayMillis = Long.getLong(RETRY_DELAY, RETRY_DELAY_DEFAULT);
+  private int rpcTimeout = Integer.getInteger(RPC_TIMEOUT, RPC_TIMEOUT_DEFAULT);
 
   public RecoverableRpcProxy(String appPath, Configuration conf) throws IOException
   {
@@ -169,15 +180,24 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
     }
   }
 
-  public static URI toConnectURI(InetSocketAddress address, int rpcTimeoutMillis, int retryDelayMillis, int retryTimeoutMillis) throws Exception
+  public static URI toConnectURI(final InetSocketAddress address) throws Exception
   {
-    StringBuilder query = new StringBuilder(256);
-    query.append(RecoverableRpcProxy.QP_rpcTimeout + '=').append(rpcTimeoutMillis);
-    query.append('&');
-    query.append(RecoverableRpcProxy.QP_retryDelayMillis + '=').append(retryDelayMillis);
-    query.append('&');
-    query.append(RecoverableRpcProxy.QP_retryTimeoutMillis + '=').append(retryTimeoutMillis);
-    return new URI("stram", null, address.getHostName(), address.getPort(), null, query.toString(), null);
+    int rpcTimeoutMillis = Integer.getInteger(RPC_TIMEOUT, RPC_TIMEOUT_DEFAULT);
+    long retryDelayMillis = Long.getLong(RETRY_DELAY, RETRY_DELAY_DEFAULT);
+    long retryTimeoutMillis = Long.getLong(RETRY_TIMEOUT, RETRY_TIMEOUT_DEFAULT);
+    return toConnectURI(address, rpcTimeoutMillis, retryDelayMillis, retryTimeoutMillis);
+  }
+
+  public static URI toConnectURI(InetSocketAddress address, int rpcTimeoutMillis, long retryDelayMillis, long retryTimeoutMillis) throws Exception
+  {
+    return new URIBuilder()
+        .setScheme("stram")
+        .setHost(address.getHostName())
+        .setPort(address.getPort())
+        .setParameter(RecoverableRpcProxy.QP_rpcTimeout, Integer.toString(rpcTimeoutMillis))
+        .setParameter(RecoverableRpcProxy.QP_retryDelayMillis, Long.toString(retryDelayMillis))
+        .setParameter(RecoverableRpcProxy.QP_retryTimeoutMillis, Long.toString(retryTimeoutMillis))
+        .build();
   }
 
 }
