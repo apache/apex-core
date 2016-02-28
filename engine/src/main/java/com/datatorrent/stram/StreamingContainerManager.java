@@ -1558,6 +1558,10 @@ public class StreamingContainerManager implements PlanContext
           entry.getValue().recordingId = null;
         }
         for (ContainerStats.OperatorStats stats : statsList) {
+          if (stats == null) {
+            LOG.warn("Operator {} statistics list contains null element", shb.getNodeId());
+            continue;
+          }
 
           /* report checkpoint-ed WindowId status of the operator */
           if (stats.checkpoint instanceof Checkpoint) {
