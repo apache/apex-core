@@ -21,7 +21,8 @@ package com.datatorrent.stram.stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.engine.DefaultReservoir;
+import com.datatorrent.stram.engine.AbstractReservoir;
+import com.datatorrent.stram.engine.ForwardingReservoir;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
@@ -33,11 +34,11 @@ import com.datatorrent.stram.engine.SweepableReservoir;
  *
  * @since 0.3.2
  */
-public class InlineStream extends DefaultReservoir implements Stream, SweepableReservoir
+public class InlineStream extends ForwardingReservoir implements Stream, SweepableReservoir
 {
   public InlineStream(int capacity)
   {
-    super("InlineStream", capacity);
+    super(AbstractReservoir.newReservoir("InlineStream", capacity));
   }
 
   /**
@@ -90,7 +91,7 @@ public class InlineStream extends DefaultReservoir implements Stream, SweepableR
   @Override
   public String toString()
   {
-    return "InlineStream{" + super.toString() + '}';
+    return getClass().getName() + '@' + Integer.toHexString(hashCode()) + "{reservoir=" + getReservoir().toString() + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(InlineStream.class);

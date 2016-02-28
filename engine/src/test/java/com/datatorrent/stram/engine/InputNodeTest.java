@@ -182,13 +182,19 @@ public class InputNodeTest
     }
 
     @Override
-    public int size()
+    public int size(final boolean dataTupleAware)
     {
       if (currentTuple != null) {
         return 1;
       } else {
         return 0;
       }
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+      return currentTuple == null;
     }
 
     @Override
