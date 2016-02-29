@@ -23,6 +23,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -69,6 +70,7 @@ import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StringCodec;
 import com.datatorrent.common.util.Pair;
+import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.AppDataSource;
 import com.datatorrent.stram.api.BaseContext;
@@ -101,7 +103,6 @@ public class StreamingAppMasterService extends CompositeService
   private static final long DELEGATION_TOKEN_MAX_LIFETIME = Long.MAX_VALUE / 2;
   private static final long DELEGATION_TOKEN_RENEW_INTERVAL = Long.MAX_VALUE / 2;
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
-  private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private static final int MAX_CONTAINER_FAILURES_PER_NODE = 3;
   private static final long BLACKLIST_REMOVAL_TIME = 60 * 60 * 1000;
   private AMRMClient<ContainerRequest> amRmClient;
@@ -668,6 +669,8 @@ public class StreamingAppMasterService extends CompositeService
     int numReleasedContainers = 0;
     int nextRequestPriority = 0;
     ResourceRequestHandler resourceRequestor = new ResourceRequestHandler();
+    // Use override for container requestor in case of cloudera distribution,to handle host specific requests
+    ContainerRequestHandler containerRequestor = System.getenv().containsKey("CDH_HADOOP_BIN") ? new ContainerRequestHandlerCloudera() : new ContainerRequestHandler();
 
     YarnClient clientRMService = YarnClient.createYarnClient();
 
@@ -758,25 +761,11 @@ public class StreamingAppMasterService extends CompositeService
           }
           csr.container.setResourceRequestPriority(nextRequestPriority++);
           ContainerRequest cr = resourceRequestor.createContainerRequest(csr, true);
-          MutablePair<Integer, ContainerRequest> pair = new MutablePair<Integer, ContainerRequest>(loopCounter, cr);
-          requestedResources.put(csr, pair);
-          containerRequests.add(cr);
+          containerRequestor.addContainerRequest(requestedResources, loopCounter, containerRequests, csr, cr);
         }
       }
 
-      if (!requestedResources.isEmpty()) {
-        //resourceRequestor.clearNodeMapping();
-        for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> entry : requestedResources.entrySet()) {
-          if ((loopCounter - entry.getValue().getKey()) > NUMBER_MISSED_HEARTBEATS) {
-            StreamingContainerAgent.ContainerStartRequest csr = entry.getKey();
-            removedContainerRequests.add(entry.getValue().getRight());
-            ContainerRequest cr = resourceRequestor.createContainerRequest(csr, false);
-            entry.getValue().setLeft(loopCounter);
-            entry.getValue().setRight(cr);
-            containerRequests.add(cr);
-          }
-        }
-      }
+      containerRequestor.reissueContainerRequests(amRmClient, requestedResources, loopCounter, resourceRequestor, containerRequests, removedContainerRequests);
 
      /* Remove nodes from blacklist after timeout */
       long currentTime = System.currentTimeMillis();
@@ -1046,7 +1035,7 @@ public class StreamingAppMasterService extends CompositeService
     if (containerRequests.size() > 0) {
       LOG.info("Asking RM for containers: " + containerRequests);
       for (ContainerRequest cr : containerRequests) {
-        LOG.info("Requested container: {}", cr.toString());
+        LOG.info("Requested container: {} on host: [{}]", cr.toString(), StringUtils.join(cr.getNodes(), ", "));
         amRmClient.addContainerRequest(cr);
       }
     }

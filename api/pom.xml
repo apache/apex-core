@@ -70,14 +70,6 @@
           <groupId>commons-beanutils</groupId>
         </exclusion>
         <exclusion>
-          <artifactId>jackson-core-asl</artifactId>
-          <groupId>org.codehaus.jackson</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jackson-mapper-asl</artifactId>
-          <groupId>org.codehaus.jackson</groupId>
-        </exclusion>
-        <exclusion>
           <artifactId>jackson-jaxrs</artifactId>
           <groupId>org.codehaus.jackson</groupId>
         </exclusion>
