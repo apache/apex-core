@@ -10,7 +10,7 @@ standard way for assembling and sharing an Apache Apex application.
 You will need have the following installed:
 
 1. Apache Maven 3.0 or later (for assembling the App Package)
-2. Apache Apex 3.0.0 or later (for launching the App Package in your cluster)
+2. Apache Apex 3.2.0 or later (for launching the App Package in your cluster)
 
 # Creating Your First Apex App Package
 
@@ -80,29 +80,38 @@ Apex installation.
 
 ## Using IDE
 
-Alternatively, you can do the above steps all within your IDE.  For
-example, in NetBeans, select File -\> New Project.  Then choose “Maven”
-and “Project from Archetype” in the dialog box, as shown.
+Alternatively, you can do the above steps all within your IDE.  For example, in IDEA IntelliJ, first make sure you have the "Maven Integration" plugin enabled (Use File -\> Settings \-> Plugins).  Then select File -\> New -\> Project.  Choose “Maven”, and check “Create from archetype” in the dialog box, as shown.
 
 ![](images/AppPackage/ApplicationPackages.html-image00.png)
 
-Then fill the Group ID, Artifact ID, Version and Repository entries as shown below.
+Then go ahead and click on the "Add Archetype..." button.
 
-![](images/AppPackage/ApplicationPackages.html-image02.png)
+Then fill out the Group ID, Artifact ID, and Version entries, and leave the Repository entry blank, as shown below.
+
+![](images/AppPackage/ApplicationPackages.html-image01.png)
 
 Group ID: org.apache.apex
 Artifact ID: apex-app-archetype
 Version: 3.2.0-incubating (or any later version)
 
-Press Next and fill out the rest of the required information. For
-example:
+Click OK. The archetype will appear in the list, selected.  Note that this "Add Archetype..." step is only required the first time you use the archetype.  You can select the archetype directly after it has been added the first time.
 
-![](images/AppPackage/ApplicationPackages.html-image01.png)
+Click Next, and fill out the rest of the required information. For example:
+
+![](images/AppPackage/ApplicationPackages.html-image02.png)
+
+Click Next, and verify the information shown on the next screen:
+
+![](images/AppPackage/ApplicationPackages.html-image03.png)
+
+Click Next, and fill out the project name and location: 
+
+![](images/AppPackage/ApplicationPackages.html-image04.png)
 
 Click Finish, and now you have created your own Apache Apex App Package
 project, with a default unit test.  You can run the unit test, make code
 changes or make dependency changes within your IDE.  The procedure for
-other IDEs, like Eclipse or IntelliJ, is similar.
+other IDEs, like Eclipse or NetBeans, is similar.
 
 # Writing Your Own App Package
 
