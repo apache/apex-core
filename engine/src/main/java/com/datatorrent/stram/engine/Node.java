@@ -631,7 +631,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       CHECKPOINT_WINDOW_COUNT = 1;
     }
 
-    context.setThread(Thread.currentThread());
     activateSinks();
     if (operator instanceof Operator.ActivationListener) {
       ((Operator.ActivationListener<OperatorContext>) operator).activate(context);
