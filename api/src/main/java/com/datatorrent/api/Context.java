@@ -28,6 +28,7 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StringCodec.Class2String;
 import com.datatorrent.api.StringCodec.Collection2String;
 import com.datatorrent.api.StringCodec.Integer2String;
+import com.datatorrent.api.StringCodec.JsonStringCodec;
 import com.datatorrent.api.StringCodec.Map2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
@@ -510,8 +511,10 @@ public interface Context
     Attribute<Long> BLACKLISTED_NODE_REMOVAL_TIME_MILLIS = new Attribute<Long>(new Long(60 * 60 * 1000));
 
     /**
-     * The number of times consecutive container failure
+     * Affinity rules for specifying affinity and anti-affinity between logical operators
      */
+    Attribute<AffinityRulesSet> AFFINITY_RULES_SET = new Attribute<AffinityRulesSet>(new JsonStringCodec<AffinityRulesSet>(AffinityRulesSet.class));
+
     @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(DAGContext.class);
   }

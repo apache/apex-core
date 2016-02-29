@@ -45,6 +45,8 @@ import static org.junit.Assert.*;
 
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.api.*;
+import com.datatorrent.api.AffinityRule.Type;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -986,6 +988,128 @@ public class LogicalPlanTest
       return;
     }
     Assert.fail();
+  }
+
+  @Test
+  public void testAffinityRulesDagValidation()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator o1 = dag.addOperator("O1", new TestGeneratorInputOperator());
+    GenericTestOperator o2 = dag.addOperator("O2", new GenericTestOperator());
+    GenericTestOperator o3 = dag.addOperator("O3", new GenericTestOperator());
+    dag.addStream("stream1", o1.outport, o2.inport1).setLocality(Locality.THREAD_LOCAL);
+    StreamMeta stream2 = dag.addStream("stream2", o2.outport1, o3.inport1).setLocality(Locality.CONTAINER_LOCAL);
+
+    AffinityRulesSet ruleSet = new AffinityRulesSet();
+    // Valid case:
+    List<AffinityRule> rules = new ArrayList<>();
+    ruleSet.setAffinityRules(rules);
+    AffinityRule rule1 = new AffinityRule(Type.AFFINITY, Locality.CONTAINER_LOCAL, false, "O1", "O3");
+    rules.add(rule1);
+    dag.setAttribute(DAGContext.AFFINITY_RULES_SET, ruleSet);
+    dag.validate();
+
+    // Locality conflicts with affinity rules case:
+    AffinityRule rule2 = new AffinityRule(Type.ANTI_AFFINITY, Locality.NODE_LOCAL, false, "O2", "O3");
+    rules.add(rule2);
+    try {
+      dag.validate();
+      Assert.fail("DAG validation should fail due to conflicting rules");
+    } catch (ValidationException e) {
+      Assert.assertEquals("Anti Affinity rule for operators O2 & O3 conflicts with affinity rules or Stream locality", e.getMessage());
+    }
+
+    // Change Stream2 locality to Node to check if validation passes
+    stream2.setLocality(Locality.RACK_LOCAL);
+    dag.validate();
+
+    // Add anti-affinity rule conflicting with rule1
+    AffinityRule rule3 = new AffinityRule(Type.ANTI_AFFINITY, Locality.NODE_LOCAL, false, "O1", "O3");
+    rules.add(rule3);
+    try {
+      dag.validate();
+      Assert.fail("DAG validation should fail due to conflicting rules");
+    } catch (ValidationException e) {
+      Assert.assertEquals("Anti Affinity rule for operators O1 & O3 conflicts with affinity rules or Stream locality", e.getMessage());
+    }
+
+    // Change rule1 to Rack local to see if dag validation passes
+    rules.clear();
+    rule1.setLocality(Locality.RACK_LOCAL);
+    rules.add(rule1);
+    rules.add(rule2);
+    rules.add(rule3);
+    dag.validate();
+
+    // Add conflicting rules and set relaxLocality for one rule
+    AffinityRule rule4 = new AffinityRule(Type.ANTI_AFFINITY, Locality.NODE_LOCAL, true, "O1", "O2");
+    rules.add(rule4);
+    dag.validate();
+
+    // Set conflicting host locality and check if it fails validation
+    rules.clear();
+    AffinityRule rule = new AffinityRule(Type.ANTI_AFFINITY, Locality.NODE_LOCAL, false, "O2", "O3");
+    rules.add(rule);
+    dag.getMeta(o2).getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
+    dag.getMeta(o3).getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
+    try {
+      dag.validate();
+      Assert.fail("DAG validation should fail due to conflicting host locality");
+    } catch (ValidationException e) {
+      Assert.assertEquals("Host Locality for operators: O2(host: host1) & O3(host: host1) conflict with anti-affinity rules", e.getMessage());
+    }
+
+    // Set conflicting affinity and different host locality for node-local
+    // operators
+    rules.clear();
+    rule = new AffinityRule(Type.AFFINITY, Locality.NODE_LOCAL, false, "O2", "O3");
+    rules.add(rule);
+    dag.getMeta(o2).getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
+    dag.getMeta(o3).getAttributes().put(OperatorContext.LOCALITY_HOST, "host2");
+    try {
+      dag.validate();
+      Assert.fail("DAG validation should fail due to conflicting host locality");
+    } catch (ValidationException e) {
+      Assert.assertEquals("Host Locality for operators: O2(host: host1) & O3(host: host2) conflicts with affinity rules", e.getMessage());
+    }
+
+    // Check affinity Thread local validation for non-connected operators
+    dag.getAttributes().get(DAGContext.AFFINITY_RULES_SET).getAffinityRules().clear();
+    rule = new AffinityRule(Type.AFFINITY, Locality.THREAD_LOCAL, false, "O1", "O3");
+    rules.add(rule);
+
+    try {
+      dag.validate();
+      Assert.fail("DAG validation should fail due to conflicting host locality");
+    } catch (ValidationException e) {
+      Assert.assertEquals("Affinity rule specified THREAD_LOCAL affinity for operators O1 & O3 which are not connected by stream", e.getMessage());
+    }
+
+    // Check indirect conflict
+    dag = new LogicalPlan();
+    o1 = dag.addOperator("O1", new TestGeneratorInputOperator());
+    o2 = dag.addOperator("O2", new GenericTestOperator());
+    o3 = dag.addOperator("O3", new GenericTestOperator());
+    GenericTestOperator o4 = dag.addOperator("O4", new GenericTestOperator());
+    GenericTestOperator o5 = dag.addOperator("O5", new GenericTestOperator());
+
+    dag.addStream("stream1", o1.outport, o2.inport1, o3.inport1).setLocality(Locality.NODE_LOCAL);
+
+    dag.addStream("stream2", o3.outport1, o4.inport1);
+    dag.addStream("stream3", o2.outport1, o5.inport1);
+    rules.clear();
+    // O3 and O5 cannot have NODE_LOCAL anti-affinity now, since they already have NODE_LOCAL affinity
+    rules.add(new AffinityRule(Type.AFFINITY, Locality.CONTAINER_LOCAL, false, "O1", "O5"));
+    rules.add(new AffinityRule(Type.ANTI_AFFINITY, Locality.NODE_LOCAL, false, "O3", "O5"));
+    ruleSet = new AffinityRulesSet();
+    ruleSet.setAffinityRules(rules);
+    dag.setAttribute(DAGContext.AFFINITY_RULES_SET, ruleSet);
+    try {
+      dag.validate();
+      Assert.fail("dag validation should fail due to conflicting affinity rules");
+    } catch (ValidationException e) {
+      Assert.assertEquals("Anti Affinity rule for operators O3 & O5 conflicts with affinity rules or Stream locality", e.getMessage());
+    }
   }
 
   class Operator1 extends BaseOperator

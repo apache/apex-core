@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -30,9 +31,12 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import com.datatorrent.api.AffinityRule.Type;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.AffinityRule;
+import com.datatorrent.api.AffinityRulesSet;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -49,6 +53,7 @@ import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
+
 import com.google.common.collect.Sets;
 
 public class LogicalPlanModificationTest
@@ -98,6 +103,62 @@ public class LogicalPlanModificationTest
     Assert.assertEquals("undeploy " + ctx.undeploy, 1, ctx.undeploy.size());
     Assert.assertEquals("deploy " + ctx.deploy, 2, ctx.deploy.size());
 
+  }
+
+  @Test
+  public void testAddOperatorWithAffinityRules()
+  {
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+    dag.addStream("o2.outport1", o2.outport1, o3.inport1);
+
+    TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    ctx.deploy.clear();
+    ctx.undeploy.clear();
+
+    Assert.assertEquals("containers", 3, plan.getContainers().size());
+
+    AffinityRulesSet ruleSet = new AffinityRulesSet();
+    List<AffinityRule> rules = new ArrayList<>();
+    ruleSet.setAffinityRules(rules);
+    rules.add(new AffinityRule(Type.AFFINITY, Locality.CONTAINER_LOCAL, false, "o1", "added1"));
+    rules.add(new AffinityRule(Type.ANTI_AFFINITY, Locality.NODE_LOCAL, false, "o3", "added1"));
+    dag.setAttribute(DAGContext.AFFINITY_RULES_SET, ruleSet);
+
+    PlanModifier pm = new PlanModifier(plan);
+    GenericTestOperator added1 = new GenericTestOperator();
+    pm.addOperator("added1", added1);
+
+    pm.addStream("added1.outport1", added1.outport1, o3.inport2);
+
+    Assert.assertEquals("undeploy " + ctx.undeploy, 0, ctx.undeploy.size());
+    Assert.assertEquals("deploy " + ctx.deploy, 0, ctx.deploy.size());
+
+    pm.applyChanges(ctx);
+
+    Assert.assertEquals("containers post change", 4, plan.getContainers().size());
+
+    Assert.assertEquals("undeploy " + ctx.undeploy, 1, ctx.undeploy.size());
+    Assert.assertEquals("deploy " + ctx.deploy, 2, ctx.deploy.size());
+
+    // Validate affinity rules are applied
+    for (PTContainer c : plan.getContainers()) {
+      if (c.getOperators().contains("added1")) {
+        Assert.assertEquals("Operators O1 and added1 should be in the same container as per affinity rule", 2, c.getOperators().size());
+        Assert.assertEquals("Operators O1 and added1 should be in the same container as per affinity rule", "o1", c.getOperators().get(0).getOperatorMeta().getName());
+        Assert.assertEquals("Operators O1 and added1 should be in the same container as per affinity rule", "added1", c.getOperators().get(1).getOperatorMeta().getName());
+
+        Set<PTContainer> antiAffinityList = c.getStrictAntiPrefs();
+        Assert.assertEquals("There should be one container in antiaffinity list", 1, antiAffinityList.size());
+        List<PTOperator> antiAffinityOperators = antiAffinityList.iterator().next().getOperators();
+        Assert.assertEquals("AntiAffinity operators should containn operator O3", antiAffinityOperators.iterator().next().getOperatorMeta().getName(), "o3");
+      }
+    }
   }
 
   @Test

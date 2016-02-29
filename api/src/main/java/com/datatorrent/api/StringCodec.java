@@ -18,6 +18,7 @@
  */
 package com.datatorrent.api;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,10 +26,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.codehaus.jackson.map.DeserializationConfig;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.ObjectReader;
+import org.codehaus.jackson.map.ObjectWriter;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.StringUtils;
 
-import com.datatorrent.netlet.util.DTThrowable;
+import com.google.common.base.Throwables;
 
 /**
  * This interface is essentially serializer/deserializer interface which works with String as
@@ -191,10 +196,8 @@ public interface StringCodec<T>
           return object;
         }
       } catch (Throwable cause) {
-        DTThrowable.rethrow(cause);
+        throw Throwables.propagate(cause);
       }
-
-      return null;
     }
 
     @Override
@@ -362,10 +365,8 @@ public interface StringCodec<T>
         Class<? extends T> clazz = (Class)Thread.currentThread().getContextClassLoader().loadClass(string);
         return clazz;
       } catch (Throwable cause) {
-        DTThrowable.rethrow(cause);
+        throw Throwables.propagate(cause);
       }
-
-      return null;
     }
 
     @Override
@@ -377,4 +378,40 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201312082053L;
   }
 
+  public class JsonStringCodec<T> implements StringCodec<T>, Serializable
+  {
+    private static final long serialVersionUID = 2513932518264776006L;
+    Class<?> clazz;
+
+    public JsonStringCodec(Class<T> clazz)
+    {
+      this.clazz = clazz;
+    }
+
+    @Override
+    public T fromString(String string)
+    {
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        ObjectReader reader = mapper.reader(clazz);
+        return reader.readValue(string);
+      } catch (IOException e) {
+        throw Throwables.propagate(e);
+      }
+    }
+
+    @Override
+    public String toString(T pojo)
+    {
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        ObjectWriter writer = mapper.writer();
+        return writer.writeValueAsString(pojo);
+      } catch (IOException e) {
+        throw Throwables.propagate(e);
+      }
+    }
+  }
 }

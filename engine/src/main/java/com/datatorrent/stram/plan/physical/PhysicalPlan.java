@@ -35,6 +35,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import com.datatorrent.api.AffinityRule.Type;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.*;
@@ -44,7 +46,6 @@ import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener.OperatorRequest;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.Journal.Recoverable;
@@ -54,6 +55,7 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNode
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorPair;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
@@ -345,8 +347,63 @@ public class PhysicalPlan implements Serializable
       }
     }
 
+    // Add inlinePrefs and localityPrefs for affinity rules
+    AffinityRulesSet affinityRuleSet = dag.getAttributes().get(DAGContext.AFFINITY_RULES_SET);
+    if (affinityRuleSet != null && affinityRuleSet.getAffinityRules() != null) {
+      for (AffinityRule rule : affinityRuleSet.getAffinityRules()) {
+        if (rule.getOperatorsList() != null) {
+          for (int i = 0; i < rule.getOperatorsList().size() - 1; i++) {
+            for (int j = i + 1; j < rule.getOperatorsList().size(); j++) {
+              OperatorPair operators = new OperatorPair(rule.getOperatorsList().get(i), rule.getOperatorsList().get(j));
+              PMapping firstPMapping = logicalToPTOperator.get(dag.getOperatorMeta(operators.first));
+              OperatorMeta opMeta = dag.getOperatorMeta(operators.second);
+              PMapping secondMapping = logicalToPTOperator.get(opMeta);
+
+              if (rule.getType() == Type.AFFINITY) {
+                // ONLY node and container mappings are supported right now
+                if (Locality.CONTAINER_LOCAL == rule.getLocality()) {
+                  inlinePrefs.setLocal(firstPMapping, secondMapping);
+                } else if (Locality.NODE_LOCAL == rule.getLocality()) {
+                  localityPrefs.setLocal(firstPMapping, secondMapping);
+                }
+                for (PTOperator ptOperator : firstPMapping.partitions) {
+                  setLocalityGrouping(firstPMapping, ptOperator, inlinePrefs, Locality.CONTAINER_LOCAL, null);
+                  setLocalityGrouping(firstPMapping, ptOperator, localityPrefs, Locality.NODE_LOCAL, null);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (LOG.isDebugEnabled()) {
+      // Log group set for all PT Operators
+      for (OperatorMeta operator : dag.getAllOperators()) {
+        PMapping mapping = logicalToPTOperator.get(operator);
+        if (mapping != null) {
+          for (PTOperator ptOperaror : mapping.partitions) {
+            List<String> operators = new ArrayList<>();
+            for (PTOperator op : ptOperaror.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet()) {
+              operators.add(op.getLogicalId());
+            }
+            LOG.debug("Operator {} Partition {} CONTAINER LOCAL Operator set  = {}", operator.getName(), ptOperaror.id, StringUtils.join(operators, ","));
+
+            operators.clear();
+            for (PTOperator op : ptOperaror.getGrouping(Locality.NODE_LOCAL).getOperatorSet()) {
+              operators.add(op.getLogicalId());
+            }
+            LOG.debug("Operator {} Partition {} NODE LOCAL Operator set  = {}", operator.getName(), ptOperaror.id, StringUtils.join(operators, ","));
+
+          }
+        }
+      }
+    }
+
     updatePartitionsInfoForPersistOperator(dag);
 
+    Map<PTOperator, PTContainer> operatorContainerMap = new HashMap<>();
+    
     // assign operators to containers
     int groupCount = 0;
     Set<PTOperator> deployOperators = Sets.newHashSet();
@@ -357,25 +414,51 @@ public class PhysicalPlan implements Serializable
           if (!container.operators.isEmpty()) {
             LOG.warn("Operator {} shares container without locality contraint due to insufficient resources.", oper);
           }
+
           Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet();
           if (!inlineSet.isEmpty()) {
             // process inline operators
             for (PTOperator inlineOper : inlineSet) {
               setContainer(inlineOper, container);
+              operatorContainerMap.put(inlineOper, container);
             }
           } else {
             setContainer(oper, container);
           }
+          operatorContainerMap.put(oper, container);
           deployOperators.addAll(container.operators);
         }
       }
     }
 
+    
     for (PTContainer container : containers) {
       updateContainerMemoryWithBufferServer(container);
       container.setRequiredVCores(getVCores(container.getOperators()));
     }
 
+    // Add anti-affinity restrictions in Containers
+    if (affinityRuleSet != null && affinityRuleSet.getAffinityRules() != null) {
+      setAntiAffinityForContainers(dag, affinityRuleSet.getAffinityRules(), operatorContainerMap);
+    }
+
+    // Log container anti-affinity
+    if (LOG.isDebugEnabled()) {
+      for (PTContainer container : containers) {
+        List<String> antiOperators = new ArrayList<String>();
+        for (PTContainer c : container.getStrictAntiPrefs()) {
+          for (PTOperator operator : c.getOperators()) {
+            antiOperators.add(operator.getName());
+          }
+        }
+        List<String> containerOperators = new ArrayList<String>();
+        for (PTOperator operator : container.getOperators()) {
+          containerOperators.add(operator.getName());
+        }
+        LOG.debug("Container with operators [{}] has anti affinity with [{}]", StringUtils.join(containerOperators, ","), StringUtils.join(antiOperators, ","));
+      }
+    }
+    
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
       initCheckpoint(operEntry.getKey(), operEntry.getValue(), Checkpoint.INITIAL_CHECKPOINT);
     }
@@ -384,6 +467,38 @@ public class PhysicalPlan implements Serializable
     this.newOpers.clear();
     this.deployOpers.clear();
     this.undeployOpers.clear();
+  }
+
+  public void setAntiAffinityForContainers(LogicalPlan dag, Collection<AffinityRule> affinityRules, Map<PTOperator, PTContainer> operatorContainerMap)
+  {
+    for (AffinityRule rule : affinityRules) {
+      if (rule.getOperatorsList() != null && rule.getType() == Type.ANTI_AFFINITY) {
+        for (int i = 0; i < rule.getOperatorsList().size() - 1; i++) {
+          for (int j = i + 1; j < rule.getOperatorsList().size(); j++) {
+            OperatorPair operators = new OperatorPair(rule.getOperatorsList().get(i), rule.getOperatorsList().get(j));
+
+            PMapping firstPMapping = logicalToPTOperator.get(dag.getOperatorMeta(operators.first));
+            OperatorMeta opMeta = dag.getOperatorMeta(operators.second);
+            PMapping secondMapping = logicalToPTOperator.get(opMeta);
+            for (PTOperator firstPtOperator : firstPMapping.partitions) {
+              PTContainer firstContainer = operatorContainerMap.get(firstPtOperator);
+              for (PTOperator secondPtOperator : secondMapping.partitions) {
+                PTContainer secondContainer = operatorContainerMap.get(secondPtOperator);
+                if (firstContainer == secondContainer || firstContainer.getStrictAntiPrefs().contains(secondContainer))
+                  continue;
+                if (rule.isRelaxLocality()) {
+                  firstContainer.getPreferredAntiPrefs().add(secondContainer);
+                  secondContainer.getPreferredAntiPrefs().add(firstContainer);
+                } else {
+                  firstContainer.getStrictAntiPrefs().add(secondContainer);
+                  secondContainer.getStrictAntiPrefs().add(firstContainer);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   private void updatePartitionsInfoForPersistOperator(LogicalPlan dag)
@@ -995,6 +1110,7 @@ public class PhysicalPlan implements Serializable
     }
     Set<PTContainer> updatedContainers =  Sets.newHashSet();
 
+    HashMap<PTOperator, PTContainer> operatorContainerMap = Maps.newHashMap();
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
 
       PTOperator oper = operEntry.getKey();
@@ -1042,17 +1158,29 @@ public class PhysicalPlan implements Serializable
       }
       setContainer(oper, newContainer);
     }
-    // release containers that are no longer used
+    // release containers that are no longer used and update operator to container map for applying anti-affinity
     for (PTContainer c : this.containers) {
       if (c.operators.isEmpty()) {
         LOG.debug("Container {} to be released", c);
         releaseContainers.add(c);
         containers.remove(c);
+      } else {
+        for (PTOperator oper : c.operators) {
+          operatorContainerMap.put(oper, c);
+        }
+        c.getStrictAntiPrefs().clear();
+        c.getPreferredAntiPrefs().clear();
       }
     }
     for (PTContainer c : updatedContainers) {
       updateContainerMemoryWithBufferServer(c);
       c.setRequiredVCores(getVCores(c.getOperators()));
+    }
+
+    AffinityRulesSet affinityRuleSet = dag.getAttributes().get(DAGContext.AFFINITY_RULES_SET);
+    // Add anti-affinity restrictions in Containers
+    if (affinityRuleSet != null && affinityRuleSet.getAffinityRules() != null) {
+      setAntiAffinityForContainers(dag, affinityRuleSet.getAffinityRules(), operatorContainerMap);
     }
   }
 

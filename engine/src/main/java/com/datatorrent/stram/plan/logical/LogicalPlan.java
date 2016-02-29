@@ -49,6 +49,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
@@ -60,7 +61,6 @@ import javax.validation.constraints.NotNull;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
@@ -70,6 +70,8 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Sets;
 
+import com.datatorrent.api.AffinityRule;
+import com.datatorrent.api.AffinityRulesSet;
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
@@ -95,6 +97,7 @@ import com.datatorrent.common.metric.SingleMetricAggregator;
 import com.datatorrent.common.metric.sum.DoubleSumAggregator;
 import com.datatorrent.common.metric.sum.LongSumAggregator;
 import com.datatorrent.common.util.FSStorageAgent;
+import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.Slider;
 
@@ -1864,6 +1867,261 @@ public class LogicalPlan implements Serializable, DAG
       validateProcessingMode(om, visited);
     }
 
+    validateAffinityRules();
+  }
+
+  /**
+   * Pair of operator names to specify affinity rule
+   * The order of operators is not considered in this class
+   * i.e. OperatorPair("O1", "O2") is equal to OperatorPair("O2", "O1")
+   */
+  public static class OperatorPair extends Pair<String, String>
+  {
+    private static final long serialVersionUID = 4636942499106381268L;
+
+    public OperatorPair(String first, String second)
+    {
+      super(first, second);
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+      if (obj instanceof OperatorPair) {
+        OperatorPair pairObj = (OperatorPair)obj;
+        // The pair objects are equal if same 2 operators are present in both pairs
+        // Order does not matter
+        return ((this.first.equals(pairObj.first)) && (this.second.equals(pairObj.second)))
+            || (this.first.equals(pairObj.second) && this.second.equals(pairObj.first));
+      }
+      return super.equals(obj);
+    }
+  }
+
+  /**
+   * validation for affinity rules validates following:
+   *  1. The operator names specified in affinity rule are part of the dag
+   *  2. Affinity rules do not conflict with anti-affinity rules directly or indirectly
+   *  3. Anti-affinity rules do not conflict with Stream Locality 
+   *  4. Anti-affinity rules do not conflict with host-locality attribute
+   *  5. Affinity rule between non stream operators does not have Thread_Local locality
+   *  6. Affinity rules do not conflict with host-locality attribute
+   */
+  private void validateAffinityRules()
+  {
+    AffinityRulesSet affinityRuleSet = getAttributes().get(DAGContext.AFFINITY_RULES_SET);
+    if (affinityRuleSet == null || affinityRuleSet.getAffinityRules() == null) {
+      return;
+    }
+
+    Collection<AffinityRule> affinityRules = affinityRuleSet.getAffinityRules();
+
+    HashMap<String, Set<String>> containerAffinities = new HashMap<>();
+    HashMap<String, Set<String>> nodeAffinities = new HashMap<>();
+    HashMap<String, String> hostNamesMapping = new HashMap<>();
+
+    HashMap<OperatorPair, AffinityRule> affinities = new HashMap<>();
+    HashMap<OperatorPair, AffinityRule> antiAffinities = new HashMap<>();
+    HashMap<OperatorPair, AffinityRule> threadLocalAffinities = new HashMap<>();
+
+    List<String> operatorNames = new ArrayList<String>();
+
+    for (OperatorMeta operator : getAllOperators()) {
+      operatorNames.add(operator.getName());
+      Set<String> containerSet = new HashSet<String>();
+      containerSet.add(operator.getName());
+      containerAffinities.put(operator.getName(), containerSet);
+      Set<String> nodeSet = new HashSet<String>();
+      nodeSet.add(operator.getName());
+      nodeAffinities.put(operator.getName(), nodeSet);
+
+      if (operator.getAttributes().get(OperatorContext.LOCALITY_HOST) != null) {
+        hostNamesMapping.put(operator.getName(), operator.getAttributes().get(OperatorContext.LOCALITY_HOST));
+      }
+    }
+
+    // Identify operators set as Regex and add to list
+    for (AffinityRule rule : affinityRules) {
+      if (rule.getOperatorRegex() != null) {
+        convertRegexToList(operatorNames, rule);
+      }
+    }
+    // Convert operators with list of operator to rules with operator pairs for validation
+    for (AffinityRule rule : affinityRules) {
+      if (rule.getOperatorsList() != null) {
+        List<String> list = rule.getOperatorsList();
+        for (int i = 0; i < list.size(); i++) {
+          for (int j = i + 1; j < list.size(); j++) {
+            OperatorPair pair = new OperatorPair(list.get(i), list.get(j));
+            if(rule.getType() == com.datatorrent.api.AffinityRule.Type.AFFINITY) {
+              addToMap(affinities, rule, pair);
+            } else {
+              addToMap(antiAffinities, rule, pair);
+            }
+          }
+        }
+      }
+    }
+
+    for (Entry<OperatorPair, AffinityRule> ruleEntry : affinities.entrySet()) {
+      OperatorPair pair = ruleEntry.getKey();
+      AffinityRule rule = ruleEntry.getValue();
+      if (hostNamesMapping.containsKey(pair.first) && hostNamesMapping.containsKey(pair.second) && !hostNamesMapping.get(pair.first).equals(hostNamesMapping.get(pair.second))) {
+        throw new ValidationException(String.format("Host Locality for operators: %s(host: %s) & %s(host: %s) conflicts with affinity rules", pair.first, hostNamesMapping.get(pair.first), pair.second, hostNamesMapping.get(pair.second)));
+      }
+      if (rule.getLocality() == Locality.THREAD_LOCAL) {
+        addToMap(threadLocalAffinities, rule, pair);
+      } else if (rule.getLocality() == Locality.CONTAINER_LOCAL) {
+        // Combine the sets
+        combineSets(containerAffinities, pair);
+        // Also update node list
+        combineSets(nodeAffinities, pair);
+      } else if (rule.getLocality() == Locality.NODE_LOCAL) {
+        combineSets(nodeAffinities, pair);
+      }
+    }
+    
+
+    for (StreamMeta stream : getAllStreams()) {
+      String source = stream.source.getOperatorMeta().getName();
+      for (InputPortMeta sink : stream.sinks) {
+        String sinkOperator = sink.getOperatorWrapper().getName();
+        OperatorPair pair = new OperatorPair(source, sinkOperator);
+        if (stream.getLocality() != null && stream.getLocality().ordinal() <= Locality.NODE_LOCAL.ordinal() && hostNamesMapping.containsKey(pair.first) && hostNamesMapping.containsKey(pair.second) && !hostNamesMapping.get(pair.first).equals(hostNamesMapping.get(pair.second))) {
+          throw new ValidationException(String.format("Host Locality for operators: %s(host: %s) & %s(host: %s) conflicts with stream locality", pair.first, hostNamesMapping.get(pair.first), pair.second, hostNamesMapping.get(pair.second)));
+        }
+        if (stream.locality == Locality.CONTAINER_LOCAL) {
+          combineSets(containerAffinities, pair);
+          combineSets(nodeAffinities, pair);
+        } else if (stream.locality == Locality.NODE_LOCAL) {
+          combineSets(nodeAffinities, pair);
+        }
+        if (affinities.containsKey(pair)) {
+          // Choose the lower bound on locality
+          AffinityRule rule = affinities.get(pair);
+          if (rule.getLocality() == Locality.THREAD_LOCAL) {
+            stream.setLocality(rule.getLocality());
+            threadLocalAffinities.remove(rule);
+            affinityRules.remove(rule);
+          }
+          if (stream.locality != null && rule.getLocality().ordinal() > stream.getLocality().ordinal()) {
+            // Remove the affinity rule from attributes, as it is redundant
+            affinityRules.remove(rule);
+          }
+        }
+      }
+    }
+
+    // Validate that all Thread local affinities were for stream connected operators
+    if (!threadLocalAffinities.isEmpty()) {
+      OperatorPair pair = threadLocalAffinities.keySet().iterator().next();
+      throw new ValidationException(String.format("Affinity rule specified THREAD_LOCAL affinity for operators %s & %s which are not connected by stream", pair.first, pair.second));
+    }
+
+    for (Entry<OperatorPair, AffinityRule> ruleEntry : antiAffinities.entrySet()) {
+      OperatorPair pair = ruleEntry.getKey();
+      AffinityRule rule = ruleEntry.getValue();
+
+      if (pair.first.equals(pair.second)) {
+        continue;
+      }
+      if (rule.getLocality() == Locality.CONTAINER_LOCAL) {
+        if (containerAffinities.get(pair.first).contains(pair.second)) {
+          throw new ValidationException(String.format("Anti Affinity rule for operators %s & %s conflicts with affinity rules or Stream locality", pair.first, pair.second));
+
+        }
+      } else if (rule.getLocality() == Locality.NODE_LOCAL) {
+        if (nodeAffinities.get(pair.first).contains(pair.second)) {
+          throw new ValidationException(String.format("Anti Affinity rule for operators %s & %s conflicts with affinity rules or Stream locality", pair.first, pair.second));
+        }
+        // Check host locality for both operators
+        // Check host attribute for all operators in node local set for both
+        // anti-affinity operators
+        String firstOperatorLocality = getHostLocality(nodeAffinities, pair.first, hostNamesMapping);
+        String secondOperatorLocality = getHostLocality(nodeAffinities, pair.second, hostNamesMapping);
+        if (firstOperatorLocality != null && secondOperatorLocality != null && firstOperatorLocality == secondOperatorLocality) {
+          throw new ValidationException(String.format("Host Locality for operators: %s(host: %s) & %s(host: %s) conflict with anti-affinity rules", pair.first, firstOperatorLocality, pair.second, secondOperatorLocality));
+        }
+      }
+    }
+  }
+
+  /**
+   * Get host mapping for an operator using affinity settings and host locality specified for operator
+   * @param nodeAffinities
+   * @param operator
+   * @param hostNamesMapping
+   * @return
+   */
+  public String getHostLocality(HashMap<String, Set<String>> nodeAffinities, String operator, HashMap<String, String> hostNamesMapping)
+  {
+    if (hostNamesMapping.containsKey(operator)) {
+      return hostNamesMapping.get(operator);
+    }
+
+    for (String op : nodeAffinities.get(operator)) {
+      if (hostNamesMapping.containsKey(op)) {
+        return hostNamesMapping.get(op);
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Combine affinity sets for operators with affinity
+   * @param containerAffinities
+   * @param pair
+   */
+  public void combineSets(HashMap<String, Set<String>> containerAffinities, OperatorPair pair)
+  {
+    Set<String> set1 = containerAffinities.get(pair.first);
+    Set<String> set2 = containerAffinities.get(pair.second);
+    set1.addAll(set2);
+    containerAffinities.put(pair.first, set1);
+    containerAffinities.put(pair.second, set1);
+  }
+
+  /**
+   * Convert regex in Affinity Rule to list of operators
+   * Regex should match at least 2 operators, otherwise rule is not applied
+   * @param operatorNames
+   * @param rule
+   */
+  public void convertRegexToList(List<String> operatorNames, AffinityRule rule)
+  {
+    List<String> operators = new LinkedList<String>();
+    Pattern p = Pattern.compile(rule.getOperatorRegex());
+    for (String name : operatorNames) {
+      if (p.matcher(name).matches()) {
+        operators.add(name);
+      }
+    }
+    rule.setOperatorRegex(null);
+    if (operators.size() <= 1) {
+      LOG.warn("Regex should match at least 2 operators to add affinity rule. Ignoring rule");
+    } else {
+      rule.setOperatorsList(operators);
+    }
+  }
+
+  /**
+   * Validates that operators in Affinity Rule are valid: Checks that operator names are part of the dag and adds them to map of rules
+   * @param affinitiesMap
+   * @param rule
+   * @param operators
+   */
+  private void addToMap(HashMap<OperatorPair, AffinityRule> affinitiesMap, AffinityRule rule, OperatorPair operators)
+  {
+    OperatorMeta operator1 = getOperatorMeta(operators.first);
+    OperatorMeta operator2 = getOperatorMeta(operators.second);
+    if (operator1 == null || operator2 == null) {
+      if (operator1 == null && operator2 == null) {
+        throw new ValidationException(String.format("Operators %s & %s specified in affinity rule are not part of the dag", operators.first, operators.second));
+      }
+      throw new ValidationException(String.format("Operator %s specified in affinity rule is not part of the dag", operator1 == null ? operators.first : operators.second));
+    }
+    affinitiesMap.put(operators, rule);
   }
 
   private void checkAttributeValueSerializable(AttributeMap attributes, String context)
