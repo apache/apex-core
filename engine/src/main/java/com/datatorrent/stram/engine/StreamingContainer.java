@@ -1351,7 +1351,13 @@ public class StreamingContainer extends YarnContainerMain
       }
 
       final Node<?> node = nodes.get(ndi.id);
-      new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.name).concat(":").concat(node.getOperator().getClass().getSimpleName()))
+      final String name = new StringBuilder(Integer.toString(ndi.id))
+          .append('/')
+          .append(ndi.name)
+          .append(':')
+          .append(node.getOperator().getClass().getSimpleName())
+          .toString();
+      final Thread thread = new Thread(name)
       {
         @Override
         public void run()
@@ -1437,8 +1443,9 @@ public class StreamingContainer extends YarnContainerMain
             }
           }
         }
-
-      }.start();
+      };
+      node.context.setThread(thread);
+      thread.start();
     }
 
     /**
