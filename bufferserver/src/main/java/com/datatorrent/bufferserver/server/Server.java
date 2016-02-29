@@ -652,7 +652,7 @@ public class Server implements ServerListener
                    * so we allocate a new byteBuffer and copy over the partially written data to the
                    * new byteBuffer and start as if we always had full room but not enough data.
                    */
-                  if (!switchToNewBufferOrSuspendRead(buffer, readOffset)) {
+                  if (!switchToNewBufferOrSuspendRead(buffer, readOffset, size)) {
                     return false;
                   }
                 }
@@ -681,7 +681,7 @@ public class Server implements ServerListener
             /*
              * hit wall while writing serialized data, so have to allocate a new byteBuffer.
              */
-            if (!switchToNewBufferOrSuspendRead(buffer, readOffset - VarInt.getSize(size))) {
+            if (!switchToNewBufferOrSuspendRead(buffer, readOffset - VarInt.getSize(size), size)) {
               readOffset -= VarInt.getSize(size);
               size = 0;
               return false;
@@ -697,19 +697,19 @@ public class Server implements ServerListener
       while (true);
     }
 
-    private boolean switchToNewBufferOrSuspendRead(final byte[] array, final int offset)
+    private boolean switchToNewBufferOrSuspendRead(final byte[] array, final int offset, final int size)
     {
-      if (switchToNewBuffer(array, offset)) {
+      if (switchToNewBuffer(array, offset, size)) {
         return true;
       }
       datalist.suspendRead(this);
       return false;
     }
 
-    private boolean switchToNewBuffer(final byte[] array, final int offset)
+    private boolean switchToNewBuffer(final byte[] array, final int offset, final int size)
     {
       if (datalist.isMemoryBlockAvailable()) {
-        final byte[] newBuffer = datalist.newBuffer();
+        final byte[] newBuffer = datalist.newBuffer(size);
         byteBuffer = ByteBuffer.wrap(newBuffer);
         if (array == null || array.length - offset == 0) {
           writeOffset = 0;
