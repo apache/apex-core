@@ -437,8 +437,13 @@ public class DataList
     return (storage == null) || (numberOfInMemBlockPermits.get() > 0);
   }
 
-  public byte[] newBuffer()
+  public byte[] newBuffer(final int size)
   {
+    if (size > blockSize) {
+      logger.error("Tuple size {} exceeds buffer server current block size {}. Please decrease tuple size. " +
+          "Proceeding with allocating larger block that may cause out of memory exception.", size, blockSize);
+      return new byte[size];
+    }
     return new byte[blockSize];
   }
 
