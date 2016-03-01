@@ -121,10 +121,10 @@ public class AbstractReservoirTest
   private Object performanceTestParameters()
   {
     Object[][] performanceTestParameters = new Object[][] {
-        {null, 500},
-        {"com.datatorrent.stram.engine.AbstractReservoir$SpscArrayQueueReservoir", 500},
-        {"com.datatorrent.stram.engine.AbstractReservoir$ArrayBlockingQueueReservoir", 6000},
-        {"com.datatorrent.stram.engine.AbstractReservoir$CircularBufferReservoir", 2000}
+        {null, 1500},
+        {"com.datatorrent.stram.engine.AbstractReservoir$SpscArrayQueueReservoir", 1500},
+        {"com.datatorrent.stram.engine.AbstractReservoir$ArrayBlockingQueueReservoir", 10000},
+        {"com.datatorrent.stram.engine.AbstractReservoir$CircularBufferReservoir", 4500}
     };
     for (Object[] o : performanceTestParameters) {
       o[0] = newReservoir((String)o[0], CAPACITY);
@@ -251,7 +251,7 @@ public class AbstractReservoirTest
 
     long time = System.currentTimeMillis() - start;
     logger.debug("{}: time {}, max queue size {}", reservoir.getId(), time, maxQueueSize);
-    assertTrue("Expected to complete within " + expectedTime + "millis. Actual time " + time + " milis",
+    assertTrue("Expected to complete within " + expectedTime + " millis. Actual time " + time + " millis",
         expectedTime > time);
 
   }
