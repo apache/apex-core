@@ -443,12 +443,11 @@ app package default configuration as META-INF/properties.xml, from app
 package configuration in the conf directory, from launch time defines,
 etc), the precedence of sources, from highest to lowest, is as follows:
 
-1. Launch time defines (using -D option in CLI, or the POST payload
-    with the Gateway REST API’s launch call)
+1. Launch time defines (using -D option in CLI)
 2. Launch time specified configuration file in file system (using -conf
     option in CLI)
 3. Launch time specified package configuration (using -apconf option in
-    CLI or the conf={confname} with Gateway REST API’s launch call)
+    CLI)
 4. Configuration from \$HOME/.dt/dt-site.xml
 5. Application defaults within the package as
     META-INF/properties-{appname}.xml
@@ -506,137 +505,12 @@ There are four top level directories in an Application Package:
 2. "lib" contains all dependency jars
 3. "conf" contains all the pre-set configuration XML files.
 4. "META-INF" contains the MANIFEST.MF file and the properties.xml file.
-5. “resources” contains other files that are to be served by the Gateway on behalf of the app package.
+5. “resources” contains any other files
 
-
-# Managing Application Packages Through DT Gateway
-
-The DT Gateway provides storing and retrieving Application Packages to
-and from your distributed file system, e.g. HDFS.
-
-## Storing an Application Package
-
-You can store your Application Packages through DT Gateway using this
-REST call:
-
-```
- POST /ws/v2/appPackages
-```
-
-The payload is the raw content of your Application Package.  For
-example, you can issue this request using curl on your Linux command
-line like this, assuming your DT Gateway is accepting requests at
-localhost:9090:
-
-```
-$ curl -XPOST -T <app-package-file> http://localhost:9090/ws/v2/appPackages
-```
-
-## Getting Meta Information on Application Packages
-
-
-You can get the meta information on Application Packages stored through
-DT Gateway using this call.  The information includes the logical plan
-of each application within the Application Package.
-
-```
- GET /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}
-```
-
-## Getting Available Operators In Application Package
-
-You can get the list of available operators in the Application Package
-using this call.
-
-```
-GET /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/operators?parent={parent}
-```
-
-The parent parameter is optional.  If given, parent should be the fully
-qualified class name.  It will only return operators that derive from
-that class or interface. For example, if parent is
-com.datatorrent.api.InputOperator, this call will only return input
-operators provided by the Application Package.
-
-## Getting Properties of Operators in Application Package
-
-You can get the list of properties of any operator in the Application
-Package using this call.
-
-```
-GET  /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/operators/{className}
-```
-
-## Getting List of Pre-Set Configurations in Application Package
-
-You can get a list of pre-set configurations within the Application
-Package using this call.
-
-```
-GET /ws/v2/appPackages/{owner}/{pkgName}/{packageVersion}/configs
-```
-
-You can also get the content of a specific pre-set configuration within
-the Application Package.
-
-```
- GET /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/configs/{configName}
-```
-
-## Changing Pre-Set Configurations in Application Package
-
-You can create or replace pre-set configurations within the Application
-Package
-```
- PUT   /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/configs/{configName}
-```
-The payload of this PUT call is the XML file that represents the pre-set configuration.  The Content-Type of the payload is "application/xml" and you can delete a pre-set configuration within the Application Package.
-```
- DELETE /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/configs/{configName}
-```
-
-## Retrieving an Application Package
-
-You can download the Application Package file.  This Application Package
-is not necessarily the same file as the one that was originally uploaded
-since the pre-set configurations may have been modified.
-
-```
- GET /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/download
-```
-
-## Launching an Application Package
-
-You can launch an application within an Application Package.
-```
-POST /ws/v2/appPackages/{owner}/{pkgName}/{pkgVersion}/applications/{appName}/launch?config={configName}
-```
-
-The config parameter is optional.  If given, it must be one of the
-pre-set configuration within the given Application Package.  The
-Content-Type of the payload of the POST request is "application/json"
-and should contain the properties to be launched with the application.
- It is of the form:
-
-```
- {"property-name":"property-value", ... }
-```
-
-Here is an example of launching an application through curl:
-
-```
- $ curl -XPOST -d'{"dt.operator.console.prop.stringFormat":"xyz %s"}'
- http://localhost:9090/ws/v2/appPackages/dtadmin/mydtapp/1.0-SNAPSHOT/app
- lications/MyFirstApplication/launch
-```
-
-Please refer to the [Gateway API](http://docs.datatorrent.com/dtgateway_api/) for the complete specification of the REST API.
 
 # Examining and Launching Application Packages Through Apex CLI
 
-If you are working with Application Packages in the local filesystem and
-do not want to deal with dtGateway, you can use the Apex Command Line Interface (dtcli).  Please refer to the [Gateway API](http://docs.datatorrent.com/dtgateway_api/)
-to see samples for these commands.
+If you are working with Application Packages in the local filesystem, you can use the Apex Command Line Interface (dtcli).  
 
 ## Getting Application Package Meta Information
 
