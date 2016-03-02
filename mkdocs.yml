@@ -3,7 +3,6 @@ site_favicon: favicon.ico
 theme: readthedocs
 pages:
 - Apache Apex: index.md
-- Apache Apex-Malhar: apex_malhar.md
 - Development:
     - Development Setup: apex_development_setup.md
     - Applications: application_development.md
