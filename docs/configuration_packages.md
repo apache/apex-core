@@ -46,33 +46,6 @@ The "mvn package" command creates the Config Package file in target
 directory as target/mydtconfig.apc. You will be able to use that
 Configuration Package file to launch an Apache Apex application.
 
-## Using IDE 
-
-Alternatively, you can do the above steps all within your IDE.  For
-example, in NetBeans, select File -\> New Project.  Then choose “Maven”
-and “Project from Archetype” in the dialog box, as shown.
-
-![](images/AppConfig/ApplicationConfigurationPackages.html-image01.png)
-
-Then fill the Group ID, Artifact ID, Version and Repository entries as
-shown below.
-
-![](images/AppConfig/ApplicationConfigurationPackages.html-image02.png)
-
-Group ID: org.apache.apex
-Artifact ID: apex-conf-archetype
-Version: 3.2.0-incubating (or any later version)
-
-Press Next and fill out the rest of the required information. For
-example:
-
-![](images/AppConfig/ApplicationConfigurationPackages.html-image00.png)
-
-Click Finish, and now you have created your own Apex
-Configuration Package project.  The procedure for other IDEs, like
-Eclipse or IntelliJ, is similar.
-
-
 # Assembling your own configuration package 
 
 Inside the project created by the archetype, these are the files that
