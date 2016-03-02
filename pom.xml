@@ -115,6 +115,7 @@
             <exclude>**/NOTICE.vm</exclude>
             <exclude>**/*.md</exclude>
             <exclude>**/*.txt</exclude>
+            <exclude>**/*.yml</exclude>
             <exclude>**/*.importorder</exclude>
             <exclude>**/archetype-resources/**</exclude>
             <exclude>misc/ide-templates/**</exclude>
@@ -195,6 +196,7 @@
             <exclude>**/archetype-resources/**</exclude>
             <exclude>**/*.md</exclude>
             <exclude>**/*.txt</exclude>
+            <exclude>**/*.yml</exclude>
             <exclude>**/*.importorder</exclude>
             <exclude>misc/ide-templates/**</exclude>
             <exclude>**/NOTICE.vm</exclude>
