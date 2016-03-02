@@ -652,7 +652,7 @@ public class Server implements ServerListener
                    * so we allocate a new byteBuffer and copy over the partially written data to the
                    * new byteBuffer and start as if we always had full room but not enough data.
                    */
-                  if (!switchToNewBufferOrSuspendRead(buffer, readOffset, size)) {
+                  if (!switchToNewBufferOrSuspendRead(buffer, readOffset, size  + VarInt.getSize(size))) {
                     return false;
                   }
                 }
@@ -681,7 +681,7 @@ public class Server implements ServerListener
             /*
              * hit wall while writing serialized data, so have to allocate a new byteBuffer.
              */
-            if (!switchToNewBufferOrSuspendRead(buffer, readOffset - VarInt.getSize(size), size)) {
+            if (!switchToNewBufferOrSuspendRead(buffer, readOffset - VarInt.getSize(size), size + VarInt.getSize(size))) {
               readOffset -= VarInt.getSize(size);
               size = 0;
               return false;
