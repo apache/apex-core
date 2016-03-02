@@ -99,9 +99,9 @@ public class ConfigPackageTest
   public void testConfigPackage() throws Exception
   {
     Assert.assertEquals("com.example", json.getString("appPackageGroupId"));
-    Assert.assertEquals("mydtapp", json.getString("appPackageName"));
-    Assert.assertEquals("1.0", json.getString("appPackageMinVersion"));
-    Assert.assertEquals("1.9999", json.getString("appPackageMaxVersion"));
+    Assert.assertEquals("myapexapp", json.getString("appPackageName"));
+    Assert.assertEquals("1.0.0", json.getString("appPackageMinVersion"));
+    Assert.assertEquals("1.9999.9999", json.getString("appPackageMaxVersion"));
     Assert.assertEquals("classpath/*", json.getJSONArray("classPath").getString(0));
     Assert.assertEquals("files/*", json.getJSONArray("files").getString(0));
   }

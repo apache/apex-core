@@ -2,15 +2,15 @@ Manifest-Version: 1.0
 Archiver-Version: Plexus Archiver
 Created-By: Apache Maven
 Built-By: dtdeveloper
-Build-Jdk: 1.6.0_45
-DT-App-Package-Max-Version: 1.9999
-DT-App-Package-Min-Version: 1.0
+Build-Jdk: 1.7.0_80
+DT-App-Package-Max-Version: 1.9999.9999
+DT-App-Package-Min-Version: 1.0.0
 DT-App-Package-Group-Id: com.example
-DT-App-Package-Name: mydtapp
-DT-Conf-Package-Description: My DataTorrent Application Configuration 
- Description
-DT-Conf-Package-Display-Name: My DataTorrent Application Configuration
-DT-Conf-Package-Name: mydtconf
+DT-App-Package-Name: myapexapp
+DT-Conf-Package-Description: My Apex Application Configuration Descrip
+ tion
+DT-Conf-Package-Display-Name: My Apex Application Configuration
+DT-Conf-Package-Name: myapex
 Files: files/*
 Class-Path: classpath/*
 
