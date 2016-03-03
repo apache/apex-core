@@ -1,23 +1,25 @@
-Apache Apex Application Packages
-================================
+Apache Apex Application and Configuration Packages
+==================================================
+
+# Application Packages
 
 An Apache Apex Application Package is a zip file that contains all the
 necessary files to launch an application in Apache Apex. It is the
 standard way for assembling and sharing an Apache Apex application.
 
-# Requirements
+## Requirements
 
 You will need have the following installed:
 
 1. Apache Maven 3.0 or later (for assembling the App Package)
 2. Apache Apex 3.2.0 or later (for launching the App Package in your cluster)
 
-# Creating Your First Apex App Package
+## Creating Your First Apex App Package
 
 You can create an Apex Application Package using your Linux command
 line, or using your favorite IDE.
 
-## Using Command Line
+### Using Command Line
 
 First, change to the directory where you put your projects, and create
 an Apex application project using Maven by running the following
@@ -78,7 +80,7 @@ directory as target/mydtapp-1.0-SNAPSHOT.apa. You will be able to use
 that App Package file to launch this sample application in your actual
 Apex installation.
 
-## Using IDE
+### Using IDE
 
 Alternatively, you can do the above steps all within your IDE.  For example, in IDEA IntelliJ, first make sure you have the "Maven Integration" plugin enabled (Use File -\> Settings \-> Plugins).  Then select File -\> New -\> Project.  Choose “Maven”, and check “Create from archetype” in the dialog box, as shown.
 
@@ -113,12 +115,12 @@ project, with a default unit test.  You can run the unit test, make code
 changes or make dependency changes within your IDE.  The procedure for
 other IDEs, like Eclipse or NetBeans, is similar.
 
-# Writing Your Own App Package
+## Writing Your Own App Package
 
 
 Please refer to the [Creating Apps](http://docs.datatorrent.com/create/) on the basics on how to write an Apache Apex application.  In your AppPackage project, you can add custom operators (refer to [Operator Development Guide](operator_development.md), project dependencies, default and required configuration properties, pre-set configurations and other metadata.
 
-## Adding (and removing) project dependencies
+### Adding (and removing) project dependencies
 
 Under the project, you can add project dependencies in pom.xml, or do it
 through your IDE.  Here’s the section that describes the dependencies in
@@ -192,7 +194,7 @@ warnings similar to the following:
 This is a bug in early versions of Maven 3.  The dependency exclusion is
 still valid and it is safe to ignore these warnings.
 
-## Application Configuration
+### Application Configuration
 
 A configuration file can be used to configure an application.  Different
 kinds of configuration parameters can be specified. They are application
@@ -214,7 +216,7 @@ as name value pairs, in XML format, like the following.
 </configuration>
 ```
 
-## Application attributes
+### Application attributes
 
 Application attributes are used to specify the platform behavior for the
 application. They can be specified using the parameter
@@ -236,7 +238,7 @@ identifying the attribute. The constants are defined in
 com.datatorrent.api.Context.DAGContext and the different attributes can
 be specified in the format described above.
 
-## Operator attributes
+### Operator attributes
 
 Operator attributes are used to specify the platform behavior for the
 operator. They can be specified using the parameter
@@ -263,7 +265,7 @@ identifying the attribute. The constants are defined in
 com.datatorrent.api.Context.OperatorContext and the different attributes
 can be specified in the format described above.
 
-## Operator properties
+### Operator properties
 
 Operators can be configured using operator specific properties. The
 properties can be specified using the parameter
@@ -290,7 +292,7 @@ setHost. The method is called using JAVA reflection and the property
 value is passed as an argument. In the above example the method setHost
 will be called on the “redis” operator with “127.0.0.1” as the argument.
 
-## Port attributes
+### Port attributes
 Port attributes are used to specify the platform behavior for input and
 output ports. They can be specified using the parameter ```dt.operator.<operator-name>.inputport.<port-name>.attr.<attribute>```
 for input port and ```dt.operator.<operator-name>.outputport.<port-name>.attr.<attribute>```
@@ -320,7 +322,7 @@ instead of “intputport”. A generic keyword “port” can be used to specify
 either an input or an output port. It is useful in the wildcard
 specification described below.
 
-## Stream properties
+### Stream properties
 
 Streams can be configured using stream properties. The properties can be
 specified using the parameter
@@ -358,7 +360,7 @@ parameter within the application. The application will still have to
 still read the parameter in using the configuration API of the
 configuration object that is passed in populateDAG.
 
-##  Wildcards
+###  Wildcards
 
 Wildcards and regular expressions can be used in place of names to
 specify a group for applications, operators, ports or streams. For
@@ -376,7 +378,7 @@ also be used for operator name, stream name or application name. Regular
 expressions can also be used for names to specify attributes or
 properties for a specific set.
 
-## Adding configuration properties
+### Adding configuration properties
 
 It is common for applications to require configuration parameters to
 run.  For example, the address and port of the database, the location of
@@ -414,7 +416,7 @@ must be set at launch time, or it must be set by a pre-set configuration
 assigned with value some\_default\_value unless it is overridden at
 launch time.
 
-## Adding pre-set configurations
+### Adding pre-set configurations
 
 
 At build time, you can add pre-set configurations to the App Package by
@@ -423,7 +425,7 @@ project.  You can then specify which configuration to use at launch
 time.  The configuration XML is of the same format of the properties.xml
 file.
 
-## Application-specific properties file
+### Application-specific properties file
 
 You can also specify properties.xml per application in the application
 package.  Just create a file with the name properties-{appName}.xml and
@@ -436,7 +438,7 @@ Package
   properties-{appName}.xml: Properties that are specific when launching
 an application with the specified appName.
 
-## Properties source precedence
+### Properties source precedence
 
 If properties with the same key appear in multiple sources (e.g. from
 app package default configuration as META-INF/properties.xml, from app
@@ -455,7 +457,7 @@ etc), the precedence of sources, from highest to lowest, is as follows:
 7. dt-site.xml in local DT installation
 8. dt-site.xml stored in HDFS
 
-## Other meta-data
+### Other meta-data
 
 In a Apex App Package project, the pom.xml file contains a
 section that looks like:
@@ -475,7 +477,7 @@ lib/\*.jar, where lib is where all the dependency jars are kept within
 the Application Package.  One reason to change this field is when your
 Application Package needs the classpath in a specific order.
 
-## Logging configuration
+### Logging configuration
 
 Just like other Java projects, you can change the logging configuration
 by having your log4j.properties under src/main/resources.  For example,
@@ -494,7 +496,7 @@ Note that by default from project created from the maven archetype,
 there is already a log4j.properties file under src/test/resources and
 that file is only used for the unit test.
 
-# Zip Structure of Application Package
+## Zip Structure of Application Package
 
 
 Apache Apex Application Package files are zip files.  You can examine the content of any Application Package by using unzip -t on your Linux command line.
@@ -508,11 +510,11 @@ There are four top level directories in an Application Package:
 5. “resources” contains any other files
 
 
-# Examining and Launching Application Packages Through Apex CLI
+## Examining and Launching Application Packages Through Apex CLI
 
 If you are working with Application Packages in the local filesystem, you can use the Apex Command Line Interface (dtcli).  
 
-## Getting Application Package Meta Information
+### Getting Application Package Meta Information
 
 You can get the meta information about the Application Package using
 this Apex CLI command.
@@ -521,7 +523,7 @@ this Apex CLI command.
  dt> get-app-package-info <app-package-file>
 ```
 
-## Getting Available Operators In Application Package
+### Getting Available Operators In Application Package
 
 You can get the list of available operators in the Application Package
 using this command.
@@ -531,7 +533,7 @@ using this command.
  [parent-class]
 ```
 
-## Getting Properties of Operators in Application Package
+### Getting Properties of Operators in Application Package
 
 You can get the list of properties of any operator in the Application
 Package using this command.
@@ -539,7 +541,7 @@ Package using this command.
  dt> get-app-package-operator-properties <app-package-file> <operator-class>
 
 
-## Launching an Application Package
+### Launching an Application Package
 
 You can launch an application within an Application Package.
 ```
@@ -548,3 +550,146 @@ dt> launch [-D property-name=property-value, ...] [-conf config-name]
  [matching-app-name]
 ```
 Note that -conf expects a configuration file in the file system, while -apconf expects a configuration file within the app package.
+
+# Configuration Packages
+
+Sometimes just a configuration file is not enough for launching an application package. If a configuration requires
+additional files to be packaged, you can use an Apex Configuration Package.
+
+## Creating Configuration Packages
+
+Creating Configuration Packages is similar to creating Application Packages. You can create a configuration 
+package project using Maven by running the following command. Replace "com.example", "mydtconfig" and "1.0-SNAPSHOT" with the appropriate values:
+
+```
+$ mvn archetype:generate -DarchetypeGroupId=org.apache.apex \
+  -DarchetypeArtifactId=apex-conf-archetype -DarchetypeVersion=3.2.0-incubating \
+  -DgroupId=com.example -Dpackage=com.example.mydtconfig -DartifactId=mydtconfig \
+  -Dversion=1.0-SNAPSHOT
+```
+
+And create the configuration package file by running:
+
+```
+$ mvn package
+```
+
+The "mvn package" command creates the Config Package file in target
+directory as target/mydtconfig.apc. You will be able to use that
+Configuration Package file to launch an Apache Apex application.
+
+## Assembling your own configuration package
+
+Inside the project created by the archetype, these are the files that
+you should know about when assembling your own configuration package:
+
+    ./pom.xml
+    ./src/main/resources/classpath
+    ./src/main/resources/files
+    ./src/main/resources/META-INF/properties.xml
+    ./src/main/resources/META-INF/properties-{appname}.xml
+
+### pom.xml
+
+Example:
+
+```xml
+  <groupId>com.example</groupId>
+  <version>1.0.0</version>
+  <artifactId>mydtconf</artifactId>
+  <packaging>jar</packaging>
+  <!-- change these to the appropriate values -->
+  <name>My Apex Application Configuration</name>
+  <description>My Custom Application Configuration Description</description>
+  <properties>
+    <apex.apppackage.name>myapexapp</apex.apppackage.name>
+    <apex.apppackage.minversion>1.0.0</apex.apppackage.minversion>
+    <apex.apppackage.maxversion>1.9999.9999</apex.apppackage.maxversion>
+    <apex.appconf.classpath>classpath/*</apex.appconf.classpath>
+    <apex.appconf.files>files/*</apex.appconf.files>
+  </properties>
+
+```
+In pom.xml, you can change the following keys to your desired values
+
+* ```<groupId>```
+* ```<version>```
+* ```<artifactId>```
+* ```<name> ```
+* ```<description>```
+
+You can also change the values of
+
+* ```<apex.apppackage.name>```
+* ```<apex.apppackage.minversion>```
+* ```<apex.apppackage.maxversion>```
+
+to reflect what Application Packages can be used with this configuration package.  Apex will use this information to check whether a
+configuration package is compatible with the Application Package when you issue a launch command.
+
+### ./src/main/resources/classpath
+
+Place any file in this directory that you’d like to be copied to the
+compute machines when launching an application and included in the
+classpath of the application.  Example of such files are Java properties
+files and jar files.
+
+### ./src/main/resources/files
+
+Place any file in this directory that you’d like to be copied to the
+compute machines when launching an application but not included in the
+classpath of the application.
+
+### Properties XML file
+
+A properties xml file consists of a set of key-value pairs.  The set of
+key-value pairs specifies the configuration options the application
+should be launched with.
+
+Example:
+```xml
+<configuration>
+  <property>
+    <name>some-property-name</name>
+    <value>some-property-value</value>
+  </property>
+   ...
+</configuration>
+```
+Names of properties XML file:
+
+*  **properties.xml:** Properties that are global to the Configuration
+Package
+*  **properties-{appName}.xml:** Properties that are specific when launching
+an application with the specified appName within the Application
+Package.
+
+After you are done with the above, remember to do mvn package to
+generate a new configuration package, which will be located in the
+target directory in your project.
+
+### Zip structure of configuration package 
+Apex Application Configuration Package files are zip files.  You
+can examine the content of any Application Configuration Package by
+using unzip -t on your Linux command line.  The structure of the zip
+file is as follow:
+
+```
+META-INF
+  MANIFEST.MF
+  properties.xml
+  properties-{appname}.xml
+classpath
+  {classpath files}
+files
+  {files}
+```
+
+### Launching with CLI
+
+`-conf` option of the launch command in CLI supports specifying configuration package in the local filesystem.  Example:
+
+    dt\> launch DTApp-mydtapp-1.0.0.jar -conf DTConfig-mydtconfig-1.0.0.jar
+
+This command expects both the application package and the configuration package to be in the local file system.
+
