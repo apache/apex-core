@@ -613,7 +613,7 @@ public class DTCli
       null,
       "Begin Macro Definition ($1...$9 to access parameters and type 'end' to end the definition)"));
     globalCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(),
-      new Arg[]{new FileArg("out-file"), new FileArg("jar-file"), new Arg("class-name")},
+      new Arg[]{new FileArg("out-file"), new FileArg("jar-file"), new Arg("app-name")},
       null,
       "Dump the properties file of an app class"));
     globalCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(),

@@ -265,19 +265,16 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
   public static PropertiesConfiguration convertToProperties(JSONObject json) throws JSONException
   {
     PropertiesConfiguration props = new PropertiesConfiguration();
-    JSONObject allOperators = json.getJSONObject("operators");
-    JSONObject allStreams = json.getJSONObject("streams");
+    JSONArray allOperators = json.getJSONArray("operators");
+    JSONArray allStreams = json.getJSONArray("streams");
 
-    @SuppressWarnings("unchecked")
-    Iterator<String> operatorIter = allOperators.keys();
-    while (operatorIter.hasNext()) {
-      String operatorName = operatorIter.next();
-      JSONObject operatorDetail = allOperators.getJSONObject(operatorName);
+    for (int j = 0; j < allOperators.length(); j++) {
+      JSONObject operatorDetail = allOperators.getJSONObject(j);
+      String operatorName = operatorDetail.getString("name");
       String operatorKey = LogicalPlanConfiguration.OPERATOR_PREFIX + operatorName;
       props.setProperty(operatorKey + ".classname", operatorDetail.getString("class"));
       JSONObject properties = operatorDetail.optJSONObject("properties");
       if (properties != null) {
-        @SuppressWarnings("unchecked")
         Iterator<String> iter2 = properties.keys();
         while (iter2.hasNext()) {
           String propertyName = iter2.next();
@@ -292,8 +289,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
                 value += list.get(i).toString();
               }
               props.setProperty(operatorKey + "." + propertyName, value);
-            }
-            else {
+            } else {
               props.setProperty(operatorKey + "." + propertyName, properties.get(propertyName));
             }
           }
@@ -301,11 +297,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       }
     }
 
-    @SuppressWarnings("unchecked")
-    Iterator<String> streamIter = allStreams.keys();
-    while (streamIter.hasNext()) {
-      String streamName = streamIter.next();
-      JSONObject streamDetail = allStreams.getJSONObject(streamName);
+    for (int j = 0; j < allStreams.length(); j++) {
+      JSONObject streamDetail = allStreams.getJSONObject(j);
+      String streamName = streamDetail.getString("name");
       String streamKey = LogicalPlanConfiguration.STREAM_PREFIX + streamName;
       JSONObject sourceDetail = streamDetail.getJSONObject("source");
       JSONArray sinksList = streamDetail.getJSONArray("sinks");
@@ -319,7 +313,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         sinksValue += sinksList.getJSONObject(i).getString("operatorName") + "." + sinksList.getJSONObject(i).getString("portName");
       }
       props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_SINKS, sinksValue);
-      String locality = streamDetail.optString("locality");
+      String locality = streamDetail.optString("locality", null);
       if (locality != null) {
         props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_LOCALITY, Locality.valueOf(locality));
       }
@@ -336,8 +330,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
   }
 
   @Override
-  public void serialize(LogicalPlan dag, JsonGenerator jg, SerializerProvider sp) throws IOException,
-      JsonProcessingException
+  public void serialize(LogicalPlan dag, JsonGenerator jg, SerializerProvider sp) throws IOException
   {
     jg.writeObject(convertToMap(dag, false));
   }
