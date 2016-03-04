@@ -660,7 +660,7 @@ files
 
 `-conf` option of the launch command in CLI supports specifying configuration package in the local filesystem.  Example:
 
-    dt\> launch DTApp-mydtapp-1.0.0.jar -conf DTConfig-mydtconfig-1.0.0.jar
+    dt\> launch mydtapp-1.0.0.apa -conf mydtconfig.apc
 
 This command expects both the application package and the configuration package to be in the local file system.
 
