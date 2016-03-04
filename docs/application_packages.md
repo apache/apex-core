@@ -80,40 +80,11 @@ directory as target/mydtapp-1.0-SNAPSHOT.apa. You will be able to use
 that App Package file to launch this sample application in your actual
 Apex installation.
 
-### Using IDE
-
-Alternatively, you can do the above steps all within your IDE.  For example, in IDEA IntelliJ, first make sure you have the "Maven Integration" plugin enabled (Use File -\> Settings \-> Plugins).  Then select File -\> New -\> Project.  Choose “Maven”, and check “Create from archetype” in the dialog box, as shown.
-
-![](images/AppPackage/ApplicationPackages.html-image00.png)
-
-Then go ahead and click on the "Add Archetype..." button.
-
-Then fill out the Group ID, Artifact ID, and Version entries, and leave the Repository entry blank, as shown below.
-
-![](images/AppPackage/ApplicationPackages.html-image01.png)
+Alternatively you can perform the same steps within your IDE (IDEA IntelliJ, Eclipse, NetBeans all support it). Please check the IDE documentation for details.
 
 Group ID: org.apache.apex
 Artifact ID: apex-app-archetype
 Version: 3.2.0-incubating (or any later version)
-
-Click OK. The archetype will appear in the list, selected.  Note that this "Add Archetype..." step is only required the first time you use the archetype.  You can select the archetype directly after it has been added the first time.
-
-Click Next, and fill out the rest of the required information. For example:
-
-![](images/AppPackage/ApplicationPackages.html-image02.png)
-
-Click Next, and verify the information shown on the next screen:
-
-![](images/AppPackage/ApplicationPackages.html-image03.png)
-
-Click Next, and fill out the project name and location: 
-
-![](images/AppPackage/ApplicationPackages.html-image04.png)
-
-Click Finish, and now you have created your own Apache Apex App Package
-project, with a default unit test.  You can run the unit test, make code
-changes or make dependency changes within your IDE.  The procedure for
-other IDEs, like Eclipse or NetBeans, is similar.
 
 ## Writing Your Own App Package
 
@@ -510,7 +481,7 @@ There are four top level directories in an Application Package:
 5. “resources” contains any other files
 
 
-## Examining and Launching Application Packages Through Apex CLI
+## Examining and Launching Application Packages Through CLI
 
 If you are working with Application Packages in the local filesystem, you can use the Apex Command Line Interface (dtcli).  
 
