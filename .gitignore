@@ -14,3 +14,4 @@ node_modules/
 x-java
 nb-configuration.xml
 gateway/src/main/htdocs
+site/
