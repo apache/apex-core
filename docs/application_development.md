@@ -28,7 +28,7 @@ Running A Test Application
 
 If you are starting with the Apex platform for the first time,
 it can be informative to launch an existing application and see it run.
-One of the simplest examples provided in [Apex Malhar](apex_malhar.md) is a Pi demo application,
+One of the simplest examples provided in [Apex-Malhar repository](https://github.com/apache/incubator-apex-malhar) is a Pi demo application,
 which computes the value of PI using random numbers.  After [setting up development environment](apex_development_setup.md)
 Pi demo can be launched as follows:
 
@@ -611,7 +611,7 @@ STRAM in more detail in the next chapter.
 The instructions below assume that the platform was installed in a
 directory &lt;INSTALL_DIR&gt; and the command line interface (CLI) will
 be used to launch the demo application. An application can be run in
-[local mode](#h.3dy6vkm)[ ](#h.3dy6vkm)(in IDE or from command line) or on a  [Hadoop cluster](#h.1t3h5sf) [.](#h.1t3h5sf)
+local mode (in IDE or from command line) or on a Hadoop cluster.
 
 
 
@@ -796,11 +796,9 @@ for ease of use and rapid development of application. These
 operators are open sourced to Apache Software Foundation under the
 project name “Malhar” as part of our efforts to foster community
 innovation. These operators can be used in a DAG as is, while others
-have  [properties](#h.32hioqz)
-[ ](#h.32hioqz)that can be set to specify the
+have properties that can be set to specify the
 desired computation. Those interested in details, should refer to
-[Apex Malhar Operator Library](apex_malhar.md)
-.
+[Apex-Malhar operator library](https://github.com/apache/incubator-apex-malhar).
 
 
 
@@ -876,22 +874,18 @@ responsibilities of STRAM include
 3.  Collecting Application System Statistics and Logs
 4.  Logging all application-wide decisions taken
 5.  Providing system data on the state of the application via a  Web Service.
-6.  Supporting [Fault Tolerance](#h.2nusc19)
+6.  Supporting Fault Tolerance
 
     a.  Detecting a node outage
     b.  Requesting a replacement resource from the Resource Manager
         and scheduling state restoration for the streaming operators
     c.  Saving state to Zookeeper
 
-7.  Supporting [Dynamic
-    Partitioning](#h.3hv69ve)[:](#h.3hv69ve) Periodically
-    evaluating the SLA and modifying the physical plan if required
+7.  Supporting Dynamic Partitioning: Periodically evaluating the SLA and modifying the physical plan if required
     (logical plan does not change).
-8.  Enabling [Security](#h.3q5sasy)[:](#h.3q5sasy) Distributing
-    security tokens for distributed components of the execution engine
+8.  Enabling Security: Distributing security tokens for distributed components of the execution engine
     and securing web service requests.
-9.  Enabling [Dynamic  modification](#h.40ew0vw)[ ](#h.40ew0vw)of
-    DAG: In the future, we intend to allow for user initiated
+9.  Enabling Dynamic modification of DAG: In the future, we intend to allow for user initiated
     modification of the logical plan to allow for changes to the
     processing logic and functionality.
 
@@ -1123,8 +1117,8 @@ DAG. The steps are
 
 3.  Create/re-use and instantiate operators
     *  Assign operator name that is unique within the  application
-    *  Declare schema upfront for each operator (and thereby its  [ports](#h.ihv636)[)](#h.ihv636)
-    *  (Optional) Set [properties](#h.32hioqz)[ ](#h.32hioqz) and [attributes](#h.41mghml)[ ](#h.41mghml) on the dag as per specification
+    *  Declare schema upfront for each operator (and thereby its ports)
+    *  (Optional) Set properties  and attributes on the dag as per specification
     *  Connect ports of operators via streams
         *  Each stream connects one output port of an operator to one or  more input ports of other operators.
         *  (Optional) Set attributes on the streams
@@ -1306,10 +1300,8 @@ the node named “Daily volume” has a physical identifier of 2.
 
 ### Operator Interface
 
-Operator interface in a DAG consists of [ports](#h.ihv636)[,](#h.ihv636) [properties](#h.32hioqz)[,](#h.32hioqz) and
- [attributes](#h.41mghml)
-[.](#h.41mghml) Operators interact with other
-components of the DAG via ports. Functional behavior of the operators
+Operator interface in a DAG consists of ports, properties, and attributes.
+Operators interact with other components of the DAG via ports. Functional behavior of the operators
 can be customized via parameters. Run time performance and physical
 instantiation is controlled by attributes. Ports and parameters are
 fields (variables) of the Operator class/object, while attributes are
@@ -1383,9 +1375,7 @@ connected, to allow a port to go unconnected, you need to add
 Attributes can be specified for ports that affect the runtime
 behavior. An example of an attribute is parallel partition that specifes
 a parallel computation flow per partition. It is described in detail in
-the [Parallel
-Partitions](#h.3vac5uf)[ ](#h.3vac5uf)section.
-Another example is queue capacity that specifies the buffer size for the
+the Parallel Partitions section. Another example is queue capacity that specifies the buffer size for the
 port. Details of attributes are covered in  Operation and Installation Guide.
 
 #### Properties
@@ -1422,8 +1412,7 @@ Details of attributes are covered in  [Configuration Guide](http://docs.datatorr
 The state of an operator is defined as the data that it transfers
 from one window to a future window. Since the computing model of the
 platform is to treat windows like micro-batches, the operator state can
-be [checkpointed](#h.3mzq4wv)[ ](#h.3mzq4wv)every
-Nth window, or every T units of time, where T is significantly greater
+be checkpointed every Nth window, or every T units of time, where T is significantly greater
 than the streaming window.  When an operator is checkpointed, the entire
 object is written to HDFS.  The larger the amount of state in an
 operator, the longer it takes to recover from a failure. A stateless
@@ -1600,8 +1589,7 @@ will give appropriate warnings or errors if that’s not the case.
 
 
 
-Details are explained in the chapter on Fault Tolerance
-below[.](#h.2nusc19)
+Details are explained in the chapter on Fault Tolerance below.
 
 Streams
 --------------------
@@ -1680,9 +1668,7 @@ operator (specially one with multiple input ports) should not depend on
 the tuple order from two streams. One way to cope with this
 indeterminate order, if necessary, is to wait to get all the tuples of a
 window and emit results in endWindow call. All operator templates
-provided as part of  [standard operator template
-library](#h.3ep43zb) [ ](#h.3ep43zb)follow
-these principles.
+provided as part of Malhar operator library follow these principles.
 
 
 
@@ -1801,8 +1787,7 @@ handling mechanisms. The checks are exclusively done by the application
 business logic, but the platform allows applications to count and audit
 these. Some of these features are in the process of development (backend
 and UI) and this section will be updated as they are developed. Upon
-completion examples will be added to  [demos](#h.upglbi) [t](#h.upglbi)o
-illustrate these.
+completion examples will be added to demos to illustrate these.
 
 
 
