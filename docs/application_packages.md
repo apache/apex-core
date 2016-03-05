@@ -1,4 +1,4 @@
-Apache Apex Application and Configuration Packages
+Apache Apex Packages
 ==================================================
 
 # Application Packages
