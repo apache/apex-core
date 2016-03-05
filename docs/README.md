@@ -22,13 +22,22 @@ Guides on applying site-wide [configuration](http://www.mkdocs.org/user-guide/co
 
 ## Deployment
 
-**Under Review**: Current deployment process is under review, and may change from the one outlined below.
 
+Deployment is done in two steps.  First all documentation is statically generatd into HTML files and then it is deployed to the apex website.  For more details on how conversion to HTML works see [MkDocs documentation](http://www.mkdocs.org/).
 
-Deployment is done from master branch of the repository by executing the following command:
+1.  Go to release branch of the repository and execute the following command to build the docs:
 
 ```bash
-mkdocs gh-deploy --clean
+# get project version
+APEX_VERSION=3.3
+
+# build docs under site foolder
+mkdocs build --clean
+
+# copy docs from site into target folder on apex-site
+cp -r site ../incubator-apex-site/docs/apex-${APEX_VERSION}
+
+# commit changes and deploy the website
 ```
 
-This results in all the documentation under [docs](docs) being statically generatd into HTML files and deployed as top level in [gh-pages](https://github.com/apache/incubating-apex-core/tree/gh-pages) branch.  For more details on how this is done see [MkDocs - Deploying Github Pages](http://www.mkdocs.org/user-guide/deploying-your-docs/#github-pages).
+2.  Go to [apex-site repository](https://github.com/apache/incubator-apex-site#contributing) and add the new link to the [docs.md](https://github.com/apache/incubator-apex-site/blob/master/src/md/docs.md) and follow committer steps to commit and push these changes, and deploy the site.
