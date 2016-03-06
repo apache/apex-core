@@ -156,18 +156,20 @@ public class LogicalNode implements DataListener
    */
   public void catchUp()
   {
-    long lBaseSeconds = (long)iterator.getBaseSeconds() << 32;
-    logger.debug("BaseSeconds = {} and lBaseSeconds = {}", Codec.getStringWindowId(baseSeconds), Codec.getStringWindowId(lBaseSeconds));
-    if (lBaseSeconds > baseSeconds) {
-      baseSeconds = lBaseSeconds;
-    }
-    logger.debug("Set the base seconds to {}", Codec.getStringWindowId(baseSeconds));
-    int intervalMillis;
-
-    int skippedPayloadTuples = 0;
-
+    caughtup = false;
     if (isReady()) {
       logger.debug("catching up {}->{}", upstream, group);
+
+      long lBaseSeconds = (long)iterator.getBaseSeconds() << 32;
+      logger.debug("BaseSeconds = {} and lBaseSeconds = {}", Codec.getStringWindowId(baseSeconds), Codec.getStringWindowId(lBaseSeconds));
+      if (lBaseSeconds > baseSeconds) {
+        baseSeconds = lBaseSeconds;
+      }
+      logger.debug("Set the base seconds to {}", Codec.getStringWindowId(baseSeconds));
+      int intervalMillis;
+
+      int skippedPayloadTuples = 0;
+
       try {
         /*
          * fast forward to catch up with the windowId without consuming
@@ -337,8 +339,8 @@ public class LogicalNode implements DataListener
   {
     for (PhysicalNode pn : physicalNodes) {
       eventloop.disconnect(pn.getClient());
-      physicalNodes.clear();
     }
+    physicalNodes.clear();
   }
 
   @Override

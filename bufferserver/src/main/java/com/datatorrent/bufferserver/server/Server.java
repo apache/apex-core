@@ -219,14 +219,15 @@ public class Server implements ServerListener
    * @param connection
    * @return
    */
-  public LogicalNode handleSubscriberRequest(SubscribeRequestTuple request, AbstractLengthPrependerClient connection)
+  public LogicalNode handleSubscriberRequest(SubscribeRequestTuple request,
+      final AbstractLengthPrependerClient connection)
   {
     String identifier = request.getIdentifier();
     String type = request.getStreamType();
     String upstream_identifier = request.getUpstreamIdentifier();
 
     // Check if there is a logical node of this type, if not create it.
-    LogicalNode ln;
+    final LogicalNode ln;
     if (subscriberGroups.containsKey(type)) {
       //logger.debug("adding to exiting group = {}", subscriberGroups.get(type));
       /*
@@ -238,15 +239,23 @@ public class Server implements ServerListener
       }
 
       ln = subscriberGroups.get(type);
-      ln.boot(eventloop);
-      ln.addConnection(connection);
+      serverHelperExecutor.submit(new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          ln.boot(eventloop);
+          ln.addConnection(connection);
+          ln.catchUp();
+        }
+      });
     } else {
       /*
        * if there is already a datalist registered for the type in which this client is interested,
        * then get a iterator on the data items of that data list. If the datalist is not registered,
        * then create one and register it. Hopefully this one would be used by future upstream nodes.
        */
-      DataList dl;
+      final DataList dl;
       if (publisherBuffers.containsKey(upstream_identifier)) {
         dl = publisherBuffers.get(upstream_identifier);
         //logger.debug("old list = {}", dl);
@@ -270,8 +279,16 @@ public class Server implements ServerListener
       }
 
       subscriberGroups.put(type, ln);
-      ln.addConnection(connection);
-      dl.addDataListener(ln);
+      serverHelperExecutor.submit(new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          ln.addConnection(connection);
+          ln.catchUp();
+          dl.addDataListener(ln);
+        }
+      });
     }
 
     return ln;
@@ -460,16 +477,7 @@ public class Server implements ServerListener
           key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
           subscriber.registered(key);
 
-          final LogicalNode logicalNode = handleSubscriberRequest(subscriberRequest, subscriber);
-          serverHelperExecutor.submit(new Runnable()
-          {
-            @Override
-            public void run()
-            {
-              logicalNode.catchUp();
-            }
-
-          });
+          handleSubscriberRequest(subscriberRequest, subscriber);
           break;
 
         case PURGE_REQUEST:
