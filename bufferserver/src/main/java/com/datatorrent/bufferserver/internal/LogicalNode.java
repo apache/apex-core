@@ -158,7 +158,8 @@ public class LogicalNode implements DataListener
       logger.debug("catching up {}->{}", upstream, group);
 
       long lBaseSeconds = (long)iterator.getBaseSeconds() << 32;
-      logger.debug("BaseSeconds = {} and lBaseSeconds = {}", Codec.getStringWindowId(baseSeconds), Codec.getStringWindowId(lBaseSeconds));
+      logger.debug("BaseSeconds = {} and lBaseSeconds = {}", Codec.getStringWindowId(baseSeconds),
+          Codec.getStringWindowId(lBaseSeconds));
       if (lBaseSeconds > baseSeconds) {
         baseSeconds = lBaseSeconds;
       }
