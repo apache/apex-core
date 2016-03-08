@@ -266,10 +266,7 @@ public class Server implements ServerListener
       }
 
       long skipWindowId = (long)request.getBaseSeconds() << 32 | request.getWindowId();
-      ln = new LogicalNode(upstream_identifier,
-                           type,
-                           dl.newIterator(identifier, skipWindowId),
-                           skipWindowId);
+      ln = new LogicalNode(identifier, upstream_identifier, type, dl.newIterator(skipWindowId), skipWindowId);
 
       int mask = request.getMask();
       if (mask != 0) {
@@ -573,10 +570,10 @@ public class Server implements ServerListener
           DataList dl = publisherBuffers.get(ln.getUpstream());
           if (dl != null) {
             dl.removeDataListener(ln);
-            dl.delIterator(ln.getIterator());
           }
           subscriberGroups.remove(ln.getGroup());
         }
+        ln.getIterator().close();
       }
     }
 

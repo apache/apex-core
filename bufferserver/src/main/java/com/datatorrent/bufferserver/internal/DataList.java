@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -61,7 +60,6 @@ public class DataList
   private final int blockSize;
   private final HashMap<BitVector, HashSet<DataListener>> listeners = newHashMap();
   protected final HashSet<DataListener> all_listeners = newHashSet();
-  protected final HashMap<String, DataListIterator> iterators = newHashMap();
   protected Block first;
   protected Block last;
   protected Storage storage;
@@ -323,43 +321,18 @@ public class DataList
     return block.next;
   }
 
-  public Iterator<SerializedData> newIterator(String identifier, long windowId)
+  public DataListIterator newIterator(long windowId)
   {
     //logger.debug("request for a new iterator {} and {}", identifier, windowId);
-    for (Block temp = first; temp != null; temp = temp.next) {
+    Block temp = first;
+    while (temp != last) {
       if (temp.starting_window >= windowId || temp.ending_window > windowId) {
-        DataListIterator dli = getIterator(temp);
-        iterators.put(identifier, dli);
-        //logger.debug("returning new iterator on temp = {}", temp);
-        return dli;
+        break;
       }
+      temp = temp.next;
     }
-
-    DataListIterator dli = getIterator(last);
-    iterators.put(identifier, dli);
-    //logger.debug("returning new iterator on last = {}", last);
-    return dli;
-  }
-
-  /**
-   * Release previous acquired iterator from this DataList
-   *
-   * @param iterator
-   * @return true if successfully released, false otherwise.
-   */
-  public boolean delIterator(Iterator<SerializedData> iterator)
-  {
-    if (iterator instanceof DataListIterator) {
-      DataListIterator dli = (DataListIterator)iterator;
-      for (Entry<String, DataListIterator> e : iterators.entrySet()) {
-        if (e.getValue() == dli) {
-          dli.close();
-          iterators.remove(e.getKey());
-          return true;
-        }
-      }
-    }
-    return false;
+    //logger.debug("returning new iterator on temp = {}", temp);
+    return getIterator(temp);
   }
 
   public void addDataListener(DataListener dl)
@@ -496,19 +469,21 @@ public class DataList
     int oldestBlockIndex = Integer.MAX_VALUE;
     int oldestReadOffset = Integer.MAX_VALUE;
 
-    for (Map.Entry<String, DataListIterator> entry : iterators.entrySet()) {
-      Integer index = indices.get(entry.getValue().da);
+    for (DataListener dl : all_listeners) {
+      LogicalNode logicalNode = (LogicalNode)dl;
+      DataListIterator dli = logicalNode.getIterator();
+      Integer index = indices.get(dli.da);
       if (index == null) {
         // error
         throw new RuntimeException("problemo!");
       }
       if (index < oldestBlockIndex) {
         oldestBlockIndex = index;
-        oldestReadOffset = entry.getValue().getReadOffset();
-        status.slowestConsumer = entry.getKey();
-      } else if (index == oldestBlockIndex && entry.getValue().getReadOffset() < oldestReadOffset) {
-        oldestReadOffset = entry.getValue().getReadOffset();
-        status.slowestConsumer = entry.getKey();
+        oldestReadOffset = dli.getReadOffset();
+        status.slowestConsumer = logicalNode.getIdentifier();
+      } else if (index == oldestBlockIndex && dli.getReadOffset() < oldestReadOffset) {
+        oldestReadOffset = dli.getReadOffset();
+        status.slowestConsumer = logicalNode.getIdentifier();
       }
     }
 
