@@ -20,7 +20,6 @@ package com.datatorrent.bufferserver.internal;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +46,7 @@ import com.datatorrent.netlet.EventLoop;
  */
 public class LogicalNode implements DataListener
 {
+  private final String identifier;
   private final String upstream;
   private final String group;
   private final HashSet<PhysicalNode> physicalNodes;
@@ -59,25 +59,21 @@ public class LogicalNode implements DataListener
 
   /**
    *
+   * @param identifier
    * @param upstream
    * @param group
    * @param iterator
-   * @param skipUptoWindowId
+   * @param skipWindowId
    */
-  public LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, long skipUptoWindowId)
+  public LogicalNode(String identifier, String upstream, String group, DataListIterator iterator, long skipWindowId)
   {
+    this.identifier = identifier;
     this.upstream = upstream;
     this.group = group;
     this.physicalNodes = new HashSet<PhysicalNode>();
     this.partitions = new HashSet<BitVector>();
-
-    if (iterator instanceof DataListIterator) {
-      this.iterator = (DataListIterator)iterator;
-    } else {
-      throw new IllegalArgumentException("iterator does not belong to DataListIterator class");
-    }
-
-    skipWindowId = skipUptoWindowId;
+    this.iterator = iterator;
+    this.skipWindowId = skipWindowId;
   }
 
   /**
@@ -91,12 +87,13 @@ public class LogicalNode implements DataListener
 
   /**
    *
-   * @return Iterator<SerializedData>
+   * @return DataListIterator
    */
-  public Iterator<SerializedData> getIterator()
+  public DataListIterator getIterator()
   {
     return iterator;
   }
+
 
   /**
    *
@@ -335,6 +332,15 @@ public class LogicalNode implements DataListener
     return upstream;
   }
 
+  /**
+   *
+   * @return the identifier
+   */
+  public String getIdentifier()
+  {
+    return identifier;
+  }
+
   public void boot(EventLoop eventloop)
   {
     for (PhysicalNode pn : physicalNodes) {
@@ -346,7 +352,8 @@ public class LogicalNode implements DataListener
   @Override
   public String toString()
   {
-    return "LogicalNode{" + "upstream=" + upstream + ", group=" + group + ", partitions=" + partitions +
+    return "LogicalNode@" + Integer.toHexString(hashCode()) +
+        "identifier=" + identifier + ", upstream=" + upstream + ", group=" + group + ", partitions=" + partitions +
         ", iterator=" + iterator + '}';
   }
 
