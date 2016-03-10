@@ -21,6 +21,8 @@ package com.datatorrent.stram.util;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.datatorrent.api.Operator;
+
 /**
  *
  */
@@ -52,6 +54,15 @@ public class VersionInfoTest
     Assert.assertTrue(VersionInfo.isCompatible("1.10.55", "1.10.55"));
     Assert.assertFalse(VersionInfo.isCompatible("1.10.55", "2.10.55"));
     Assert.assertFalse(VersionInfo.isCompatible("2.10.55", "1.10.55"));
+  }
+
+  @Test
+  public void testMavenProperties()
+  {
+    VersionInfo v = new VersionInfo(Operator.class, "org.apache.apex", "apex-api", "git-properties-unavailable");
+    if (!v.getVersion().matches("[0-9]+.[0-9]+.[0-9]+.*")) {
+      Assert.fail("Version number pattern does not match: " + v.getVersion());
+    }
   }
 
 }

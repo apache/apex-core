@@ -58,7 +58,7 @@ public class StreamingAppMaster extends StramUtils.YarnContainerMain
     StdOutErrLog.tieSystemOutAndErrToLog();
     LOG.info("Master starting with classpath: {}", System.getProperty("java.class.path"));
 
-    LOG.info("version: {}", VersionInfo.getBuildVersion());
+    LOG.info("version: {}", VersionInfo.APEX_VERSION.getBuildVersion());
     StringWriter sw = new StringWriter();
     for (Map.Entry<String, String> e : System.getenv().entrySet()) {
       sw.append("\n").append(e.getKey()).append("=").append(e.getValue());

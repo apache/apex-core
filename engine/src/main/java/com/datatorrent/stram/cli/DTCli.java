@@ -1486,7 +1486,8 @@ public class DTCli
 
   private void printWelcomeMessage()
   {
-    System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
+    VersionInfo v = VersionInfo.APEX_VERSION;
+    System.out.println("DT CLI " + v.getVersion() + " " + v.getDate() + " " + v.getRevision());
   }
 
   private void printHelp(String command, CommandSpec commandSpec, PrintStream os)
@@ -1905,7 +1906,7 @@ public class DTCli
           submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
         }
         submitApp.loadDependencies();
-        
+
         if (commandLineInfo.origAppId != null) {
           // ensure app is not running
           ApplicationReport ar = null;
@@ -1936,7 +1937,7 @@ public class DTCli
             }
           }
         }
-        
+
         if (appFactory == null && matchString != null) {
           // attempt to interpret argument as property file - do we still need it?
           try {
@@ -1952,7 +1953,7 @@ public class DTCli
             // ignore
           }
         }
-        
+
         if (appFactory == null) {
           List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, matchString, commandLineInfo.exactMatch);
           if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
@@ -1988,7 +1989,7 @@ public class DTCli
             if (!consolePresent) {
               throw new CliException("More than one application in jar file match '" + matchString + "'");
             } else {
-              
+
               boolean useHistory = reader.isHistoryEnabled();
               reader.setHistoryEnabled(false);
               History previousHistory = reader.getHistory();
@@ -2021,9 +2022,9 @@ public class DTCli
               }
             }
           }
-          
+
         }
-        
+
         if (appFactory != null) {
           if (!commandLineInfo.localMode) {
 
@@ -2047,7 +2048,7 @@ public class DTCli
                   {
                     // no-op
                   }
-                  
+
                 });
                 System.setOut(dummyStream);
               }
@@ -2065,7 +2066,7 @@ public class DTCli
         } else {
           System.err.println("No application specified.");
         }
-        
+
       } finally {
         IOUtils.closeQuietly(cp);
       }
@@ -3017,7 +3018,7 @@ public class DTCli
 
             // add default value
             operatorDiscoverer.addDefaultValue(clazz, oper);
-            
+
             // add class hierarchy info to portClassHier and fetch port types with schema classes
             operatorDiscoverer.buildAdditionalPortInfo(oper, portClassHier, portTypesWithSchemaClasses);
 
@@ -3460,8 +3461,9 @@ public class DTCli
   private void checkPlatformCompatible(AppPackage ap)
   {
     String apVersion = ap.getDtEngineVersion();
-    if (!VersionInfo.isCompatible(VersionInfo.getVersion(), apVersion)) {
-      throw new CliException("This App Package is compiled with Apache Apex Core API version " + apVersion + ", which is incompatible with this Apex Core version " + VersionInfo.getVersion());
+    VersionInfo actualVersion = VersionInfo.APEX_VERSION;
+    if (!VersionInfo.isCompatible(actualVersion.getVersion(), apVersion)) {
+      throw new CliException("This App Package is compiled with Apache Apex Core API version " + apVersion + ", which is incompatible with this Apex Core version " + actualVersion.getVersion());
     }
   }
 

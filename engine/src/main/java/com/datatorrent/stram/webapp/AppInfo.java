@@ -214,7 +214,7 @@ public class AppInfo {
     this.appMasterTrackingUrl = context.getAppMasterTrackingUrl();
     this.stats = context.getStats();
     this.gatewayAddress = context.getGatewayAddress();
-    this.version = VersionInfo.getBuildVersion();
+    this.version = VersionInfo.APEX_VERSION.getBuildVersion();
     this.attributes = new TreeMap<>();
     for (Map.Entry<Attribute<Object>, Object> entry : AttributeMap.AttributeInitializer.getAllAttributes(context, DAGContext.class).entrySet()) {
       this.attributes.put(entry.getKey().getSimpleName(), entry.getKey().codec.toString(entry.getValue()));
