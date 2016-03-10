@@ -129,7 +129,7 @@ public class VersionInfo
   private static String groupId = "org.apache.apex";
   private static String artifactId = "apex-engine";
   private static Class<?> classInJar = VersionInfo.class;
-  private static String gitPropertiesResource = "dt-git.properties";
+  private static String gitPropertiesResource = artifactId + ".git.properties";
   public static final VersionInfo APEX_VERSION = new VersionInfo(classInJar, groupId, artifactId, gitPropertiesResource);
 
 

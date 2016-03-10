@@ -82,7 +82,7 @@
           <verbose>false</verbose>
           <prefix>git</prefix>
           <generateGitPropertiesFile>true</generateGitPropertiesFile>
-          <generateGitPropertiesFilename>target/classes/dt-git.properties</generateGitPropertiesFilename>
+          <generateGitPropertiesFilename>target/classes/${project.artifactId}.git.properties</generateGitPropertiesFilename>
           <failOnNoGitDirectory>false</failOnNoGitDirectory>
         </configuration>
       </plugin>
