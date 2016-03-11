@@ -158,6 +158,7 @@ public class LogicalPlan implements Serializable, DAG
   private final Map<String, OperatorMeta> operators = new HashMap<String, OperatorMeta>();
   public final Map<String, ModuleMeta> modules = new LinkedHashMap<>();
   private final List<OperatorMeta> rootOperators = new ArrayList<OperatorMeta>();
+  private final List<OperatorMeta> leafOperators = new ArrayList<>();
   private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
   private transient Map<String, ArrayListMultimap<OutputPort<?>, InputPort<?>>> streamLinks = new HashMap<>();
 
@@ -484,7 +485,9 @@ public class LogicalPlan implements Serializable, DAG
       sinks.add(portMeta);
       om.inputStreams.put(portMeta, this);
       rootOperators.remove(portMeta.operatorMeta);
-
+      if (this.source != null && !(this.source.getOperatorMeta().getOperator() instanceof Operator.DelayOperator)) {
+        leafOperators.remove(this.source.getOperatorMeta());
+      }
       return this;
     }
 
@@ -512,6 +515,10 @@ public class LogicalPlan implements Serializable, DAG
       this.sinks.clear();
       if (this.source != null) {
         this.source.getOperatorMeta().outputStreams.remove(this.source);
+        if (this.source.getOperatorMeta().outputStreams.isEmpty() &&
+            !(this.source.getOperatorMeta().getOperator() instanceof Operator.DelayOperator)) {
+          leafOperators.remove(this.source.getOperatorMeta());
+        }
       }
       this.source = null;
       streams.remove(this.id);
@@ -1142,6 +1149,7 @@ public class LogicalPlan implements Serializable, DAG
     }
     OperatorMeta decl = new OperatorMeta(name, operator);
     rootOperators.add(decl); // will be removed when a sink is added to an input port for this operator
+    leafOperators.add(decl); // will be removed when a sink is added to an output port for this operator
     operators.put(name, decl);
     return operator;
   }
@@ -1332,6 +1340,7 @@ public class LogicalPlan implements Serializable, DAG
     }
     this.operators.remove(om.getName());
     rootOperators.remove(om);
+    leafOperators.remove(om);
   }
 
   @Override
@@ -1515,6 +1524,11 @@ public class LogicalPlan implements Serializable, DAG
   public List<OperatorMeta> getRootOperators()
   {
     return Collections.unmodifiableList(this.rootOperators);
+  }
+
+  public List<OperatorMeta> getLeafOperators()
+  {
+    return Collections.unmodifiableList(this.leafOperators);
   }
 
   public Collection<OperatorMeta> getAllOperators()
