@@ -28,16 +28,19 @@ Deployment is done in two steps.  First all documentation is statically generatd
 1.  Go to release branch of the repository and execute the following command to build the docs:
 
 ```bash
-# get project version
+# set project version
 APEX_VERSION=3.3
 
 # build docs under site foolder
 mkdocs build --clean
 
 # copy docs from site into target folder on apex-site
-cp -r site ../incubator-apex-site/docs/apex-${APEX_VERSION}
-
-# commit changes and deploy the website
+cd ../incubator-apex-site
+git checkout asf-site
+cp -r ../incubator-apex-core/site docs/apex-${APEX_VERSION}
+git add -A
+git commit -m "Adding apex-${APEX_VERSION} documentation"
+git push
 ```
 
 2.  Go to [apex-site repository](https://github.com/apache/incubator-apex-site#contributing) and add the new link to the [docs.md](https://github.com/apache/incubator-apex-site/blob/master/src/md/docs.md) and follow committer steps to commit and push these changes, and deploy the site.
