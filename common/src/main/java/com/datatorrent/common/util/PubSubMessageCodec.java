@@ -41,6 +41,98 @@ public class PubSubMessageCodec<T>
     this.mapper = mapper;
   }
 
+  /**
+   * <p>constructPublishMessage.</p>
+   *
+   * @param <T>
+   * @param topic
+   * @param data
+   * @param codec
+   * @return publish message.
+   * @throws IOException
+   */
+  public static <T> String constructPublishMessage(String topic, T data, PubSubMessageCodec<T> codec) throws IOException
+  {
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    pubSubMessage.setType(PubSubMessageType.PUBLISH);
+    pubSubMessage.setTopic(topic);
+    pubSubMessage.setData(data);
+
+    return codec.formatMessage(pubSubMessage);
+  }
+
+  /**
+   * <p>constructSubscribeMessage.</p>
+   *
+   * @param <T>
+   * @param topic
+   * @param codec
+   * @return subscribe message.
+   * @throws IOException
+   */
+  public static <T> String constructSubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
+  {
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    pubSubMessage.setType(PubSubMessageType.SUBSCRIBE);
+    pubSubMessage.setTopic(topic);
+
+    return codec.formatMessage(pubSubMessage);
+  }
+
+  /**
+   * <p>constructUnsubscribeMessage.</p>
+   *
+   * @param <T>
+   * @param topic
+   * @param codec
+   * @return un-subscribe message.
+   * @throws IOException
+   */
+  public static <T> String constructUnsubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
+  {
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    pubSubMessage.setType(PubSubMessageType.UNSUBSCRIBE);
+    pubSubMessage.setTopic(topic);
+
+    return codec.formatMessage(pubSubMessage);
+  }
+
+  /**
+   * <p>constructSubscribeNumSubscribersMessage.</p>
+   *
+   * @param <T>
+   * @param topic
+   * @param codec
+   * @return subscribe num subscriber message.
+   * @throws IOException
+   */
+  public static <T> String constructSubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
+  {
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    pubSubMessage.setType(PubSubMessageType.SUBSCRIBE_NUM_SUBSCRIBERS);
+    pubSubMessage.setTopic(topic);
+
+    return codec.formatMessage(pubSubMessage);
+  }
+
+  /**
+   * <p>constructUnsubscribeNumSubscribersMessage.</p>
+   *
+   * @param <T>
+   * @param topic
+   * @param codec
+   * @return un-subscribe num subscribers message.
+   * @throws IOException
+   */
+  public static <T> String constructUnsubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
+  {
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    pubSubMessage.setType(PubSubMessageType.UNSUBSCRIBE_NUM_SUBSCRIBERS);
+    pubSubMessage.setTopic(topic);
+
+    return codec.formatMessage(pubSubMessage);
+  }
+
   public String formatMessage(PubSubMessage<T> pubSubMessage) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();

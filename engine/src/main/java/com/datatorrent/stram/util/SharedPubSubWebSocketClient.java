@@ -31,10 +31,9 @@ import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ning.http.client.websocket.WebSocket;
+import org.apache.apex.shaded.ning19.com.ning.http.client.ws.WebSocket;
 
 import com.datatorrent.common.util.PubSubMessage;
-import com.datatorrent.common.util.PubSubWebSocketClient;
 
 /**
  * <p>SharedPubSubWebSocketClient class.</p>
