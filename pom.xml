@@ -387,10 +387,12 @@
               <breakBuildBasedOnSemanticVersioning>true</breakBuildBasedOnSemanticVersioning>
               <onlyBinaryIncompatible>false</onlyBinaryIncompatible>
               <includeSynthetic>false</includeSynthetic>
-              <ignoreMissingClasses>false</ignoreMissingClasses>
+              <ignoreMissingClasses>true</ignoreMissingClasses>
               <excludes>
                 <exclude>@org.apache.hadoop.classification.InterfaceStability$Evolving</exclude>
                 <exclude>@org.apache.hadoop.classification.InterfaceStability$Unstable</exclude>
+                <!-- com.ning:async-http-client upgrade -->
+                <exclude>com.datatorrent.common.util.PubSubWebSocketClient</exclude>
               </excludes>
             </parameter>
           </configuration>

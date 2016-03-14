@@ -329,6 +329,11 @@
       <version>1.1</version>
     </dependency>
     <dependency>
+      <groupId>org.apache.apex</groupId>
+      <artifactId>apex-shaded-ning19</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-embedder</artifactId>
       <version>3.3.9</version>
