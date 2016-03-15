@@ -124,6 +124,7 @@ public class AppPackage extends JarFile
       cleanOnClose = true;
       contentFolder = Files.createTempDirectory("dt-appPackage-").toFile();
     }
+    directory = contentFolder;
 
     Manifest manifest = getManifest();
     if (manifest == null) {
@@ -141,7 +142,6 @@ public class AppPackage extends JarFile
       throw new IOException("Not a valid app package.  App Package Name or Version or Class-Path is missing from MANIFEST.MF");
     }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
-    directory = contentFolder;
     extractToDirectory(directory, file);
     if (processAppDirectory) {
       processAppDirectory(new File(directory, "app"));
