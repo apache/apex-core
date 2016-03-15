@@ -2878,10 +2878,7 @@ public class DTCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       String jarfile = expandFileName(args[1], true);
-      AppPackage ap = null;
-      try {
-        ap = newAppPackageInstance(new File(jarfile));
-
+      try (AppPackage ap = newAppPackageInstance(new File(jarfile))) {
         List<AppInfo> applications = ap.getApplications();
 
         if (args.length >= 3) {
@@ -2908,8 +2905,6 @@ public class DTCli
           }
           printJson(appList, "applications");
         }
-      } finally {
-        IOUtils.closeQuietly(ap);
       }
     }
 
@@ -3411,16 +3406,11 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppPackage ap = null;
-      try {
-        ap = newAppPackageInstance(new File(expandFileName(args[1], true)));
+      try (AppPackage ap = newAppPackageInstance(new File(expandFileName(args[1], true)))) {
         JSONSerializationProvider jomp = new JSONSerializationProvider();
         JSONObject apInfo = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
         apInfo.remove("name");
         printJson(apInfo);
-      }
-      finally {
-        IOUtils.closeQuietly(ap);
       }
     }
 
@@ -3727,9 +3717,7 @@ public class DTCli
       String[] tmpArgs = new String[args.length - 1];
       System.arraycopy(args, 1, tmpArgs, 0, args.length - 1);
       GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(tmpArgs);
-      AppPackage ap = null;
-      try {
-        ap = newAppPackageInstance(new File(expandFileName(commandLineInfo.args[0], true)));
+      try (AppPackage ap = newAppPackageInstance(new File(expandFileName(commandLineInfo.args[0], true)))){
         List<String> newArgs = new ArrayList<String>();
         List<String> jars = new ArrayList<String>();
         for (String jar : ap.getAppJars()) {
@@ -3751,9 +3739,6 @@ public class DTCli
         new GetJarOperatorClassesCommand().execute(newArgs.toArray(new String[]{}), reader);
 
       }
-      finally {
-        IOUtils.closeQuietly(ap);
-      }
     }
 
   }
@@ -3763,9 +3748,7 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppPackage ap = null;
-      try {
-        ap = newAppPackageInstance(new File(expandFileName(args[1], true)));
+      try (AppPackage ap = newAppPackageInstance(new File(expandFileName(args[1], true)))) {
         List<String> newArgs = new ArrayList<String>();
         List<String> jars = new ArrayList<String>();
         for (String jar : ap.getAppJars()) {
@@ -3778,9 +3761,6 @@ public class DTCli
         newArgs.add(StringUtils.join(jars, ","));
         newArgs.add(args[2]);
         new GetJarOperatorPropertiesCommand().execute(newArgs.toArray(new String[]{}), reader);
-      }
-      finally {
-        IOUtils.closeQuietly(ap);
       }
     }
 
