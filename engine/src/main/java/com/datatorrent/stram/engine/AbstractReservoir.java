@@ -148,7 +148,7 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
    */
   private static class SpscArrayQueueReservoir extends AbstractReservoir
   {
-    private final int spinMillis = 10;
+    private final int maxSpinMillis = 10;
     private final SpscArrayQueue<Object> queue;
 
     private SpscArrayQueueReservoir(final String id, final int capacity)
@@ -223,8 +223,10 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
     @Override
     public void put(Object e) throws InterruptedException
     {
+      long spinMillis = 0;
       while (!queue.offer(e)) {
         sleep(spinMillis);
+        spinMillis = Math.min(maxSpinMillis, spinMillis + 1);
       }
     }
 
