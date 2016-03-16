@@ -48,7 +48,7 @@ import com.datatorrent.netlet.util.DTThrowable;
 public class AsyncFSStorageAgent extends FSStorageAgent
 {
   private final transient Configuration conf;
-  private final transient String localBasePath;
+  private transient volatile String localBasePath;
 
   private boolean syncCheckpoint = false;
 
@@ -63,12 +63,6 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   public AsyncFSStorageAgent(String path, Configuration conf)
   {
     super(path, conf);
-    try {
-      this.localBasePath = Files.createTempDirectory("chkp").toString();
-    } catch (IOException ex) {
-      throw new RuntimeException(ex);
-    }
-    logger.info("using {} as the basepath for checkpointing.", this.localBasePath);
     this.conf = conf == null ? new Configuration() : conf;
   }
 
@@ -84,6 +78,11 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   @Override
   public void save(final Object object, final int operatorId, final long windowId) throws IOException
   {
+    // save() is only called by one thread in the worker container so the following is okay
+    if (this.localBasePath == null) {
+      this.localBasePath = Files.createTempDirectory("chkp").toString();
+      logger.info("using {} as the basepath for checkpointing.", this.localBasePath);
+    }
     if (syncCheckpoint) {
       super.save(object, operatorId, windowId);
       return;
@@ -100,6 +99,9 @@ public class AsyncFSStorageAgent extends FSStorageAgent
 
   public void copyToHDFS(final int operatorId, final long windowId) throws IOException
   {
+    if (this.localBasePath == null) {
+      throw new AssertionError("save() was not called before copyToHDFS");
+    }
     String operatorIdStr = String.valueOf(operatorId);
     File directory = new File(localBasePath, operatorIdStr);
     String window = Long.toHexString(windowId);
