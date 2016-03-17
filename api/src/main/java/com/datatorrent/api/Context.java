@@ -495,6 +495,22 @@ public interface Context
      * Only supports string codecs that have a constructor with no arguments
      */
     Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>>(new Map2String<Class<?>, Class<? extends StringCodec<?>>>(",", "=", new Class2String<Object>(), new Class2String<StringCodec<?>>()));
+
+    /**
+     * The number of consecutive container failures that should lead to
+     * blacklisting of nodes by application master
+     * Blacklisting for nodes is disabled for the default value
+     */
+    Attribute<Integer> MAX_CONSECUTIVE_CONTAINER_FAILURES_FOR_BLACKLIST = new Attribute<Integer>(Integer.MAX_VALUE);
+
+    /**
+     * The amount of time to wait before removing failed nodes from blacklist
+     */
+    Attribute<Long> BLACKLISTED_NODE_REMOVAL_TIME_MILLIS = new Attribute<Long>(new Long(60 * 60 * 1000));
+
+    /**
+     * The number of times consecutive container failure
+     */
     @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(DAGContext.class);
   }
