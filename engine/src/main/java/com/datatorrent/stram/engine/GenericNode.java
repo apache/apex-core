@@ -230,7 +230,8 @@ public class GenericNode extends Node<Operator>
   {
     doCheckpoint = false;
 
-    long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
+    final long maxSpinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
+    long spinMillis = 0;
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     int totalQueues = inputs.size();
     int regularQueues = totalQueues;
@@ -261,6 +262,7 @@ public class GenericNode extends Node<Operator>
           SweepableReservoir activePort = activePortEntry.getValue();
           Tuple t = activePort.sweep();
           if (t != null) {
+            spinMillis = 0;
             boolean delay = (operator instanceof Operator.DelayOperator);
             long windowAhead = 0;
             if (delay) {
@@ -595,12 +597,12 @@ public class GenericNode extends Node<Operator>
         if (activeQueues.isEmpty() && alive) {
           logger.error("Catastrophic Error: Invalid State - the operator blocked forever!");
           System.exit(2);
-        }
-        else {
+        } else {
           boolean need2sleep = true;
           for (Map.Entry<String, SweepableReservoir> cb : activeQueues) {
             need2sleep = cb.getValue().isEmpty();
             if (!need2sleep) {
+              spinMillis = 0;
               break;
             }
           }
@@ -608,9 +610,9 @@ public class GenericNode extends Node<Operator>
           if (need2sleep) {
             if (handleIdleTime && insideWindow) {
               ((IdleTimeHandler) operator).handleIdleTime();
-            }
-            else {
+            } else {
               Thread.sleep(spinMillis);
+              spinMillis = Math.min(maxSpinMillis, spinMillis + 1);
             }
           }
         }
