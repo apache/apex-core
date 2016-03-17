@@ -47,7 +47,7 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractReservoir.class);
   static final String reservoirClassNameProperty = "com.datatorrent.stram.engine.Reservoir";
-  private static final String reservoirDefaultClassName = SpscArrayQueueReservoir.class.getName();
+  private static final int USE_SPSC_CAPACITY = 8 * 1024;
 
   /**
    * Reservoir factory. Constructs concrete implementation of {@link AbstractReservoir} based on
@@ -58,8 +58,14 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
    */
   public static AbstractReservoir newReservoir(final String id, final int capacity)
   {
-    String reservoirClassName = System.getProperty(reservoirClassNameProperty, reservoirDefaultClassName);
-    if (reservoirClassName.equals(SpscArrayQueueReservoir.class.getName())) {
+    String reservoirClassName = System.getProperty(reservoirClassNameProperty);
+    if (reservoirClassName == null) {
+      if (capacity >=  USE_SPSC_CAPACITY) {
+        return new SpscArrayQueueReservoir(id, capacity);
+      } else {
+        return new ArrayBlockingQueueReservoir(id, capacity);
+      }
+    } else if (reservoirClassName.equals(SpscArrayQueueReservoir.class.getName())) {
       return new SpscArrayQueueReservoir(id, capacity);
     } else if (reservoirClassName.equals(CircularBufferReservoir.class.getName())) {
       return new CircularBufferReservoir(id, capacity);
