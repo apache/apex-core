@@ -104,6 +104,7 @@ public class StreamingAppMasterService extends CompositeService
   private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private static final int MAX_CONTAINER_FAILURES_PER_NODE = 3;
   private static final long BLACKLIST_REMOVAL_TIME = 60 * 60 * 1000;
+  private boolean enableFailedNodeBlacklisting = false;
   private AMRMClient<ContainerRequest> amRmClient;
   private NMClientAsync nmClient;
   private LogicalPlan dag;
@@ -898,7 +899,7 @@ public class StreamingAppMasterService extends CompositeService
         if (0 != exitStatus) {
           if (allocatedContainer != null) {
             numFailedContainers.incrementAndGet();
-            if (exitStatus != 1) {
+            if (exitStatus != 1 && enableFailedNodeBlacklisting) {
               // If container failure due to framework
               String hostname = allocatedContainer.container.getNodeId().getHost();
               int failedTimes = 1;
