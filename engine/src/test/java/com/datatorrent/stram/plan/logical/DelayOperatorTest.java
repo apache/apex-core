@@ -454,4 +454,23 @@ public class DelayOperatorTest
 
   }
 
+  @Test
+  public void testValidationWithMultipleStreamLoops()
+  {
+    LogicalPlan dag = StramTestSupport.createDAG(testMeta);
+
+    TestGeneratorInputOperator source = dag.addOperator("A", TestGeneratorInputOperator.class);
+    GenericTestOperator op1 = dag.addOperator("Op1", GenericTestOperator.class);
+    GenericTestOperator op2 = dag.addOperator("Op2", GenericTestOperator.class);
+    DefaultDelayOperator<Object> delay = dag.addOperator("Delay", DefaultDelayOperator.class);
+
+    dag.addStream("Source", source.outport, op1.inport1);
+    dag.addStream("Stream1", op1.outport1, op2.inport1);
+    dag.addStream("Stream2", op1.outport2, op2.inport2);
+    dag.addStream("Op to Delay", op2.outport1, delay.input);
+    dag.addStream("Delay to Op", delay.output, op1.inport2);
+
+    dag.validate();
+  }
+
 }
