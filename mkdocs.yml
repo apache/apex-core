@@ -11,3 +11,5 @@ pages:
     - AutoMetric API: autometrics.md
 - Operations:
     - dtCli: dtcli.md
+- Compatibility: compatibility.md
+
