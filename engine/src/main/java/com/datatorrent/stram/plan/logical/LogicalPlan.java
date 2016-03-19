@@ -1966,8 +1966,8 @@ public class LogicalPlan implements Serializable, DAG
         else if (ctx.stack.contains(successor)) {
           om.lowlink = Math.min(om.lowlink, successor.nindex);
           boolean isDelayLoop = false;
-          for (int i=ctx.path.size(); i>0; i--) {
-            OperatorMeta om2 = ctx.path.get(i-1);
+          for (int i=ctx.stack.size(); i>0; i--) {
+            OperatorMeta om2 = ctx.stack.get(i-1);
             if (om2.getOperator() instanceof Operator.DelayOperator) {
               isDelayLoop = true;
             }
