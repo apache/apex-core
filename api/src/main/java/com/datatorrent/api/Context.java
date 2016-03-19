@@ -101,6 +101,20 @@ public interface Context
     String getJVMOptions(List<DAG.OperatorMeta> operatorMetaList);
   }
 
+  /**
+   * The streaming application master web service authentication enablement policy.<br/><br/>
+   * ENABLE - Enable authentication for web service access.<br/>
+   * FOLLOW_HADOOP_AUTH - Follow Hadoop authentication, if hadoop authentication is enabled, i.e., if it is set to something
+   *                other than "simple", enable authentication for web services as well.<br/>
+   * FOLLOW_HADOOP_HTTP_AUTH - Follow Hadoop HTTP authentication, if hadoop authentication is enabled, i.e., if it is
+   *                set to something other than "simple", enable authentication for web services as well.<br/>
+   * DISABLE - Disable authentication for web services.
+   */
+  enum StramHTTPAuthentication
+  {
+    ENABLE, FOLLOW_HADOOP_AUTH, FOLLOW_HADOOP_HTTP_AUTH, DISABLE
+  }
+
   public interface PortContext extends Context
   {
     /**
@@ -470,6 +484,12 @@ public interface Context
      * The agent which can be used to find the jvm options for the container.
      */
     Attribute<ContainerOptConfigurator> CONTAINER_OPTS_CONFIGURATOR = new Attribute<ContainerOptConfigurator>(new Object2String<ContainerOptConfigurator>());
+    /**
+     * The policy for enabling stram web services authentication.<br/>
+     * See {@link StramHTTPAuthentication} for the different options.<br/>
+     * Default value is StramHTTPAuthentication.FOLLOW_HADOOP_AUTH
+     */
+    Attribute<StramHTTPAuthentication> STRAM_HTTP_AUTHENTICATION = new Attribute<>(StramHTTPAuthentication.FOLLOW_HADOOP_AUTH, new StringCodec.Enum2String<>(StramHTTPAuthentication.class));
     /**
      * The string codec map for classes that are to be set or get through properties as strings.
      * Only supports string codecs that have a constructor with no arguments

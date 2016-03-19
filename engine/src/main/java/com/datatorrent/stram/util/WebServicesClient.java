@@ -22,18 +22,9 @@ import java.io.IOException;
 import java.security.Principal;
 import java.util.concurrent.Future;
 
-import com.sun.jersey.api.client.AsyncWebResource;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.api.client.async.ITypeListener;
-import com.sun.jersey.api.client.config.ClientConfig;
-import com.sun.jersey.api.client.config.DefaultClientConfig;
-import com.sun.jersey.client.apache4.ApacheHttpClient4Handler;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.http.auth.AuthSchemeProvider;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
@@ -46,6 +37,14 @@ import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+
+import com.sun.jersey.api.client.AsyncWebResource;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.async.ITypeListener;
+import com.sun.jersey.api.client.config.ClientConfig;
+import com.sun.jersey.api.client.config.DefaultClientConfig;
+import com.sun.jersey.client.apache4.ApacheHttpClient4Handler;
 
 /**
  * <p>WebServicesClient class.</p>
@@ -96,7 +95,7 @@ public class WebServicesClient
 
   public WebServicesClient(ClientConfig config)
   {
-    if (UserGroupInformation.isSecurityEnabled()) {
+    if (SecurityUtils.isHadoopWebSecurityEnabled()) {
       HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
       httpClientBuilder.setConnectionManager(connectionManager);
       httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
