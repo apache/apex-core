@@ -24,13 +24,13 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.http.FilterContainer;
 import org.apache.hadoop.http.FilterInitializer;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.util.ConfigUtils;
@@ -59,9 +59,11 @@ public class StramWSFilterInitializer extends FilterInitializer
       for (String rmId : ConfigUtils.getRMHAIds(conf)) {
         proxies.add(getResolvedRMWebAppURLWithoutScheme(conf, rmId));
       }
+      logger.info("HA proxy addresses {}", proxies);
     }
     if (proxies.isEmpty()) {
       proxies.add(getProxyHostAndPort(conf));
+      logger.info("Proxy addresses {}", proxies);
     }
     StringBuilder proxyBr = new StringBuilder();
     for (String proxy : proxies) {
