@@ -188,7 +188,12 @@ public class Server implements ServerListener
 
     final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
     System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    ctx.write(tuple);
+    if (ctx.write(tuple)) {
+      ctx.write();
+    } else {
+      logger.error("Failed to deliver purge ack message. {} send buffers are full.", ctx);
+      throw new RuntimeException("Failed to deliver purge ack message. " + ctx + "send buffers are full.");
+    }
   }
 
   private void handleResetRequest(ResetRequestTuple request, final AbstractLengthPrependerClient ctx) throws IOException
@@ -210,7 +215,12 @@ public class Server implements ServerListener
 
     final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
     System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    ctx.write(tuple);
+    if (ctx.write(tuple)) {
+      ctx.write();
+    } else {
+      logger.error("Failed to deliver reset ack message. {} send buffers are full.", ctx);
+      throw new RuntimeException("Failed to deliver reset ack message. " + ctx + "send buffers are full.");
+    }
   }
 
   /**
@@ -369,6 +379,7 @@ public class Server implements ServerListener
       key.attach(client);
       key.interestOps(SelectionKey.OP_READ);
       client.registered(key);
+      client.connected();
 
       int len = writeOffset - readOffset - size;
       if (len > 0) {
