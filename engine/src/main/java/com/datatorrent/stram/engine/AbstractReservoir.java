@@ -24,6 +24,8 @@ import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.jctools.queues.MessagePassingQueue;
 import org.jctools.queues.SpscArrayQueue;
@@ -47,7 +49,7 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractReservoir.class);
   static final String reservoirClassNameProperty = "com.datatorrent.stram.engine.Reservoir";
-  private static final int USE_SPSC_CAPACITY = 8 * 1024;
+  private static final int SPSC_ARRAY_BLOCKING_QUEUE_CAPACITY_THRESHOLD = 64 * 1024;
 
   /**
    * Reservoir factory. Constructs concrete implementation of {@link AbstractReservoir} based on
@@ -60,13 +62,15 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
   {
     String reservoirClassName = System.getProperty(reservoirClassNameProperty);
     if (reservoirClassName == null) {
-      if (capacity >=  USE_SPSC_CAPACITY) {
+      if (capacity >= SPSC_ARRAY_BLOCKING_QUEUE_CAPACITY_THRESHOLD) {
         return new SpscArrayQueueReservoir(id, capacity);
       } else {
-        return new ArrayBlockingQueueReservoir(id, capacity);
+        return new SpscArrayBlockingQueueReservoir(id, capacity);
       }
     } else if (reservoirClassName.equals(SpscArrayQueueReservoir.class.getName())) {
       return new SpscArrayQueueReservoir(id, capacity);
+    } else if (reservoirClassName.equals(SpscArrayBlockingQueueReservoir.class.getName())) {
+      return new SpscArrayBlockingQueueReservoir(id, capacity);
     } else if (reservoirClassName.equals(CircularBufferReservoir.class.getName())) {
       return new CircularBufferReservoir(id, capacity);
     } else if (reservoirClassName.equals(ArrayBlockingQueueReservoir.class.getName())) {
@@ -82,7 +86,7 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
     }
   }
 
-  protected Sink<Object> sink;
+  private Sink<Object> sink;
   private String id;
   protected int count;
 
@@ -140,6 +144,11 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
     this.id = id;
   }
 
+  protected Sink<Object> getSink()
+  {
+    return sink;
+  }
+
   @Override
   public String toString()
   {
@@ -167,6 +176,8 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
     public Tuple sweep()
     {
       Object o;
+      final SpscArrayQueue<Object> queue = this.queue;
+      final Sink<Object> sink = getSink();
       while ((o = queue.peek()) != null) {
         if (o instanceof Tuple) {
           return (Tuple)o;
@@ -178,9 +189,9 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
     }
 
     @Override
-    public boolean add(Object e)
+    public boolean add(Object o)
     {
-      return queue.add(e);
+      return queue.add(o);
     }
 
     @Override
@@ -213,31 +224,32 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
       return queue.drain(new MessagePassingQueue.Consumer<Object>()
       {
         @Override
-        public void accept(Object e)
+        public void accept(Object o)
         {
-          container.add(e);
+          container.add(o);
         }
       });
     }
 
     @Override
-    public boolean offer(Object e)
+    public boolean offer(Object o)
     {
-      return queue.offer(e);
+      return queue.offer(o);
     }
 
     @Override
-    public void put(Object e) throws InterruptedException
+    public void put(Object o) throws InterruptedException
     {
       long spinMillis = 0;
-      while (!queue.offer(e)) {
+      final SpscArrayQueue<Object> queue = this.queue;
+      while (!queue.offer(o)) {
         sleep(spinMillis);
         spinMillis = Math.min(maxSpinMillis, spinMillis + 1);
       }
     }
 
     @Override
-    public boolean offer(Object e, long timeout, TimeUnit unit) throws InterruptedException
+    public boolean offer(Object o, long timeout, TimeUnit unit) throws InterruptedException
     {
       throw new UnsupportedOperationException();
     }
@@ -257,6 +269,7 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
     @Override
     public int remainingCapacity()
     {
+      final SpscArrayQueue<Object> queue = this.queue;
       return queue.capacity() - queue.size();
     }
 
@@ -278,9 +291,9 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
       return queue.drain(new MessagePassingQueue.Consumer<Object>()
       {
         @Override
-        public void accept(Object e)
+        public void accept(Object o)
         {
-          collection.add(e);
+          collection.add(o);
         }
       }, maxElements);
     }
@@ -357,6 +370,91 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
       queue.clear();
     }
 
+    protected SpscArrayQueue<Object> getQueue()
+    {
+      return queue;
+    }
+
+  }
+
+  /**
+   * <p>SpscArrayBlockingQueueReservoir</p>
+   * {@link SweepableReservoir} implementation that extends SpscArrayQueueReservoir and delegates {@link BlockingQueue}
+   * implementation to {@see <a href=http://jctools.github.io/JCTools/>JCTools</a>} SpscArrayQueue.
+   */
+  private static class SpscArrayBlockingQueueReservoir extends SpscArrayQueueReservoir
+  {
+    private final ReentrantLock lock;
+    private final Condition notFull;
+
+    private SpscArrayBlockingQueueReservoir(final String id, final int capacity)
+    {
+      super(id, capacity);
+      lock = new ReentrantLock();
+      notFull = lock.newCondition();
+    }
+
+    @Override
+    public Tuple sweep()
+    {
+      Object o;
+      final ReentrantLock lock = this.lock;
+      final SpscArrayQueue<Object> queue = getQueue();
+      final Sink<Object> sink = getSink();
+      lock.lock();
+      try {
+        while ((o = queue.peek()) != null) {
+          if (o instanceof Tuple) {
+            return (Tuple)o;
+          }
+          count++;
+          sink.put(queue.poll());
+          notFull.signal();
+          if (lock.hasQueuedThreads()) {
+            return null;
+          }
+        }
+        return null;
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    @Override
+    public void put(Object o) throws InterruptedException
+    {
+      final SpscArrayQueue<Object> queue = getQueue();
+      if (!queue.offer(o)) {
+        final ReentrantLock lock = this.lock;
+        lock.lockInterruptibly();
+        try {
+          while (!queue.offer(o)) {
+            notFull.await();
+          }
+        } finally {
+          lock.unlock();
+        }
+      }
+    }
+
+    @Override
+    public Object remove()
+    {
+      final SpscArrayQueue<Object> queue = getQueue();
+      final ReentrantLock lock = this.lock;
+      lock.lock();
+      try {
+        Object o = queue.remove();
+        if (o != null) {
+          notFull.signal();
+        }
+        return o;
+      } finally {
+        lock.unlock();
+      }
+    }
+
+
   }
 
   /**
@@ -378,6 +476,8 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
     public Tuple sweep()
     {
       Object o;
+      final ArrayBlockingQueue<Object> queue = this.queue;
+      final Sink<Object> sink = getSink();
       while ((o = queue.peek()) != null) {
         if (o instanceof Tuple) {
           return (Tuple)o;
@@ -577,6 +677,8 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
     @Override
     public Tuple sweep()
     {
+      final CircularBuffer<Object> circularBuffer = this.circularBuffer;
+      final Sink<Object> sink = getSink();
       final int size = circularBuffer.size();
       for (int i = 0; i < size; i++) {
         if (circularBuffer.peekUnsafe() instanceof Tuple) {
@@ -591,9 +693,9 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
     }
 
     @Override
-    public boolean add(Object e)
+    public boolean add(Object o)
     {
-      return circularBuffer.add(e);
+      return circularBuffer.add(o);
     }
 
     @Override
@@ -636,21 +738,21 @@ public abstract class AbstractReservoir implements SweepableReservoir, BlockingQ
     }
 
     @Override
-    public boolean offer(Object e)
+    public boolean offer(Object o)
     {
-      return circularBuffer.offer(e);
+      return circularBuffer.offer(o);
     }
 
     @Override
-    public void put(Object e) throws InterruptedException
+    public void put(Object o) throws InterruptedException
     {
-      circularBuffer.put(e);
+      circularBuffer.put(o);
     }
 
     @Override
-    public boolean offer(Object e, long timeout, TimeUnit unit) throws InterruptedException
+    public boolean offer(Object o, long timeout, TimeUnit unit) throws InterruptedException
     {
-      return circularBuffer.offer(e, timeout, unit);
+      return circularBuffer.offer(o, timeout, unit);
     }
 
     @Override

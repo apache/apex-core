@@ -18,12 +18,14 @@
  */
 package com.datatorrent.stram.engine;
 
-import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.jctools.queues.SpscArrayQueue;
 
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -39,8 +41,11 @@ import com.datatorrent.stram.tuple.Tuple;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 
+import static com.datatorrent.api.Context.PortContext.QUEUE_CAPACITY;
+import static com.datatorrent.api.Context.PortContext.SPIN_MILLIS;
 import static com.datatorrent.bufferserver.packet.MessageType.BEGIN_WINDOW;
 
+import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -54,7 +59,7 @@ public class AbstractReservoirTest
   private static final String countPropertyName = "com.datatorrent.stram.engine.AbstractReservoirTest.count";
   private static final String capacityPropertyName = "com.datatorrent.stram.engine.AbstractReservoirTest.capacity";
   private static final int COUNT = Integer.getInteger(countPropertyName, 10000000);
-  private static final int CAPACITY = Integer.getInteger(capacityPropertyName, 1 << 19);
+  private static final int CAPACITY = Integer.getInteger(capacityPropertyName, QUEUE_CAPACITY.defaultValue);
 
   @Rule
   public ExpectedException exception = ExpectedException.none();
@@ -74,7 +79,7 @@ public class AbstractReservoirTest
   private static void setSink(final AbstractReservoir reservoir, final Sink<Object> sink)
   {
     assertNull(reservoir.setSink(sink));
-    assertEquals(sink, reservoir.sink);
+    assertEquals(sink, reservoir.getSink());
   }
 
   @SuppressWarnings("unused")
@@ -83,6 +88,7 @@ public class AbstractReservoirTest
     Object[][] defaultTestParameters = new Object[][] {
         {null, NoSuchElementException.class},
         {"com.datatorrent.stram.engine.AbstractReservoir$SpscArrayQueueReservoir", NoSuchElementException.class},
+        {"com.datatorrent.stram.engine.AbstractReservoir$SpscArrayBlockingQueueReservoir", NoSuchElementException.class},
         {"com.datatorrent.stram.engine.AbstractReservoir$ArrayBlockingQueueReservoir", NoSuchElementException.class},
         {"com.datatorrent.stram.engine.AbstractReservoir$CircularBufferReservoir", IllegalStateException.class}
     };
@@ -91,12 +97,10 @@ public class AbstractReservoirTest
       o[0] = newReservoir((String)o[0], 2);
       final Sink<Object> sink = new Sink<Object>()
       {
-        final ArrayList<Object> sink = new ArrayList<>();
-        int count;
+        private int count;
         @Override
         public void put(Object tuple)
         {
-          sink.add(tuple);
           count++;
         }
 
@@ -121,10 +125,11 @@ public class AbstractReservoirTest
   private Object performanceTestParameters()
   {
     Object[][] performanceTestParameters = new Object[][] {
-        {null, 1500},
-        {"com.datatorrent.stram.engine.AbstractReservoir$SpscArrayQueueReservoir", 1500},
+        {null, 2500},
+        {"com.datatorrent.stram.engine.AbstractReservoir$SpscArrayQueueReservoir", 10000},
+        {"com.datatorrent.stram.engine.AbstractReservoir$SpscArrayBlockingQueueReservoir", 2500},
         {"com.datatorrent.stram.engine.AbstractReservoir$ArrayBlockingQueueReservoir", 10000},
-        {"com.datatorrent.stram.engine.AbstractReservoir$CircularBufferReservoir", 4500}
+        {"com.datatorrent.stram.engine.AbstractReservoir$CircularBufferReservoir", 100000}
     };
     for (Object[] o : performanceTestParameters) {
       o[0] = newReservoir((String)o[0], CAPACITY);
@@ -134,7 +139,9 @@ public class AbstractReservoirTest
         @Override
         public void put(Object tuple)
         {
-          count++;
+          if (++count == COUNT) {
+            throw new RuntimeException();
+          }
         }
 
         @Override
@@ -174,7 +181,7 @@ public class AbstractReservoirTest
     assertEquals(o, reservoir.peek());
     assertNull(reservoir.sweep());
     assertEquals(1, reservoir.getCount(false));
-    assertEquals(1, reservoir.sink.getCount(false));
+    assertEquals(1, reservoir.getSink().getCount(false));
     assertTrue(reservoir.isEmpty());
     assertEquals(0, reservoir.size());
     assertEquals(0, reservoir.size(false));
@@ -195,7 +202,7 @@ public class AbstractReservoirTest
     assertEquals(t, reservoir.sweep());
     assertEquals(t, reservoir.sweep());
     assertEquals(0, reservoir.getCount(false));
-    assertEquals(0, reservoir.sink.getCount(false));
+    assertEquals(0, reservoir.getSink().getCount(false));
     assertFalse(reservoir.isEmpty());
     assertEquals(t, reservoir.remove());
     assertNull(reservoir.peek());
@@ -224,138 +231,241 @@ public class AbstractReservoirTest
   @Parameters(method = "performanceTestParameters")
   public void performanceTest(final AbstractReservoir reservoir, final long expectedTime)
   {
-    int maxQueueSize = 0;
-
     final long start = System.currentTimeMillis();
+    final int maxSleepTime = SPIN_MILLIS.defaultValue;
 
-    new Thread(new Runnable()
-    {
-      @Override
-      public void run()
-      {
-        final Object o = new Byte[128];
-        try {
-          for (int i = 0; i < COUNT; i++) {
-            reservoir.put(o);
-          }
-        } catch (InterruptedException e) {
-          logger.debug("Interrupted", e);
-        }
-      }
-    }).start();
-
-    while (reservoir.sink.getCount(false) < COUNT) {
-      maxQueueSize = Math.max(maxQueueSize, reservoir.size(false));
-      reservoir.sweep();
-    }
-
-    long time = System.currentTimeMillis() - start;
-    logger.debug("{}: time {}, max queue size {}", reservoir.getId(), time, maxQueueSize);
-    assertTrue("Expected to complete within " + expectedTime + " millis. Actual time " + time + " millis",
-        expectedTime > time);
-
-  }
-
-  @Test
-  public void testBlockingQueuePerformance()
-  {
-    final ArrayBlockingQueue<Object> blockingQueue = new ArrayBlockingQueue<>(CAPACITY);
-    long start = System.currentTimeMillis();
-    new Thread(
+    final Thread t = new Thread(
         new Runnable()
         {
           @Override
           public void run()
           {
-            final Object o = new Byte[128];
             try {
-              for (int i = 0; i < COUNT; i++) {
-                blockingQueue.put(o);
-              }
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-          }
-        }
-    ).start();
-
-    try {
-      for (int i = 0; i < COUNT; i++) {
-        blockingQueue.take();
-      }
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    logger.debug("Time {}", System.currentTimeMillis() - start);
-  }
-
-  @Test
-  public void testSpscQueuePerformance()
-  {
-    final SpscArrayQueue<Object> spscArrayQueue = new SpscArrayQueue<>(CAPACITY);
-    long start = System.currentTimeMillis();
-    new Thread(
-        new Runnable()
-        {
-          @Override
-          public void run()
-          {
-            final Object o = new Byte[128];
-            try {
-              for (int i = 0; i < COUNT; i++) {
-                while (!spscArrayQueue.offer(o)) {
-                  Thread.sleep(10);
+              int sleepMillis;
+              while (true) {
+                sleepMillis = 0;
+                reservoir.sweep();
+                while (reservoir.isEmpty()) {
+                  sleep(Math.min(maxSleepTime, sleepMillis++));
                 }
               }
             } catch (InterruptedException e) {
-              e.printStackTrace();
+              logger.error("Interrupted", e);
+              throw new RuntimeException(e);
+            } catch (RuntimeException e) {
+              assertEquals(COUNT, reservoir.getSink().getCount(false));
             }
           }
         }
-    ).start();
+    );
 
+    t.start();
+
+    final Object o = new Byte[128];
     try {
       for (int i = 0; i < COUNT; i++) {
-        while (spscArrayQueue.poll() == null) {
-          Thread.sleep(10);
-        }
+        reservoir.put(o);
       }
+      t.join();
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      logger.error("Interrupted", e);
+      throw new RuntimeException(e);
     }
-    logger.debug("Time {}", System.currentTimeMillis() - start);
+
+    long time = System.currentTimeMillis() - start;
+    logger.debug("{}: time {}", reservoir.getId(), time);
+    assertTrue(reservoir.getId() + ": expected to complete within " + expectedTime + " millis. Actual time "
+        + time + " millis", expectedTime > time);
+
   }
 
   @Test
-  public void testCircularBufferPerformance()
+  @Ignore
+  public void testBlockingQueuePerformance()
   {
-    final CircularBuffer<Object> circularBuffer = new CircularBuffer<>(CAPACITY);
-    long start = System.currentTimeMillis();
-    new Thread(
+    final ArrayBlockingQueue<Object> blockingQueue = new ArrayBlockingQueue<>(CAPACITY);
+    final long start = System.currentTimeMillis();
+    final Thread t = new Thread(
         new Runnable()
         {
           @Override
           public void run()
           {
-            final Object o = new Byte[128];
             try {
               for (int i = 0; i < COUNT; i++) {
-                circularBuffer.put(o);
+                blockingQueue.take();
               }
             } catch (InterruptedException e) {
-              e.printStackTrace();
+              logger.error("Interrupted", e);
+              throw new RuntimeException(e);
             }
           }
         }
-    ).start();
+    );
 
+    t.start();
+
+    final Object o = new Byte[128];
     try {
       for (int i = 0; i < COUNT; i++) {
-        circularBuffer.take();
+        blockingQueue.put(o);
+      }
+      t.join();
+    } catch (InterruptedException e) {
+      logger.error("Interrupted", e);
+      throw new RuntimeException(e);
+    }
+
+    logger.debug("Time {}", System.currentTimeMillis() - start);
+  }
+
+  @Test
+  @Ignore
+  public void testSpscQueuePerformance()
+  {
+    final SpscArrayQueue<Object> spscArrayQueue = new SpscArrayQueue<>(CAPACITY);
+    final long start = System.currentTimeMillis();
+    final Thread t = new Thread(
+        new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            try {
+              int sleepMillis;
+              for (int i = 0; i < COUNT; i++) {
+                sleepMillis = 0;
+                while (spscArrayQueue.poll() == null) {
+                  sleep(sleepMillis);
+                  sleepMillis = Math.min(10, sleepMillis + 1);
+                }
+              }
+            } catch (InterruptedException e) {
+              logger.error("Interrupted", e);
+              throw new RuntimeException(e);
+            }
+          }
+        }
+    );
+
+    t.start();
+
+    final Object o = new Byte[128];
+    int sleepMillis;
+    try {
+      for (int i = 0; i < COUNT; i++) {
+        sleepMillis = 0;
+        while (!spscArrayQueue.offer(o)) {
+          sleep(sleepMillis);
+          sleepMillis = Math.min(10, sleepMillis + 1);
+        }
       }
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      logger.error("Interrupted", e);
+      throw new RuntimeException(e);
     }
+
+    logger.debug("Time {}", System.currentTimeMillis() - start);
+  }
+
+  @Test
+  @Ignore
+  public void testSpscBlockingQueuePerformance()
+  {
+    final SpscArrayQueue<Object> spscArrayQueue = new SpscArrayQueue<>(CAPACITY);
+    final ReentrantLock lock = new ReentrantLock();
+    final Condition notFull = lock.newCondition();
+    final long start = System.currentTimeMillis();
+    final Thread t = new Thread(
+        new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            try {
+              int sleepMillis;
+              for (int i = 0; i < COUNT; i++) {
+                sleepMillis = 0;
+                while (spscArrayQueue.poll() == null) {
+                  sleep(sleepMillis);
+                  sleepMillis = Math.min(10, sleepMillis + 1);
+                }
+                lock.lock();
+                notFull.signal();
+                lock.unlock();
+              }
+            } catch (InterruptedException e) {
+              logger.error("Interrupted", e);
+              throw new RuntimeException(e);
+            }
+          }
+        }
+    );
+
+    t.start();
+
+    final Object o = new Byte[128];
+    try {
+      for (int i = 0; i < COUNT; i++) {
+        if (!spscArrayQueue.offer(o)) {
+          lock.lockInterruptibly();
+          while (!spscArrayQueue.offer(o)) {
+            notFull.await();
+          }
+          lock.unlock();
+        }
+      }
+      t.join();
+    } catch (InterruptedException e) {
+      logger.error("Interrupted", e);
+      throw new RuntimeException(e);
+    }
+
+    logger.debug("Time {}", System.currentTimeMillis() - start);
+  }
+
+  @Test
+  @Ignore
+  public void testCircularBufferPerformance()
+  {
+    final CircularBuffer<Object> circularBuffer = new CircularBuffer<>(CAPACITY);
+    final long start = System.currentTimeMillis();
+    final Thread t = new Thread(
+        new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            try {
+              int sleepMillis;
+              for (int i = 0; i < COUNT; i++) {
+                sleepMillis = 0;
+                while (circularBuffer.poll() == null) {
+                  sleep(sleepMillis);
+                  sleepMillis = Math.min(10, sleepMillis + 1);
+                }
+              }
+            } catch (InterruptedException e) {
+              logger.error("Interrupted", e);
+              throw new RuntimeException(e);
+            }
+          }
+        }
+    );
+
+    t.start();
+
+    final Object o = new Byte[128];
+    try {
+      for (int i = 0; i < COUNT; i++) {
+        circularBuffer.put(o);
+      }
+      t.join();
+    } catch (InterruptedException e) {
+      logger.error("Interrupted", e);
+      throw new RuntimeException(e);
+    }
+
     logger.debug("Time {}", System.currentTimeMillis() - start);
   }
 
