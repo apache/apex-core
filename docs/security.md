@@ -15,7 +15,7 @@ There is Hadoop configuration and CLI configuration. Hadoop configuration may be
 
 ###Hadoop Configuration
 
-An Apex application uses delegation tokens to authenticte with the ResourceManager (YARN) and NameNode (HDFS) and these tokens are issued by those servers respectively. Since the application is long-running,
+An Apex application uses delegation tokens to authenticate with the ResourceManager (YARN) and NameNode (HDFS) and these tokens are issued by those servers respectively. Since the application is long-running,
 the tokens should be valid for the lifetime of the application. Hadoop has a configuration setting for the maximum lifetime of the tokens and they should be set to cover the lifetime of the application. There are separate settings for ResourceManager and NameNode delegation
 tokens.
 
@@ -46,7 +46,7 @@ application are performed as that user.
 
 #### Using kinit
 
-A Keberos ticket granting ticket (TGT) can be obtained by using the Kerberos command `kinit`. Detailed documentation for the command can be found online or in man pages. An sample usage of this command is
+A Kerberos ticket granting ticket (TGT) can be obtained by using the Kerberos command `kinit`. Detailed documentation for the command can be found online or in man pages. An sample usage of this command is
 
     kinit -k -t path-tokeytab-file kerberos-principal
 
@@ -85,7 +85,7 @@ In this section we will see how security works for applications built on Apex. W
 
 To launch applications in Apache Apex the command line client dtcli can be used. The application artifacts such as binaries and properties are supplied as an application package. The client, during the various steps involved to launch the application needs to communicate with both the Resource Manager and the Name Node. The Resource Manager communication involves the client asking for new resources to run the application master and start the application launch process. The steps along with sample Java code are described in Writing YARN Applications. The Name Node communication includes the application artifacts being copied to HDFS so that they are available across the cluster for launching the different application containers.
 
-In secure mode the communications with both Resource Manager and Name Node requires authentication and the mechanism is Kerberos. Below is an illustration showing this.
+In secure mode, the communications with both Resource Manager and Name Node requires authentication and the mechanism is Kerberos. Below is an illustration showing this.
 
 ![](images/security/image02.png)		
 
@@ -116,11 +116,11 @@ When the application is completely up and running, there are different component
 
 Every Apache Apex application has a master process akin to any YARN application. In our case it is called STRAM (Streaming Application Master). It is a master process that runs in its own container and manages the different distributed components of the application. Among other tasks it requests Resource Manager for new resources as they are needed and gives back resources that are no longer needed. STRAM also needs to communicate with Name Node from time-to-time to access the persistent HDFS file system. 
 
-In secure mode STRAM has to authenticate with both Resource Manager and Name Node before it can send any requests and this is achieved using Delegation Tokens. Since STRAM runs as a managed application master it runs in a Hadoop container. This container could have been allocated on any node based on what resources were available. Since there is no fixed node where STRAM runs it does not have Kerberos credentials and hence unlike the launch client dtcli it cannot authenticate with Hadoop services Resource Manager and Name Node using Kerberos. Instead, Delegation Tokens are used for authentication.
+In secure mode, STRAM has to authenticate with both Resource Manager and Name Node before it can send any requests and this is achieved using Delegation Tokens. Since STRAM runs as a managed application master, it runs in a Hadoop container. This container could have been allocated on any node based on what resources were available. Since there is no fixed node where STRAM runs, it does not have Kerberos credentials. Unlike launch client dtcli, it cannot authenticate with Hadoop services Resource Manager and Name Node using Kerberos. Instead, Delegation Tokens are used for authentication.
 
 #####Delegation Tokens
 
-Delegation tokens are tokens that are dynamically issued by the source and clients use them to authenticate with the source. The source stores the delegation tokens it has issued in a cache and checks the delegation token sent by a client against the cache. If a match is found, the authentication is successful else it fails. This is the second mode of authentication in secure Hadoop after Kerberos. More details can be found in the Hadoop security design document. In this case the delegation tokens are issued by Resource Manager and Name Node. STRAM useswould use these tokens to authenticate with them. But how does it get them in the first place? This is where the launch client dtcli comes in. 
+Delegation tokens are tokens that are dynamically issued by the source and clients use them to authenticate with the source. The source stores the delegation tokens it has issued in a cache and checks the delegation token sent by a client against the cache. If a match is found, the authentication is successful else it fails. This is the second mode of authentication in secure Hadoop after Kerberos. More details can be found in the Hadoop security design document. In this case the delegation tokens are issued by Resource Manager and Name Node. STRAM would use these tokens to authenticate with them. But how does it get them in the first place? This is where the launch client dtcli comes in.
 
 The client dtcli, since it possesses Kerberos credentials as explained in the Application Launch section, is able to authenticate with Resource Manager and Name Node using Kerberos. It then requests for delegation tokens over the Kerberos authenticated connection. The servers return the delegation tokens in the response payload. The client in requesting the resource manager for the start of the application master container for STRAM seeds it with these tokens so that when STRAM starts it has these tokens. It can then use these tokens to authenticate with the Hadoop services.
 
