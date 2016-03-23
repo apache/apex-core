@@ -35,7 +35,6 @@ import javax.validation.ValidationException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -263,7 +262,7 @@ public class DelayOperatorTest
     private int simulateFailureWindows = 0;
     private boolean simulateFailureAfterCommit = false;
     private int windowCount = 0;
-    private static boolean failureSimulated = false;
+    private static volatile boolean failureSimulated = false;
 
     @Override
     public void beginWindow(long windowId)
