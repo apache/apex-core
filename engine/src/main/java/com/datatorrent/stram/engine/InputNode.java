@@ -98,8 +98,8 @@ public class InputNode extends Node<InputOperator>
                 ((IdleTimeHandler)operator).handleIdleTime();
               }
               else {
-                spinMillis = Math.min(spinMillis + 1, maxSpinMillis);
                 Thread.sleep(spinMillis);
+                spinMillis = Math.min(spinMillis + 1, maxSpinMillis);
               }
             } else {
               spinMillis = 0;
