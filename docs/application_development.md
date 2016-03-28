@@ -240,8 +240,7 @@ public class StockTickInput implements InputOperator
       int statusCode = client.executeMethod(method);
       if (statusCode != HttpStatus.SC_OK) {
         System.err.println("Method failed: " + method.getStatusLine());
-      }
-      else {
+      } else {
         InputStream istream = method.getResponseBodyAsStream();
         // Process response
         InputStreamReader isr = new InputStreamReader(istream);
@@ -272,11 +271,9 @@ public class StockTickInput implements InputOperator
         }
       }
       Thread.sleep(readIntervalMillis);
-    }
-    catch (InterruptedException ex) {
+    } catch (InterruptedException ex) {
       logger.debug(ex.toString());
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       logger.debug(ex.toString());
     }
   }
@@ -293,7 +290,7 @@ public class StockTickInput implements InputOperator
 
   public void setOutputEvenIfZeroVolume(boolean outputEvenIfZeroVolume)
   {
-	   this.outputEvenIfZeroVolume = outputEvenIfZeroVolume;
+    this.outputEvenIfZeroVolume = outputEvenIfZeroVolume;
   }
 
 }
@@ -657,6 +654,7 @@ functional testing purposes. Due to limited resources and lack  of
 scalability an application running in this single process mode is more
 likely to encounter throughput bottlenecks. A distributed cluster is
 recommended for benchmarking and production testing.
+
 
 Hadoop Cluster
 ---------------------------
@@ -1085,7 +1083,7 @@ The platform provides a commandline tool called dtcli for managing applications
 killing, viewing, etc.). This tool was already discussed above briefly
 in the section entitled Running the Test Application. It will introspect
 the jar file specified with the launch command for applications (classes
-that implement ApplicationFactory) or property files that define
+that implement ApplicationFactory) or properties files that define
 applications. It will also deploy the dependency jar files from the
 application package to the cluster.
 
@@ -1196,12 +1194,54 @@ public class Application implements StreamingApplication
 }
 ```
 
+JSON File DAG Specification
+--------------------------
+In addition to Java, you can also specify the DAG using JSON, provided the operators in the DAG are present in the dependency jars. Create src/main/resources/app directory under your app package project, and put your JSON files there. This is the specification of a JSON file that specifies an application.
+
+Create a json file under src/main/resources/app, For example `myApplication.json`
+
+```
+{
+  "description": "{application description}",
+  "operators": [
+    {
+      "name": "{operator name}",
+      "class": "{fully qualified class name of the operator}",
+      "properties": {
+        "{property key}": "{property value}",
+        ...
+      }
+    }, ...
+  ],
+  "streams": [
+    {
+      "name": "{stream name}",
+      "source": {
+        "operatorName": "{source operator name}",
+        "portName": "{source operator output port name}"
+      }
+      "sinks": [
+        {
+          "operatorName": "{sink operator name}",
+          "portName": "{sink operator input port name}"
+        }, ...
+      ]
+    }, ...
+  ]
+}
+
+```
+- The name of the JSON file is taken as the name of the application.
+- The `description` field is the description of the application and is optional.
+- The `operators` field is the list of operators the application has. You can specifiy the name, the Java class, and the properties of each operator here.
+- The `streams` field is the list of streams that connects the operators together to form the DAG. Each stream consists of the stream name, the operator and port that it connects from, and the list of operators and ports that it connects to. Note that you can connect from *one* output port of an operator to *multiple* different input ports of different operators.
+
+In Apex Malhar, there is an [example](https://github.com/apache/incubator-apex-malhar/blob/master/demos/pi/src/main/resources/app/PiJsonDemo.json) in the Pi Demo doing just that.
 
 
+### Properties File DAG Specification
 
-### Property File API
-
-The platform also supports specification of a DAG via a property
+The platform also supports specification of a DAG via a properties
 file. The aim here to make it easy for tools to create and run an
 application. This method of specification does not have the Java
 compiler support of compile time check, but since these applications
@@ -1210,10 +1250,8 @@ The syntax is derived from Hadoop properties and should be easy for
 folks who are used to creating software that integrated with
 Hadoop.
 
-
-
-Create an application (DAG): myApplication.properties
-
+Under the src/main/resources/app directory (create if it doesn't exist), create a properties file.
+For example `myApplication.properties`
 
 ```
 # input operator that reads from a file
@@ -1231,7 +1269,7 @@ dt.stream.inputStream.sinks=outputOp.inputPort
 
 
 Above snippet is intended to convey the basic idea of specifying
-the DAG without using Java. Operators would come from a predefined
+the DAG using properties file. Operators would come from a predefined
 library and referenced in the specification by class name and port names
 (obtained from the library providers documentation or runtime
 introspection by tools). For those interested in details, see later

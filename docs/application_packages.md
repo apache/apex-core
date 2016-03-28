@@ -89,7 +89,7 @@ Version: 3.2.0-incubating (or any later version)
 ## Writing Your Own App Package
 
 
-Please refer to the [Creating Apps](http://docs.datatorrent.com/create/) on the basics on how to write an Apache Apex application.  In your AppPackage project, you can add custom operators (refer to [Operator Development Guide](operator_development.md), project dependencies, default and required configuration properties, pre-set configurations and other metadata.
+Please refer to the [Application Developer Guide][application_development.md] on the basics on how to write an Apache Apex application. In your AppPackage project, you can add custom operators (refer to [Operator Development Guide](operator_development.md), project dependencies, default and required configuration properties, pre-set configurations and other metadata. Note that you can also specify the DAG using Java, JSON or properties files. 
 
 ### Adding (and removing) project dependencies
 
@@ -467,6 +467,7 @@ Note that by default from project created from the maven archetype,
 there is already a log4j.properties file under src/test/resources and
 that file is only used for the unit test.
 
+
 ## Zip Structure of Application Package
 
 
@@ -474,7 +475,7 @@ Apache Apex Application Package files are zip files.  You can examine the conten
 
 There are four top level directories in an Application Package:
 
-1. "app" contains the jar files of the DAG code and any custom operators.
+1. "app" contains the jar files of the DAG code and any custom operators, and any JSON or properties files that specify a DAG.
 2. "lib" contains all dependency jars
 3. "conf" contains all the pre-set configuration XML files.
 4. "META-INF" contains the MANIFEST.MF file and the properties.xml file.
