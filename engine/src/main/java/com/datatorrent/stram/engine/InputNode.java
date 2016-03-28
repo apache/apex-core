@@ -66,7 +66,8 @@ public class InputNode extends Node<InputOperator>
   @SuppressWarnings(value = {"SleepWhileInLoop", "BroadCatchBlock", "TooBroadCatch"})
   public final void run()
   {
-    long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
+    long maxSpinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
+    long spinMillis = 0;
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
 
     boolean insideApplicationWindow = applicationWindowCount != 0;
@@ -97,8 +98,11 @@ public class InputNode extends Node<InputOperator>
                 ((IdleTimeHandler)operator).handleIdleTime();
               }
               else {
+                spinMillis = Math.min(spinMillis + 1, maxSpinMillis);
                 Thread.sleep(spinMillis);
               }
+            } else {
+              spinMillis = 0;
             }
           }
           else {
