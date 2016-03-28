@@ -194,7 +194,8 @@ public interface Context
      */
     Attribute<Long> ACTIVATION_WINDOW_ID = new Attribute<Long>(Stateless.WINDOW_ID);
     /**
-     * Poll period in milliseconds when there are no tuples available on any of the input ports of the operator.
+     * It is a maximum poll period in milliseconds when there are no tuples available on any of the input ports of the
+     * operator. Platform uses the heuristic to change poll period from 0 to SPIN_MILLIS seconds.
      * Default value is 10 milliseconds.
      */
     Attribute<Integer> SPIN_MILLIS = new Attribute<Integer>(10);
