@@ -224,7 +224,7 @@ public class DelayOperatorTest
     private int simulateFailureWindows = 0;
     private boolean simulateFailureAfterCommit = false;
     private int windowCount = 0;
-    public static boolean failureSimulated = false;
+    public static volatile boolean failureSimulated = false;
 
     @Override
     public void beginWindow(long windowId)
