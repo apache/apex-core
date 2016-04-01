@@ -28,6 +28,8 @@ import com.datatorrent.api.Operator.IdleTimeHandler;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.ShutdownException;
 import com.datatorrent.api.Sink;
+import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.netlet.util.DTThrowable;
 
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -43,6 +45,7 @@ public class InputNode extends Node<InputOperator>
 {
   private final ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<SweepableReservoir>();
   protected SweepableReservoir controlTuples;
+  long lastCheckpointWindowId = Stateless.WINDOW_ID;
 
   public InputNode(InputOperator operator, OperatorContext context)
   {
@@ -139,10 +142,12 @@ public class InputNode extends Node<InputOperator>
                 checkpointWindowCount = 0;
                 if (doCheckpoint) {
                   checkpoint(currentWindowId);
+                  lastCheckpointWindowId = currentWindowId;
                   doCheckpoint = false;
                 }
                 else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
                   checkpoint(currentWindowId);
+                  lastCheckpointWindowId = currentWindowId;
                 }
               }
 
@@ -155,11 +160,13 @@ public class InputNode extends Node<InputOperator>
               break;
 
             case CHECKPOINT:
-              if (checkpointWindowCount == 0 && PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
-                checkpoint(currentWindowId);
-              }
-              else {
-                doCheckpoint = true;
+              if (lastCheckpointWindowId < currentWindowId) {
+                if (checkpointWindowCount == 0 && PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
+                  checkpoint(currentWindowId);
+                  lastCheckpointWindowId = currentWindowId;
+                } else {
+                  doCheckpoint = true;
+                }
               }
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
@@ -227,6 +234,7 @@ public class InputNode extends Node<InputOperator>
         checkpointWindowCount = 0;
         if (doCheckpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
           checkpoint(currentWindowId);
+          lastCheckpointWindowId = currentWindowId;
         }
       }
 
