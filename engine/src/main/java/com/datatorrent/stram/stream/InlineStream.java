@@ -22,10 +22,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.engine.AbstractReservoir;
-import com.datatorrent.stram.engine.ForwardingReservoir;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  *
@@ -34,11 +34,19 @@ import com.datatorrent.stram.engine.SweepableReservoir;
  *
  * @since 0.3.2
  */
-public class InlineStream extends ForwardingReservoir implements Stream, SweepableReservoir
+public class InlineStream implements Stream
 {
+  private int count;
+  private AbstractReservoir reservoir;
+
   public InlineStream(int capacity)
   {
-    super(AbstractReservoir.newReservoir("InlineStream", capacity));
+    reservoir = AbstractReservoir.newReservoir("InlineStream", capacity);
+  }
+
+  public SweepableReservoir getReservoir()
+  {
+    return reservoir;
   }
 
   /**
@@ -48,7 +56,7 @@ public class InlineStream extends ForwardingReservoir implements Stream, Sweepab
   @Override
   public void setup(StreamContext context)
   {
-    setId(context.getId());
+    reservoir.setId(context.getId());
   }
 
   /**
@@ -80,10 +88,25 @@ public class InlineStream extends ForwardingReservoir implements Stream, Sweepab
   public void put(Object tuple)
   {
     try {
-      super.put(tuple);
+      reservoir.put(tuple);
+      if (!(tuple instanceof Tuple)) {
+        count++;
+      }
     } catch (InterruptedException ie) {
       logger.debug("Interrupted", ie);
       throw new RuntimeException(ie);
+    }
+  }
+
+  @Override
+  public int getCount(boolean reset)
+  {
+    try {
+      return count;
+    } finally {
+      if (reset) {
+        count = 0;
+      }
     }
   }
 
