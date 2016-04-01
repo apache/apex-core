@@ -62,7 +62,6 @@ public interface DAG extends DAGContext, Serializable
      * where the cost of intermediate queuing exceeds the benefit of parallel
      * processing. An example could be chaining of multiple operators with low
      * compute requirements in a parallel partition setup.
-     * Not implemented yet.
      */
     THREAD_LOCAL,
     /**
