@@ -33,4 +33,20 @@
   <name>Apache Apex (incubating) Codestyle Config</name>
   <version>1.0.0-incubating</version>
 
+  <properties>
+    <!-- skip source archives -->
+    <assembly.attach>false</assembly.attach>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-source-plugin</artifactId>
+        <configuration>
+          <skipSource>true</skipSource>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
 </project>
