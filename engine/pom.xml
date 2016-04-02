@@ -151,6 +151,7 @@
         <configuration>
           <maxAllowedViolations>3161</maxAllowedViolations>
           <logViolationsToConsole>${checkstyle.console}</logViolationsToConsole>
+          <suppressionsLocation>engine-checkstyle-suppressions.xml</suppressionsLocation>
         </configuration>
       </plugin>
       <plugin>
