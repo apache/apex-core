@@ -86,6 +86,7 @@ import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.JSONSerializationProvider;
@@ -564,9 +565,9 @@ public class DTCli
       null,
       "Connect to an app"));
     globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(),
-      new Arg[]{new FileArg("jar-file/json-file/properties-file/app-package-file")},
-      new Arg[]{new Arg("matching-app-name")},
-      "Launch an app", LAUNCH_OPTIONS.options));
+        new Arg[]{},
+        new Arg[]{new FileArg("jar-file/json-file/properties-file/app-package-file"), new Arg("matching-app-name")},
+        "Launch an app", LAUNCH_OPTIONS.options));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
             new Arg[]{new Arg("app-id")},
             new Arg[]{new VarArg("app-id")},
@@ -1861,49 +1862,60 @@ public class DTCli
         } catch (Exception ex) {
           throw new CliException("Error opening the config XML file: " + configFile, ex);
         }
-        String fileName = expandFileName(commandLineInfo.args[0], true);
         StramAppLauncher submitApp;
         AppFactory appFactory = null;
-        String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
-        if (fileName.endsWith(".json")) {
-          File file = new File(fileName);
-          submitApp = new StramAppLauncher(file.getName(), config);
-          appFactory = new StramAppLauncher.JsonFileAppFactory(file);
-          if (matchString != null) {
-            LOG.warn("Match string \"{}\" is ignored for launching applications specified in JSON", matchString);
+        String matchString = null;
+        if (commandLineInfo.args.length == 0) {
+          if (commandLineInfo.origAppId == null) {
+            throw new CliException("Launch requires an APA or JAR file when not resuming a terminated application");
           }
-        } else if (fileName.endsWith(".properties")) {
-          File file = new File(fileName);
-          submitApp = new StramAppLauncher(file.getName(), config);
-          appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
-          if (matchString != null) {
-            LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file", matchString);
-          }
+          submitApp = new StramAppLauncher(fs, config);
+          appFactory = submitApp.new RecoveryAppFactory();
         } else {
-          // see if it's an app package
-          AppPackage ap = null;
-          try {
-            ap = newAppPackageInstance(new File(fileName));
-          } catch (Exception ex) {
-            // It's not an app package
-            if (requiredAppPackageName != null) {
-              throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName + "\"");
-            }
+          String fileName = expandFileName(commandLineInfo.args[0], true);
+          if (commandLineInfo.args.length >= 2) {
+            matchString = commandLineInfo.args[1];
           }
-
-          if (ap != null) {
+          if (fileName.endsWith(".json")) {
+            File file = new File(fileName);
+            submitApp = new StramAppLauncher(file.getName(), config);
+            appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+            if (matchString != null) {
+              LOG.warn("Match string \"{}\" is ignored for launching applications specified in JSON", matchString);
+            }
+          } else if (fileName.endsWith(".properties")) {
+            File file = new File(fileName);
+            submitApp = new StramAppLauncher(file.getName(), config);
+            appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+            if (matchString != null) {
+              LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file", matchString);
+            }
+          } else {
+            // see if it's an app package
+            AppPackage ap = null;
             try {
-              if (!commandLineInfo.force) {
-                checkPlatformCompatible(ap);
-                checkConfigPackageCompatible(ap, cp);
+              ap = newAppPackageInstance(new File(fileName));
+            } catch (Exception ex) {
+              // It's not an app package
+              if (requiredAppPackageName != null) {
+                throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName + "\"");
               }
-              launchAppPackage(ap, cp, commandLineInfo, reader);
-              return;
-            } finally {
-              IOUtils.closeQuietly(ap);
             }
+
+            if (ap != null) {
+              try {
+                if (!commandLineInfo.force) {
+                  checkPlatformCompatible(ap);
+                  checkConfigPackageCompatible(ap, cp);
+                }
+                launchAppPackage(ap, cp, commandLineInfo, reader);
+                return;
+              } finally {
+                IOUtils.closeQuietly(ap);
+              }
+            }
+            submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
           }
-          submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
         }
         submitApp.loadDependencies();
 

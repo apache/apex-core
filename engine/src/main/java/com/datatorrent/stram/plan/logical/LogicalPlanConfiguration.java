@@ -1997,6 +1997,19 @@ public class LogicalPlanConfiguration {
     return dag;
   }
 
+  public LogicalPlan createEmptyForRecovery(String appName)
+  {
+    // build DAG from properties
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
+    LogicalPlan dag = new LogicalPlan();
+    tb.populateDAG(dag);
+    // configure with embedded settings
+    tb.prepareDAG(dag, null, appName);
+    // configure with external settings
+    prepareDAG(dag, null, appName);
+    return dag;
+  }
+
   /**
    * Populate the logical plan structure from properties.
    * @param dag

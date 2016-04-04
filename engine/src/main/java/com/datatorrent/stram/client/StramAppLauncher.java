@@ -27,6 +27,7 @@ import java.util.jar.JarEntry;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,12 +37,14 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.tools.ant.DirectoryScanner;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
 
@@ -79,7 +82,9 @@ public class StramAppLauncher
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
   private File jarFile;
   private FileSystem fs;
+  private String recoveryAppName;
   private final LogicalPlanConfiguration propertiesBuilder;
+  private final Configuration conf;
   private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
   private LinkedHashSet<File> deployJars;
@@ -188,9 +193,32 @@ public class StramAppLauncher
     }
   }
 
+  public class RecoveryAppFactory implements AppFactory
+  {
+    @Override
+    public LogicalPlan createApp(LogicalPlanConfiguration conf)
+    {
+      return conf.createEmptyForRecovery(recoveryAppName);
+    }
+
+    @Override
+    public String getName()
+    {
+      return recoveryAppName;
+    }
+
+    @Override
+    public String getDisplayName()
+    {
+      return recoveryAppName;
+    }
+  }
+
+
   public StramAppLauncher(File appJarFile, Configuration conf) throws Exception
   {
     this.jarFile = appJarFile;
+    this.conf = conf;
     this.propertiesBuilder = new LogicalPlanConfiguration(conf);
     init(this.jarFile.getName());
   }
@@ -203,6 +231,7 @@ public class StramAppLauncher
     this.fs = fs;
     fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
     this.jarFile = localJarFile;
+    this.conf = conf;
     this.propertiesBuilder = new LogicalPlanConfiguration(conf);
     init(this.jarFile.getName());
   }
@@ -210,12 +239,70 @@ public class StramAppLauncher
   public StramAppLauncher(String name, Configuration conf) throws Exception
   {
     this.propertiesBuilder = new LogicalPlanConfiguration(conf);
+    this.conf = conf;
     init(name);
+  }
+
+  /**
+   * This is for recovering an app without specifying apa or appjar file
+   *
+   * @throws Exception
+   */
+  public StramAppLauncher(FileSystem fs, Configuration conf) throws Exception
+  {
+    this.propertiesBuilder = new LogicalPlanConfiguration(conf);
+    this.fs = fs;
+    this.conf = conf;
+    init();
   }
 
   public String getMvnBuildClasspathOutput()
   {
     return mvnBuildClasspathOutput.toString();
+  }
+
+  private void init() throws Exception
+  {
+    String originalAppId = propertiesBuilder.conf.get(ORIGINAL_APP_ID);
+    if (originalAppId == null) {
+      throw new AssertionError("Need original app id if launching without apa or appjar");
+    }
+    Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
+    Path origAppPath = new Path(appsBasePath, originalAppId);
+    StringWriter writer = new StringWriter();
+    try (FSDataInputStream in = fs.open(new Path(origAppPath, "meta.json"))) {
+      IOUtils.copy(in, writer);
+    }
+    JSONObject metaJson = new JSONObject(writer.toString());
+    String originalLibJars = null;
+
+    // Getting the old libjar dependency is necessary here to construct the class loader because during launch it
+    // needs to deserialize the dag to change the serialized state with new app id. This may become unnecessary if we
+    // don't rely on object deserialization for changing the app id in the future.
+    try {
+      JSONObject attributes = metaJson.getJSONObject("attributes");
+      originalLibJars = attributes.getString(LogicalPlan.LIBRARY_JARS.getSimpleName());
+      recoveryAppName = attributes.getString(Context.DAGContext.APPLICATION_NAME.getSimpleName());
+    } catch (JSONException ex) {
+      recoveryAppName = "Recovery App From " + originalAppId;
+    }
+
+    LinkedHashSet<URL> clUrls = new LinkedHashSet<>();
+    String libjars = propertiesBuilder.conf.get(LIBJARS_CONF_KEY_NAME);
+
+    if (StringUtils.isBlank(libjars)) {
+      libjars = originalLibJars;
+    } else if (StringUtils.isNotBlank(originalLibJars)) {
+      libjars = libjars + "," + originalLibJars;
+    }
+    propertiesBuilder.conf.set(LIBJARS_CONF_KEY_NAME, libjars);
+    processLibJars(libjars, clUrls);
+
+    for (URL baseURL : clUrls) {
+      LOG.debug("Dependency: {}", baseURL);
+    }
+
+    this.launchDependencies = clUrls;
   }
 
   private void init(String tmpName) throws Exception
