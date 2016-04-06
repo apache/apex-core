@@ -19,7 +19,7 @@ There are a few tools that will be helpful when developing Apache Apex applicati
 
 After installing these tools, make sure that the directories containing the executable files are in your PATH environment variable.
 
-* **Windows** - Open a console window and enter the command `echo %PATH%` to see the value of the `PATH` variable and verify that the above directories for Java, git, and maven executables are present.  JDK executables like _java_ and _javac_, the directory might be something like `C:\\Program Files\\Java\\jdk1.7.0\_80\\bin`; for _git_ it might be `C:\\Program Files\\Git\\bin`; and for maven it might be `C:\\Users\\user\\Software\\apache-maven-3.3.3\\bin`.  If not, you can change its value clicking on the button at _Control Panel_ &#x21e8; _Advanced System Settings_ &#x21e8; _Advanced tab_ &#x21e8; _Environment Variables_.
+* **Windows** - Open a console window and enter the command `echo %PATH%` to see the value of the `PATH` variable and verify that the above directories for Java, git, and maven executables are present.  JDK executables like _java_ and _javac_, the directory might be something like `C:\Program Files\Java\jdk1.7.0\_80\bin`; for _git_ it might be `C:\Program Files\Git\bin`; and for maven it might be `C:\Users\user\Software\apache-maven-3.3.3\bin`.  If not, you can change its value clicking on the button at _Control Panel_ &#x21e8; _Advanced System Settings_ &#x21e8; _Advanced tab_ &#x21e8; _Environment Variables_.
 * **Linux and Mac** - Open a console/terminal window and enter the command `echo $PATH` to see the value of the `PATH` variable and verify that the above directories for Java, git, and maven executables are present.  If not, make sure software is downloaded and installed, and optionally PATH reference is added and exported  in a `~/.profile` or `~/.bash_profile`.  For example to add maven located in `/sfw/maven/apache-maven-3.3.3` to PATH add the line: `export PATH=$PATH:/sfw/maven/apache-maven-3.3.3/bin`
 
 
@@ -93,6 +93,38 @@ When the run completes successfully, you should see a new directory named `myape
     mvn clean package -DskipTests
 
 The build should create the application package file `myapexapp/target/myapexapp-1.0-SNAPSHOT.apa`. This application package can then be used to launch example application via **dtCli**, or other visual management tools.  When running, this application will generate a stream of random numbers and print them out, each prefixed by the string `hello world:`.
+
+Running Unit Tests
+----
+To run unit tests on Linux or OSX, simply run the usual maven command, for example: `mvn test`.
+
+On Windows, an additional file, `winutils.exe`, is required; download it from
+<https://github.com/srccodes/hadoop-common-2.2.0-bin/archive/master.zip>
+and unpack the archive to, say, `C:\hadoop`; this file should be present under
+`hadoop-common-2.2.0-bin-master\bin` within it.
+
+You can now run unit tests from the command line by specifying the maven
+property `hadoop.home.dir`, for example:
+
+    mvn -Dhadoop.home.dir=c:\hadoop\Software\hadoop-common-2.2.0-bin-master test
+
+or set the environment variable separately:
+
+    set HADOOP_HOME=c:\hadoop\Software\hadoop-common-2.2.0-bin-master
+    mvn test
+
+To run unit tests from within your IDE, set the `HADOOP_HOME` environment
+variable to the path to the root of the unpacked archive and then run the desired
+unit test in the usual way. For example, with NetBeans you can add:
+
+    Env.HADOOP_HOME=c:/hadoop/hadoop-common-2.2.0-bin-master
+
+at _Properties &#8658; Actions &#8658; Run project &#8658; Set Properties_.
+
+Similarly, in Eclipse (Mars) add the HADOOP_HOME environment variable to the
+project properties at _Properties &#8658; Run/Debug Settings &#8658; ApplicationTest
+&#8658; Environment_ tab.
+
 
 Building Apex Demos
 -------------------------------------------------------------------------------
