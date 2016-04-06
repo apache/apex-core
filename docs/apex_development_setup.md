@@ -103,8 +103,13 @@ On Windows, an additional file, `winutils.exe`, is required; download it from
 and unpack the archive to, say, `C:\hadoop`; this file should be present under
 `hadoop-common-2.2.0-bin-master\bin` within it.
 
-You can now run unit tests from the command line by specifying the maven
-property `hadoop.home.dir`, for example:
+Set the `HADOOP_HOME` environment variable system-wide to
+`c:\hadoop\Software\hadoop-common-2.2.0-bin-master` as described at:
+<https://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/sysdm_advancd_environmnt_addchange_variable.mspx?mfr=true>. You should now be able to run unit tests normally.
+
+If you prefer not to set the variable globally, you can set it on the command line or within
+your IDE. For example, on the command line, specify the maven
+property `hadoop.home.dir`:
 
     mvn -Dhadoop.home.dir=c:\hadoop\Software\hadoop-common-2.2.0-bin-master test
 
@@ -113,15 +118,14 @@ or set the environment variable separately:
     set HADOOP_HOME=c:\hadoop\Software\hadoop-common-2.2.0-bin-master
     mvn test
 
-To run unit tests from within your IDE, set the `HADOOP_HOME` environment
-variable to the path to the root of the unpacked archive and then run the desired
+Within your IDE, set the environment variable and then run the desired
 unit test in the usual way. For example, with NetBeans you can add:
 
     Env.HADOOP_HOME=c:/hadoop/hadoop-common-2.2.0-bin-master
 
 at _Properties &#8658; Actions &#8658; Run project &#8658; Set Properties_.
 
-Similarly, in Eclipse (Mars) add the HADOOP_HOME environment variable to the
+Similarly, in Eclipse (Mars) add it to the
 project properties at _Properties &#8658; Run/Debug Settings &#8658; ApplicationTest
 &#8658; Environment_ tab.
 
