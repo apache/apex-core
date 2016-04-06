@@ -241,11 +241,17 @@ public class InputNode extends Node<InputOperator>
       if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
         applicationWindowCount = 0;
       }
-      if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
-        checkpointWindowCount = 0;
-        if (doCheckpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
-          checkpoint(currentWindowId);
-          lastCheckpointWindowId = currentWindowId;
+
+      if (lastCheckpointWindowId < currentWindowId) {
+        //This check is here because if the node is shutdown after a checkpoint is completed for a window,
+        //but before the next window begins a double checkpoint could happen if the CheckpointWindowCount
+        //is 1
+        if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+          checkpointWindowCount = 0;
+          if (doCheckpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
+            checkpoint(currentWindowId);
+            lastCheckpointWindowId = currentWindowId;
+          }
         }
       }
 
