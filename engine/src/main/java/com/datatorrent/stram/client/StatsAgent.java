@@ -18,20 +18,27 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.common.util.ObjectMapperString;
-import com.datatorrent.stram.util.FSPartFileCollection;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.*;
-import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.fs.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.std.ToStringSerializer;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.Path;
+
+import com.datatorrent.common.util.ObjectMapperString;
+import com.datatorrent.stram.util.FSPartFileCollection;
 
 /**
  * <p>StatsAgent class.</p>
@@ -156,7 +163,7 @@ public final class StatsAgent extends FSPartFileAgent
   {
     ContainersInfo info = new ContainersInfo();
     info.appId = appId;
-    info.containers = new HashMap<Integer, ContainerInfo>();
+    info.containers = new HashMap<>();
     String dir = getContainerStatsDirectory(appId);
     if (dir == null) {
       return null;
@@ -190,14 +197,14 @@ public final class StatsAgent extends FSPartFileAgent
         info.containers.put(index, containerInfo);
       }
       // INDEX file processing
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem()
+          .open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
 
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
           info.ended = true;
-        }
-        else {
+        } else {
           info.count += indexLine.count;
           if (info.startTime == 0 || info.startTime > indexLine.startTime) {
             info.startTime = indexLine.startTime;
@@ -207,12 +214,10 @@ public final class StatsAgent extends FSPartFileAgent
           }
         }
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Got exception when reading containers info", ex);
       return null;
-    }
-    finally {
+    } finally {
       IOUtils.closeQuietly(br);
       IOUtils.closeQuietly(ifbr);
     }
@@ -225,7 +230,7 @@ public final class StatsAgent extends FSPartFileAgent
     OperatorsInfo info = new OperatorsInfo();
     info.appId = appId;
     info.operatorName = opName;
-    info.operatorIds = new ArrayList<Integer>();
+    info.operatorIds = new ArrayList<>();
     String dir = getOperatorStatsDirectory(appId, opName);
     if (dir == null) {
       return null;
@@ -255,13 +260,13 @@ public final class StatsAgent extends FSPartFileAgent
       }
 
       // INDEX file processing
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem()
+          .open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
           info.ended = true;
-        }
-        else {
+        } else {
           info.count += indexLine.count;
           if (info.startTime == 0 || info.startTime > indexLine.startTime) {
             info.startTime = indexLine.startTime;
@@ -271,12 +276,10 @@ public final class StatsAgent extends FSPartFileAgent
           }
         }
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Got exception when reading operators info", ex);
       return null;
-    }
-    finally {
+    } finally {
       IOUtils.closeQuietly(ifbr);
       IOUtils.closeQuietly(br);
     }
@@ -286,7 +289,7 @@ public final class StatsAgent extends FSPartFileAgent
 
   public List<OperatorStatsInfo> getOperatorsStats(String appId, String opName, Long startTime, Long endTime)
   {
-    List<OperatorStatsInfo> result = new ArrayList<OperatorStatsInfo>();
+    List<OperatorStatsInfo> result = new ArrayList<>();
     String dir = getOperatorStatsDirectory(appId, opName);
     if (dir == null) {
       return null;
@@ -313,12 +316,8 @@ public final class StatsAgent extends FSPartFileAgent
             }
           }
 
-          BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))));
-          try {
+          try (BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))))) {
             processOperatorPartFile(partBr, startTime, endTime, result);
-          }
-          finally {
-            partBr.close();
           }
         }
       }
@@ -327,21 +326,18 @@ public final class StatsAgent extends FSPartFileAgent
       try {
         String extraPartFile = getNextPartFile(lastProcessPartFile);
         if (extraPartFile != null) {
-          partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, extraPartFile))));
+          partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem()
+              .open(new Path(dir, extraPartFile))));
           processOperatorPartFile(partBr, startTime, endTime, result);
         }
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         // ignore
-      }
-      finally {
+      } finally {
         IOUtils.closeQuietly(partBr);
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Got exception when reading operators stats", ex);
-    }
-    finally {
+    } finally {
       IOUtils.closeQuietly(ifbr);
     }
     return result;
@@ -370,7 +366,7 @@ public final class StatsAgent extends FSPartFileAgent
 
   public List<ContainerStatsInfo> getContainersStats(String appId, Long startTime, Long endTime)
   {
-    List<ContainerStatsInfo> result = new ArrayList<ContainerStatsInfo>();
+    List<ContainerStatsInfo> result = new ArrayList<>();
     String dir = getContainerStatsDirectory(appId);
     if (dir == null) {
       return null;
@@ -399,33 +395,27 @@ public final class StatsAgent extends FSPartFileAgent
           }
         }
 
-        BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))));
-        try {
+        try (BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new
+            Path(dir, indexLine.partFile))))) {
           processContainerPartFile(partBr, startTime, endTime, result);
-        }
-        finally {
-          partBr.close();
         }
       }
       BufferedReader partBr = null;
       try {
         String extraPartFile = getNextPartFile(lastProcessPartFile);
         if (extraPartFile != null) {
-          partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, extraPartFile))));
+          partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem()
+              .open(new Path(dir, extraPartFile))));
           processContainerPartFile(partBr, startTime, endTime, result);
         }
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         // ignore
-      }
-      finally {
+      } finally {
         IOUtils.closeQuietly(partBr);
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Got exception when reading containers stats", ex);
-    }
-    finally {
+    } finally {
       IOUtils.closeQuietly(br);
     }
     return result;

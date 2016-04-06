@@ -24,9 +24,16 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.hadoop.fs.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 
 import com.datatorrent.stram.util.FSUtil;
 
@@ -67,12 +74,8 @@ public class FSAgent
 
   public void createFile(Path path, byte[] content) throws IOException
   {
-    FSDataOutputStream os = fileSystem.create(path);
-    try {
+    try (FSDataOutputStream os = fileSystem.create(path)) {
       os.write(content);
-    }
-    finally {
-      os.close();
     }
   }
 
@@ -102,8 +105,7 @@ public class FSAgent
     byte[] bytes = new byte[is.available()];
     try {
       is.readFully(bytes);
-    }
-    finally {
+    } finally {
       is.close();
     }
     return bytes;
@@ -116,7 +118,7 @@ public class FSAgent
 
   public List<String> listFiles(String dir) throws IOException
   {
-    List<String> files = new ArrayList<String>();
+    List<String> files = new ArrayList<>();
     Path path = new Path(dir);
 
     FileStatus fileStatus = fileSystem.getFileStatus(path);
@@ -133,7 +135,7 @@ public class FSAgent
 
   public List<LocatedFileStatus> listFilesInfo(String dir) throws IOException
   {
-    List<LocatedFileStatus> files = new ArrayList<LocatedFileStatus>();
+    List<LocatedFileStatus> files = new ArrayList<>();
     Path path = new Path(dir);
 
     FileStatus fileStatus = fileSystem.getFileStatus(path);

@@ -18,17 +18,20 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.common.util.BaseOperator;
-import com.datatorrent.api.Context;
-import com.datatorrent.api.DefaultInputPort;
 import java.io.IOException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.common.util.BaseOperator;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * Writes stringified tuple to a file stream.
@@ -42,10 +45,10 @@ public class TestOutputOperator extends BaseOperator
   private transient FSDataOutputStream output;
   private transient FileSystem fs;
   private transient Path filepath;
-  final public transient InputPort<Object> inport = new DefaultInputPort<Object>()
+  public final transient InputPort<Object> inport = new DefaultInputPort<Object>()
   {
     @Override
-    final public void process(Object payload)
+    public final void process(Object payload)
     {
       processInternal(payload);
     }
@@ -71,21 +74,17 @@ public class TestOutputOperator extends BaseOperator
       if (fs.exists(filepath)) {
         if (append) {
           output = fs.append(filepath);
-        }
-        else {
+        } else {
           fs.delete(filepath, true);
           output = fs.create(filepath);
         }
-      }
-      else {
+      } else {
         output = fs.create(filepath);
       }
-    }
-    catch (IOException iOException) {
+    } catch (IOException iOException) {
       logger.debug(iOException.getLocalizedMessage());
       throw new RuntimeException(iOException.getCause());
-    }
-    catch (IllegalArgumentException illegalArgumentException) {
+    } catch (IllegalArgumentException illegalArgumentException) {
       logger.debug(illegalArgumentException.getLocalizedMessage());
       throw new RuntimeException(illegalArgumentException);
     }
@@ -97,8 +96,7 @@ public class TestOutputOperator extends BaseOperator
     try {
       output.close();
       output = null;
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       logger.info("", ex);
     }
 
@@ -109,7 +107,6 @@ public class TestOutputOperator extends BaseOperator
   }
 
   /**
-   *
    * @param t the value of t
    */
   private void processInternal(Object t)
@@ -117,13 +114,11 @@ public class TestOutputOperator extends BaseOperator
     logger.debug("received: " + t);
     if (t instanceof Tuple) {
       logger.debug("ignoring tuple " + t);
-    }
-    else {
+    } else {
       byte[] serialized = ("" + t + "\n").getBytes();
       try {
         output.write(serialized);
-      }
-      catch (IOException ex) {
+      } catch (IOException ex) {
         logger.info("", ex);
       }
     }

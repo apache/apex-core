@@ -37,7 +37,7 @@ import com.datatorrent.stram.engine.StreamContext;
 public class MuxStream implements Stream.MultiSinkCapableStream
 {
   public static final String MULTI_SINK_ID_CONCAT_SEPARATOR = ", ";
-  private HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
+  private HashMap<String, Sink<Object>> outputs = new HashMap<>();
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink<Object>[] sinks = NO_SINKS;
   private int count;
@@ -99,8 +99,7 @@ public class MuxStream implements Stream.MultiSinkCapableStream
       if (outputs.isEmpty()) {
         sinks = NO_SINKS;
       }
-    }
-    else {
+    } else {
       outputs.put(id, sink);
       if (sinks != NO_SINKS) {
         activate(null);
@@ -126,8 +125,7 @@ public class MuxStream implements Stream.MultiSinkCapableStream
   {
     try {
       return count;
-    }
-    finally {
+    } finally {
       if (reset) {
         count = 0;
       }

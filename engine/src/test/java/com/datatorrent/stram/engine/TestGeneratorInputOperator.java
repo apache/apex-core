@@ -23,12 +23,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.common.util.BaseOperator;
 
 public class TestGeneratorInputOperator implements InputOperator
 {
@@ -83,12 +83,10 @@ public class TestGeneratorInputOperator implements InputOperator
       try {
         Thread.sleep(spinMillis);
         remainingSleepTime -= spinMillis;
-      }
-      catch (InterruptedException ie) {
+      } catch (InterruptedException ie) {
         throw new RuntimeException(ie);
       }
-    }
-    else if (maxTuples != 0) {
+    } else if (maxTuples != 0) {
       generatedTuples++;
       LOG.debug("sending tuple " + generatedTuples);
       outport.emit(String.valueOf(generatedTuples));
@@ -97,8 +95,7 @@ public class TestGeneratorInputOperator implements InputOperator
         throw new RuntimeException(new InterruptedException("done emitting all."));
       }
       remainingSleepTime = emitInterval;
-    }
-    else {
+    } else {
       remainingSleepTime = emitInterval;
     }
   }
@@ -133,14 +130,15 @@ public class TestGeneratorInputOperator implements InputOperator
   {
   }
 
-  public String getMyStringProperty() {
-	  return myStringProperty;
-	}
+  public String getMyStringProperty()
+  {
+    return myStringProperty;
+  }
 
-	public void setMyStringProperty(String myStringProperty) {
-	  this.myStringProperty = myStringProperty;
-	}
-
+  public void setMyStringProperty(String myStringProperty)
+  {
+    this.myStringProperty = myStringProperty;
+  }
 
   public static class InvalidInputOperator extends TestGeneratorInputOperator implements InputOperator
   {

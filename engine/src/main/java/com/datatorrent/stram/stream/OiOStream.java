@@ -65,8 +65,7 @@ public class OiOStream implements Stream, SweepableReservoir
   {
     if (t instanceof Tuple) {
       control.put((Tuple)t);
-    }
-    else {
+    } else {
       count++;
       sink.put(t);
     }
@@ -77,8 +76,7 @@ public class OiOStream implements Stream, SweepableReservoir
   {
     try {
       return count;
-    }
-    finally {
+    } finally {
       if (reset) {
         count = 0;
       }
@@ -90,8 +88,7 @@ public class OiOStream implements Stream, SweepableReservoir
   {
     try {
       return this.sink;
-    }
-    finally {
+    } finally {
       this.sink = sink;
     }
   }

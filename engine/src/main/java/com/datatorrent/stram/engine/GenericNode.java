@@ -32,6 +32,8 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.commons.lang.UnhandledException;
 
+import com.google.common.base.Throwables;
+
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.IdleTimeHandler;
 import com.datatorrent.api.Operator.InputPort;
@@ -41,8 +43,6 @@ import com.datatorrent.api.Sink;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.netlet.util.CircularBuffer;
-import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -65,8 +65,8 @@ import com.datatorrent.stram.tuple.Tuple;
  */
 public class GenericNode extends Node<Operator>
 {
-  protected final HashMap<String, SweepableReservoir> inputs = new HashMap<String, SweepableReservoir>();
-  protected ArrayList<DeferredInputConnection> deferredInputConnections = new ArrayList<DeferredInputConnection>();
+  protected final HashMap<String, SweepableReservoir> inputs = new HashMap<>();
+  protected ArrayList<DeferredInputConnection> deferredInputConnections = new ArrayList<>();
 
   @Override
   @SuppressWarnings("unchecked")
@@ -75,10 +75,9 @@ public class GenericNode extends Node<Operator>
     for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       SweepableReservoir original = inputs.get(e.getKey());
       if (original instanceof TappedReservoir) {
-        TappedReservoir tr = (TappedReservoir) original;
+        TappedReservoir tr = (TappedReservoir)original;
         tr.add(e.getValue());
-      }
-      else if (original != null) {
+      } else if (original != null) {
         TappedReservoir tr = new TappedReservoir(original, e.getValue());
         inputs.put(e.getKey(), tr);
       }
@@ -93,7 +92,7 @@ public class GenericNode extends Node<Operator>
     for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       SweepableReservoir reservoir = inputs.get(e.getKey());
       if (reservoir instanceof TappedReservoir) {
-        TappedReservoir tr = (TappedReservoir) reservoir;
+        TappedReservoir tr = (TappedReservoir)reservoir;
         tr.remove(e.getValue());
         if (tr.getSinks().length == 0) {
           tr.reservoir.setSink(tr.setSink(null));
@@ -113,7 +112,7 @@ public class GenericNode extends Node<Operator>
   @SuppressWarnings("unchecked")
   public InputPort<Object> getInputPort(String port)
   {
-    return (InputPort<Object>) descriptor.inputPorts.get(port).component;
+    return (InputPort<Object>)descriptor.inputPorts.get(port).component;
   }
 
   @Override
@@ -130,8 +129,7 @@ public class GenericNode extends Node<Operator>
 
     if (inputs.containsKey(port)) {
       deferredInputConnections.add(new DeferredInputConnection(port, reservoir));
-    }
-    else {
+    } else {
       inputPort.setConnected(true);
       inputs.put(port, reservoir);
       reservoir.setSink(inputPort.getSink());
@@ -152,8 +150,7 @@ public class GenericNode extends Node<Operator>
 
     if (endWindowTuple == null) {
       emitEndWindow();
-    }
-    else {
+    } else {
       for (int s = sinks.length; s-- > 0; ) {
         sinks[s].put(endWindowTuple);
       }
@@ -170,8 +167,7 @@ public class GenericNode extends Node<Operator>
         checkpoint(currentWindowId);
         lastCheckpointWindowId = currentWindowId;
         doCheckpoint = false;
-      }
-      else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
+      } else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
         checkpoint(currentWindowId);
         lastCheckpointWindowId = currentWindowId;
       }
@@ -252,11 +248,11 @@ public class GenericNode extends Node<Operator>
     calculateNextCheckpointWindow();
 
     TupleTracker tracker;
-    LinkedList<TupleTracker> resetTupleTracker = new LinkedList<TupleTracker>();
+    LinkedList<TupleTracker> resetTupleTracker = new LinkedList<>();
     try {
       do {
         Iterator<Map.Entry<String, SweepableReservoir>> buffers = activeQueues.iterator();
-  activequeue:
+      activequeue:
         while (buffers.hasNext()) {
           Map.Entry<String, SweepableReservoir> activePortEntry = buffers.next();
           SweepableReservoir activePort = activePortEntry.getValue();
@@ -309,12 +305,10 @@ public class GenericNode extends Node<Operator>
                     insideWindow = true;
                     operator.beginWindow(currentWindowId);
                   }
-                }
-                else if (t.getWindowId() == currentWindowId) {
+                } else if (t.getWindowId() == currentWindowId) {
                   activePort.remove();
                   expectingBeginWindow--;
-                }
-                else {
+                } else {
                   buffers.remove();
                   String port = activePortEntry.getKey();
                   if (PROCESSING_MODE == ProcessingMode.AT_MOST_ONCE) {
@@ -334,8 +328,7 @@ public class GenericNode extends Node<Operator>
                       inputs.put(port, wiar);
                       activeQueues.add(new AbstractMap.SimpleEntry<String, SweepableReservoir>(port, wiar));
                       break activequeue;
-                    }
-                    else {
+                    } else {
                       expectingBeginWindow--;
                       if (++receivedEndWindow == totalQueues) {
                         processEndWindow(null);
@@ -344,8 +337,7 @@ public class GenericNode extends Node<Operator>
                         break activequeue;
                       }
                     }
-                  }
-                  else {
+                  } else {
                     logger.error("Catastrophic Error: Out of sequence {} tuple {} on port {} while expecting {}", t.getType(), Codec.getStringWindowId(t.getWindowId()), port, Codec.getStringWindowId(currentWindowId));
                     System.exit(2);
                   }
@@ -377,13 +369,11 @@ public class GenericNode extends Node<Operator>
                   dagCheckpointOffsetCount = 0;
                   if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
                     lastCheckpointWindowId = checkpointWindow;
-                  }
-                  else if (!doCheckpoint) {
+                  } else if (!doCheckpoint) {
                     if (checkpointWindowCount == 0) {
                       checkpoint(checkpointWindow);
                       lastCheckpointWindowId = checkpointWindow;
-                    }
-                    else {
+                    } else {
                       doCheckpoint = true;
                     }
                   }
@@ -524,8 +514,7 @@ public class GenericNode extends Node<Operator>
                 if (regularQueues == 0) {
                   alive = false;
                   break_activequeue = true;
-                }
-                else if (activeQueues.isEmpty()) {
+                } else if (activeQueues.isEmpty()) {
                   assert (!inputs.isEmpty());
                   processEndWindow(null);
                   activeQueues.addAll(inputs.entrySet());
@@ -554,8 +543,7 @@ public class GenericNode extends Node<Operator>
                       }
                       tracker.ports = ports;
                       break;
-                    }
-                    else if (tracker.ports[trackerIndex] == null) {
+                    } else if (tracker.ports[trackerIndex] == null) {
                       if (trackerIndex == regularQueues) { /* regularQueues is already adjusted above */
                         if (tuple == null || tuple.getBaseSeconds() < tracker.tuple.getBaseSeconds()) {
                           tuple = tracker.tuple;
@@ -564,8 +552,7 @@ public class GenericNode extends Node<Operator>
                         trackerIterator.remove();
                       }
                       break;
-                    }
-                    else {
+                    } else {
                       tracker.ports = Arrays.copyOf(tracker.ports, regularQueues);
                     }
 
@@ -609,24 +596,21 @@ public class GenericNode extends Node<Operator>
 
           if (need2sleep) {
             if (handleIdleTime && insideWindow) {
-              ((IdleTimeHandler) operator).handleIdleTime();
+              ((IdleTimeHandler)operator).handleIdleTime();
             } else {
               Thread.sleep(spinMillis);
               spinMillis = Math.min(maxSpinMillis, spinMillis + 1);
             }
           }
         }
-      }
-      while (alive);
-    }
-    catch (ShutdownException se) {
+      } while (alive);
+    } catch (ShutdownException se) {
       logger.debug("Shutdown requested by the operator when alive = {}.", alive);
       alive = false;
-    }
-    catch (Throwable cause) {
+    } catch (Throwable cause) {
       synchronized (this) {
         if (alive) {
-          DTThrowable.rethrow(cause);
+          throw Throwables.propagate(cause);
         }
       }
 
@@ -639,9 +623,8 @@ public class GenericNode extends Node<Operator>
       }
 
       if (rootCause == null) {
-        DTThrowable.rethrow(cause);
-      }
-      else {
+        throw Throwables.propagate(cause);
+      } else {
         logger.debug("Ignoring InterruptedException after shutdown", cause);
       }
     }
@@ -705,7 +688,7 @@ public class GenericNode extends Node<Operator>
   @Override
   protected void reportStats(ContainerStats.OperatorStats stats, long windowId)
   {
-    ArrayList<ContainerStats.OperatorStats.PortStats> ipstats = new ArrayList<ContainerStats.OperatorStats.PortStats>();
+    ArrayList<ContainerStats.OperatorStats.PortStats> ipstats = new ArrayList<>();
     for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
       ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());

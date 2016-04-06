@@ -20,6 +20,7 @@ package com.datatorrent.stram.util;
 
 import java.io.IOException;
 import java.security.PrivilegedAction;
+
 import org.apache.hadoop.security.UserGroupInformation;
 
 /**
@@ -29,22 +30,26 @@ import org.apache.hadoop.security.UserGroupInformation;
  */
 public class SecureExecutor
 {
-  public static <T> T execute(final SecureExecutor.WorkLoad<T> workLoad) throws IOException {
-     if (UserGroupInformation.isSecurityEnabled()) {
+  public static <T> T execute(final SecureExecutor.WorkLoad<T> workLoad) throws IOException
+  {
+    if (UserGroupInformation.isSecurityEnabled()) {
       UserGroupInformation loginUser = UserGroupInformation.getLoginUser();
-      return loginUser.doAs(new PrivilegedAction<T>() {
+      return loginUser.doAs(new PrivilegedAction<T>()
+      {
         @Override
-        public T run() {
+        public T run()
+        {
           return workLoad.run();
         }
       });
-     } else{
-       return workLoad.run();
-     }
+    } else {
+      return workLoad.run();
+    }
   }
 
-  public static interface WorkLoad<T> {
-    public T run();
+  public interface WorkLoad<T>
+  {
+    T run();
   }
 
 }

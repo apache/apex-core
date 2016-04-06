@@ -18,8 +18,10 @@
  */
 package com.datatorrent.stram;
 
-import org.junit.Assert;
+import java.util.HashMap;
+import java.util.Map;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.datatorrent.api.StringCodec;
@@ -31,7 +33,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
-import java.util.*;
 
 public class GenericOperatorPropertyCodecTest
 {

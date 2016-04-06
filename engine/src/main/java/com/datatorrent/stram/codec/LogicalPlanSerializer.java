@@ -18,35 +18,51 @@
  */
 package com.datatorrent.stram.codec;
 
-import com.datatorrent.api.*;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import javax.ws.rs.Produces;
+import javax.ws.rs.ext.Provider;
+
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.annotate.JsonTypeInfo;
+import org.codehaus.jackson.map.JsonSerializer;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.ObjectMapper.DefaultTypeResolverBuilder;
+import org.codehaus.jackson.map.ObjectMapper.DefaultTyping;
+import org.codehaus.jackson.map.SerializationConfig;
+import org.codehaus.jackson.map.SerializerProvider;
+import org.codehaus.jackson.map.jsontype.impl.StdTypeResolverBuilder;
+import org.codehaus.jackson.type.JavaType;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.configuration.PropertiesConfiguration;
+
 import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.common.util.ObjectMapperString;
-import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
-import java.io.IOException;
-import java.util.*;
-import javax.ws.rs.Produces;
-import javax.ws.rs.ext.Provider;
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.configuration.PropertiesConfiguration;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.annotate.JsonTypeInfo;
-import org.codehaus.jackson.map.*;
-import org.codehaus.jackson.map.ObjectMapper.DefaultTypeResolverBuilder;
-import org.codehaus.jackson.map.ObjectMapper.DefaultTyping;
-import org.codehaus.jackson.map.jsontype.impl.StdTypeResolverBuilder;
-import org.codehaus.jackson.type.JavaType;
-import org.codehaus.jettison.json.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * <p>LogicalPlanSerializer class.</p>
@@ -90,9 +106,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
    */
   public static Map<String, Object> convertToMap(LogicalPlan dag, boolean includeModules)
   {
-    HashMap<String, Object> result = new HashMap<String, Object>();
-    ArrayList<Object> operatorArray = new ArrayList< Object>();
-    ArrayList<Object> streamMap = new ArrayList<Object>();
+    HashMap<String, Object> result = new HashMap<>();
+    ArrayList<Object> operatorArray = new ArrayList<>();
+    ArrayList<Object> streamMap = new ArrayList<>();
     //result.put("applicationName", appConfig.getName());
     result.put("operators", operatorArray);
     result.put("streams", streamMap);
@@ -100,8 +116,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     //
     // should we put the DAGContext info here?
 
-    Map<String, Object> dagAttrs = new HashMap<String, Object>();
-    for (Map.Entry<Attribute<Object>, Object> e : Attribute.AttributeMap.AttributeInitializer.getAllAttributes(dag, Context.DAGContext.class).entrySet()){
+    Map<String, Object> dagAttrs = new HashMap<>();
+    for (Map.Entry<Attribute<Object>, Object> e :
+        Attribute.AttributeMap.AttributeInitializer.getAllAttributes(dag, Context.DAGContext.class).entrySet()) {
       dagAttrs.put(e.getKey().getSimpleName(), e.getValue());
     }
     result.put("attributes", dagAttrs);
@@ -117,9 +134,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     propertyObjectMapper.setDefaultTyping(typer);
 
     for (OperatorMeta operatorMeta : allOperators) {
-      HashMap<String, Object> operatorDetailMap = new HashMap<String, Object>();
-      ArrayList<Map<String, Object>> portList = new ArrayList<Map<String, Object>>();
-      Map<String, Object> attributeMap = new HashMap<String, Object>();
+      HashMap<String, Object> operatorDetailMap = new HashMap<>();
+      ArrayList<Map<String, Object>> portList = new ArrayList<>();
+      Map<String, Object> attributeMap = new HashMap<>();
 
       String operatorName = operatorMeta.getName();
       operatorArray.add(operatorDetailMap);
@@ -136,8 +153,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
 
       try {
         str = new ObjectMapperString(propertyObjectMapper.writeValueAsString(operatorMeta.getOperator()));
-      }
-      catch (Throwable ex) {
+      } catch (Throwable ex) {
         LOG.error("Got exception when trying to get properties for operator {}", operatorMeta.getName(), ex);
         str = null;
       }
@@ -146,8 +162,8 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       Operators.PortMappingDescriptor pmd = new Operators.PortMappingDescriptor();
       Operators.describe(operatorMeta.getOperator(), pmd);
       for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : pmd.inputPorts.entrySet()) {
-        HashMap<String, Object> portDetailMap = new HashMap<String, Object>();
-        HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
+        HashMap<String, Object> portDetailMap = new HashMap<>();
+        HashMap<String, Object> portAttributeMap = new HashMap<>();
         InputPortMeta portMeta = operatorMeta.getMeta(entry.getValue().component);
         String portName = portMeta.getPortName();
         portDetailMap.put("name", portName);
@@ -160,8 +176,8 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         portList.add(portDetailMap);
       }
       for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : pmd.outputPorts.entrySet()) {
-        HashMap<String, Object> portDetailMap = new HashMap<String, Object>();
-        HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
+        HashMap<String, Object> portDetailMap = new HashMap<>();
+        HashMap<String, Object> portAttributeMap = new HashMap<>();
         OutputPortMeta portMeta = operatorMeta.getMeta(entry.getValue().component);
         String portName = portMeta.getPortName();
         portDetailMap.put("name", portName);
@@ -177,20 +193,20 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     Collection<StreamMeta> allStreams = dag.getAllStreams();
 
     for (StreamMeta streamMeta : allStreams) {
-      HashMap<String, Object> streamDetailMap = new HashMap<String, Object>();
+      HashMap<String, Object> streamDetailMap = new HashMap<>();
       String streamName = streamMeta.getName();
       streamMap.add(streamDetailMap);
       String sourcePortName = streamMeta.getSource().getPortName();
       OperatorMeta operatorMeta = streamMeta.getSource().getOperatorMeta();
-      HashMap<String, Object> sourcePortDetailMap = new HashMap<String, Object>();
+      HashMap<String, Object> sourcePortDetailMap = new HashMap<>();
       sourcePortDetailMap.put("operatorName", operatorMeta.getName());
       sourcePortDetailMap.put("portName", sourcePortName);
       streamDetailMap.put("name", streamName);
       streamDetailMap.put("source", sourcePortDetailMap);
       List<InputPortMeta> sinks = streamMeta.getSinks();
-      ArrayList<HashMap<String, Object>> sinkPortList = new ArrayList<HashMap<String, Object>>();
+      ArrayList<HashMap<String, Object>> sinkPortList = new ArrayList<>();
       for (InputPortMeta sinkPort : sinks) {
-        HashMap<String, Object> sinkPortDetailMap = new HashMap<String, Object>();
+        HashMap<String, Object> sinkPortDetailMap = new HashMap<>();
         sinkPortDetailMap.put("operatorName", sinkPort.getOperatorWrapper().getName());
         sinkPortDetailMap.put("portName", sinkPort.getPortName());
         sinkPortList.add(sinkPortDetailMap);
@@ -204,7 +220,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     if (includeModules) {
       ArrayList<Map<String, Object>> modulesArray = new ArrayList<>();
       result.put("modules", modulesArray);
-      for(LogicalPlan.ModuleMeta meta : dag.getAllModules()) {
+      for (LogicalPlan.ModuleMeta meta : dag.getAllModules()) {
         modulesArray.add(getLogicalModuleDetails(dag, meta));
       }
     }
@@ -231,8 +247,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
           if (!entry.getKey().equals("class") && !entry.getKey().equals("name") && entry.getValue() != null) {
             props.setProperty(operatorKey + "." + entry.getKey(), entry.getValue());
           }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           LOG.warn("Error trying to get a property of operator {}", operatorMeta.getName(), ex);
         }
       }
@@ -344,7 +359,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
    */
   private static Map<String, Object> getLogicalModuleDetails(LogicalPlan dag, LogicalPlan.ModuleMeta moduleMeta)
   {
-    Map<String, Object> moduleDetailMap = new HashMap<String, Object>();
+    Map<String, Object> moduleDetailMap = new HashMap<>();
     ArrayList<String> operatorArray = new ArrayList<>();
     moduleDetailMap.put("name", moduleMeta.getName());
     moduleDetailMap.put("className", moduleMeta.getModule().getClass().getName());

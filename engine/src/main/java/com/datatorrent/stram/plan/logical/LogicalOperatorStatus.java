@@ -33,6 +33,7 @@ public class LogicalOperatorStatus implements Serializable
   {
     this.name = name;
   }
+
   public final String name;
   public long totalTuplesProcessed = 0;
   public long totalTuplesEmitted = 0;

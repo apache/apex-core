@@ -18,26 +18,45 @@
  */
 package com.datatorrent.stram.client;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.ws.rs.core.MediaType;
+import javax.xml.bind.annotation.XmlType;
+
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+import org.codehaus.jackson.map.ser.std.ToStringSerializer;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
+
+import com.sun.jersey.api.client.WebResource;
+
 import com.datatorrent.common.util.ObjectMapperString;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.debug.TupleRecorder;
 import com.datatorrent.stram.util.FSPartFileCollection;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
-import com.sun.jersey.api.client.WebResource;
-import java.io.*;
-import java.util.*;
-import javax.ws.rs.core.MediaType;
-import javax.xml.bind.annotation.XmlType;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.hadoop.fs.*;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.codehaus.jackson.map.ser.std.ToStringSerializer;
-import org.codehaus.jettison.json.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * <p>RecordingsAgent class.</p>
@@ -88,14 +107,14 @@ public final class RecordingsAgent extends FSPartFileAgent
   {
     @JsonSerialize(using = ToStringSerializer.class)
     public long windowId;
-    public List<TupleInfo> tuples = new ArrayList<TupleInfo>();
+    public List<TupleInfo> tuples = new ArrayList<>();
   }
 
   public static class TuplesInfo
   {
     @JsonSerialize(using = ToStringSerializer.class)
     public long startOffset;
-    public List<WindowTuplesInfo> tuples = new ArrayList<WindowTuplesInfo>();
+    public List<WindowTuplesInfo> tuples = new ArrayList<>();
   }
 
   public static class TupleInfo
@@ -147,8 +166,8 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
     line = line.trim();
 
-    info.windowIdRanges = new ArrayList<TupleRecorder.Range>();
-    info.portTupleCount = new HashMap<String, MutableLong>();
+    info.windowIdRanges = new ArrayList<>();
+    info.portTupleCount = new HashMap<>();
 
     int cursor = 2;
     int cursor2 = line.indexOf(':', cursor);
@@ -193,8 +212,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       long tupleCount = json.getLong(portIndex);
       if (!info.portTupleCount.containsKey(portIndex)) {
         info.portTupleCount.put(portIndex, new MutableLong(tupleCount));
-      }
-      else {
+      } else {
         info.portTupleCount.get(portIndex).add(tupleCount);
       }
     }
@@ -203,7 +221,7 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   private Set<String> getRunningContainerIds(String appId)
   {
-    Set<String> result = new HashSet<String>();
+    Set<String> result = new HashSet<>();
     try {
       WebServicesClient webServicesClient = new WebServicesClient();
       JSONObject response = stramAgent.issueStramWebGetRequest(webServicesClient, appId, StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS);
@@ -211,8 +229,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       JSONArray containers;
       if (containersObj instanceof JSONArray) {
         containers = (JSONArray)containersObj;
-      }
-      else {
+      } else {
         containers = new JSONArray();
         containers.put(containersObj);
       }
@@ -223,8 +240,7 @@ public final class RecordingsAgent extends FSPartFileAgent
           result.add(container.getString("id"));
         }
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Error {} getting running containers for {}. Assuming no containers are running.", ex.getMessage(), appId);
     }
     return result;
@@ -232,7 +248,7 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   public List<RecordingInfo> getRecordingInfo(String appId)
   {
-    List<RecordingInfo> result = new ArrayList<RecordingInfo>();
+    List<RecordingInfo> result = new ArrayList<>();
     String dir = getRecordingsDirectory(appId);
     if (dir == null) {
       return result;
@@ -251,14 +267,12 @@ public final class RecordingsAgent extends FSPartFileAgent
           try {
             String opId = lfs.getPath().getName();
             result.addAll(getRecordingInfo(appId, opId));
-          }
-          catch (NumberFormatException ex) {
+          } catch (NumberFormatException ex) {
             // ignore
           }
         }
       }
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       LOG.warn("Got exception when getting recording info", ex);
       return result;
     }
@@ -274,7 +288,7 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   private List<RecordingInfo> getRecordingInfoHelper(String appId, String opId, Set<String> containers)
   {
-    List<RecordingInfo> result = new ArrayList<RecordingInfo>();
+    List<RecordingInfo> result = new ArrayList<>();
     String dir = getRecordingsDirectory(appId, opId);
     if (dir == null) {
       return result;
@@ -296,14 +310,12 @@ public final class RecordingsAgent extends FSPartFileAgent
             if (recordingInfo != null) {
               result.add(recordingInfo);
             }
-          }
-          catch (NumberFormatException ex) {
+          } catch (NumberFormatException ex) {
             // ignore
           }
         }
       }
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       LOG.warn("Got exception when getting recording info", ex);
       return result;
     }
@@ -336,7 +348,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       JSONObject json;
 
       FileStatus fileStatus = stramAgent.getFileSystem().getFileStatus(path);
-      HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>();
+      HashMap<String, PortInfo> portMap = new HashMap<>();
       if (!fileStatus.isDirectory()) {
         throw new Exception(path + " is not a directory");
       }
@@ -352,7 +364,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       json = new JSONObject(line);
       info.startTime = json.getLong("startTime");
       info.containerId = json.optString("containerId");
-      info.properties = new HashMap<String, Object>();
+      info.properties = new HashMap<>();
 
       if (!StringUtils.isBlank(info.containerId) && !containers.contains(info.containerId)) {
         info.ended = true;
@@ -369,7 +381,7 @@ public final class RecordingsAgent extends FSPartFileAgent
           info.properties.put(key, strValue != null ? strValue : new ObjectMapperString(json.get(key).toString()));
         }
       }
-      info.ports = new ArrayList<PortInfo>();
+      info.ports = new ArrayList<>();
       while ((line = br.readLine()) != null) {
         PortInfo portInfo = new PortInfo();
         json = new JSONObject(line);
@@ -383,14 +395,13 @@ public final class RecordingsAgent extends FSPartFileAgent
 
       // INDEX file processing
       ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
-      info.windowIdRanges = new ArrayList<TupleRecorder.Range>();
+      info.windowIdRanges = new ArrayList<>();
       long prevHiWindowId = -1;
       RecordingsIndexLine indexLine;
       while ((indexLine = (RecordingsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
           info.ended = true;
-        }
-        else {
+        } else {
           info.totalTuples += indexLine.tupleCount;
           for (Map.Entry<String, MutableLong> entry : indexLine.portTupleCount.entrySet()) {
             PortInfo portInfo = portMap.get(entry.getKey());
@@ -404,8 +415,7 @@ public final class RecordingsAgent extends FSPartFileAgent
               TupleRecorder.Range range = new TupleRecorder.Range();
               range.low = r.low;
               info.windowIdRanges.add(range);
-            }
-            else if (prevHiWindowId + 1 != r.low) {
+            } else if (prevHiWindowId + 1 != r.low) {
               TupleRecorder.Range range = info.windowIdRanges.get(info.windowIdRanges.size() - 1);
               range.high = prevHiWindowId;
               range = new TupleRecorder.Range();
@@ -420,12 +430,10 @@ public final class RecordingsAgent extends FSPartFileAgent
         TupleRecorder.Range range = info.windowIdRanges.get(info.windowIdRanges.size() - 1);
         range.high = prevHiWindowId;
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Got exception when getting recording info", ex);
       return null;
-    }
-    finally {
+    } finally {
       IOUtils.closeQuietly(ifbr);
       IOUtils.closeQuietly(br);
     }
@@ -436,7 +444,7 @@ public final class RecordingsAgent extends FSPartFileAgent
   private enum QueryType
   {
     OFFSET, WINDOW, TIME
-  };
+  }
 
   public TuplesInfo getTuplesInfoByTime(String appId, String opId, String id, long fromTime, long toTime, long limit, String[] ports)
   {
@@ -461,9 +469,7 @@ public final class RecordingsAgent extends FSPartFileAgent
     if (dir == null) {
       return null;
     }
-    IndexFileBufferedReader ifbr = null;
-    try {
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+    try (IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir)) {
       long currentOffset = 0;
       boolean readPartFile = false;
       MutableLong numRemainingTuples = new MutableLong(limit);
@@ -480,13 +486,11 @@ public final class RecordingsAgent extends FSPartFileAgent
 
         if (ports == null || ports.length == 0) {
           numTuples = indexLine.tupleCount;
-        }
-        else {
+        } else {
           for (String port : ports) {
             if (indexLine.portTupleCount.containsKey(port)) {
               numTuples += indexLine.portTupleCount.get(port).longValue();
-            }
-            else {
+            } else {
               LOG.warn("Port index {} is not found, ignoring...", port);
             }
           }
@@ -498,21 +502,17 @@ public final class RecordingsAgent extends FSPartFileAgent
           if (queryType == QueryType.WINDOW) {
             if (currentWindowLow.longValue() > low) {
               break;
-            }
-            else if (currentWindowLow.longValue() <= low && low <= currentWindowHigh.longValue()) {
+            } else if (currentWindowLow.longValue() <= low && low <= currentWindowHigh.longValue()) {
               readPartFile = true;
             }
-          }
-          else if (queryType == QueryType.OFFSET) {
+          } else if (queryType == QueryType.OFFSET) {
             if (currentOffset + numTuples > low) {
               readPartFile = true;
             }
-          }
-          else { // time
+          } else { // time
             if (indexLine.fromTime > low) {
               break;
-            }
-            else if (indexLine.fromTime <= low && low <= indexLine.toTime) {
+            } else if (indexLine.fromTime <= low && low <= indexLine.toTime) {
               readPartFile = true;
             }
           }
@@ -520,13 +520,8 @@ public final class RecordingsAgent extends FSPartFileAgent
 
         if (readPartFile) {
           lastProcessPartFile = indexLine.partFile;
-          BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))));
-          try {
-            processPartFile(partBr, queryType, low, high, limit, ports,
-                            numRemainingTuples, currentTimestamp, currentWindowLow, currentOffset, info);
-          }
-          finally {
-            partBr.close();
+          try (BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))))) {
+            processPartFile(partBr, queryType, low, high, limit, ports, numRemainingTuples, currentTimestamp, currentWindowLow, currentOffset, info);
           }
         }
         currentOffset += numTuples;
@@ -539,24 +534,17 @@ public final class RecordingsAgent extends FSPartFileAgent
         String extraPartFile = getNextPartFile(lastProcessPartFile);
         if (extraPartFile != null) {
           partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, extraPartFile))));
-          processPartFile(partBr, queryType, low, high, limit, ports,
-                          numRemainingTuples, currentTimestamp, new MutableLong(), currentOffset, info);
+          processPartFile(partBr, queryType, low, high, limit, ports, numRemainingTuples, currentTimestamp, new MutableLong(), currentOffset, info);
         }
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         // ignore
-      }
-      finally {
+      } finally {
         IOUtils.closeQuietly(partBr);
       }
 
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Got exception when getting tuples info", ex);
       return null;
-    }
-    finally {
-      IOUtils.closeQuietly(ifbr);
     }
 
     return info;
@@ -580,8 +568,7 @@ public final class RecordingsAgent extends FSPartFileAgent
           wtinfo.windowId = currentWindowLow.longValue();
           info.tuples.add(wtinfo);
         }
-      }
-      else if (partLine.startsWith("T:")) {
+      } else if (partLine.startsWith("T:")) {
         int partCursor2 = partLine.indexOf(':', partCursor);
         currentTimestamp.setValue(Long.valueOf(partLine.substring(partCursor, partCursor2)));
         partCursor = partCursor2 + 1;
@@ -591,21 +578,21 @@ public final class RecordingsAgent extends FSPartFileAgent
         partCursor = partCursor2 + 1;
 
         if (portMatch
-                && ((queryType == QueryType.WINDOW && currentWindowLow.longValue() >= low)
-                || (queryType == QueryType.OFFSET && tmpOffset >= low)
-                || (queryType == QueryType.TIME && currentTimestamp.longValue() >= low))) {
+            && ((queryType == QueryType.WINDOW && currentWindowLow.longValue() >= low)
+            || (queryType == QueryType.OFFSET && tmpOffset >= low)
+            || (queryType == QueryType.TIME && currentTimestamp.longValue() >= low))) {
 
           if (numRemainingTuples.longValue() > 0) {
             if (info.startOffset == -1) {
               info.startOffset = tmpOffset;
             }
             WindowTuplesInfo wtinfo;
-            if (info.tuples.isEmpty() || info.tuples.get(info.tuples.size() - 1).windowId != currentWindowLow.longValue()) {
+            if (info.tuples.isEmpty() || info.tuples.get(info.tuples.size() - 1).windowId != currentWindowLow
+                .longValue()) {
               wtinfo = new WindowTuplesInfo();
               wtinfo.windowId = currentWindowLow.longValue();
               info.tuples.add(wtinfo);
-            }
-            else {
+            } else {
               wtinfo = info.tuples.get(info.tuples.size() - 1);
             }
 
@@ -616,8 +603,7 @@ public final class RecordingsAgent extends FSPartFileAgent
             String tupleValue = partLine.substring(partCursor);
             wtinfo.tuples.add(new TupleInfo(port, tupleValue));
             numRemainingTuples.decrement();
-          }
-          else {
+          } else {
             break;
           }
         }
@@ -642,17 +628,18 @@ public final class RecordingsAgent extends FSPartFileAgent
       uriSpec = uriSpec.path(StramWebServices.PATH_RECORDINGS_START);
       request.put("numWindows", numWindows);
       WebServicesClient webServicesClient = new WebServicesClient();
-      return stramAgent.issueStramWebRequest(webServicesClient, appId, uriSpec, new WebServicesClient.WebServicesHandler<JSONObject>()
-      {
-        @Override
-        public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-        {
-          return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
-        }
+      return stramAgent.issueStramWebRequest(webServicesClient, appId, uriSpec,
+          new WebServicesClient.WebServicesHandler<JSONObject>()
+          {
+            @Override
+            public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+            {
+              return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
+            }
 
-      });
-    }
-    catch (Exception ex) {
+          }
+      );
+    } catch (Exception ex) {
       LOG.error("Exception caught", ex);
       return null;
     }
@@ -669,17 +656,18 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
       uriSpec = uriSpec.path(StramWebServices.PATH_RECORDINGS_STOP);
       WebServicesClient webServicesClient = new WebServicesClient();
-      return stramAgent.issueStramWebRequest(webServicesClient, appId, uriSpec, new WebServicesClient.WebServicesHandler<JSONObject>()
-      {
-        @Override
-        public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-        {
-          return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
-        }
+      return stramAgent.issueStramWebRequest(webServicesClient, appId, uriSpec,
+          new WebServicesClient.WebServicesHandler<JSONObject>()
+          {
+            @Override
+            public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+            {
+              return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
+            }
 
-      });
-    }
-    catch (Exception ex) {
+          }
+      );
+    } catch (Exception ex) {
       LOG.error("Exception caught", ex);
       return null;
     }

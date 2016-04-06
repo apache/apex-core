@@ -22,28 +22,29 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.util.List;
 
-import static java.lang.Thread.sleep;
-
-import org.apache.http.NameValuePair;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.client.utils.URLEncodedUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.client.utils.URLEncodedUtils;
 
-import com.datatorrent.netlet.util.DTThrowable;
+import com.google.common.base.Throwables;
+
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 
-import java.net.ConnectException;
-import java.net.SocketTimeoutException;
-import java.util.List;
+import static java.lang.Thread.sleep;
 
 /**
  * Heartbeat RPC proxy invocation handler that handles fail over.
@@ -105,11 +106,9 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
         String key = pair.getName();
         if (QP_rpcTimeout.equals(key)) {
           this.rpcTimeout = Integer.parseInt(value);
-        }
-        else if (QP_retryTimeoutMillis.equals(key)) {
+        } else if (QP_retryTimeoutMillis.equals(key)) {
           this.retryTimeoutMillis = Long.parseLong(value);
-        }
-        else if (QP_retryDelayMillis.equals(key)) {
+        } else if (QP_retryDelayMillis.equals(key)) {
           this.retryDelayMillis = Long.parseLong(value);
         }
       }
@@ -120,7 +119,7 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
 
   public StreamingContainerUmbilicalProtocol getProxy()
   {
-    StreamingContainerUmbilicalProtocol recoverableProxy = (StreamingContainerUmbilicalProtocol) java.lang.reflect.Proxy.newProxyInstance(umbilical.getClass().getClassLoader(), umbilical.getClass().getInterfaces(), this);
+    StreamingContainerUmbilicalProtocol recoverableProxy = (StreamingContainerUmbilicalProtocol)java.lang.reflect.Proxy.newProxyInstance(umbilical.getClass().getClassLoader(), umbilical.getClass().getInterfaces(), this);
     return recoverableProxy;
   }
 
@@ -129,7 +128,7 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
   public Object invoke(Object proxy, Method method, Object[] args) throws ConnectException, SocketTimeoutException, InterruptedException, IllegalAccessException
   {
     Object result;
-    for (; ; ) {
+    while (true) {
       try {
         if (umbilical == null) {
           connect();
@@ -140,8 +139,7 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
         //long end = System.nanoTime();
         //LOG.info(String.format("%s took %d ns", method.getName(), (end - start)));
         return result;
-      }
-      catch (InvocationTargetException e) {
+      } catch (InvocationTargetException e) {
         // handle RPC failure
         Throwable targetException = e.getTargetException();
         long connectMillis = System.currentTimeMillis() - lastCompletedCallTms;
@@ -149,21 +147,17 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
           LOG.warn("RPC failure, attempting reconnect after {} ms (remaining {} ms)", retryDelayMillis, retryTimeoutMillis - connectMillis, targetException);
           close();
           sleep(retryDelayMillis);
-        }
-        else {
+        } else {
           LOG.error("Giving up RPC connection recovery after {} ms", connectMillis, targetException);
           if (targetException instanceof java.net.ConnectException) {
-            throw (java.net.ConnectException) targetException;
-          }
-          else if (targetException instanceof java.net.SocketTimeoutException) {
-            throw (java.net.SocketTimeoutException) targetException;
-          }
-          else {
-            DTThrowable.rethrow(targetException);
+            throw (java.net.ConnectException)targetException;
+          } else if (targetException instanceof java.net.SocketTimeoutException) {
+            throw (java.net.SocketTimeoutException)targetException;
+          } else {
+            throw Throwables.propagate(targetException);
           }
         }
-      }
-      catch (IOException ex) {
+      } catch (IOException ex) {
         close();
         throw new RuntimeException(ex);
       }

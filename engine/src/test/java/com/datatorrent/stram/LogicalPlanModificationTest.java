@@ -31,11 +31,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.AffinityRule;
 import com.datatorrent.api.AffinityRule.Type;
+import com.datatorrent.api.AffinityRulesSet;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.AffinityRule;
-import com.datatorrent.api.AffinityRulesSet;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
@@ -43,9 +45,9 @@ import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
-import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
@@ -54,7 +56,6 @@ import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 
-import com.google.common.collect.Sets;
 
 public class LogicalPlanModificationTest
 {
@@ -219,6 +220,7 @@ public class LogicalPlanModificationTest
       pm.removeOperator(o2Meta.getName());
       Assert.fail("validation error (connected output stream) expected");
     } catch (ValidationException ve) {
+      // all good
     }
 
     // remove output stream required before removing operator
@@ -238,6 +240,7 @@ public class LogicalPlanModificationTest
       plan.getOperators(o2Meta);
       Assert.fail("removed from physical plan: " + o2Meta);
     } catch (Exception e) {
+      // all good
     }
     Assert.assertEquals("containers " + plan.getContainers(), 3, plan.getContainers().size());
     Assert.assertEquals("physical operators " + plan.getAllOperators(), 3, plan.getAllOperators().size());
@@ -375,9 +378,9 @@ public class LogicalPlanModificationTest
 
     lpmf.get();
 
-    Assert.assertEquals(""+dnm.containerStartRequests, 1, dnm.containerStartRequests.size());
+    Assert.assertEquals("" + dnm.containerStartRequests, 1, dnm.containerStartRequests.size());
     PTContainer c = dnm.containerStartRequests.poll().container;
-    Assert.assertEquals("operators "+c, 1, c.getOperators().size());
+    Assert.assertEquals("operators " + c, 1, c.getOperators().size());
 
     int deployStatusCnt = 0;
     for (PTOperator oper : c.getOperators()) {

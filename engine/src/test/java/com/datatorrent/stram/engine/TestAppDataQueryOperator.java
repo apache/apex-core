@@ -18,14 +18,14 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.common.experimental.AppData;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.common.experimental.AppData;
 
 public class TestAppDataQueryOperator implements InputOperator, AppData.ConnectionInfoProvider
 {
-  public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
+  public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<>();
 
   private String appDataUrl;
   private String topic;

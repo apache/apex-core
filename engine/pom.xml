@@ -34,7 +34,7 @@
   <name>Apache Apex (incubating) Stream Processing Engine</name>
 
   <properties>
-    <checkstyle.console>false</checkstyle.console>
+    <checkstyle.console>true</checkstyle.console>
   </properties>
 
   <build>
@@ -149,7 +149,6 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <configuration>
-          <maxAllowedViolations>3161</maxAllowedViolations>
           <logViolationsToConsole>${checkstyle.console}</logViolationsToConsole>
           <suppressionsLocation>engine-checkstyle-suppressions.xml</suppressionsLocation>
         </configuration>

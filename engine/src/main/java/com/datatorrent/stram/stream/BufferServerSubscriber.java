@@ -29,12 +29,11 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
-
 import com.datatorrent.bufferserver.client.Subscriber;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.codec.StatefulStreamCodec;
 import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 import com.datatorrent.stram.engine.ByteCounterStream;
@@ -42,7 +41,11 @@ import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
-import com.datatorrent.stram.tuple.*;
+import com.datatorrent.stram.tuple.CheckpointTuple;
+import com.datatorrent.stram.tuple.EndStreamTuple;
+import com.datatorrent.stram.tuple.EndWindowTuple;
+import com.datatorrent.stram.tuple.ResetWindowTuple;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * Implement tuple flow from buffer server to the node in a logical stream<p>
@@ -71,12 +74,12 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   {
     super(id);
     this.reservoirs = new BufferReservoir[0];
-    this.reservoirMap = new HashMap<String, BufferReservoir>();
+    this.reservoirMap = new HashMap<>();
     this.readByteCount = new AtomicLong(0);
     this.dsp = new DataStatePair();
-    polledFragments = offeredFragments = new CircularBuffer<Slice>(queueCapacity);
-    freeFragments = new CircularBuffer<Slice>(queueCapacity);
-    backlog = new ArrayDeque<CircularBuffer<Slice>>();
+    polledFragments = offeredFragments = new CircularBuffer<>(queueCapacity);
+    freeFragments = new CircularBuffer<>(queueCapacity);
+    backlog = new ArrayDeque<>();
   }
 
   @Override
@@ -104,8 +107,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
     Slice f;
     if (freeFragments.isEmpty()) {
       f = new Slice(buffer, offset, length);
-    }
-    else {
+    } else {
       f = freeFragments.pollUnsafe();
       f.buffer = buffer;
       f.offset = offset;
@@ -119,7 +121,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
           suspended = true;
         }
         int newsize = offeredFragments.capacity() == MAX_SENDBUFFER_SIZE ? offeredFragments.capacity() : offeredFragments.capacity() << 1;
-        backlog.add(offeredFragments = new CircularBuffer<Slice>(newsize));
+        backlog.add(offeredFragments = new CircularBuffer<>(newsize));
         offeredFragments.add(f);
       }
     }
@@ -131,12 +133,10 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   {
     StreamCodec<?> codec = context.get(StreamContext.CODEC);
     if (codec == null) {
-      statefulSerde = ((StatefulStreamCodec <Object>)StreamContext.CODEC.defaultValue).newInstance();
-    }
-    else if (codec instanceof StatefulStreamCodec) {
+      statefulSerde = ((StatefulStreamCodec<Object>)StreamContext.CODEC.defaultValue).newInstance();
+    } else if (codec instanceof StatefulStreamCodec) {
       statefulSerde = ((StatefulStreamCodec<Object>)codec).newInstance();
-    }
-    else {
+    } else {
       serde = (StreamCodec<Object>)codec;
     }
     baseSeconds = context.getFinishedWindowId() & 0xffffffff00000000L;
@@ -262,8 +262,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
     {
       try {
         return this.sink;
-      }
-      finally {
+      } finally {
         this.sink = sink;
       }
     }
@@ -387,8 +386,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
     {
       try {
         return count;
-      }
-      finally {
+      } finally {
         if (reset) {
           count = 0;
         }

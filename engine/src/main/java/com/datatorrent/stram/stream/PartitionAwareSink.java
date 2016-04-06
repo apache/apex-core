@@ -18,11 +18,11 @@
  */
 package com.datatorrent.stram.stream;
 
-import com.datatorrent.stram.tuple.Tuple;
+import java.util.Set;
+
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
-
-import java.util.Set;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * <p>PartitionAwareSink class.</p>
@@ -63,8 +63,7 @@ public class PartitionAwareSink<T> implements Sink<T>
     if (payload instanceof Tuple) {
       count++;
       output.put(payload);
-    }
-    else if (canSendToOutput(payload)) {
+    } else if (canSendToOutput(payload)) {
       count++;
       output.put(payload);
     }
@@ -80,8 +79,7 @@ public class PartitionAwareSink<T> implements Sink<T>
   {
     try {
       return count;
-    }
-    finally {
+    } finally {
       if (reset) {
         count = 0;
       }

@@ -40,23 +40,24 @@ import javax.xml.bind.annotation.XmlSeeAlso;
 @XmlRootElement(name = "streams")
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlSeeAlso({StreamInfo.class})
-public class StreamsInfo {
+public class StreamsInfo
+{
 
-  protected List<StreamInfo> streams = new ArrayList<StreamInfo>();
+  protected List<StreamInfo> streams = new ArrayList<>();
 
   /**
-   *
    * @param streamInfo
    */
-  public void add(StreamInfo streamInfo) {
+  public void add(StreamInfo streamInfo)
+  {
     streams.add(streamInfo);
   }
 
   /**
-   *
    * @return list of stream info
    */
-  public List<StreamInfo> getStreams() {
+  public List<StreamInfo> getStreams()
+  {
     return Collections.unmodifiableList(streams);
   }
 

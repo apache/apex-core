@@ -319,8 +319,7 @@ public class GenericNodeTest
 
     do {
       Thread.sleep(sleeptime);
-    }
-    while (ab.get() == false);
+    } while (ab.get() == false);
 
 
     Tuple beginWindow1 = new Tuple(MessageType.BEGIN_WINDOW, 0x1L);
@@ -441,8 +440,7 @@ public class GenericNodeTest
     do {
       Thread.sleep(sleeptime);
       interval += sleeptime;
-    }
-    while ((gn.controlTupleCount == controlTupleCount) && (interval < maxSleep));
+    } while ((gn.controlTupleCount == controlTupleCount) && (interval < maxSleep));
     Assert.assertTrue("Begin window called", go.endWindowId != go.beginWindowId);
     controlTupleCount = gn.controlTupleCount;
 
@@ -455,8 +453,7 @@ public class GenericNodeTest
     do {
       Thread.sleep(sleeptime);
       interval += sleeptime;
-    }
-    while ((gn.controlTupleCount == controlTupleCount) && (interval < maxSleep));
+    } while ((gn.controlTupleCount == controlTupleCount) && (interval < maxSleep));
     Assert.assertTrue("End window called", go.endWindowId == go.beginWindowId);
     controlTupleCount = gn.controlTupleCount;
 
@@ -469,8 +466,7 @@ public class GenericNodeTest
     do {
       Thread.sleep(sleeptime);
       interval += sleeptime;
-    }
-    while ((gn.controlTupleCount == controlTupleCount) && (interval < maxSleep));
+    } while ((gn.controlTupleCount == controlTupleCount) && (interval < maxSleep));
 
     gn.shutdown();
     t.join();
@@ -630,8 +626,8 @@ public class GenericNodeTest
 
     int window = 0;
     while (window < maxWindows) {
-      window = (int)Math.ceil((double)(window + 1)/dagCheckPoint) * dagCheckPoint;
-      window = (int)Math.ceil((double)window/opCheckPoint) * opCheckPoint;
+      window = (int)Math.ceil((double)(window + 1) / dagCheckPoint) * dagCheckPoint;
+      window = (int)Math.ceil((double)window / opCheckPoint) * opCheckPoint;
       checkpoints.add(window);
     }
 

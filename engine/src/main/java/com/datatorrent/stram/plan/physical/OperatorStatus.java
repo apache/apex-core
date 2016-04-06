@@ -76,10 +76,10 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public final MovingAverageLong checkpointTimeMA;
   public final TimedMovingAverageLong cpuNanosPMSMA;
   public final MovingAverageLong latencyMA;
-  public final Map<String, PortStatus> inputPortStatusList = new ConcurrentHashMap<String, PortStatus>();
-  public final Map<String, PortStatus> outputPortStatusList = new ConcurrentHashMap<String, PortStatus>();
+  public final Map<String, PortStatus> inputPortStatusList = new ConcurrentHashMap<>();
+  public final Map<String, PortStatus> outputPortStatusList = new ConcurrentHashMap<>();
   public List<OperatorStats> lastWindowedStats = Collections.emptyList();
-  public final ConcurrentLinkedQueue<List<OperatorStats>> listenerStats = new ConcurrentLinkedQueue<List<OperatorStats>>();
+  public final ConcurrentLinkedQueue<List<OperatorStats>> listenerStats = new ConcurrentLinkedQueue<>();
   public volatile long lastWindowIdChangeTms = 0;
   public final int windowProcessingTimeoutMillis;
   public final ConcurrentLinkedQueue<StatsListener.OperatorResponse> responses = new ConcurrentLinkedQueue<>();

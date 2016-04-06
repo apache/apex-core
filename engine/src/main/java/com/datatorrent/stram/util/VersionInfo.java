@@ -50,10 +50,10 @@ public class VersionInfo
       URL res = classInJar.getResource(classInJar.getSimpleName() + ".class");
       URLConnection conn = res.openConnection();
       if (conn instanceof JarURLConnection) {
-        Manifest mf = ((JarURLConnection) conn).getManifest();
+        Manifest mf = ((JarURLConnection)conn).getManifest();
         Attributes mainAttribs = mf.getMainAttributes();
         String builtBy = mainAttribs.getValue("Built-By");
-        if(builtBy != null) {
+        if (builtBy != null) {
           this.user = builtBy;
         }
       }
@@ -78,8 +78,7 @@ public class VersionInfo
         break;
       }
 
-    }
-    catch (IOException e) {
+    } catch (IOException e) {
       org.slf4j.LoggerFactory.getLogger(VersionInfo.class).error("Failed to read version info", e);
     }
   }
@@ -89,7 +88,8 @@ public class VersionInfo
    *
    * @return the version string, e.g. "0.1.1-SNAPSHOT"
    */
-  public String getVersion() {
+  public String getVersion()
+  {
     return version;
   }
 
@@ -98,7 +98,8 @@ public class VersionInfo
    *
    * @return the compilation date
    */
-  public String getDate() {
+  public String getDate()
+  {
     return date;
   }
 
@@ -107,22 +108,26 @@ public class VersionInfo
    *
    * @return the username of the user
    */
-  public String getUser() {
+  public String getUser()
+  {
     return user;
   }
 
   /**
    * Get the SCM revision number
+   *
    * @return the revision number, eg. "451451"
    */
-  public String getRevision() {
+  public String getRevision()
+  {
     return revision;
   }
 
   /**
    * Returns the buildVersion which includes version, revision, user and date.
    */
-  public String getBuildVersion() {
+  public String getBuildVersion()
+  {
     return getVersion() + " from " + getRevision() + " by " + getUser() + " on " + getDate();
   }
 
@@ -130,8 +135,8 @@ public class VersionInfo
   private static String artifactId = "apex-engine";
   private static Class<?> classInJar = VersionInfo.class;
   private static String gitPropertiesResource = artifactId + ".git.properties";
-  public static final VersionInfo APEX_VERSION = new VersionInfo(classInJar, groupId, artifactId, gitPropertiesResource);
-
+  public static final VersionInfo APEX_VERSION = new VersionInfo(classInJar, groupId, artifactId,
+      gitPropertiesResource);
 
   /**
    * Compares two version strings.
@@ -194,7 +199,8 @@ public class VersionInfo
   }
 
   @SuppressWarnings("UseOfSystemOutOrSystemErr")
-  public static void main(String[] args) {
+  public static void main(String[] args)
+  {
     System.out.println("Apex " + APEX_VERSION.getVersion());
     System.out.println("Revision " + APEX_VERSION.getRevision());
     System.out.println("Compiled by " + APEX_VERSION.getUser() + " on " + APEX_VERSION.getDate());

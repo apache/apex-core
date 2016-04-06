@@ -18,16 +18,20 @@
  */
 package com.datatorrent.stram.codec;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec.ClassIdPair;

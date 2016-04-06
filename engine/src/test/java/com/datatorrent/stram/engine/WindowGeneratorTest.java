@@ -22,19 +22,21 @@ import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import org.junit.Assert;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.Context;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Sink;
+import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BaseOperator;
-
-import com.datatorrent.api.*;
-import com.datatorrent.api.Context.OperatorContext;
-
-import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -107,6 +109,9 @@ public class WindowGeneratorTest
         case RESET_WINDOW:
           resetWindowCount.incrementAndGet();
           break;
+
+        default:
+          break;
       }
     }
 
@@ -148,8 +153,7 @@ public class WindowGeneratorTest
         if (firsttime) {
           assert (payload instanceof ResetWindowTuple);
           firsttime = false;
-        }
-        else {
+        } else {
           assert (payload instanceof Tuple);
         }
       }
@@ -259,8 +263,7 @@ public class WindowGeneratorTest
     {
       try {
         Thread.sleep(500);
-      }
-      catch (InterruptedException ex) {
+      } catch (InterruptedException ex) {
         logger.debug("interrupted!", ex);
       }
 

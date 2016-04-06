@@ -19,11 +19,14 @@
 package com.datatorrent.stram.stream;
 
 import java.io.IOException;
-
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,8 +61,7 @@ public class FastStreamTest
   static {
     try {
       eventloop = DefaultEventLoop.createEventLoop("StreamTestEventLoop");
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
   }

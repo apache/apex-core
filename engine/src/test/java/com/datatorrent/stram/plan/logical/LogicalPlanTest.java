@@ -18,51 +18,73 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import com.datatorrent.common.util.BaseOperator;
-import com.datatorrent.common.util.DefaultDelayOperator;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import javax.validation.*;
+import javax.validation.ConstraintViolation;
+import javax.validation.ConstraintViolationException;
+import javax.validation.Valid;
+import javax.validation.Validation;
+import javax.validation.ValidationException;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
 import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import org.junit.Assert;
-import org.junit.Test;
-
-import static org.junit.Assert.*;
-
-import com.datatorrent.common.partitioner.StatelessPartitioner;
-import com.datatorrent.api.*;
+import com.datatorrent.api.AffinityRule;
 import com.datatorrent.api.AffinityRule.Type;
+import com.datatorrent.api.AffinityRulesSet;
+import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Partitioner;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.common.partitioner.StatelessPartitioner;
+import com.datatorrent.common.util.BaseOperator;
+import com.datatorrent.common.util.DefaultDelayOperator;
 import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.TestNonOptionalOutportInputOperator;
 import com.datatorrent.stram.engine.TestOutputOperator;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class LogicalPlanTest
 {
@@ -70,53 +92,53 @@ public class LogicalPlanTest
   @Test
   public void testCycleDetection()
   {
-     LogicalPlan dag = new LogicalPlan();
+    LogicalPlan dag = new LogicalPlan();
 
-     //NodeConf operator1 = b.getOrAddNode("operator1");
-     GenericTestOperator operator2 = dag.addOperator("operator2", GenericTestOperator.class);
-     GenericTestOperator operator3 = dag.addOperator("operator3", GenericTestOperator.class);
-     GenericTestOperator operator4 = dag.addOperator("operator4", GenericTestOperator.class);
-     //NodeConf operator5 = b.getOrAddNode("operator5");
-     //NodeConf operator6 = b.getOrAddNode("operator6");
-     GenericTestOperator operator7 = dag.addOperator("operator7", GenericTestOperator.class);
+    //NodeConf operator1 = b.getOrAddNode("operator1");
+    GenericTestOperator operator2 = dag.addOperator("operator2", GenericTestOperator.class);
+    GenericTestOperator operator3 = dag.addOperator("operator3", GenericTestOperator.class);
+    GenericTestOperator operator4 = dag.addOperator("operator4", GenericTestOperator.class);
+    //NodeConf operator5 = b.getOrAddNode("operator5");
+    //NodeConf operator6 = b.getOrAddNode("operator6");
+    GenericTestOperator operator7 = dag.addOperator("operator7", GenericTestOperator.class);
 
-     // strongly connect n2-n3-n4-n2
-     dag.addStream("n2n3", operator2.outport1, operator3.inport1);
+    // strongly connect n2-n3-n4-n2
+    dag.addStream("n2n3", operator2.outport1, operator3.inport1);
 
-     dag.addStream("n3n4", operator3.outport1, operator4.inport1);
+    dag.addStream("n3n4", operator3.outport1, operator4.inport1);
 
-     dag.addStream("n4n2", operator4.outport1, operator2.inport1);
+    dag.addStream("n4n2", operator4.outport1, operator2.inport1);
 
-     // self referencing operator cycle
-     StreamMeta n7n7 = dag.addStream("n7n7", operator7.outport1, operator7.inport1);
-     try {
-       n7n7.addSink(operator7.inport1);
-       fail("cannot add to stream again");
-     } catch (Exception e) {
-       // expected, stream can have single input/output only
-     }
+    // self referencing operator cycle
+    StreamMeta n7n7 = dag.addStream("n7n7", operator7.outport1, operator7.inport1);
+    try {
+      n7n7.addSink(operator7.inport1);
+      fail("cannot add to stream again");
+    } catch (Exception e) {
+      // expected, stream can have single input/output only
+    }
 
-     LogicalPlan.ValidationContext vc = new LogicalPlan.ValidationContext();
-     dag.findStronglyConnected(dag.getMeta(operator7), vc);
-     assertEquals("operator self reference", 1, vc.invalidCycles.size());
-     assertEquals("operator self reference", 1, vc.invalidCycles.get(0).size());
-     assertEquals("operator self reference", dag.getMeta(operator7), vc.invalidCycles.get(0).iterator().next());
+    LogicalPlan.ValidationContext vc = new LogicalPlan.ValidationContext();
+    dag.findStronglyConnected(dag.getMeta(operator7), vc);
+    assertEquals("operator self reference", 1, vc.invalidCycles.size());
+    assertEquals("operator self reference", 1, vc.invalidCycles.get(0).size());
+    assertEquals("operator self reference", dag.getMeta(operator7), vc.invalidCycles.get(0).iterator().next());
 
-     // 3 operator cycle
-     vc = new LogicalPlan.ValidationContext();
-     dag.findStronglyConnected(dag.getMeta(operator4), vc);
-     assertEquals("3 operator cycle", 1, vc.invalidCycles.size());
-     assertEquals("3 operator cycle", 3, vc.invalidCycles.get(0).size());
-     assertTrue("operator2", vc.invalidCycles.get(0).contains(dag.getMeta(operator2)));
-     assertTrue("operator3", vc.invalidCycles.get(0).contains(dag.getMeta(operator3)));
-     assertTrue("operator4", vc.invalidCycles.get(0).contains(dag.getMeta(operator4)));
+    // 3 operator cycle
+    vc = new LogicalPlan.ValidationContext();
+    dag.findStronglyConnected(dag.getMeta(operator4), vc);
+    assertEquals("3 operator cycle", 1, vc.invalidCycles.size());
+    assertEquals("3 operator cycle", 3, vc.invalidCycles.get(0).size());
+    assertTrue("operator2", vc.invalidCycles.get(0).contains(dag.getMeta(operator2)));
+    assertTrue("operator3", vc.invalidCycles.get(0).contains(dag.getMeta(operator3)));
+    assertTrue("operator4", vc.invalidCycles.get(0).contains(dag.getMeta(operator4)));
 
-     try {
-       dag.validate();
-       fail("validation should fail");
-     } catch (ValidationException e) {
-       // expected
-     }
+    try {
+      dag.validate();
+      fail("validation should fail");
+    } catch (ValidationException e) {
+      // expected
+    }
 
   }
 
@@ -158,9 +180,11 @@ public class LogicalPlanTest
 
   public static class CounterOperator extends BaseOperator
   {
-    final public transient InputPort<Object> countInputPort = new DefaultInputPort<Object>() {
+    public final transient InputPort<Object> countInputPort = new DefaultInputPort<Object>()
+    {
       @Override
-      final public void process(Object payload) {
+      public final void process(Object payload)
+      {
       }
     };
   }
@@ -227,48 +251,56 @@ public class LogicalPlanTest
   public static class ValidationTestOperator extends BaseOperator implements InputOperator
   {
     @NotNull
-    @Pattern(regexp=".*malhar.*", message="Value has to contain 'malhar'!")
+    @Pattern(regexp = ".*malhar.*", message = "Value has to contain 'malhar'!")
     private String stringField1;
 
     @Min(2)
     private int intField1;
 
-    @AssertTrue(message="stringField1 should end with intField1")
-    private boolean isValidConfiguration() {
+    @AssertTrue(message = "stringField1 should end with intField1")
+    private boolean isValidConfiguration()
+    {
       return stringField1.endsWith(String.valueOf(intField1));
     }
 
     private String getterProperty2 = "";
 
     @NotNull
-    public String getProperty2() {
+    public String getProperty2()
+    {
       return getterProperty2;
     }
 
-    public void setProperty2(String s) {
+    public void setProperty2(String s)
+    {
       // annotations need to be on the getter
       getterProperty2 = s;
     }
 
     private String[] stringArrayField;
 
-    public String[] getStringArrayField() {
+    public String[] getStringArrayField()
+    {
       return stringArrayField;
     }
 
-    public void setStringArrayField(String[] stringArrayField) {
+    public void setStringArrayField(String[] stringArrayField)
+    {
       this.stringArrayField = stringArrayField;
     }
 
-    public class Nested {
+    public class Nested
+    {
       @NotNull
       private String property = "";
 
-      public String getProperty() {
+      public String getProperty()
+      {
         return property;
       }
 
-      public void setProperty(String property) {
+      public void setProperty(String property)
+      {
         this.property = property;
       }
 
@@ -279,11 +311,13 @@ public class LogicalPlanTest
 
     private String stringProperty2;
 
-    public String getStringProperty2() {
+    public String getStringProperty2()
+    {
       return stringProperty2;
     }
 
-    public void setStringProperty2(String stringProperty2) {
+    public void setStringProperty2(String stringProperty2)
+    {
       this.stringProperty2 = stringProperty2;
     }
 
@@ -300,7 +334,8 @@ public class LogicalPlanTest
     }
 
     @Override
-    public void emitTuples() {
+    public void emitTuples()
+    {
       // Emit no tuples
 
     }
@@ -319,7 +354,7 @@ public class LogicalPlanTest
         Validation.buildDefaultValidatorFactory();
     Validator validator = factory.getValidator();
     Set<ConstraintViolation<ValidationTestOperator>> constraintViolations =
-             validator.validate(bean);
+        validator.validate(bean);
     //for (ConstraintViolation<ValidationTestOperator> cv : constraintViolations) {
     //  System.out.println("validation error: " + cv);
     //}
@@ -388,10 +423,12 @@ public class LogicalPlanTest
   public static class TestOperatorAnnotationOperator extends BaseOperator
   {
 
-    @InputPortFieldAnnotation( optional = true)
-    final public transient DefaultInputPort<Object> input1 = new DefaultInputPort<Object>() {
+    @InputPortFieldAnnotation(optional = true)
+    public final transient DefaultInputPort<Object> input1 = new DefaultInputPort<Object>()
+    {
       @Override
-      public void process(Object tuple) {
+      public void process(Object tuple)
+      {
       }
     };
   }
@@ -597,37 +634,39 @@ public class LogicalPlanTest
   {
     //final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
-    @OutputPortFieldAnnotation( optional=false)
-    final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
+    @OutputPortFieldAnnotation(optional = false)
+    public final transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<>();
 
     @Override
-    public void emitTuples() {
+    public void emitTuples()
+    {
       // Emit Nothing
-
     }
   }
 
   private class TestAnnotationsOperator2 extends BaseOperator implements InputOperator
   {
     // multiple ports w/o annotation, one of them must be connected
-    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
     @Override
-    public void emitTuples() {
+    public void emitTuples()
+    {
       // Emit Nothing
-
     }
   }
 
   private class TestAnnotationsOperator3 extends BaseOperator implements InputOperator
   {
     // multiple ports w/o annotation, one of them must be connected
-    @OutputPortFieldAnnotation( optional=true)
-    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
-    @OutputPortFieldAnnotation( optional=true)
-    final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
+    @OutputPortFieldAnnotation(optional = true)
+    public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
+    @OutputPortFieldAnnotation(optional = true)
+    public final transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
+
     @Override
-    public void emitTuples() {
+    public void emitTuples()
+    {
       // Emit Nothing
 
     }
@@ -675,16 +714,19 @@ public class LogicalPlanTest
   {
     private static final long serialVersionUID = -4024202339520027097L;
 
-    public abstract class SerializableInputPort<T> implements InputPort<T>, Sink<T>, java.io.Serializable {
+    public abstract class SerializableInputPort<T> implements InputPort<T>, Sink<T>, java.io.Serializable
+    {
       private static final long serialVersionUID = 1L;
 
       @Override
-      public Sink<T> getSink() {
+      public Sink<T> getSink()
+      {
         return this;
       }
 
       @Override
-      public void setConnected(boolean connected) {
+      public void setConnected(boolean connected)
+      {
       }
 
       @Override
@@ -698,17 +740,19 @@ public class LogicalPlanTest
       }
 
       @Override
-      public StreamCodec<T> getStreamCodec() {
+      public StreamCodec<T> getStreamCodec()
+      {
         return null;
       }
     }
 
-    @InputPortFieldAnnotation( optional=true)
-    final public InputPort<Object> inport1 = new SerializableInputPort<Object>() {
+    @InputPortFieldAnnotation(optional = true)
+    public final InputPort<Object> inport1 = new SerializableInputPort<Object>()
+    {
       private static final long serialVersionUID = 1L;
 
       @Override
-      final public void put(Object payload)
+      public final void put(Object payload)
       {
       }
 
@@ -837,7 +881,7 @@ public class LogicalPlanTest
 
   public static class TestPortCodecOperator extends BaseOperator
   {
-    public transient final DefaultInputPort<Object> inport1 = new DefaultInputPort<Object>()
+    public final transient DefaultInputPort<Object> inport1 = new DefaultInputPort<Object>()
     {
       @Override
       public void process(Object tuple)
@@ -852,8 +896,8 @@ public class LogicalPlanTest
       }
     };
 
-    @OutputPortFieldAnnotation( optional = true)
-    public transient final DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
+    @OutputPortFieldAnnotation(optional = true)
+    public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<>();
   }
 
   /*
@@ -936,8 +980,7 @@ public class LogicalPlanTest
     try {
       dag.validate();
       Assert.fail("should fail because chekpoint window count is not a factor of application window count");
-    }
-    catch (ValidationException e) {
+    } catch (ValidationException e) {
       // expected
     }
 
@@ -948,8 +991,7 @@ public class LogicalPlanTest
     try {
       dag.validate();
       Assert.fail("should fail because chekpoint window count is not a factor of application window count");
-    }
-    catch (ValidationException e) {
+    } catch (ValidationException e) {
       // expected
     }
   }

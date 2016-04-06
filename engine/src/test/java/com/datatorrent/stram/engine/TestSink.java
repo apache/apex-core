@@ -18,15 +18,16 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.api.Sink;
 import java.util.ArrayList;
+
+import com.datatorrent.api.Sink;
 
 /**
  * A sink implementation to collect expected test results.
  */
 public class TestSink implements Sink<Object>
 {
-  final public ArrayList<Object> collectedTuples = new ArrayList<Object>();
+  public final ArrayList<Object> collectedTuples = new ArrayList<>();
 
   public void clear()
   {

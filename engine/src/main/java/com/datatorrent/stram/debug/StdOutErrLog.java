@@ -48,8 +48,7 @@ public class StdOutErrLog
         rfa.setFile(System.getProperty(DT_LOGDIR));
         rfa.activateOptions();
       }
-    }
-    else if (appender != null) {
+    } else if (appender != null) {
       logger.warn("found appender {} instead of RollingFileAppender", appender);
     }
 

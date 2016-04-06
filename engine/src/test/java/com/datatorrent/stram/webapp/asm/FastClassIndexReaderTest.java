@@ -55,11 +55,8 @@ public class FastClassIndexReaderTest
         FastClassIndexReader fastClassIndexReader = new FastClassIndexReader(ins);
         Assert.assertEquals("The wrong class is " + classN.name, classN.name, fastClassIndexReader.getName());
         Assert.assertEquals("The wrong class is " + classN.name, classN.superName, fastClassIndexReader.getSuperName());
-        Assert.assertEquals("The wrong class is " + classN.name,
-          !ASMUtil.isAbstract(classN.access) && ASMUtil.isPublic(classN.access)
-            && ccn.getDefaultConstructor() != null, fastClassIndexReader.isInstantiable());
-        Assert.assertArrayEquals("The wrong class is " + classN.name,
-          classN.interfaces.toArray(), fastClassIndexReader.getInterfaces());
+        Assert.assertEquals("The wrong class is " + classN.name, !ASMUtil.isAbstract(classN.access) && ASMUtil.isPublic(classN.access) && ccn.getDefaultConstructor() != null, fastClassIndexReader.isInstantiable());
+        Assert.assertArrayEquals("The wrong class is " + classN.name, classN.interfaces.toArray(), fastClassIndexReader.getInterfaces());
 
       }
     }

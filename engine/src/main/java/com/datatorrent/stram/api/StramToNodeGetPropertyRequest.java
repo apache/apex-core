@@ -24,13 +24,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.apache.commons.beanutils.BeanMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.beanutils.BeanMap;
+
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StatsListener;
-
 import com.datatorrent.stram.engine.OperatorResponse;
 
 /**
@@ -66,16 +66,15 @@ public class StramToNodeGetPropertyRequest extends StreamingContainerUmbilicalPr
     public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
     {
       BeanMap beanMap = new BeanMap(operator);
-      Map<String, Object> propertyValue = new HashMap<String, Object>();
+      Map<String, Object> propertyValue = new HashMap<>();
       if (propertyName != null) {
         if (beanMap.containsKey(propertyName)) {
           propertyValue.put(propertyName, beanMap.get(propertyName));
         }
-      }
-      else {
+      } else {
         Iterator entryIterator = beanMap.entryIterator();
         while (entryIterator.hasNext()) {
-          Map.Entry<String, Object> entry = (Map.Entry<String, Object>) entryIterator.next();
+          Map.Entry<String, Object> entry = (Map.Entry<String, Object>)entryIterator.next();
           propertyValue.put(entry.getKey(), entry.getValue());
         }
       }

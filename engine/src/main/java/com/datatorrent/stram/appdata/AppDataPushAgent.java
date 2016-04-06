@@ -25,23 +25,25 @@ import java.beans.PropertyDescriptor;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 
-import org.apache.commons.lang3.ClassUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.service.AbstractService;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Maps;
+import org.apache.commons.lang3.ClassUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.service.AbstractService;
 
 import com.datatorrent.api.AutoMetric;
 import com.datatorrent.api.Context.DAGContext;
-
-import com.datatorrent.api.StringCodec;
 import com.datatorrent.common.metric.AutoMetricBuiltInTransport;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.PubSubWebSocketMetricTransport;
@@ -62,16 +64,15 @@ public class AppDataPushAgent extends AbstractService
   private static final String METRICS_SCHEMA_VERSION = "1.0";
   private static final String DATA = "data";
   private static final Logger LOG = LoggerFactory.getLogger(AppDataPushAgent.class);
-  private static final String APP_DATA_PUSH_TRANSPORT_BUILTIN_VALUE = "builtin";
   private final StreamingContainerManager dnmgr;
   private final StramAppContext appContext;
   private final AppDataPushThread appDataPushThread = new AppDataPushThread();
   private AutoMetric.Transport metricsTransport;
-  private final Map<Class<?>, List<Field>> cacheFields = new HashMap<Class<?>, List<Field>>();
-  private final Map<Class<?>, Map<String, Method>> cacheGetMethods = new HashMap<Class<?>, Map<String, Method>>();
+  private final Map<Class<?>, List<Field>> cacheFields = new HashMap<>();
+  private final Map<Class<?>, Map<String, Method>> cacheGetMethods = new HashMap<>();
 
-  private final Map<String, Long> operatorsSchemaLastSentTime = Maps.newHashMap();
-  private final Map<String, JSONObject> operatorSchemas = Maps.newHashMap();
+  private final Map<String, Long> operatorsSchemaLastSentTime = new HashMap<>();
+  private final Map<String, JSONObject> operatorSchemas = new HashMap<>();
 
   public AppDataPushAgent(StreamingContainerManager dnmgr, StramAppContext appContext)
   {
@@ -143,8 +144,7 @@ public class AppDataPushAgent extends AbstractService
             Map<String, Object> aggregates = metrics.second;
             long now = System.currentTimeMillis();
             if (!operatorsSchemaLastSentTime.containsKey(logicalOperator.name) ||
-                (metricsTransport.getSchemaResendInterval() > 0 &&
-                    operatorsSchemaLastSentTime.get(logicalOperator.name) < now - metricsTransport.getSchemaResendInterval())) {
+                (metricsTransport.getSchemaResendInterval() > 0 && operatorsSchemaLastSentTime.get(logicalOperator.name) < now - metricsTransport.getSchemaResendInterval())) {
               try {
                 pushMetricsSchema(dnmgr.getLogicalPlan().getOperatorMeta(logicalOperator.name), aggregates);
                 operatorsSchemaLastSentTime.put(logicalOperator.name, now);
@@ -185,7 +185,7 @@ public class AppDataPushAgent extends AbstractService
     if (cacheFields.containsKey(o.getClass())) {
       fields = cacheFields.get(o.getClass());
     } else {
-      fields = new ArrayList<Field>();
+      fields = new ArrayList<>();
 
       for (Class<?> c = o.getClass(); c != Object.class; c = c.getSuperclass()) {
         Field[] declaredFields = c.getDeclaredFields();
@@ -215,7 +215,7 @@ public class AppDataPushAgent extends AbstractService
     if (cacheGetMethods.containsKey(o.getClass())) {
       methods = cacheGetMethods.get(o.getClass());
     } else {
-      methods = new HashMap<String, Method>();    
+      methods = new HashMap<>();
       try {
         BeanInfo info = Introspector.getBeanInfo(o.getClass());
         for (PropertyDescriptor pd : info.getPropertyDescriptors()) {

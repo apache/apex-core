@@ -92,16 +92,14 @@ public class FSPartFileCollection
     Path pa = new Path(basePath, META_FILE);
     if (isLocalMode) {
       metaOs = new FSDataOutputStream(new FileOutputStream(localBasePath + "/" + META_FILE), null);
-    }
-    else {
+    } else {
       metaOs = fs.create(pa);
     }
 
     pa = new Path(basePath, INDEX_FILE);
     if (isLocalMode) {
       indexOutStr = new FSDataOutputStream(new FileOutputStream(localBasePath + "/" + INDEX_FILE), null);
-    }
-    else {
+    } else {
       indexOutStr = fs.create(pa);
     }
   }
@@ -125,8 +123,7 @@ public class FSPartFileCollection
         indexOutStr.close();
       }
       fs.close();
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       logger.error(ex.toString());
     }
   }
@@ -138,8 +135,7 @@ public class FSPartFileCollection
     logger.debug("Opening new part file: {}", hdfsFile);
     if (isLocalMode) {
       partOutStr = new FSDataOutputStream(new FileOutputStream(localBasePath + "/" + hdfsFile), null);
-    }
-    else {
+    } else {
       partOutStr = fs.create(path);
     }
     fileParts++;
@@ -174,9 +170,9 @@ public class FSPartFileCollection
   public boolean isReadyTurnoverPartFile()
   {
     try {
-      return (syncRequested || (partOutStr.getPos() > bytesPerPartFile) || (currentPartFileTimeStamp + millisPerPartFile < System.currentTimeMillis())) && partOutStr.getPos() > 0;
-    }
-    catch (IOException ex) {
+      return (syncRequested || (partOutStr.getPos() > bytesPerPartFile) ||
+          (currentPartFileTimeStamp + millisPerPartFile < System.currentTimeMillis())) && partOutStr.getPos() > 0;
+    } catch (IOException ex) {
       return true;
     }
   }
@@ -212,8 +208,7 @@ public class FSPartFileCollection
       indexOutStr.write(line.getBytes());
       indexOutStr.hflush();
       indexOutStr.hsync();
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       logger.error(ex.toString());
     }
   }
@@ -236,8 +231,7 @@ public class FSPartFileCollection
       indexOutStr.write(("E\n").getBytes());
       indexOutStr.hflush();
       indexOutStr.hsync();
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       logger.error(ex.toString());
     }
   }

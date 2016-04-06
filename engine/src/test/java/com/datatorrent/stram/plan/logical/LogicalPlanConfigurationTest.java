@@ -23,14 +23,12 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
-
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
 import javax.validation.ValidationException;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
@@ -38,22 +36,29 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.junit.Assert.*;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.hadoop.conf.Configuration;
 
-import com.datatorrent.api.*;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
-
 import com.datatorrent.common.codec.JsonStreamCodec;
 import com.datatorrent.common.util.BasicContainerOptConfigurator;
 import com.datatorrent.stram.PartitioningTest.PartitionLoadWatch;
@@ -72,17 +77,25 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration.StramElement;
 import com.datatorrent.stram.plan.logical.LogicalPlanTest.ValidationTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 
-public class LogicalPlanConfigurationTest {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+public class LogicalPlanConfigurationTest
+{
 
   static {
     @SuppressWarnings("MismatchedReadAndWriteOfArray")
-    Object serial[] = new Object[] {MockContext1.serialVersionUID, MockContext2.serialVersionUID};
+    Object[] serial = new Object[]{MockContext1.serialVersionUID, MockContext2.serialVersionUID};
   }
 
-  private static OperatorMeta assertNode(LogicalPlan dag, String id) {
-      OperatorMeta n = dag.getOperatorMeta(id);
-      assertNotNull("operator exists id=" + id, n);
-      return n;
+  private static OperatorMeta assertNode(LogicalPlan dag, String id)
+  {
+    OperatorMeta n = dag.getOperatorMeta(id);
+    assertNotNull("operator exists id=" + id, n);
+    return n;
   }
 
   public static class TestStreamCodec<T> extends JsonStreamCodec<T> implements Serializable
@@ -94,7 +107,8 @@ public class LogicalPlanConfigurationTest {
    * Test read from dt-site.xml in Hadoop configuration format.
    */
   @Test
-  public void testLoadFromConfigXml() {
+  public void testLoadFromConfigXml()
+  {
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
 
@@ -157,67 +171,67 @@ public class LogicalPlanConfigurationTest {
 
   }
 
-  private void printTopology(OperatorMeta operator, DAG tplg, int level) {
-      String prefix = "";
-      if (level > 0) {
-        prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17);
+  private void printTopology(OperatorMeta operator, DAG tplg, int level)
+  {
+    String prefix = "";
+    if (level > 0) {
+      prefix = StringUtils.repeat(" ", 20 * (level - 1)) + "   |" + StringUtils.repeat("-", 17);
+    }
+    logger.debug(prefix + operator.getName());
+    for (StreamMeta downStream : operator.getOutputStreams().values()) {
+      if (!downStream.getSinks().isEmpty()) {
+        for (LogicalPlan.InputPortMeta targetNode : downStream.getSinks()) {
+          printTopology(targetNode.getOperatorWrapper(), tplg, level + 1);
+        }
       }
-      logger.debug(prefix  + operator.getName());
-      for (StreamMeta downStream : operator.getOutputStreams().values()) {
-          if (!downStream.getSinks().isEmpty()) {
-            for (LogicalPlan.InputPortMeta targetNode : downStream.getSinks()) {
-              printTopology(targetNode.getOperatorWrapper(), tplg, level+1);
-            }
-          }
-      }
+    }
   }
 
   @Test
   public void testLoadFromPropertiesFile() throws IOException
   {
-      Properties props = new Properties();
-      String resourcePath = "/testTopology.properties";
-      InputStream is = this.getClass().getResourceAsStream(resourcePath);
-      if (is == null) {
-        fail("Could not load " + resourcePath);
-      }
-      props.load(is);
-      LogicalPlanConfiguration pb = new LogicalPlanConfiguration(new Configuration(false))
-            .addFromProperties(props, null);
+    Properties props = new Properties();
+    String resourcePath = "/testTopology.properties";
+    InputStream is = this.getClass().getResourceAsStream(resourcePath);
+    if (is == null) {
+      fail("Could not load " + resourcePath);
+    }
+    props.load(is);
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration(new Configuration(false)).addFromProperties(props, null);
 
-      LogicalPlan dag = new LogicalPlan();
-      pb.populateDAG(dag);
-      dag.validate();
+    LogicalPlan dag = new LogicalPlan();
+    pb.populateDAG(dag);
+    dag.validate();
 
-      assertEquals("number of operator confs", 5, dag.getAllOperators().size());
-      assertEquals("number of root operators", 1, dag.getRootOperators().size());
+    assertEquals("number of operator confs", 5, dag.getAllOperators().size());
+    assertEquals("number of root operators", 1, dag.getRootOperators().size());
 
-      StreamMeta s1 = dag.getStream("n1n2");
-      assertNotNull(s1);
-      assertTrue("n1n2 inline", DAG.Locality.CONTAINER_LOCAL == s1.getLocality());
+    StreamMeta s1 = dag.getStream("n1n2");
+    assertNotNull(s1);
+    assertTrue("n1n2 inline", DAG.Locality.CONTAINER_LOCAL == s1.getLocality());
 
-      OperatorMeta operator3 = dag.getOperatorMeta("operator3");
-      assertEquals("operator3.classname", GenericTestOperator.class, operator3.getOperator().getClass());
+    OperatorMeta operator3 = dag.getOperatorMeta("operator3");
+    assertEquals("operator3.classname", GenericTestOperator.class, operator3.getOperator().getClass());
 
-      GenericTestOperator doperator3 = (GenericTestOperator)operator3.getOperator();
-      assertEquals("myStringProperty " + doperator3, "myStringPropertyValueFromTemplate", doperator3.getMyStringProperty());
-      assertFalse("booleanProperty " + doperator3, doperator3.booleanProperty);
+    GenericTestOperator doperator3 = (GenericTestOperator)operator3.getOperator();
+    assertEquals("myStringProperty " + doperator3, "myStringPropertyValueFromTemplate", doperator3.getMyStringProperty());
+    assertFalse("booleanProperty " + doperator3, doperator3.booleanProperty);
 
-      OperatorMeta operator4 = dag.getOperatorMeta("operator4");
-      GenericTestOperator doperator4 = (GenericTestOperator)operator4.getOperator();
-      assertEquals("myStringProperty " + doperator4, "overrideOperator4", doperator4.getMyStringProperty());
-      assertEquals("setterOnlyOperator4 " + doperator4, "setterOnlyOperator4", doperator4.propertySetterOnly);
-      assertTrue("booleanProperty " + doperator4, doperator4.booleanProperty);
+    OperatorMeta operator4 = dag.getOperatorMeta("operator4");
+    GenericTestOperator doperator4 = (GenericTestOperator)operator4.getOperator();
+    assertEquals("myStringProperty " + doperator4, "overrideOperator4", doperator4.getMyStringProperty());
+    assertEquals("setterOnlyOperator4 " + doperator4, "setterOnlyOperator4", doperator4.propertySetterOnly);
+    assertTrue("booleanProperty " + doperator4, doperator4.booleanProperty);
 
-      StreamMeta input1 = dag.getStream("inputStream");
-      assertNotNull(input1);
-      Assert.assertEquals("input1 source", dag.getOperatorMeta("inputOperator"), input1.getSource().getOperatorMeta());
-      Set<OperatorMeta> targetNodes = Sets.newHashSet();
-      for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
-        targetNodes.add(targetPort.getOperatorWrapper());
-      }
+    StreamMeta input1 = dag.getStream("inputStream");
+    assertNotNull(input1);
+    Assert.assertEquals("input1 source", dag.getOperatorMeta("inputOperator"), input1.getSource().getOperatorMeta());
+    Set<OperatorMeta> targetNodes = Sets.newHashSet();
+    for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
+      targetNodes.add(targetPort.getOperatorWrapper());
+    }
 
-      Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperatorMeta("operator1"), operator3, operator4), targetNodes);
+    Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperatorMeta("operator1"), operator3, operator4), targetNodes);
 
   }
 
@@ -259,7 +273,7 @@ public class LogicalPlanConfigurationTest {
     tsl.setIntProp(222);
     List<StatsListener> sll = Lists.<StatsListener>newArrayList(tsl);
     assertEquals("inputOperator STATS_LISTENERS attribute ", sll, input.getAttributes().get(OperatorContext.STATS_LISTENERS));
-    for(OutputPortMeta opm : input.getOutputStreams().keySet()){
+    for (OutputPortMeta opm : input.getOutputStreams().keySet()) {
       assertTrue("output port of input Operator attribute is JsonStreamCodec ", opm.getAttributes().get(PortContext.STREAM_CODEC) instanceof JsonStreamCodec<?>);
     }
 
@@ -317,32 +331,36 @@ public class LogicalPlanConfigurationTest {
     Assert.assertEquals("", "-Dlog4j.properties=custom_log4j.properties", dag.getValue(DAG.CONTAINER_JVM_OPTIONS));
 
   }
+
   @Test
   @SuppressWarnings("UnnecessaryBoxing")
-  public void testAppLevelProperties() {
-	  String appName ="app1";
-	  Properties props =new Properties();
-	  props.put(StreamingApplication.DT_PREFIX + "application."+appName+".testprop1","10");
-	  props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".prop.testprop2", "100");
-	  props.put(StreamingApplication.DT_PREFIX + "application.*.prop.testprop3","1000");
-	  props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".inncls.a", "10000");
-	  LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
+  public void testAppLevelProperties()
+  {
+    String appName = "app1";
+    Properties props = new Properties();
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".testprop1", "10");
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".prop.testprop2", "100");
+    props.put(StreamingApplication.DT_PREFIX + "application.*.prop.testprop3", "1000");
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".inncls.a", "10000");
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
     dagBuilder.addFromProperties(props, null);
 
-	  LogicalPlan dag = new LogicalPlan();
-	  TestApplication app1Test=new TestApplication();
+    LogicalPlan dag = new LogicalPlan();
+    TestApplication app1Test = new TestApplication();
 
-	  dagBuilder.setApplicationConfiguration(dag, appName,app1Test);
-	  Assert.assertEquals("",Integer.valueOf(10),app1Test.getTestprop1());
-	  Assert.assertEquals("",Integer.valueOf(100),app1Test.getTestprop2());
-	  Assert.assertEquals("",Integer.valueOf(1000),app1Test.getTestprop3());
-	  Assert.assertEquals("",Integer.valueOf(10000),app1Test.getInncls().getA());
+    dagBuilder.setApplicationConfiguration(dag, appName, app1Test);
+    Assert.assertEquals("", Integer.valueOf(10), app1Test.getTestprop1());
+    Assert.assertEquals("", Integer.valueOf(100), app1Test.getTestprop2());
+    Assert.assertEquals("", Integer.valueOf(1000), app1Test.getTestprop3());
+    Assert.assertEquals("", Integer.valueOf(10000), app1Test.getInncls().getA());
   }
 
   @Test
-  public void testPrepareDAG() {
+  public void testPrepareDAG()
+  {
     final MutableBoolean appInitialized = new MutableBoolean(false);
-    StreamingApplication app = new StreamingApplication() {
+    StreamingApplication app = new StreamingApplication()
+    {
       @Override
       public void populateDAG(DAG dag, Configuration conf)
       {
@@ -363,7 +381,8 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
-  public void testOperatorConfigurationLookup() {
+  public void testOperatorConfigurationLookup()
+  {
 
     Properties props = new Properties();
 
@@ -377,7 +396,7 @@ public class LogicalPlanConfigurationTest {
     props.put(StreamingApplication.DT_PREFIX + "template.matchClass1.stringProperty2", "stringProperty2Value-matchClass1");
 
     // match class name
-    props.put(StreamingApplication.DT_PREFIX + "template.t2.matchClassNameRegExp", ".*"+GenericTestOperator.class.getSimpleName());
+    props.put(StreamingApplication.DT_PREFIX + "template.t2.matchClassNameRegExp", ".*" + GenericTestOperator.class.getSimpleName());
     props.put(StreamingApplication.DT_PREFIX + "template.t2.myStringProperty", "myStringPropertyValue");
 
     // direct setting
@@ -409,7 +428,8 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
-  public void testSetOperatorProperties() {
+  public void testSetOperatorProperties()
+  {
 
     Configuration conf = new Configuration(false);
     conf.set(StreamingApplication.DT_PREFIX + "operator.o1.prop.myStringProperty", "myStringPropertyValue");
@@ -434,8 +454,9 @@ public class LogicalPlanConfigurationTest {
 
   }
 
-  @ApplicationAnnotation(name="AnnotatedAlias")
-  class AnnotatedApplication implements StreamingApplication {
+  @ApplicationAnnotation(name = "AnnotatedAlias")
+  class AnnotatedApplication implements StreamingApplication
+  {
 
     @Override
     public void populateDAG(DAG dag, Configuration conf)
@@ -445,7 +466,8 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
-  public void testAppNameAttribute() {
+  public void testAppNameAttribute()
+  {
     StreamingApplication app = new AnnotatedApplication();
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
@@ -466,7 +488,8 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
-  public void testAppAlias() {
+  public void testAppAlias()
+  {
     StreamingApplication app = new AnnotatedApplication();
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
@@ -485,9 +508,9 @@ public class LogicalPlanConfigurationTest {
     Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().get(com.datatorrent.api.Context.DAGContext.APPLICATION_NAME));
   }
 
-
   @Test
-  public void testAppAnnotationAlias() {
+  public void testAppAnnotationAlias()
+  {
     StreamingApplication app = new AnnotatedApplication();
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
@@ -502,10 +525,12 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
-  @SuppressWarnings( {"UnnecessaryBoxing", "AssertEqualsBetweenInconvertibleTypes"})
-  public void testOperatorLevelAttributes() {
+  @SuppressWarnings({"UnnecessaryBoxing", "AssertEqualsBetweenInconvertibleTypes"})
+  public void testOperatorLevelAttributes()
+  {
     String appName = "app1";
-    StreamingApplication app = new StreamingApplication() {
+    StreamingApplication app = new StreamingApplication()
+    {
       @Override
       public void populateDAG(DAG dag, Configuration conf)
       {
@@ -534,12 +559,14 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
-  @SuppressWarnings( {"UnnecessaryBoxing", "AssertEqualsBetweenInconvertibleTypes"})
-  public void testUnifierLevelAttributes() {
+  @SuppressWarnings({"UnnecessaryBoxing", "AssertEqualsBetweenInconvertibleTypes"})
+  public void testUnifierLevelAttributes()
+  {
     String appName = "app1";
     final GenericTestOperator operator1 = new GenericTestOperator();
     final GenericTestOperator operator2 = new GenericTestOperator();
-    StreamingApplication app = new StreamingApplication() {
+    StreamingApplication app = new StreamingApplication()
+    {
       @Override
       public void populateDAG(DAG dag, Configuration conf)
       {
@@ -563,7 +590,7 @@ public class LogicalPlanConfigurationTest {
 
     OperatorMeta om = null;
     for (Map.Entry<OutputPortMeta, StreamMeta> entry : dag.getOperatorMeta("operator1").getOutputStreams().entrySet()) {
-      if(entry.getKey().getPortName().equals("outport1")) {
+      if (entry.getKey().getPortName().equals("outport1")) {
         om = entry.getKey().getUnifierMeta();
       }
     }
@@ -573,11 +600,13 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
-  public void testOperatorLevelProperties() {
+  public void testOperatorLevelProperties()
+  {
     String appName = "app1";
     final GenericTestOperator operator1 = new GenericTestOperator();
     final GenericTestOperator operator2 = new GenericTestOperator();
-    StreamingApplication app = new StreamingApplication() {
+    StreamingApplication app = new StreamingApplication()
+    {
       @Override
       public void populateDAG(DAG dag, Configuration conf)
       {
@@ -646,7 +675,8 @@ public class LogicalPlanConfigurationTest {
 
   @Test
   @SuppressWarnings("UnnecessaryBoxing")
-  public void testPortLevelAttributes() {
+  public void testPortLevelAttributes()
+  {
     String appName = "app1";
     SimpleTestApplication app = new SimpleTestApplication();
 
@@ -676,9 +706,9 @@ public class LogicalPlanConfigurationTest {
     Assert.assertEquals("", Integer.valueOf(32 * 1024), om3.getMeta(app.gt3.inport2).getValue(PortContext.QUEUE_CAPACITY));
   }
 
-
   @Test
-  public void testInvalidAttribute() throws Exception {
+  public void testInvalidAttribute() throws Exception
+  {
     Assert.assertNotSame(0, com.datatorrent.api.Context.DAGContext.serialVersionUID);
     Attribute<String> attribute = new Attribute<>("", null);
 
@@ -725,7 +755,8 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
-  public void testAttributesCodec() {
+  public void testAttributesCodec()
+  {
     Assert.assertNotSame(null, new Long[] {com.datatorrent.api.Context.DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID});
     @SuppressWarnings("unchecked")
     Set<Class<? extends Context>> contextClasses = Sets.newHashSet(com.datatorrent.api.Context.DAGContext.class, OperatorContext.class, PortContext.class);
@@ -793,7 +824,7 @@ public class LogicalPlanConfigurationTest {
   {
     Configuration conf = new Configuration(false);
     conf.set(StreamingApplication.DT_PREFIX + "operator.o2.port.schemaRequiredPort.attr.TUPLE_CLASS",
-      "com.datatorrent.stram.plan.logical.LogicalPlanConfigurationTest$TestSchema");
+        "com.datatorrent.stram.plan.logical.LogicalPlanConfigurationTest$TestSchema");
 
     StreamingApplication streamingApplication = new StreamingApplication()
     {
@@ -843,8 +874,7 @@ public class LogicalPlanConfigurationTest {
 
     if (attrOnDag) {
       attributeName = DAGContext.CHECKPOINT_WINDOW_COUNT.getSimpleName();
-    }
-    else {
+    } else {
       attributeName = OperatorContext.class.getCanonicalName() + LogicalPlanConfiguration.KEY_SEPARATOR + DAGContext.CHECKPOINT_WINDOW_COUNT.getSimpleName();
     }
 
@@ -878,7 +908,7 @@ public class LogicalPlanConfigurationTest {
   public void testRootLevelAmbiguousAttributeSimple()
   {
     testAttributeAmbiguousSimpleHelper(Context.OperatorContext.AUTO_RECORD, Context.PortContext.AUTO_RECORD,
-                                       StreamingApplication.DT_PREFIX, null, Boolean.TRUE, true, true);
+        StreamingApplication.DT_PREFIX, null, Boolean.TRUE, true, true);
   }
 
   /**
@@ -888,8 +918,7 @@ public class LogicalPlanConfigurationTest {
   public void testApplicationLevelAmbiguousAttributeSimple()
   {
     testAttributeAmbiguousSimpleHelper(Context.OperatorContext.AUTO_RECORD, Context.PortContext.AUTO_RECORD,
-                                       StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                       "*" + LogicalPlanConfiguration.KEY_SEPARATOR, null, Boolean.TRUE, true, true);
+        StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, null, Boolean.TRUE, true, true);
   }
 
   /**
@@ -899,8 +928,7 @@ public class LogicalPlanConfigurationTest {
   public void testOperatorLevelAmbiguousAttributeSimple()
   {
     testAttributeAmbiguousSimpleHelper(Context.OperatorContext.AUTO_RECORD, Context.PortContext.AUTO_RECORD,
-                                       StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                       "*" + LogicalPlanConfiguration.KEY_SEPARATOR, null, Boolean.TRUE, true, false);
+        StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, null, Boolean.TRUE, true, false);
   }
 
   /**
@@ -910,8 +938,7 @@ public class LogicalPlanConfigurationTest {
   public void testPortLevelAmbiguousAttributeSimple()
   {
     testAttributeAmbiguousSimpleHelper(Context.OperatorContext.AUTO_RECORD, Context.PortContext.AUTO_RECORD,
-                                       StreamingApplication.DT_PREFIX + "port" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                       "*" + LogicalPlanConfiguration.KEY_SEPARATOR, null, Boolean.TRUE, false, true);
+        StreamingApplication.DT_PREFIX + "port" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, null, Boolean.TRUE, false, true);
   }
 
   /**
@@ -921,7 +948,7 @@ public class LogicalPlanConfigurationTest {
   public void testRootLevelAmbiguousAttributeComplex()
   {
     testAttributeAmbiguousSimpleHelper(Context.OperatorContext.AUTO_RECORD, Context.PortContext.AUTO_RECORD, StreamingApplication.DT_PREFIX,
-                                       PortContext.class.getCanonicalName(), Boolean.TRUE, false, true);
+        PortContext.class.getCanonicalName(), Boolean.TRUE, false, true);
   }
 
   /**
@@ -931,9 +958,8 @@ public class LogicalPlanConfigurationTest {
   public void testApplicationLevelAmbiguousAttributeComplex()
   {
     testAttributeAmbiguousSimpleHelper(Context.OperatorContext.AUTO_RECORD, Context.PortContext.AUTO_RECORD,
-                                       StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                       "*" + LogicalPlanConfiguration.KEY_SEPARATOR, PortContext.class.getCanonicalName(),
-                                       Boolean.TRUE, false, true);
+        StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, PortContext.class.getCanonicalName(),
+        Boolean.TRUE, false, true);
   }
 
   /**
@@ -943,9 +969,8 @@ public class LogicalPlanConfigurationTest {
   public void testOperatorLevelAmbiguousAttributeComplex()
   {
     testAttributeAmbiguousSimpleHelper(Context.OperatorContext.AUTO_RECORD, Context.PortContext.AUTO_RECORD,
-                                       StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                       "*" + LogicalPlanConfiguration.KEY_SEPARATOR, OperatorContext.class.getCanonicalName(),
-                                       Boolean.TRUE, true, false);
+        StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, OperatorContext.class.getCanonicalName(),
+        Boolean.TRUE, true, false);
   }
 
   /**
@@ -955,9 +980,8 @@ public class LogicalPlanConfigurationTest {
   public void testOperatorLevelAmbiguousAttributeComplex2()
   {
     testAttributeAmbiguousSimpleHelper(Context.OperatorContext.AUTO_RECORD, Context.PortContext.AUTO_RECORD,
-                                       StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                       "*" + LogicalPlanConfiguration.KEY_SEPARATOR, PortContext.class.getCanonicalName(),
-                                       Boolean.TRUE, false, true);
+        StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, PortContext.class.getCanonicalName(),
+        Boolean.TRUE, false, true);
   }
 
   /**
@@ -967,14 +991,13 @@ public class LogicalPlanConfigurationTest {
   public void testPortLevelAmbiguousAttributeComplex()
   {
     testAttributeAmbiguousSimpleHelper(Context.OperatorContext.AUTO_RECORD, Context.PortContext.AUTO_RECORD,
-                                       StreamingApplication.DT_PREFIX + "port" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                       "*" + LogicalPlanConfiguration.KEY_SEPARATOR, PortContext.class.getCanonicalName(),
-                                       Boolean.TRUE, false, true);
+        StreamingApplication.DT_PREFIX + "port" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, PortContext.class.getCanonicalName(),
+        Boolean.TRUE, false, true);
   }
 
   private void testAttributeAmbiguousSimpleHelper(Attribute<?> attributeObjOperator, Attribute<?> attributeObjPort,
-                                                  String root, String contextClass, Object val, boolean operatorSet,
-                                                  boolean portSet)
+      String root, String contextClass, Object val, boolean operatorSet,
+      boolean portSet)
   {
     Properties props = propertiesBuilder(attributeObjOperator.getSimpleName(), root, contextClass, val);
 
@@ -1006,16 +1029,15 @@ public class LogicalPlanConfigurationTest {
   @Test
   public void testApplicationLevelAttributeSimpleNameOperator()
   {
-    simpleAttributeOperatorHelper(OperatorContext.MEMORY_MB, StreamingApplication.DT_PREFIX + "application" +
-                                  LogicalPlanConfiguration.KEY_SEPARATOR + "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR,
-                                  true, 4096, true, true);
+    simpleAttributeOperatorHelper(OperatorContext.MEMORY_MB, StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR + "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR,
+        true, 4096, true, true);
   }
 
   private void simpleAttributeOperatorHelper(Attribute<?> attributeObj, String root, boolean simpleName,
-                                             Object val, boolean set, boolean scope)
+      Object val, boolean set, boolean scope)
   {
     Properties props = propertiesBuilderOperator(attributeObj.getSimpleName(), root, simpleName,
-                                                 val, scope);
+        val, scope);
 
     simpleAttributeOperatorHelperAssert(attributeObj, props, val, set);
   }
@@ -1062,60 +1084,56 @@ public class LogicalPlanConfigurationTest {
   public void testRootLevelAttributeSimpleNamePort()
   {
     simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX,
-                              true, (Integer)4096, true, true);
+        true, (Integer)4096, true, true);
   }
 
   @Test
   public void testRootLevelAttributeSimpleNamePortNoScope()
   {
     simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX,
-                              true, (Integer)4096, true, false);
+        true, (Integer)4096, true, false);
   }
 
   @Test
   public void testOperatorLevelAttributeSimpleNamePort()
   {
-    simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" +
-                              LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR,
-                              true, (Integer)4096, true, true);
+    simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR,
+        true, (Integer)4096, true, true);
   }
 
   @Test
   public void testApplicationLevelAttributeSimpleNamePort()
   {
-    simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "application" +
-                              LogicalPlanConfiguration.KEY_SEPARATOR + "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR,
-                              true, (Integer)4096, true, true);
+    simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR + "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR,
+        true, (Integer)4096, true, true);
   }
 
   @Test
   public void testRootLevelAttributeComplexNamePort()
   {
     simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX, false,
-                              (Integer)4096, true, true);
+        (Integer)4096, true, true);
   }
 
   @Test
   public void testRootLevelAttributeComplexNamePortNoScope()
   {
     simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX, false,
-                              (Integer)4096, true, false);
+        (Integer)4096, true, false);
   }
 
   @Test
   public void testOperatorLevelAttributeComplexNamePort()
   {
-    simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" +
-                              LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR,
-                              false, (Integer)4096, true, true);
+    simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR,
+        false, (Integer)4096, true, true);
   }
 
   @Test
   public void testApplicationLevelAttributeComplexNamePort()
   {
-    simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "application" +
-                              LogicalPlanConfiguration.KEY_SEPARATOR + "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR,
-                              false, (Integer)4096, true, true);
+    simpleAttributePortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR + "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR,
+        false, (Integer)4096, true, true);
   }
 
   /* Input port tests */
@@ -1123,22 +1141,20 @@ public class LogicalPlanConfigurationTest {
   public void testRootLevelAttributeSimpleNameInputPort()
   {
     simpleAttributeInputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX, true,
-                                   (Integer)4096, true);
+        (Integer)4096, true);
   }
 
   @Test
   public void testOperatorLevelAttributeSimpleNameInputPort()
   {
-    simpleAttributeInputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                   "*" + LogicalPlanConfiguration.KEY_SEPARATOR, true, (Integer)4096, true);
+    simpleAttributeInputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, true, (Integer)4096, true);
   }
 
   @Test
   public void testApplicationLevelAttributeSimpleNameInputPort()
   {
-    simpleAttributeInputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "application" +
-                                   LogicalPlanConfiguration.KEY_SEPARATOR + "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR,
-                                   true, (Integer)4096, true);
+    simpleAttributeInputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR + "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR,
+        true, (Integer)4096, true);
   }
 
   @Test
@@ -1150,17 +1166,15 @@ public class LogicalPlanConfigurationTest {
   @Test
   public void testOperatorLevelAttributeComplexNameInputPort()
   {
-    simpleAttributeInputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" +
-                                   LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, false,
-                                   (Integer)4096, true);
+    simpleAttributeInputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, false,
+        (Integer)4096, true);
   }
 
   @Test
   public void testApplicationLevelAttributeComplexNameInputPort()
   {
-    simpleAttributeInputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "application" +
-                                   LogicalPlanConfiguration.KEY_SEPARATOR + "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR,
-                                   false, (Integer)4096, true);
+    simpleAttributeInputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR + "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR,
+        false, (Integer)4096, true);
   }
 
   /* Output port tests */
@@ -1173,15 +1187,14 @@ public class LogicalPlanConfigurationTest {
   @Test
   public void testOperatorLevelAttributeSimpleNameOutputPort()
   {
-    simpleAttributeOutputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                    "*" + LogicalPlanConfiguration.KEY_SEPARATOR, true, (Integer)4096, true);
+    simpleAttributeOutputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, true, (Integer)4096, true);
   }
 
   @Test
   public void testApplicationLevelAttributeSimpleNameOutputPort()
   {
     simpleAttributeOutputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                    "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR, true, (Integer)4096, true);
+        "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR, true, (Integer)4096, true);
   }
 
   @Test
@@ -1193,15 +1206,14 @@ public class LogicalPlanConfigurationTest {
   @Test
   public void testOperatorLevelAttributeComplexNameOutputPort()
   {
-    simpleAttributeOutputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                    "*" + LogicalPlanConfiguration.KEY_SEPARATOR, false, (Integer)4096, true);
+    simpleAttributeOutputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "operator" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR, false, (Integer)4096, true);
   }
 
   @Test
   public void testApplicationLevelAttributeComplexNameOutputPort()
   {
     simpleAttributeOutputPortHelper(PortContext.QUEUE_CAPACITY, StreamingApplication.DT_PREFIX + "application" + LogicalPlanConfiguration.KEY_SEPARATOR +
-                                    "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR, false, (Integer)4096, true);
+        "SimpleTestApp" + LogicalPlanConfiguration.KEY_SEPARATOR, false, (Integer)4096, true);
   }
 
   /* Helpers for building ports */
@@ -1351,7 +1363,7 @@ public class LogicalPlanConfigurationTest {
 
   private Properties propertiesBuilderInputPort(String attributeName, String root, boolean simpleName, Object val)
   {
-    String contextClass = simpleName ? null: PortContext.class.getCanonicalName();
+    String contextClass = simpleName ? null : PortContext.class.getCanonicalName();
 
     root += "inputport" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR;
 
@@ -1360,7 +1372,7 @@ public class LogicalPlanConfigurationTest {
 
   private Properties propertiesBuilderOutputPort(String attributeName, String root, boolean simpleName, Object val)
   {
-    String contextClass = simpleName ? null: PortContext.class.getCanonicalName();
+    String contextClass = simpleName ? null : PortContext.class.getCanonicalName();
 
     root += "outputport" + LogicalPlanConfiguration.KEY_SEPARATOR + "*" + LogicalPlanConfiguration.KEY_SEPARATOR;
 
@@ -1399,65 +1411,82 @@ public class LogicalPlanConfigurationTest {
 
   private static final Logger logger = LoggerFactory.getLogger(LogicalPlanConfigurationTest.class);
 
-  public static class TestApplication implements StreamingApplication {
+  public static class TestApplication implements StreamingApplication
+  {
     Integer testprop1;
     Integer testprop2;
     Integer testprop3;
     TestInnerClass inncls;
-    public TestApplication() {
-      inncls=new TestInnerClass();
+
+    public TestApplication()
+    {
+      inncls = new TestInnerClass();
     }
 
-    public Integer getTestprop1() {
+    public Integer getTestprop1()
+    {
       return testprop1;
     }
 
-    public void setTestprop1(Integer testprop1) {
+    public void setTestprop1(Integer testprop1)
+    {
       this.testprop1 = testprop1;
     }
 
-    public Integer getTestprop2() {
+    public Integer getTestprop2()
+    {
       return testprop2;
     }
 
-    public void setTestprop2(Integer testprop2) {
+    public void setTestprop2(Integer testprop2)
+    {
       this.testprop2 = testprop2;
     }
 
-    public Integer getTestprop3() {
+    public Integer getTestprop3()
+    {
       return testprop3;
     }
 
-    public void setTestprop3(Integer testprop3) {
+    public void setTestprop3(Integer testprop3)
+    {
       this.testprop3 = testprop3;
     }
 
-    public TestInnerClass getInncls() {
+    public TestInnerClass getInncls()
+    {
       return inncls;
     }
 
-    public void setInncls(TestInnerClass inncls) {
+    public void setInncls(TestInnerClass inncls)
+    {
       this.inncls = inncls;
     }
 
     @Override
-    public void populateDAG(DAG dag, Configuration conf) {
+    public void populateDAG(DAG dag, Configuration conf)
+    {
 
     }
-    public class TestInnerClass{
+
+    public class TestInnerClass
+    {
       Integer a;
 
-      public Integer getA() {
+      public Integer getA()
+      {
         return a;
       }
 
-      public void setA(Integer a) {
+      public void setA(Integer a)
+      {
         this.a = a;
       }
     }
   }
 
-  public static class TestStatsListener implements StatsListener{
+  public static class TestStatsListener implements StatsListener
+  {
 
     private int intProp;
 
@@ -1493,15 +1522,19 @@ public class LogicalPlanConfigurationTest {
     @Override
     public boolean equals(Object obj)
     {
-      if (this == obj)
+      if (this == obj) {
         return true;
-      if (obj == null)
+      }
+      if (obj == null) {
         return false;
-      if (getClass() != obj.getClass())
+      }
+      if (getClass() != obj.getClass()) {
         return false;
-      TestStatsListener other = (TestStatsListener) obj;
-      if (intProp != other.intProp)
+      }
+      TestStatsListener other = (TestStatsListener)obj;
+      if (intProp != other.intProp) {
         return false;
+      }
       return true;
     }
   }
@@ -1525,9 +1558,9 @@ public class LogicalPlanConfigurationTest {
       dag.addStream("s1", gt1.outport1, gt2.inport1);
       dag.addStream("s2", gt2.outport1, gt3.inport1, gt3.inport2);
     }
-  };
+  }
 
-  public static interface MockContext1 extends Context
+  public interface MockContext1 extends Context
   {
     /**
      * Number of tuples the poll buffer can cache without blocking the input stream to the port.
@@ -1538,7 +1571,7 @@ public class LogicalPlanConfigurationTest {
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(MockContext1.class);
   }
 
-  public static interface MockContext2 extends Context
+  public interface MockContext2 extends Context
   {
     /**
      * Number of tuples the poll buffer can cache without blocking the input stream to the port.
@@ -1549,10 +1582,10 @@ public class LogicalPlanConfigurationTest {
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(MockContext2.class);
   }
 
-  @ApplicationAnnotation(name="SimpleTestApp")
+  @ApplicationAnnotation(name = "SimpleTestApp")
   public static class SimpleTestApplicationWithName extends SimpleTestApplication
   {
-  };
+  }
 
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfigurationTest.class);
 }

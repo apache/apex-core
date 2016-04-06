@@ -18,18 +18,27 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.common.util.Pair;
-import com.datatorrent.stram.util.FSPartFileCollection;
-import java.io.*;
-import java.util.*;
-import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.fs.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.std.ToStringSerializer;
 import org.codehaus.jettison.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.fs.Path;
+
+import com.datatorrent.common.util.Pair;
+import com.datatorrent.stram.util.FSPartFileCollection;
 
 /**
  * <p>EventsAgent class.</p>
@@ -99,33 +108,26 @@ public final class EventsAgent extends FSPartFileAgent
 
   public List<EventInfo> getLatestEvents(String appId, int limit)
   {
-    LinkedList<EventInfo> result = new LinkedList<EventInfo>();
+    LinkedList<EventInfo> result = new LinkedList<>();
     String dir = getEventsDirectory(appId);
     if (dir == null) {
       return null;
     }
     long totalNumEvents = 0;
-    IndexFileBufferedReader ifbr = null;
-    LinkedList<Pair<String, Long>> partFiles = new LinkedList<Pair<String, Long>>();
-    try {
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+    LinkedList<Pair<String, Long>> partFiles = new LinkedList<>();
+    try (IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir)) {
       EventsIndexLine indexLine;
       while ((indexLine = (EventsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
           continue;
         }
-        partFiles.add(new Pair<String, Long>(indexLine.partFile, indexLine.numEvents));
+        partFiles.add(new Pair<>(indexLine.partFile, indexLine.numEvents));
         totalNumEvents += indexLine.numEvents;
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Got exception when reading events", ex);
       return result;
     }
-    finally {
-      IOUtils.closeQuietly(ifbr);
-    }
-
     long offset = 0;
     while (totalNumEvents > limit && !partFiles.isEmpty()) {
       Pair<String, Long> head = partFiles.getFirst();
@@ -138,19 +140,14 @@ public final class EventsAgent extends FSPartFileAgent
     }
     String lastProcessPartFile = null;
     for (Pair<String, Long> partFile : partFiles) {
-      BufferedReader partBr = null;
-      try {
-        partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, partFile.first))));
+      try (BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, partFile.first))))) {
         processPartFile(partBr, null, null, offset, limit, result);
-       offset = 0;
+        offset = 0;
         lastProcessPartFile = partFile.first;
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         LOG.warn("Got exception when reading events", ex);
       }
-      finally {
-        IOUtils.closeQuietly(partBr);
-      }
+
     }
 
     BufferedReader partBr = null;
@@ -160,11 +157,9 @@ public final class EventsAgent extends FSPartFileAgent
         partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, extraPartFile))));
         processPartFile(partBr, null, null, 0, Integer.MAX_VALUE, result);
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       // ignore
-    }
-    finally {
+    } finally {
       IOUtils.closeQuietly(partBr);
     }
     while (result.size() > limit) {
@@ -175,14 +170,12 @@ public final class EventsAgent extends FSPartFileAgent
 
   public List<EventInfo> getEvents(String appId, Long fromTime, Long toTime, long offset, int limit)
   {
-    List<EventInfo> result = new ArrayList<EventInfo>();
+    List<EventInfo> result = new ArrayList<>();
     String dir = getEventsDirectory(appId);
     if (dir == null) {
       return null;
     }
-    IndexFileBufferedReader ifbr = null;
-    try {
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+    try (IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir)) {
       EventsIndexLine indexLine;
       String lastProcessPartFile = null;
       while ((indexLine = (EventsIndexLine)ifbr.readIndexLine()) != null) {
@@ -202,36 +195,28 @@ public final class EventsAgent extends FSPartFileAgent
           }
         }
 
-        BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))));
-        try {
+        try (BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))))) {
           offset = processPartFile(partBr, fromTime, toTime, offset, limit, result);
           limit -= result.size();
-        }
-        finally {
-          partBr.close();
         }
       }
       BufferedReader partBr = null;
       try {
         String extraPartFile = getNextPartFile(lastProcessPartFile);
         if (extraPartFile != null && limit > 0) {
-          partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, extraPartFile))));
+          partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem()
+              .open(new Path(dir, extraPartFile))));
           processPartFile(partBr, fromTime, toTime, offset, limit, result);
         }
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         // ignore
-      }
-      finally {
+      } finally {
         IOUtils.closeQuietly(partBr);
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Got exception when reading events", ex);
     }
-    finally {
-      IOUtils.closeQuietly(ifbr);
-    }
+
     return result;
   }
 
@@ -252,8 +237,7 @@ public final class EventsAgent extends FSPartFileAgent
       if ((fromTime == null || ev.timestamp >= fromTime) && (toTime == null || ev.timestamp <= toTime)) {
         if (offset > 0) {
           offset--;
-        }
-        else if (limit-- > 0) {
+        } else if (limit-- > 0) {
           ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
           ev.id = Long.valueOf((String)ev.data.get("id"));
           ev.data.remove("id");

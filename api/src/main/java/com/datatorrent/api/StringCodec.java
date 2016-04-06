@@ -62,7 +62,7 @@ public interface StringCodec<T>
    */
   String toString(T pojo);
 
-  public class String2String implements StringCodec<String>, Serializable
+  class String2String implements StringCodec<String>, Serializable
   {
     @Override
     public String fromString(String string)
@@ -79,7 +79,7 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201310141156L;
   }
 
-  public class Integer2String implements StringCodec<Integer>, Serializable
+  class Integer2String implements StringCodec<Integer>, Serializable
   {
     @Override
     public Integer fromString(String string)
@@ -96,7 +96,7 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201310141157L;
   }
 
-  public class Long2String implements StringCodec<Long>, Serializable
+  class Long2String implements StringCodec<Long>, Serializable
   {
     @Override
     public Long fromString(String string)
@@ -113,7 +113,7 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201310141158L;
   }
 
-  public class Boolean2String implements StringCodec<Boolean>, Serializable
+  class Boolean2String implements StringCodec<Boolean>, Serializable
   {
     @Override
     public Boolean fromString(String string)
@@ -146,7 +146,7 @@ public interface StringCodec<T>
    *
    * @param <T> Type of the object which is converted to/from String
    */
-  public class Object2String<T> implements StringCodec<T>, Serializable
+  class Object2String<T> implements StringCodec<T>, Serializable
   {
     public final String separator;
     public final String propertySeparator;
@@ -217,7 +217,7 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201311141853L;
   }
 
-  public class Map2String<K, V> implements StringCodec<Map<K, V>>, Serializable
+  class Map2String<K, V> implements StringCodec<Map<K, V>>, Serializable
   {
     private final StringCodec<K> keyCodec;
     private final StringCodec<V> valueCodec;
@@ -274,7 +274,7 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201402272053L;
   }
 
-  public class Collection2String<T> implements StringCodec<Collection<T>>, Serializable
+  class Collection2String<T> implements StringCodec<Collection<T>>, Serializable
   {
     private final String separator;
     private final StringCodec<T> codec;
@@ -330,7 +330,7 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201401091806L;
   }
 
-  public class Enum2String<T extends Enum<T>> implements StringCodec<T>, Serializable
+  class Enum2String<T extends Enum<T>> implements StringCodec<T>, Serializable
   {
     private final Class<T> clazz;
 
@@ -354,7 +354,7 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201310181757L;
   }
 
-  public class Class2String<T> implements StringCodec<Class<? extends T>>, Serializable
+  class Class2String<T> implements StringCodec<Class<? extends T>>, Serializable
   {
     @Override
     @SuppressWarnings({"BroadCatchBlock", "TooBroadCatch"})
@@ -378,7 +378,7 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201312082053L;
   }
 
-  public class JsonStringCodec<T> implements StringCodec<T>, Serializable
+  class JsonStringCodec<T> implements StringCodec<T>, Serializable
   {
     private static final long serialVersionUID = 2513932518264776006L;
     Class<?> clazz;

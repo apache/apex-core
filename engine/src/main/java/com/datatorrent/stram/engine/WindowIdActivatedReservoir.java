@@ -70,8 +70,7 @@ public class WindowIdActivatedReservoir implements SweepableReservoir
 
     try {
       return est;
-    }
-    finally {
+    } finally {
       est = null;
     }
   }
@@ -81,8 +80,7 @@ public class WindowIdActivatedReservoir implements SweepableReservoir
   {
     try {
       return this.sink;
-    }
-    finally {
+    } finally {
       this.sink = sink;
     }
   }

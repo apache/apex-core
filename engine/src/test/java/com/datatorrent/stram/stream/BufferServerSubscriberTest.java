@@ -21,15 +21,14 @@ package com.datatorrent.stram.stream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.junit.Assert;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
-
 import com.datatorrent.bufferserver.packet.PayloadTuple;
 import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.engine.SweepableReservoir;
@@ -50,8 +49,7 @@ public class BufferServerSubscriberTest
       {
         if (fragment.offset == 0 && fragment.length == fragment.buffer.length) {
           return fragment.buffer;
-        }
-        else {
+        } else {
           return Arrays.copyOfRange(fragment.buffer, fragment.offset, fragment.offset + fragment.length);
         }
       }
@@ -112,7 +110,7 @@ public class BufferServerSubscriberTest
     int i = 0;
     while (i++ < 10) {
       Slice fragment = myserde.toByteArray(new byte[]{(byte)i});
-      byte buffer[] = PayloadTuple.getSerializedTuple(myserde.getPartition(i), fragment);
+      byte[] buffer = PayloadTuple.getSerializedTuple(myserde.getPartition(i), fragment);
       bss.onMessage(buffer, 0, buffer.length);
     }
 

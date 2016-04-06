@@ -23,6 +23,7 @@ import java.util.Set;
 
 import com.datatorrent.api.Sink;
 import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
+
 /**
  * <p>PartitionAwareSinkForPersistence class.</p>
  *
@@ -47,9 +48,9 @@ public class PartitionAwareSinkForPersistence extends PartitionAwareSink<Object>
 
   private static Set<Integer> createPartitionKeys(int mask)
   {
-    Set<Integer> partitions = new HashSet<Integer>();
+    Set<Integer> partitions = new HashSet<>();
     // Add all entries in mask to partitions keys
-    for(int i =0 ; i <= mask; i++) {
+    for (int i = 0; i <= mask; i++) {
       partitions.add(i);
     }
     return partitions;

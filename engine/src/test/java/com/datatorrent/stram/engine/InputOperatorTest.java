@@ -18,20 +18,6 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
-import com.datatorrent.common.util.BaseOperator;
-import com.datatorrent.common.util.AsyncFSStorageAgent;
-import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.netlet.util.CircularBuffer;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,12 +27,26 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.common.util.BaseOperator;
+import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
+
 /**
  *
  */
 public class InputOperatorTest
 {
-  static HashMap<String, List<?>> collections = new HashMap<String, List<?>>();
+  static HashMap<String, List<?>> collections = new HashMap<>();
   static AtomicInteger tupleCount = new AtomicInteger();
 
   public static class EvenOddIntegerGeneratorInputOperator implements InputOperator, com.datatorrent.api.Operator.ActivationListener<OperatorContext>
@@ -92,8 +92,8 @@ public class InputOperatorTest
               (i % 2 == 0 ? evenBuffer : oddBuffer).put(i++);
               Thread.sleep(20);
             }
-          }
-          catch (InterruptedException ie) {
+          } catch (InterruptedException ie) {
+            // break out
           }
         }
       };
@@ -120,8 +120,8 @@ public class InputOperatorTest
 
   public static class CollectorModule<T> extends BaseOperator
   {
-    public final transient CollectorInputPort<T> even = new CollectorInputPort<T>("even", this);
-    public final transient CollectorInputPort<T> odd = new CollectorInputPort<T>("odd", this);
+    public final transient CollectorInputPort<T> even = new CollectorInputPort<>("even", this);
+    public final transient CollectorInputPort<T> odd = new CollectorInputPort<>("odd", this);
   }
 
   @Test
@@ -140,9 +140,11 @@ public class InputOperatorTest
     lc.setHeartbeatMonitoringEnabled(false);
 
     lc.runAsync();
-    WaitCondition c = new WaitCondition() {
+    WaitCondition c = new WaitCondition()
+    {
       @Override
-      public boolean isComplete() {
+      public boolean isComplete()
+      {
         return tupleCount.get() > 2;
       }
     };

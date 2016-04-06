@@ -21,17 +21,22 @@ package com.datatorrent.stram;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.common.codec.JsonStreamCodec;
-
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.RecordField;
-
+import com.datatorrent.common.codec.JsonStreamCodec;
 import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.util.FSPartFileCollection;
 import com.datatorrent.stram.webapp.ContainerInfo;
@@ -48,13 +53,13 @@ public class FSStatsRecorder implements StatsRecorder
   private static final Logger LOG = LoggerFactory.getLogger(FSStatsRecorder.class);
   private String basePath = ".";
   private FSPartFileCollection containersStorage;
-  private final Map<String, FSPartFileCollection> logicalOperatorStorageMap = new ConcurrentHashMap<String, FSPartFileCollection>();
-  private final Map<String, Integer> knownContainers = new HashMap<String, Integer>();
-  private final Set<String> knownOperators = new HashSet<String>();
+  private final Map<String, FSPartFileCollection> logicalOperatorStorageMap = new ConcurrentHashMap<>();
+  private final Map<String, Integer> knownContainers = new HashMap<>();
+  private final Set<String> knownOperators = new HashSet<>();
   private transient StreamCodec<Object> streamCodec;
-  private final Map<Class<?>, List<Field>> metaFields = new HashMap<Class<?>, List<Field>>();
-  private final Map<Class<?>, List<Field>> statsFields = new HashMap<Class<?>, List<Field>>();
-  private final BlockingQueue<WriteOperation> queue = new LinkedBlockingQueue<WriteOperation>();
+  private final Map<Class<?>, List<Field>> metaFields = new HashMap<>();
+  private final Map<Class<?>, List<Field>> statsFields = new HashMap<>();
+  private final BlockingQueue<WriteOperation> queue = new LinkedBlockingQueue<>();
   private final StatsRecorderThread statsRecorderThread = new StatsRecorderThread();
 
   private class StatsRecorderThread extends Thread
@@ -67,8 +72,7 @@ public class FSStatsRecorder implements StatsRecorder
           WriteOperation wo = queue.take();
           if (wo.meta) {
             wo.storage.writeMetaData(wo.bytes);
-          }
-          else {
+          } else {
             wo.storage.writeDataItem(wo.bytes, true);
           }
           Thread.yield();
@@ -78,11 +82,9 @@ public class FSStatsRecorder implements StatsRecorder
               operatorStorage.flushData();
             }
           }
-        }
-        catch (InterruptedException ex) {
+        } catch (InterruptedException ex) {
           return;
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           LOG.error("Caught Exception", ex);
         }
       }
@@ -90,12 +92,15 @@ public class FSStatsRecorder implements StatsRecorder
 
   }
 
-  private static class WriteOperation {
-    WriteOperation(FSPartFileCollection storage, byte[] bytes, boolean meta) {
+  private static class WriteOperation
+  {
+    WriteOperation(FSPartFileCollection storage, byte[] bytes, boolean meta)
+    {
       this.storage = storage;
       this.bytes = bytes;
       this.meta = meta;
     }
+
     FSPartFileCollection storage;
     byte[] bytes;
     boolean meta;
@@ -109,14 +114,13 @@ public class FSStatsRecorder implements StatsRecorder
   public void setup()
   {
     try {
-      streamCodec = new JsonStreamCodec<Object>();
+      streamCodec = new JsonStreamCodec<>();
       containersStorage = new FSPartFileCollection();
       containersStorage.setBasePath(basePath + "/containers");
       containersStorage.setup();
       containersStorage.writeMetaData((VERSION + "\n").getBytes());
       statsRecorderThread.start();
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       throw new RuntimeException(ex);
     }
   }
@@ -157,8 +161,7 @@ public class FSStatsRecorder implements StatsRecorder
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
         queue.add(new WriteOperation(containersStorage, bos.toByteArray(), true));
-      }
-      else {
+      } else {
         containerIndex = knownContainers.get(entry.getKey());
       }
       Map<String, Object> fieldMap = extractRecordFields(containerInfo, "stats");
@@ -183,8 +186,7 @@ public class FSStatsRecorder implements StatsRecorder
         operatorStorage.setup();
         operatorStorage.writeMetaData((VERSION + "\n").getBytes());
         logicalOperatorStorageMap.put(operatorInfo.name, operatorStorage);
-      }
-      else {
+      } else {
         operatorStorage = logicalOperatorStorageMap.get(operatorInfo.name);
       }
       if (!knownOperators.contains(operatorInfo.id)) {
@@ -209,18 +211,17 @@ public class FSStatsRecorder implements StatsRecorder
 
   public Map<String, Object> extractRecordFields(Object o, String type)
   {
-    Map<String, Object> fieldMap = new HashMap<String, Object>();
+    Map<String, Object> fieldMap = new HashMap<>();
     try {
       Map<Class<?>, List<Field>> cacheFields = null;
       if (type.equals("meta")) {
         cacheFields = metaFields;
-      }
-      else if (type.equals("stats")) {
+      } else if (type.equals("stats")) {
         cacheFields = statsFields;
       }
       List<Field> fieldList;
       if (cacheFields == null || !cacheFields.containsKey(o.getClass())) {
-        fieldList = new ArrayList<Field>();
+        fieldList = new ArrayList<>();
         for (Class<?> c = o.getClass(); c != Object.class; c = c.getSuperclass()) {
           Field[] fields = c.getDeclaredFields();
           for (Field field : fields) {
@@ -234,16 +235,14 @@ public class FSStatsRecorder implements StatsRecorder
         if (cacheFields != null) {
           cacheFields.put(o.getClass(), fieldList);
         }
-      }
-      else {
+      } else {
         fieldList = cacheFields.get(o.getClass());
       }
 
       for (Field field : fieldList) {
         fieldMap.put(field.getName(), field.get(o));
       }
-    }
-    catch (IllegalAccessException ex) {
+    } catch (IllegalAccessException ex) {
       throw new RuntimeException(ex);
     }
     return fieldMap;

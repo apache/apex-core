@@ -21,11 +21,12 @@ package com.datatorrent.stram;
 import java.io.File;
 import java.util.Map;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
-import org.junit.Assert;
-import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -34,7 +35,6 @@ import com.google.common.collect.Sets;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -43,10 +43,12 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 
-public class LocalityTest {
+public class LocalityTest
+{
 
   @Test
-  public void testNodeLocal() {
+  public void testNodeLocal()
+  {
 
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, new File("target", LocalityTest.class.getName()).getAbsolutePath());
@@ -77,11 +79,11 @@ public class LocalityTest {
 
     int containerMem = 2000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
-    NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-    		NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
+    NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0), NodeState.RUNNING, "httpAddress",
+        "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
-    nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
+    nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0), NodeState.RUNNING, "httpAddress",
+        "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources
@@ -106,7 +108,7 @@ public class LocalityTest {
         if (oper.getNodeLocalOperators().getOperatorSet().size() > 1) {
           String expHost = null;
           for (PTOperator nodeLocalOper : oper.getNodeLocalOperators().getOperatorSet()) {
-            Assert.assertNotNull("host null "+nodeLocalOper.getContainer(), nodeLocalOper.getContainer().host);
+            Assert.assertNotNull("host null " + nodeLocalOper.getContainer(), nodeLocalOper.getContainer().host);
             if (expHost == null) {
               expHost = nodeLocalOper.getContainer().host;
             } else {

@@ -18,7 +18,11 @@
  */
 package com.datatorrent.stram.webapp;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -73,7 +77,7 @@ public class OperatorInfo
   public long recoveryWindowId;
   public long currentWindowId;
   @RecordField(type = "stats")
-  public List<PortInfo> ports = new ArrayList<PortInfo>();
+  public List<PortInfo> ports = new ArrayList<>();
   @RecordField(type = "meta")
   public String unifierClass;
   @RecordField(type = "meta")
@@ -83,14 +87,14 @@ public class OperatorInfo
   public Object counters;
   @RecordField(type = "stats")
   public Map<String, Object> metrics;
-  @RecordField(type="stats")
+  @RecordField(type = "stats")
   public long checkpointStartTime;
-  @RecordField(type="stats")
+  @RecordField(type = "stats")
   public long checkpointTime;
-  @RecordField(type="stats")
+  @RecordField(type = "stats")
   public long checkpointTimeMA;
+
   /**
-   *
    * @param info
    */
   public void addPort(PortInfo info)
@@ -99,9 +103,7 @@ public class OperatorInfo
   }
 
   /**
-   *
    * @return
-   *
    */
   public Collection<PortInfo> getPorts()
   {

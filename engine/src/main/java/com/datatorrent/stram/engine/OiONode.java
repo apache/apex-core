@@ -93,8 +93,7 @@ public class OiONode extends GenericNode
             if (checkpointWindowCount == 0) {
               checkpoint(t.getWindowId());
               lastCheckpointWindowId = t.getWindowId();
-            }
-            else {
+            } else {
               doCheckpoint = true;
             }
 

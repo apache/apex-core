@@ -28,9 +28,11 @@ import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecret
 public class StramDelegationTokenManager extends AbstractDelegationTokenSecretManager<StramDelegationTokenIdentifier>
 {
 
-  public StramDelegationTokenManager(long delegationKeyUpdateInterval, long delegationTokenMaxLifetime, long delegationTokenRenewInterval,
-                                     long delegationTokenRemoverScanInterval) {
-    super(delegationKeyUpdateInterval,delegationTokenMaxLifetime,delegationTokenRenewInterval,delegationTokenRemoverScanInterval);
+  public StramDelegationTokenManager(long delegationKeyUpdateInterval, long delegationTokenMaxLifetime,
+      long delegationTokenRenewInterval, long delegationTokenRemoverScanInterval)
+  {
+    super(delegationKeyUpdateInterval, delegationTokenMaxLifetime, delegationTokenRenewInterval,
+        delegationTokenRemoverScanInterval);
   }
 
   @Override

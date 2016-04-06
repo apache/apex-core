@@ -153,7 +153,7 @@ public class StramClient
   };
 
   private static final Class<?>[] DATATORRENT_SECURITY_CLASSES =
-  (Class<?>[]) ArrayUtils.addAll(DATATORRENT_CLASSES, DATATORRENT_SECURITY_SPECIFIC_CLASSES);
+      (Class<?>[])ArrayUtils.addAll(DATATORRENT_CLASSES, DATATORRENT_SECURITY_SPECIFIC_CLASSES);
 
   public StramClient(Configuration conf, LogicalPlan dag) throws Exception
   {
@@ -175,14 +175,13 @@ public class StramClient
 
   public static LinkedHashSet<String> findJars(LogicalPlan dag, Class<?>[] defaultClasses)
   {
-    List<Class<?>> jarClasses = new ArrayList<Class<?>>();
+    List<Class<?>> jarClasses = new ArrayList<>();
 
     for (String className : dag.getClassNames()) {
       try {
         Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(className);
         jarClasses.add(clazz);
-      }
-      catch (ClassNotFoundException e) {
+      } catch (ClassNotFoundException e) {
         throw new IllegalArgumentException("Failed to load class " + className, e);
       }
     }
@@ -202,8 +201,8 @@ public class StramClient
       LOG.debug("Deploy dependencies: {}", jarClasses);
     }
 
-    LinkedHashSet<String> localJarFiles = new LinkedHashSet<String>(); // avoid duplicates
-    HashMap<String, String> sourceToJar = new HashMap<String, String>();
+    LinkedHashSet<String> localJarFiles = new LinkedHashSet<>(); // avoid duplicates
+    HashMap<String, String> sourceToJar = new HashMap<>();
 
     for (Class<?> jarClass : jarClasses) {
       if (jarClass.getProtectionDomain().getCodeSource() == null) {
@@ -245,15 +244,13 @@ public class StramClient
       URI localFileURI = null;
       try {
         localFileURI = new URI(localFile);
-      }
-      catch (URISyntaxException e) {
+      } catch (URISyntaxException e) {
         throw new IOException(e);
       }
       if (localFileURI.getScheme() == null || localFileURI.getScheme().startsWith("file")) {
         LOG.info("Copy {} from local filesystem to {}", localFile, dst);
         fs.copyFromLocalFile(false, true, src, dst);
-      }
-      else {
+      } else {
         LOG.info("Copy {} from DFS to {}", localFile, dst);
         FileUtil.copy(fs, src, fs, dst, false, true, conf);
       }
@@ -279,7 +276,7 @@ public class StramClient
     InputStream logIs = recoveryHandler.getLog();
 
     // modify snapshot state to switch app id
-    ((StreamingContainerManager.CheckpointState) snapshot).setApplicationId(this.dag, conf);
+    ((StreamingContainerManager.CheckpointState)snapshot).setApplicationId(this.dag, conf);
     Path checkpointPath = new Path(newAppDir, LogicalPlan.SUBDIR_CHECKPOINTS);
 
     FileSystem fs = FileSystem.newInstance(origAppDir.toUri(), conf);
@@ -304,8 +301,7 @@ public class StramClient
           LOG.debug("Copying {} to {}", f.getPath(), targetPath);
           FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
           //FSUtil.copy(fs, f, fs, new Path(targetPath), false, false, conf);
-        }
-        else {
+        } else {
           LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
           //FSUtil.setPermission(fs, new Path(targetPath), new FsPermission((short)0777));
         }
@@ -324,16 +320,14 @@ public class StramClient
   {
     Class<?>[] defaultClasses;
 
-    if(applicationType.equals(YARN_APPLICATION_TYPE)) {
+    if (applicationType.equals(YARN_APPLICATION_TYPE)) {
       //TODO restrict the security check to only check if security is enabled for webservices.
-      if(UserGroupInformation.isSecurityEnabled()) {
+      if (UserGroupInformation.isSecurityEnabled()) {
         defaultClasses = DATATORRENT_SECURITY_CLASSES;
-      }
-      else {
+      } else {
         defaultClasses = DATATORRENT_CLASSES;
       }
-    }
-    else {
+    } else {
       throw new IllegalStateException(applicationType + " is not a valid application type.");
     }
 
@@ -344,8 +338,7 @@ public class StramClient
     }
 
     YarnClusterMetrics clusterMetrics = yarnClient.getYarnClusterMetrics();
-    LOG.info("Got Cluster metric info from ASM"
-      + ", numNodeManagers=" + clusterMetrics.getNumNodeManagers());
+    LOG.info("Got Cluster metric info from ASM, numNodeManagers={}", clusterMetrics.getNumNodeManagers());
 
     //GetClusterNodesRequest clusterNodesReq = Records.newRecord(GetClusterNodesRequest.class);
     //GetClusterNodesResponse clusterNodesResp = rmClient.clientRM.getClusterNodes(clusterNodesReq);
@@ -361,9 +354,7 @@ public class StramClient
     List<QueueUserACLInfo> listAclInfo = yarnClient.getQueueAclsInfo();
     for (QueueUserACLInfo aclInfo : listAclInfo) {
       for (QueueACL userAcl : aclInfo.getUserAcls()) {
-        LOG.info("User ACL Info for Queue"
-          + ", queueName=" + aclInfo.getQueueName()
-          + ", userAcl=" + userAcl.name());
+        LOG.info("User ACL Info for Queue queueName={}, userAcl={}", aclInfo.getQueueName(), userAcl.name());
       }
     }
 
@@ -376,9 +367,8 @@ public class StramClient
     LOG.info("Max mem capability of resources in this cluster " + maxMem);
     int amMemory = dag.getMasterMemoryMB();
     if (amMemory > maxMem) {
-      LOG.info("AM memory specified above max threshold of cluster. Using max value."
-        + ", specified=" + amMemory
-        + ", max=" + maxMem);
+      LOG.info("AM memory specified above max threshold of cluster. Using max value, specified={}, max={}",
+          amMemory, maxMem);
       amMemory = maxMem;
     }
 
@@ -417,17 +407,13 @@ public class StramClient
       }
 
       // For now, only getting tokens for the default file-system.
-      FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
-      try {
-        final Token<?> tokens[] = fs.addDelegationTokens(tokenRenewer, credentials);
+      try (FileSystem fs = StramClientUtils.newFileSystemInstance(conf)) {
+        final Token<?>[] tokens = fs.addDelegationTokens(tokenRenewer, credentials);
         if (tokens != null) {
           for (Token<?> token : tokens) {
             LOG.info("Got dt for " + fs.getUri() + "; " + token);
           }
         }
-      }
-      finally {
-        fs.close();
       }
 
       new ClientRMHelper(yarnClient, conf).addRMDelegationToken(tokenRenewer, credentials);
@@ -441,11 +427,10 @@ public class StramClient
     // set local resources for the application master
     // local files or archives as needed
     // In this scenario, the jar file for the application master is part of the local resources
-    Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
+    Map<String, LocalResource> localResources = new HashMap<>();
 
     // copy required jar files to dfs, to be localized for containers
-    FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
-    try {
+    try (FileSystem fs = StramClientUtils.newFileSystemInstance(conf)) {
       Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
       Path appPath;
       String configuredAppPath = dag.getValue(LogicalPlan.APPLICATION_PATH);
@@ -488,8 +473,8 @@ public class StramClient
         dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointPath.toString(), conf));
       }
 
-      if(dag.getAttributes().get(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR) == null){
-        dag.setAttribute(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR,new BasicContainerOptConfigurator());
+      if (dag.getAttributes().get(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR) == null) {
+        dag.setAttribute(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR, new BasicContainerOptConfigurator());
       }
 
       // Set the log4j properties if needed
@@ -532,7 +517,7 @@ public class StramClient
       //amContainer.setContainerTokens(containerToken);
       // Set the env variables to be setup in the env where the application master will be run
       LOG.info("Set the environment for the application master");
-      Map<String, String> env = new HashMap<String, String>();
+      Map<String, String> env = new HashMap<>();
 
       // Add application jar(s) location to classpath
       // At some point we should not be required to add
@@ -559,7 +544,7 @@ public class StramClient
       amContainer.setEnvironment(env);
 
       // Set the necessary command to execute the application master
-      ArrayList<CharSequence> vargs = new ArrayList<CharSequence>(30);
+      ArrayList<CharSequence> vargs = new ArrayList<>(30);
 
       // Set java executable command
       LOG.info("Setting up app master command");
@@ -572,8 +557,7 @@ public class StramClient
       if (dag.getMasterJVMOptions() != null) {
         vargs.add(dag.getMasterJVMOptions());
       }
-      Path tmpDir = new Path(ApplicationConstants.Environment.PWD.$(),
-        YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
+      Path tmpDir = new Path(ApplicationConstants.Environment.PWD.$(), YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
       vargs.add("-Djava.io.tmpdir=" + tmpDir);
       vargs.add("-Xmx" + (amMemory * 3 / 4) + "m");
       vargs.add("-XX:+HeapDumpOnOutOfMemoryError");
@@ -600,7 +584,7 @@ public class StramClient
       }
 
       LOG.info("Completed setting up app master command " + command.toString());
-      List<String> commands = new ArrayList<String>();
+      List<String> commands = new ArrayList<>();
       commands.add(command.toString());
       amContainer.setCommands(commands);
 
@@ -627,19 +611,16 @@ public class StramClient
       // Ignore the response as either a valid response object is returned on success
       // or an exception thrown to denote some form of a failure
       String specStr = Objects.toStringHelper("Submitting application: ")
-        .add("name", appContext.getApplicationName())
-        .add("queue", appContext.getQueue())
-        .add("user", UserGroupInformation.getLoginUser())
-        .add("resource", appContext.getResource())
-        .toString();
+          .add("name", appContext.getApplicationName())
+          .add("queue", appContext.getQueue())
+          .add("user", UserGroupInformation.getLoginUser())
+          .add("resource", appContext.getResource())
+          .toString();
       LOG.info(specStr);
       if (dag.isDebug()) {
         //LOG.info("Full submission context: " + appContext);
       }
       yarnClient.submitApplication(appContext);
-    }
-    finally {
-      fs.close();
     }
   }
 
@@ -672,18 +653,12 @@ public class StramClient
       @Override
       public boolean exitLoop(ApplicationReport report)
       {
-        LOG.info("Got application report from ASM for"
-          + ", appId=" + appId.getId()
-          + ", clientToken=" + report.getClientToAMToken()
-          + ", appDiagnostics=" + report.getDiagnostics()
-          + ", appMasterHost=" + report.getHost()
-          + ", appQueue=" + report.getQueue()
-          + ", appMasterRpcPort=" + report.getRpcPort()
-          + ", appStartTime=" + report.getStartTime()
-          + ", yarnAppState=" + report.getYarnApplicationState().toString()
-          + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
-          + ", appTrackingUrl=" + report.getTrackingUrl()
-          + ", appUser=" + report.getUser());
+        LOG.info("Got application report from ASM for, appId={}, clientToken={}, appDiagnostics={}, appMasterHost={}," +
+            "appQueue={}, appMasterRpcPort={}, appStartTime={}, yarnAppState={}, distributedFinalState={}, " +
+            "appTrackingUrl={}, appUser={}",
+            appId.getId(), report.getClientToAMToken(), report.getDiagnostics(), report.getHost(),
+            report.getQueue(), report.getRpcPort(), report.getStartTime(), report.getYarnApplicationState(),
+            report.getFinalApplicationStatus(), report.getTrackingUrl(), report.getUser());
         return false;
       }
 

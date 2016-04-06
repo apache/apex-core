@@ -24,6 +24,7 @@ import java.io.ObjectStreamException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -43,11 +44,10 @@ import org.apache.hadoop.fs.RemoteIterator;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.common.collect.Lists;
+import com.google.common.base.Throwables;
 
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
-import com.datatorrent.netlet.util.DTThrowable;
 
 /**
  * FSStorageAgent
@@ -107,7 +107,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
     } catch (Throwable t) {
       logger.debug("while saving {} {}", operatorId, window, t);
       stateSaved = false;
-      DTThrowable.rethrow(t);
+      throw Throwables.propagate(t);
     } finally {
       try {
         if (stream != null) {
@@ -158,7 +158,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
     if (!fileStatusRemoteIterator.hasNext()) {
       throw new IOException("Storage Agent has not saved anything yet!");
     }
-    List<Long> lwindows = Lists.newArrayList();
+    List<Long> lwindows = new ArrayList<>();
     do {
       FileStatus fileStatus = fileStatusRemoteIterator.next();
       String name = fileStatus.getPath().getName();
@@ -166,8 +166,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
         continue;
       }
       lwindows.add(STATELESS_CHECKPOINT_WINDOW_ID.equals(name) ? Stateless.WINDOW_ID : Long.parseLong(name, 16));
-    }
-    while (fileStatusRemoteIterator.hasNext());
+    } while (fileStatusRemoteIterator.hasNext());
     long[] windowIds = new long[lwindows.size()];
     for (int i = 0; i < windowIds.length; i++) {
       windowIds[i] = lwindows.get(i);

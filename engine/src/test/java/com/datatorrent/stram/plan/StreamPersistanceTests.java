@@ -18,16 +18,13 @@
  */
 package com.datatorrent.stram.plan;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
@@ -37,17 +34,28 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DAG.OperatorMeta;
 import com.datatorrent.api.DAG.StreamMeta;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.DefaultPartition;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.PartitionKeys;
-import com.datatorrent.api.*;
+import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.common.util.BaseOperator;
-import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StreamingContainerManager;
@@ -56,29 +64,30 @@ import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.DefaultKryoStreamCodec;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamPersistanceTests
 {
-  final static Logger logger = LoggerFactory.getLogger(StreamPersistanceTests.class);
+  static final Logger logger = LoggerFactory.getLogger(StreamPersistanceTests.class);
 
-  public static class TestRecieverOperator extends BaseOperator
+  public static class TestReceiverOperator extends BaseOperator
   {
-    public static volatile List<Object> results = new ArrayList<Object>();
+    public static volatile List<Object> results = new ArrayList<>();
     public volatile AtomicInteger size = new AtomicInteger(0);
 
     @InputPortFieldAnnotation(optional = true)
-    final public transient InputPort<Object> inport = new DefaultInputPort<Object>()
+    public final transient InputPort<Object> inport = new DefaultInputPort<Object>()
     {
       @Override
-      final public void process(Object t)
+      public final void process(Object t)
       {
         results.add(t);
         size.incrementAndGet();
@@ -88,13 +97,13 @@ public class StreamPersistanceTests
 
   public static class TestPersistanceOperator implements Operator
   {
-    public static volatile List<Object> results = new ArrayList<Object>();
+    public static volatile List<Object> results = new ArrayList<>();
 
     @InputPortFieldAnnotation(optional = true)
-    final public transient InputPort<Object> inport = new DefaultInputPort<Object>()
+    public final transient InputPort<Object> inport = new DefaultInputPort<Object>()
     {
       @Override
-      final public void process(Object t)
+      public final void process(Object t)
       {
         results.add(t);
       }
@@ -127,7 +136,7 @@ public class StreamPersistanceTests
     @Override
     public Collection definePartitions(Collection partitions, PartitioningContext context)
     {
-      Collection<Partition> newPartitions = new ArrayList<Partition>();
+      Collection<Partition> newPartitions = new ArrayList<>();
 
       int partitionMask = 0x03;
 
@@ -135,7 +144,7 @@ public class StreamPersistanceTests
       // Single partition with mask 0x03 and set {0}
       // First partition
       PartitionedTestPersistanceOperator newInstance = new PartitionedTestPersistanceOperator();
-      Partition partition = new DefaultPartition<PartitionedTestPersistanceOperator>(newInstance);
+      Partition partition = new DefaultPartition<>(newInstance);
       PartitionKeys value = new PartitionKeys(partitionMask, Sets.newHashSet(0));
       partition.getPartitionKeys().put(inport, value);
       newPartitions.add(partition);
@@ -154,46 +163,46 @@ public class StreamPersistanceTests
   {
 
     @InputPortFieldAnnotation(optional = true)
-    final public transient DefaultInputPort<Object> inputPort = new DefaultInputPort<Object>()
+    public final transient DefaultInputPort<Object> inputPort = new DefaultInputPort<Object>()
     {
       @Override
-      final public void process(Object t)
+      public final void process(Object t)
       {
         // Do nothing: Dummy operator for test
       }
     };
 
     @InputPortFieldAnnotation(optional = false)
-    final public transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<>();
   }
 
   public class TestOperatorWithMultipleNonOptionalInputPorts extends BaseOperator
   {
 
     @InputPortFieldAnnotation(optional = false)
-    final public transient DefaultInputPort<Object> inputPort1 = new DefaultInputPort<Object>()
+    public final transient DefaultInputPort<Object> inputPort1 = new DefaultInputPort<Object>()
     {
       @Override
-      final public void process(Object t)
+      public final void process(Object t)
       {
         // Do nothing: Dummy operator for test
       }
     };
 
     @InputPortFieldAnnotation(optional = false)
-    final public transient DefaultInputPort<Object> inputPort2 = new DefaultInputPort<Object>()
+    public final transient DefaultInputPort<Object> inputPort2 = new DefaultInputPort<Object>()
     {
       @Override
-      final public void process(Object t)
+      public final void process(Object t)
       {
         // Do nothing: Dummy operator for test
       }
     };
 
-    final public transient DefaultInputPort<Object> inputPort3 = new DefaultInputPort<Object>()
+    public final transient DefaultInputPort<Object> inputPort3 = new DefaultInputPort<Object>()
     {
       @Override
-      final public void process(Object t)
+      public final void process(Object t)
       {
         // Do nothing: Dummy operator for test
       }
@@ -217,7 +226,7 @@ public class StreamPersistanceTests
   {
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
-    TestRecieverOperator persister = new TestRecieverOperator();
+    TestReceiverOperator persister = new TestReceiverOperator();
     StreamMeta stream = dag.addStream("Stream1", input1.outport, x.inport1);
     stream.persistUsing("Stream1_persister",persister, persister.inport);
 
@@ -235,9 +244,9 @@ public class StreamPersistanceTests
     GenericTestOperator x2 = dag.addOperator("x2", new GenericTestOperator());
     GenericTestOperator x3 = dag.addOperator("x3", new GenericTestOperator());
 
-    TestRecieverOperator persister = new TestRecieverOperator();
-    TestRecieverOperator persister1 = new TestRecieverOperator();
-    TestRecieverOperator persister2 = new TestRecieverOperator();
+    TestReceiverOperator persister = new TestReceiverOperator();
+    TestReceiverOperator persister1 = new TestReceiverOperator();
+    TestReceiverOperator persister2 = new TestReceiverOperator();
 
     StreamMeta stream = dag.addStream("Stream1", input1.outport, x1.inport1, x2.inport1, x3.inport1);
 
@@ -310,13 +319,14 @@ public class StreamPersistanceTests
     // Test for input port belonging to different object
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
-    TestRecieverOperator persister = new TestRecieverOperator();
-    TestRecieverOperator persister1 = new TestRecieverOperator();
+    TestReceiverOperator persister = new TestReceiverOperator();
+    TestReceiverOperator persister1 = new TestReceiverOperator();
     StreamMeta stream = dag.addStream("Stream1", input1.outport, x.inport1);
     try {
       stream.persistUsing("Stream1_persister", persister, persister1.inport);
       Assert.fail("should throw Illegal argument exception: Port passed does not belong to operator class");
     } catch (IllegalArgumentException e) {
+      // all good
     }
 
     // Remove persist operator from dag
@@ -329,11 +339,11 @@ public class StreamPersistanceTests
     // Remove Stream and check if persist operator is removed
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
-    TestRecieverOperator persister = new TestRecieverOperator();
+    TestReceiverOperator persister = new TestReceiverOperator();
     StreamMeta stream = dag.addStream("Stream1", input1.outport, x.inport1);
     stream.persistUsing("Stream1_persister", persister, persister.inport);
 
-    ((LogicalPlan.StreamMeta) stream).remove();
+    ((LogicalPlan.StreamMeta)stream).remove();
 
     // Check operator is added to dag
     OperatorMeta persistOperatorMeta = dag.getOperatorMeta("Stream1_persister");
@@ -349,9 +359,9 @@ public class StreamPersistanceTests
     GenericTestOperator x2 = dag.addOperator("x2", new GenericTestOperator());
     GenericTestOperator x3 = dag.addOperator("x3", new GenericTestOperator());
 
-    TestRecieverOperator persister = new TestRecieverOperator();
-    TestRecieverOperator persister1 = new TestRecieverOperator();
-    TestRecieverOperator persister2 = new TestRecieverOperator();
+    TestReceiverOperator persister = new TestReceiverOperator();
+    TestReceiverOperator persister1 = new TestReceiverOperator();
+    TestReceiverOperator persister2 = new TestReceiverOperator();
 
     StreamMeta stream = dag.addStream("Stream1", input1.outport, x1.inport1, x2.inport1, x3.inport1);
 
@@ -391,7 +401,7 @@ public class StreamPersistanceTests
     GenericTestOperator x2 = dag.addOperator("x2", new GenericTestOperator());
     GenericTestOperator x3 = dag.addOperator("x3", new GenericTestOperator());
 
-    TestRecieverOperator persister = new TestRecieverOperator();
+    TestReceiverOperator persister = new TestReceiverOperator();
 
     StreamMeta stream = dag.addStream("Stream1", input1.outport, x1.inport1, x2.inport1, x3.inport1);
 
@@ -413,7 +423,7 @@ public class StreamPersistanceTests
   {
     AscendingNumbersOperator input1 = dag.addOperator("input1", AscendingNumbersOperator.class);
     // Add PersistOperator directly to dag
-    final TestRecieverOperator x = dag.addOperator("x", new TestRecieverOperator());
+    final TestReceiverOperator x = dag.addOperator("x", new TestReceiverOperator());
     StreamMeta stream = dag.addStream("Stream1", input1.outputPort, x.inport);
 
     // Use an instance of PersistOperator to persist stream
@@ -423,7 +433,7 @@ public class StreamPersistanceTests
     runLocalClusterAndValidate(dag, x, persister);
   }
 
-  private void runLocalClusterAndValidate(LogicalPlan dag, final TestRecieverOperator x, final TestPersistanceOperator persister) throws IOException, ClassNotFoundException
+  private void runLocalClusterAndValidate(LogicalPlan dag, final TestReceiverOperator x, final TestPersistanceOperator persister) throws IOException, ClassNotFoundException
   {
     try {
       x.results.clear();
@@ -447,7 +457,7 @@ public class StreamPersistanceTests
               }
             }
           } catch (Exception ex) {
-            DTThrowable.rethrow(ex);
+            throw Throwables.propagate(ex);
           } finally {
             lc.shutdown();
           }
@@ -502,7 +512,7 @@ public class StreamPersistanceTests
     {
     }
 
-  };
+  }
 
   public static class DivisibleByStreamCodec extends DefaultKryoStreamCodec
   {
@@ -523,7 +533,7 @@ public class StreamPersistanceTests
     @Override
     public int getPartition(Object o)
     {
-      if ((Integer) o % number == 0) {
+      if ((Integer)o % number == 0) {
         return 1;
       }
       return 2;
@@ -606,7 +616,7 @@ public class StreamPersistanceTests
   {
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
     PassThruOperatorWithCodec passThru = dag.addOperator("PassThrough", new PassThruOperatorWithCodec(2));
-    TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
+    TestReceiverOperator console = dag.addOperator("console", new TestReceiverOperator());
     TestPersistanceOperator console1 = new TestPersistanceOperator();
     StreamMeta s = dag.addStream("Stream1", ascend.outputPort, passThru.input);
     s.persistUsing("Stream1_persister", console1, console1.inport);
@@ -619,7 +629,7 @@ public class StreamPersistanceTests
   {
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
     PassThruOperatorWithCodec passThru = dag.addOperator("PassThrough", new PassThruOperatorWithCodec(2));
-    final TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
+    final TestReceiverOperator console = dag.addOperator("console", new TestReceiverOperator());
 
     TestPersistanceOperator persister = new TestPersistanceOperator();
     StreamMeta s = dag.addStream("Stream1", ascend.outputPort, passThru.input);
@@ -635,8 +645,8 @@ public class StreamPersistanceTests
     PassThruOperatorWithCodec passThru = dag.addOperator("PassThrough", new PassThruOperatorWithCodec(2));
     PassThruOperatorWithCodec passThru2 = dag.addOperator("Multiples_of_3", new PassThruOperatorWithCodec(3));
 
-    final TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
-    final TestRecieverOperator console1 = dag.addOperator("console1", new TestRecieverOperator());
+    final TestReceiverOperator console = dag.addOperator("console", new TestReceiverOperator());
+    final TestReceiverOperator console1 = dag.addOperator("console1", new TestReceiverOperator());
 
     TestPersistanceOperator persister = new TestPersistanceOperator();
     StreamMeta s = dag.addStream("Stream1", ascend.outputPort, passThru.input, passThru2.input).setLocality(Locality.CONTAINER_LOCAL);
@@ -668,7 +678,7 @@ public class StreamPersistanceTests
             }
           }
         } catch (Exception ex) {
-          DTThrowable.rethrow(ex);
+          throw Throwables.propagate(ex);
         } finally {
           lc.shutdown();
         }
@@ -678,7 +688,7 @@ public class StreamPersistanceTests
 
     lc.run();
     try {
-      Integer[] expectedResult = { 0, 2, 3, 4, 6, 8, 9, 10, 12 };
+      Integer[] expectedResult = {0, 2, 3, 4, 6, 8, 9, 10, 12};
       for (int i = 0; i < expectedResult.length; i++) {
         logger.debug(persister.results.get(i) + " " + expectedResult[i]);
         assertEquals("Mismatch observed for tuple ", expectedResult[i], persister.results.get(i));
@@ -698,8 +708,8 @@ public class StreamPersistanceTests
     PassThruOperatorWithCodec passThru1 = dag.addOperator("PassThrough1", new PassThruOperatorWithCodec(2));
     PassThruOperatorWithCodec passThru2 = dag.addOperator("PassThrough2", new PassThruOperatorWithCodec(3));
 
-    final TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
-    final TestRecieverOperator console1 = dag.addOperator("console1", new TestRecieverOperator());
+    final TestReceiverOperator console = dag.addOperator("console", new TestReceiverOperator());
+    final TestReceiverOperator console1 = dag.addOperator("console1", new TestReceiverOperator());
 
     TestPersistanceOperator persister = new TestPersistanceOperator();
     StreamMeta s = dag.addStream("Stream1", ascend.outputPort, passThru1.input, passThru2.input);
@@ -731,7 +741,7 @@ public class StreamPersistanceTests
             }
           }
         } catch (Exception ex) {
-          DTThrowable.rethrow(ex);
+          throw Throwables.propagate(ex);
         } finally {
           lc.shutdown();
         }
@@ -741,7 +751,7 @@ public class StreamPersistanceTests
 
     lc.run();
     try {
-      Integer[] expectedResult = { 0, 2, 3, 4, 6, 8, 9, 10, 12 };
+      Integer[] expectedResult = {0, 2, 3, 4, 6, 8, 9, 10, 12};
       for (int i = 0; i < expectedResult.length; i++) {
         logger.debug(persister.results.get(i) + " " + expectedResult[i]);
         assertEquals("Mismatch observed for tuple ", expectedResult[i], persister.results.get(i));
@@ -765,7 +775,7 @@ public class StreamPersistanceTests
     @Override
     public int getPartition(Object o)
     {
-      return (int) o;// & 0x03;
+      return (int)o;// & 0x03;
     }
 
   }
@@ -791,7 +801,7 @@ public class StreamPersistanceTests
     @Override
     public Collection definePartitions(Collection partitions, PartitioningContext context)
     {
-      Collection<Partition> newPartitions = new ArrayList<Partition>();
+      Collection<Partition> newPartitions = new ArrayList<>();
 
       int partitionMask = 0x03;
 
@@ -799,14 +809,14 @@ public class StreamPersistanceTests
       // Single partition again, but with only even numbers ok?
       // First partition
       PassThruOperatorWithCodec newInstance = new PassThruOperatorWithCodec();
-      Partition partition = new DefaultPartition<PassThruOperatorWithCodec>(newInstance);
+      Partition partition = new DefaultPartition<>(newInstance);
       PartitionKeys value = new PartitionKeys(partitionMask, Sets.newHashSet(0));
       partition.getPartitionKeys().put(input, value);
       newPartitions.add(partition);
 
       // Second partition
       newInstance = new PassThruOperatorWithCodec();
-      partition = new DefaultPartition<PassThruOperatorWithCodec>(newInstance);
+      partition = new DefaultPartition<>(newInstance);
       value = new PartitionKeys(partitionMask, Sets.newHashSet(1));
       partition.getPartitionKeys().put(input, value);
 
@@ -828,7 +838,7 @@ public class StreamPersistanceTests
   {
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
     PartitionedTestOperatorWithFiltering passThru = dag.addOperator("partition", new PartitionedTestOperatorWithFiltering());
-    final TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
+    final TestReceiverOperator console = dag.addOperator("console", new TestReceiverOperator());
     final TestPersistanceOperator console1 = new TestPersistanceOperator();
     StreamMeta s = dag.addStream("Stream1", ascend.outputPort, passThru.input);
     dag.setInputPortAttribute(passThru.input, PortContext.STREAM_CODEC, new TestPartitionCodec());
@@ -853,7 +863,7 @@ public class StreamPersistanceTests
             }
           }
         } catch (Exception ex) {
-          DTThrowable.rethrow(ex);
+          throw Throwables.propagate(ex);
         } finally {
           lc.shutdown();
         }
@@ -864,7 +874,7 @@ public class StreamPersistanceTests
     lc.run();
 
     try {
-      Integer[] expectedResult = { 0, 1, 4, 5, 8, 9, 12, 13, 16 };
+      Integer[] expectedResult = {0, 1, 4, 5, 8, 9, 12, 13, 16};
 
       for (int i = 0; i < expectedResult.length; i++) {
         logger.debug(console1.results.get(i) + " " + expectedResult[i]);
@@ -881,7 +891,7 @@ public class StreamPersistanceTests
   {
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
     PartitionedTestOperatorWithFiltering passThru = dag.addOperator("partition", new PartitionedTestOperatorWithFiltering());
-    final TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
+    final TestReceiverOperator console = dag.addOperator("console", new TestReceiverOperator());
     final PartitionedTestPersistanceOperator console1 = new PartitionedTestPersistanceOperator();
     StreamMeta s = dag.addStream("Stream1", ascend.outputPort, passThru.input);
     dag.setInputPortAttribute(passThru.input, PortContext.STREAM_CODEC, new TestPartitionCodec());
@@ -907,7 +917,7 @@ public class StreamPersistanceTests
             }
           }
         } catch (Exception ex) {
-          DTThrowable.rethrow(ex);
+          throw Throwables.propagate(ex);
         } finally {
           lc.shutdown();
         }
@@ -919,7 +929,7 @@ public class StreamPersistanceTests
 
     try {
       // Values as per persist operator's partition keys should be picked up
-      Integer[] expectedResult = { 0, 4, 8, 12, 16, 20 };
+      Integer[] expectedResult = {0, 4, 8, 12, 16, 20 };
 
       for (int i = 0; i < expectedResult.length; i++) {
         logger.debug(console1.results.get(i) + " " + expectedResult[i]);
@@ -939,9 +949,9 @@ public class StreamPersistanceTests
   {
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
 
-    final TestRecieverOperator console = dag.addOperator("console", new TestRecieverOperator());
-    dag.setAttribute(console, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<TestRecieverOperator>(2));
-    dag.setAttribute(console, Context.OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener) new PartitioningTest.PartitionLoadWatch()));
+    final TestReceiverOperator console = dag.addOperator("console", new TestReceiverOperator());
+    dag.setAttribute(console, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<TestReceiverOperator>(2));
+    dag.setAttribute(console, Context.OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
 
     final PartitionedTestPersistanceOperator console1 = new PartitionedTestPersistanceOperator();
 
@@ -984,13 +994,13 @@ public class StreamPersistanceTests
     // Validate that persist operator is part of dependents
     assertTrue("persist operator should be part of the operators to be redeployed", operators.contains(persistOperatorContainer));
 
-    LogicalPlan.StreamMeta s1 = (LogicalPlan.StreamMeta) s;
+    LogicalPlan.StreamMeta s1 = (LogicalPlan.StreamMeta)s;
     StreamCodec codec = s1.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC);
 
     assertEquals("Codec should be instance of StreamCodecWrapper", codec instanceof StreamCodecWrapperForPersistance, true);
-    StreamCodecWrapperForPersistance wrapperCodec = (StreamCodecWrapperForPersistance) codec;
+    StreamCodecWrapperForPersistance wrapperCodec = (StreamCodecWrapperForPersistance)codec;
 
-    Entry<InputPortMeta, Collection<PartitionKeys>> keys = (Entry<InputPortMeta, Collection<PartitionKeys>>) wrapperCodec.inputPortToPartitionMap.entrySet().iterator().next();
+    Entry<InputPortMeta, Collection<PartitionKeys>> keys = (Entry<InputPortMeta, Collection<PartitionKeys>>)wrapperCodec.inputPortToPartitionMap.entrySet().iterator().next();
     logger.debug(keys.toString());
     assertEquals("Size of partitions should be 2", 2, keys.getValue().size());
 
@@ -1003,7 +1013,7 @@ public class StreamPersistanceTests
 
     assertEquals("Input port map", wrapperCodec.inputPortToPartitionMap.size(), 1);
 
-    keys = (Entry<InputPortMeta, Collection<PartitionKeys>>) wrapperCodec.inputPortToPartitionMap.entrySet().iterator().next();
+    keys = (Entry<InputPortMeta, Collection<PartitionKeys>>)wrapperCodec.inputPortToPartitionMap.entrySet().iterator().next();
     assertEquals("Size of partitions should be 1 after repartition", 1, keys.getValue().size());
     logger.debug(keys.toString());
   }

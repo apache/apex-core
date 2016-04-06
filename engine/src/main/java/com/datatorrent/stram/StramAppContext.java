@@ -18,18 +18,18 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.api.AppDataSource;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.util.Clock;
 
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context;
-
+import com.datatorrent.stram.api.AppDataSource;
 import com.datatorrent.stram.webapp.AppInfo;
-import java.util.List;
-import java.util.Map;
 
 /**
  *

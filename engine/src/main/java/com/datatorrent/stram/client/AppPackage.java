@@ -18,21 +18,36 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
-import java.util.*;
-import java.util.jar.*;
-import net.lingala.zip4j.core.ZipFile;
-import net.lingala.zip4j.exception.ZipException;
-import net.lingala.zip4j.model.ZipParameters;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.jar.Attributes;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+
+import net.lingala.zip4j.core.ZipFile;
+import net.lingala.zip4j.exception.ZipException;
+import net.lingala.zip4j.model.ZipParameters;
 
 /**
  * <p>
@@ -56,17 +71,17 @@ public class AppPackage extends JarFile
   private final String dtEngineVersion;
   private final String appPackageDescription;
   private final String appPackageDisplayName;
-  private final ArrayList<String> classPath = new ArrayList<String>();
+  private final ArrayList<String> classPath = new ArrayList<>();
   private final File directory;
 
-  private final List<AppInfo> applications = new ArrayList<AppInfo>();
-  private final List<String> appJars = new ArrayList<String>();
-  private final List<String> appJsonFiles = new ArrayList<String>();
-  private final List<String> appPropertiesFiles = new ArrayList<String>();
+  private final List<AppInfo> applications = new ArrayList<>();
+  private final List<String> appJars = new ArrayList<>();
+  private final List<String> appJsonFiles = new ArrayList<>();
+  private final List<String> appPropertiesFiles = new ArrayList<>();
 
-  private final Set<String> requiredProperties = new TreeSet<String>();
-  private final Map<String, String> defaultProperties = new TreeMap<String, String>();
-  private final Set<String> configs = new TreeSet<String>();
+  private final Set<String> requiredProperties = new TreeSet<>();
+  private final Map<String, String> defaultProperties = new TreeMap<>();
+  private final Set<String> configs = new TreeSet<>();
 
   private final File resourcesDirectory;
   private final boolean cleanOnClose;
@@ -81,8 +96,8 @@ public class AppPackage extends JarFile
     public String error;
     public String errorStackTrace;
 
-    public Set<String> requiredProperties = new TreeSet<String>();
-    public Map<String, String> defaultProperties = new TreeMap<String, String>();
+    public Set<String> requiredProperties = new TreeSet<>();
+    public Map<String, String> defaultProperties = new TreeMap<>();
 
     public AppInfo(String name, String file, String type)
     {
@@ -307,7 +322,7 @@ public class AppPackage extends JarFile
   {
     Configuration config = new Configuration();
 
-    List<String> absClassPath = new ArrayList<String>(classPath);
+    List<String> absClassPath = new ArrayList<>(classPath);
     for (int i = 0; i < absClassPath.size(); i++) {
       String path = absClassPath.get(i);
       if (!path.startsWith("/")) {

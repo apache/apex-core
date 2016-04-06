@@ -18,7 +18,6 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.common.util.BaseOperator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,15 +29,15 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
-
 import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.common.util.BaseOperator;
 
 /**
  *
  */
 public class RecoverableInputOperator implements InputOperator, com.datatorrent.api.Operator.CheckpointListener
 {
-  public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
+  public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<>();
   private long checkpointedWindowId;
   boolean firstRun = true;
   transient boolean first;
@@ -46,16 +45,17 @@ public class RecoverableInputOperator implements InputOperator, com.datatorrent.
   int maximumTuples = 20;
   boolean simulateFailure;
 
-  private static final Map<Long,Long> idMap = new HashMap<Long, Long>();
+  private static final Map<Long, Long> idMap = new HashMap<>();
   private static long tuple = 0;
-  public static List<Long> emittedTuples = new ArrayList<Long>();
+  public static List<Long> emittedTuples = new ArrayList<>();
 
   public void setMaximumTuples(int count)
   {
     maximumTuples = count;
   }
 
-  public static void initGenTuples() {
+  public static void initGenTuples()
+  {
     tuple = 0;
     idMap.clear();
     emittedTuples.clear();

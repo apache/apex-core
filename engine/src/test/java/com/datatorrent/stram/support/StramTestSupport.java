@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.servlet.http.HttpServletRequest;
 
 import org.codehaus.plexus.DefaultPlexusContainer;
@@ -79,7 +80,7 @@ import net.lingala.zip4j.model.ZipParameters;
 /**
  * Bunch of utilities shared between tests.
  */
-abstract public class StramTestSupport
+public abstract class StramTestSupport
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramTestSupport.class);
   private static MavenCli mavenCli = new MavenCli()
@@ -121,9 +122,8 @@ abstract public class StramTestSupport
 
   public static void checkStringMatch(String print, String expected, String got)
   {
-    Assert.assertTrue(
-            print + " doesn't match, got: " + got + " expected: " + expected,
-            got.matches(expected));
+    Assert.assertTrue(print + " doesn't match, got: " + got + " expected: " + expected,
+        got.matches(expected));
   }
 
   public static WindowGenerator setupWindowGenerator(ManualScheduledExecutorService mses)

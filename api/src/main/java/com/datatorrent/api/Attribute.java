@@ -27,13 +27,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import com.google.common.base.Throwables;
+
 import com.datatorrent.api.StringCodec.Boolean2String;
 import com.datatorrent.api.StringCodec.Enum2String;
 import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.StringCodec.Long2String;
 import com.datatorrent.api.StringCodec.String2String;
-
-import com.datatorrent.netlet.util.DTThrowable;
 
 /**
  * Attribute represents the attribute which can be set on various components in the system.
@@ -256,7 +256,7 @@ public class Attribute<T> implements Serializable
             }
           }
         } catch (Exception ex) {
-          DTThrowable.rethrow(ex);
+          throw Throwables.propagate(ex);
         }
         return result;
       }
@@ -318,7 +318,7 @@ public class Attribute<T> implements Serializable
             }
           }
         } catch (Exception ex) {
-          DTThrowable.rethrow(ex);
+          throw Throwables.propagate(ex);
         }
         map.put(clazz, set);
         return (long)clazz.getModifiers() << 32 | clazz.hashCode();

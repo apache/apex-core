@@ -30,7 +30,6 @@ import java.util.Comparator;
  * @since 0.3.2
  */
 
-
 class StableWrapper<E>
 {
   public final int id;
@@ -41,52 +40,52 @@ class StableWrapper<E>
     this.id = id;
     this.object = o;
   }
-}
 
-class StableWrapperNaturalComparator<E> implements Comparator<StableWrapper<E>>
-{
-  @Override
-  public int compare(StableWrapper<E> o1, StableWrapper<E> o2)
+  static class NaturalComparator<E> implements Comparator<StableWrapper<E>>
   {
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    int ret = ((Comparable) o1.object).compareTo(o2.object);
+    @Override
+    public int compare(StableWrapper<E> o1, StableWrapper<E> o2)
+    {
+      @SuppressWarnings({"unchecked", "rawtypes"})
+      int ret = ((Comparable)o1.object).compareTo(o2.object);
 
-    if (ret == 0) {
-      if (o1.id > o2.id) {
-        ret = 1;
+      if (ret == 0) {
+        if (o1.id > o2.id) {
+          ret = 1;
+        } else if (o1.id < o2.id) {
+          ret = -1;
+        }
       }
-      else if (o1.id < o2.id) {
-        ret = -1;
-      }
+
+      return ret;
+    }
+  }
+
+  static class ProvidedComparator<E> implements Comparator<StableWrapper<E>>
+  {
+    public final Comparator<? super E> comparator;
+
+    public ProvidedComparator(Comparator<? super E> comparator)
+    {
+      this.comparator = comparator;
     }
 
-    return ret;
-  }
-}
+    @Override
+    public int compare(StableWrapper<E> o1, StableWrapper<E> o2)
+    {
+      int ret = comparator.compare(o1.object, o2.object);
 
-class StableWrapperProvidedComparator<E> implements Comparator<StableWrapper<E>>
-{
-  public final Comparator<? super E> comparator;
-
-  public StableWrapperProvidedComparator(Comparator<? super E> comparator)
-  {
-    this.comparator = comparator;
-  }
-
-  @Override
-  public int compare(StableWrapper<E> o1, StableWrapper<E> o2)
-  {
-    int ret = comparator.compare(o1.object, o2.object);
-
-    if (ret == 0) {
-      if (o1.id > o2.id) {
-        ret = 1;
+      if (ret == 0) {
+        if (o1.id > o2.id) {
+          ret = 1;
+        } else if (o1.id < o2.id) {
+          ret = -1;
+        }
       }
-      else if (o1.id < o2.id) {
-        ret = -1;
-      }
+
+      return ret;
     }
-
-    return ret;
   }
+
 }
+

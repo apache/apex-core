@@ -18,11 +18,13 @@
  */
 package com.datatorrent.stram.debug;
 
-import com.datatorrent.api.Sink;
 import java.lang.reflect.Array;
 import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.Sink;
 
 /**
  * <p>MuxSink class.</p>
@@ -130,8 +132,7 @@ public class MuxSink implements Sink<Object>
   {
     try {
       return count;
-    }
-    finally {
+    } finally {
       if (reset) {
         count = 0;
       }

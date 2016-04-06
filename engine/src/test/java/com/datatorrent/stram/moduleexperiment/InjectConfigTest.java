@@ -30,15 +30,6 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.MembersInjector;
-import com.google.inject.TypeLiteral;
-import com.google.inject.matcher.Matchers;
-import com.google.inject.spi.TypeEncounter;
-import com.google.inject.spi.TypeListener;
-
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
@@ -53,33 +44,46 @@ import org.apache.commons.beanutils.Converter;
 import org.apache.commons.beanutils.PropertyUtilsBean;
 import org.apache.hadoop.conf.Configuration;
 
-public class InjectConfigTest {
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.MembersInjector;
+import com.google.inject.TypeLiteral;
+import com.google.inject.matcher.Matchers;
+import com.google.inject.spi.TypeEncounter;
+import com.google.inject.spi.TypeListener;
+
+public class InjectConfigTest
+{
 
   private static Logger LOG = LoggerFactory.getLogger(InjectConfigTest.class);
 
-  public class MyBean{
+  public class MyBean
+  {
     @NotNull
-    @Pattern(regexp=".*malhar.*", message="Value has to contain 'malhar'!")
+    @Pattern(regexp = ".*malhar.*", message = "Value has to contain 'malhar'!")
     String x;
 
     @Min(2)
     int y;
 
-    @InjectConfig(key="stringKey")
+    @InjectConfig(key = "stringKey")
     private String stringField;
 
-    @InjectConfig(key="urlKey")
+    @InjectConfig(key = "urlKey")
     private java.net.URL urlField;
 
-    @InjectConfig(key="stringArrayKey")
+    @InjectConfig(key = "stringArrayKey")
     private String[] stringArrayField;
 
   }
 
-  public class TestGuiceModule extends AbstractModule {
+  public class TestGuiceModule extends AbstractModule
+  {
     final Configuration conf;
 
-    public TestGuiceModule(Configuration conf) {
+    public TestGuiceModule(Configuration conf)
+    {
       this.conf = conf;
     }
 
@@ -92,11 +96,12 @@ public class InjectConfigTest {
      * configuration lookup and binding would need to occur before knowing what
      * is required...
      */
-    private class ConfigurableListener implements TypeListener {
+    private class ConfigurableListener implements TypeListener
+    {
       @Override
-      public <T> void hear(TypeLiteral<T> typeLiteral, TypeEncounter<T> typeEncounter) {
-        for (Class<?> c = typeLiteral.getRawType(); c != Object.class; c = c.getSuperclass())
-        {
+      public <T> void hear(TypeLiteral<T> typeLiteral, TypeEncounter<T> typeEncounter)
+      {
+        for (Class<?> c = typeLiteral.getRawType(); c != Object.class; c = c.getSuperclass()) {
           LOG.debug("Inspecting fields for " + c);
           for (Field field : c.getDeclaredFields()) {
             if (field.isAnnotationPresent(InjectConfig.class)) {
@@ -111,18 +116,21 @@ public class InjectConfigTest {
      * Process configuration for given field and annotation instance.
      * @param <T>
      */
-    private class ConfigurationInjector<T> implements MembersInjector<T> {
+    private class ConfigurationInjector<T> implements MembersInjector<T>
+    {
       private final Field field;
       private final InjectConfig annotation;
 
-      ConfigurationInjector(Field field, InjectConfig annotation) {
+      ConfigurationInjector(Field field, InjectConfig annotation)
+      {
         this.field = field;
         this.annotation = annotation;
         field.setAccessible(true);
       }
 
       @Override
-      public void injectMembers(T t) {
+      public void injectMembers(T t)
+      {
         try {
           LOG.debug("Processing " + annotation + " for field " + field);
           String value = conf.get(annotation.key());
@@ -144,21 +152,22 @@ public class InjectConfigTest {
     }
 
     @Override
-    protected void configure() {
+    protected void configure()
+    {
       bindListener(Matchers.any(), new ConfigurableListener());
       bind(Configuration.class).toInstance(conf);
     }
   }
 
-
-  public class MyBeanExt extends MyBean {
-    @InjectConfig(key="anotherStringKey")
+  public class MyBeanExt extends MyBean
+  {
+    @InjectConfig(key = "anotherStringKey")
     private String anotherInjectableField;
   }
 
-
   @Test
-  public void testBinding() throws Exception {
+  public void testBinding() throws Exception
+  {
 
     Configuration conf = new Configuration(false);
     conf.set("stringKey", "someStringValue");
@@ -173,26 +182,34 @@ public class InjectConfigTest {
 
     Assert.assertEquals("", "someStringValue", bean.stringField);
     Assert.assertEquals("", new java.net.URL(conf.get("urlKey")), bean.urlField);
-    Assert.assertArrayEquals("", new String[] {"a", "b", "c"}, bean.stringArrayField);
+    Assert.assertArrayEquals("", new String[]{"a", "b", "c"}, bean.stringArrayField);
   }
 
-  public static class BeanUtilsTestBean {
-    public static class NestedBean {
-      private NestedBean(String s) {
+  public static class BeanUtilsTestBean
+  {
+    public static class NestedBean
+    {
+      private NestedBean(String s)
+      {
         nestedProperty = s;
       }
-      public NestedBean() {};
+
+      public NestedBean()
+      {
+      }
 
       public String nestedProperty = "nested1";
     }
 
     public int intProp;
 
-    public int getIntProp() {
+    public int getIntProp()
+    {
       return intProp;
     }
 
-    public void setIntProp(int prop) {
+    public void setIntProp(int prop)
+    {
       this.intProp = prop;
     }
 
@@ -202,26 +219,28 @@ public class InjectConfigTest {
     public String string2;
     public transient String transientProperty = "transientProperty";
 
-    public java.util.concurrent.ConcurrentHashMap<String, String> mapProperty = new java.util.concurrent.ConcurrentHashMap<String, String>();
+    public java.util.concurrent.ConcurrentHashMap<String, String> mapProperty = new java.util.concurrent
+        .ConcurrentHashMap<String, String>();
 
-    public java.util.concurrent.ConcurrentHashMap<String, String> getMapProperty() {
-		return mapProperty;
-	}
+    public java.util.concurrent.ConcurrentHashMap<String, String> getMapProperty()
+    {
+      return mapProperty;
+    }
 
-	public java.util.concurrent.ConcurrentHashMap<String, String> nullMap;
+    public java.util.concurrent.ConcurrentHashMap<String, String> nullMap;
 
   }
 
   @Test
-  public void testBeanUtils() throws Exception {
+  public void testBeanUtils() throws Exception
+  {
     // http://www.cowtowncoder.com/blog/archives/2011/02/entry_440.html
-
 
     BeanUtilsTestBean testBean = new BeanUtilsTestBean();
     testBean.url = new URL("http://localhost:12345/context");
 
     ObjectMapper mapper = new ObjectMapper();
-    Map<String,Object> properties = mapper.convertValue(testBean, Map.class);
+    Map<String, Object> properties = mapper.convertValue(testBean, Map.class);
     System.out.println("testBean source: " + properties);
 
     BeanUtilsTestBean testBean2 = new BeanUtilsTestBean();
@@ -244,73 +263,69 @@ public class InjectConfigTest {
     JsonNode updateTree = mapper.convertValue(properties, JsonNode.class);
     merge(sourceTree, updateTree);
 
- //   mapper.readerForUpdating(testBean2).readValue(sourceTree);
- //   Assert.assertEquals("preserve existing value", "testBean2", testBean2.string2);
- //   Assert.assertEquals("map property", "someValue", testBean2.mapProperty.get("someKey"));
+    //   mapper.readerForUpdating(testBean2).readValue(sourceTree);
+    //   Assert.assertEquals("preserve existing value", "testBean2", testBean2.string2);
+    //   Assert.assertEquals("map property", "someValue", testBean2.mapProperty.get("someKey"));
 
- //   System.out.println("testBean cloned: " + mapper.convertValue(testBean2, Map.class));
-
+    //   System.out.println("testBean cloned: " + mapper.convertValue(testBean2, Map.class));
 
     PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
     //PropertyDescriptor pd = propertyUtilsBean.getPropertyDescriptor(testBean2, "mapProperty.someKey2");
 
     // set value on non-existing property
     try {
-    	propertyUtilsBean.setProperty(testBean, "nonExistingProperty.someProperty", "ddd");
-    	Assert.fail("should throw exception");
+      propertyUtilsBean.setProperty(testBean, "nonExistingProperty.someProperty", "ddd");
+      Assert.fail("should throw exception");
     } catch (NoSuchMethodException e) {
-        Assert.assertTrue(""+e, e.getMessage().contains("Unknown property 'nonExistingProperty'"));
+      Assert.assertTrue("" + e, e.getMessage().contains("Unknown property 'nonExistingProperty'"));
     }
 
     // set value on read-only property
     try {
-    	testBean.getMapProperty().put("s", "s1Val");
-    	PropertyDescriptor pd = propertyUtilsBean.getPropertyDescriptor(testBean, "mapProperty");
-    	Class<?> type = propertyUtilsBean.getPropertyType(testBean, "mapProperty.s");
+      testBean.getMapProperty().put("s", "s1Val");
+      PropertyDescriptor pd = propertyUtilsBean.getPropertyDescriptor(testBean, "mapProperty");
+      Class<?> type = propertyUtilsBean.getPropertyType(testBean, "mapProperty.s");
 
-
-    	propertyUtilsBean.setProperty(testBean, "mapProperty", Integer.valueOf(1));
-    	Assert.fail("should throw exception");
+      propertyUtilsBean.setProperty(testBean, "mapProperty", Integer.valueOf(1));
+      Assert.fail("should throw exception");
     } catch (Exception e) {
-        Assert.assertTrue(""+e, e.getMessage().contains("Property 'mapProperty' has no setter method"));
+      Assert.assertTrue("" + e, e.getMessage().contains("Property 'mapProperty' has no setter method"));
     }
 
     // type mismatch
     try {
-    	propertyUtilsBean.setProperty(testBean, "intProp", "s1");
-    	Assert.fail("should throw exception");
+      propertyUtilsBean.setProperty(testBean, "intProp", "s1");
+      Assert.fail("should throw exception");
     } catch (Exception e) {
-        Assert.assertEquals(e.getClass(), IllegalArgumentException.class);
+      Assert.assertEquals(e.getClass(), IllegalArgumentException.class);
     }
 
     try {
-    	propertyUtilsBean.setProperty(testBean, "intProp", "1");
+      propertyUtilsBean.setProperty(testBean, "intProp", "1");
     } catch (IllegalArgumentException e) {
-        // BeanUtils does not report invalid properties, but it handles type conversion, which above doesn't
-    	Assert.assertEquals("", 0, testBean.getIntProp());
-        bub.setProperty(testBean, "intProp", "1"); // by default beanutils ignores conversion error
-    	Assert.assertEquals("", 1, testBean.getIntProp());
+      // BeanUtils does not report invalid properties, but it handles type conversion, which above doesn't
+      Assert.assertEquals("", 0, testBean.getIntProp());
+      bub.setProperty(testBean, "intProp", "1"); // by default beanutils ignores conversion error
+      Assert.assertEquals("", 1, testBean.getIntProp());
     }
   }
 
-  public static JsonNode merge(JsonNode mainNode, JsonNode updateNode) {
-
+  public static JsonNode merge(JsonNode mainNode, JsonNode updateNode)
+  {
     Iterator<String> fieldNames = updateNode.getFieldNames();
     while (fieldNames.hasNext()) {
-
-        String fieldName = fieldNames.next();
-        JsonNode jsonNode = mainNode.get(fieldName);
-        // if field doesn't exist or is an embedded object
-        if (jsonNode != null && jsonNode.isObject()) {
-            merge(jsonNode, updateNode.get(fieldName));
+      String fieldName = fieldNames.next();
+      JsonNode jsonNode = mainNode.get(fieldName);
+      // if field doesn't exist or is an embedded object
+      if (jsonNode != null && jsonNode.isObject()) {
+        merge(jsonNode, updateNode.get(fieldName));
+      } else {
+        if (mainNode instanceof ObjectNode) {
+          // Overwrite field
+          JsonNode value = updateNode.get(fieldName);
+          ((ObjectNode)mainNode).put(fieldName, value);
         }
-        else {
-            if (mainNode instanceof ObjectNode) {
-                // Overwrite field
-                JsonNode value = updateNode.get(fieldName);
-                ((ObjectNode) mainNode).put(fieldName, value);
-            }
-        }
+      }
     }
     return mainNode;
   }

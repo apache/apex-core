@@ -81,8 +81,7 @@ public class InlineStream extends ForwardingReservoir implements Stream, Sweepab
   {
     try {
       super.put(tuple);
-    }
-    catch (InterruptedException ie) {
+    } catch (InterruptedException ie) {
       logger.debug("Interrupted", ie);
       throw new RuntimeException(ie);
     }

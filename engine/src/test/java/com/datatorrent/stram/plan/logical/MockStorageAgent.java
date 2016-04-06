@@ -18,8 +18,9 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import com.datatorrent.api.StorageAgent;
 import java.io.IOException;
+
+import com.datatorrent.api.StorageAgent;
 
 public class MockStorageAgent implements StorageAgent
 {
@@ -60,7 +61,7 @@ public class MockStorageAgent implements StorageAgent
   @Override
   public boolean equals(Object obj)
   {
-    if(obj == null) {
+    if (obj == null) {
       return false;
     }
 

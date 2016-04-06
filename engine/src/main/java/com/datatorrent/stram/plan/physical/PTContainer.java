@@ -24,12 +24,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.stram.Journal.Recoverable;
 
@@ -51,9 +51,10 @@ public class PTContainer implements java.io.Serializable
   private final Set<PTContainer> strictAntiPrefs = new HashSet<>();
   private final Set<PTContainer> preferredAntiPrefs = new HashSet<>();
 
-  public final static Recoverable SET_CONTAINER_STATE = new SetContainerState();
+  public static final Recoverable SET_CONTAINER_STATE = new SetContainerState();
 
-  public enum State {
+  public enum State
+  {
     NEW,
     ALLOCATED,
     ACTIVE,
@@ -84,8 +85,7 @@ public class PTContainer implements java.io.Serializable
 
       int containerId = in.readInt();
 
-      for (PTContainer c : plan.getContainers())
-      {
+      for (PTContainer c : plan.getContainers()) {
         if (c.getId() == containerId) {
           int stateOrd = in.readInt();
           c.state = PTContainer.State.values()[stateOrd];
@@ -157,7 +157,7 @@ public class PTContainer implements java.io.Serializable
 
   private final PhysicalPlan plan;
   private final int seq;
-  List<PTOperator> operators = new ArrayList<PTOperator>();
+  List<PTOperator> operators = new ArrayList<>();
 
   // execution layer properties
   private String containerId; // assigned yarn container id
@@ -170,36 +170,44 @@ public class PTContainer implements java.io.Serializable
 
   private byte[] bufferServerToken;
 
-  PTContainer(PhysicalPlan plan) {
+  PTContainer(PhysicalPlan plan)
+  {
     this.plan = plan;
     this.seq = plan.containerSeq.incrementAndGet();
   }
 
-  public Recoverable getSetContainerState() {
+  public Recoverable getSetContainerState()
+  {
     return new SetContainerState(this);
   }
 
-  public PhysicalPlan getPlan() {
+  public PhysicalPlan getPlan()
+  {
     return plan;
   }
 
-  public PTContainer.State getState() {
+  public PTContainer.State getState()
+  {
     return this.state;
   }
 
-  public void setState(PTContainer.State state) {
+  public void setState(PTContainer.State state)
+  {
     this.state = state;
   }
 
-  public int getRequiredMemoryMB() {
+  public int getRequiredMemoryMB()
+  {
     return requiredMemoryMB;
   }
 
-  public void setRequiredMemoryMB(int requiredMemoryMB) {
+  public void setRequiredMemoryMB(int requiredMemoryMB)
+  {
     this.requiredMemoryMB = requiredMemoryMB;
   }
 
-  public int getAllocatedMemoryMB() {
+  public int getAllocatedMemoryMB()
+  {
     return allocatedMemoryMB;
   }
 
@@ -223,31 +231,38 @@ public class PTContainer implements java.io.Serializable
     this.allocatedVCores = allocatedVCores;
   }
 
-  public void setAllocatedMemoryMB(int allocatedMemoryMB) {
+  public void setAllocatedMemoryMB(int allocatedMemoryMB)
+  {
     this.allocatedMemoryMB = allocatedMemoryMB;
   }
 
-  public int getResourceRequestPriority() {
+  public int getResourceRequestPriority()
+  {
     return resourceRequestPriority;
   }
 
-  public void setResourceRequestPriority(int resourceRequestPriority) {
+  public void setResourceRequestPriority(int resourceRequestPriority)
+  {
     this.resourceRequestPriority = resourceRequestPriority;
   }
 
-  public List<PTOperator> getOperators() {
+  public List<PTOperator> getOperators()
+  {
     return operators;
   }
 
-  public int getId() {
+  public int getId()
+  {
     return this.seq;
   }
 
-  public String getExternalId() {
+  public String getExternalId()
+  {
     return this.containerId;
   }
 
-  public void setExternalId(String id) {
+  public void setExternalId(String id)
+  {
     this.containerId = id;
   }
 
@@ -281,24 +296,25 @@ public class PTContainer implements java.io.Serializable
     this.bufferServerToken = bufferServerToken;
   }
 
-  public String toIdStateString() {
-    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-        append("id", ""+seq + "(" + this.containerId + ")").
-        append("state", this.getState()).
-        toString();
+  public String toIdStateString()
+  {
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+        .append("id", "" + seq + "(" + this.containerId + ")")
+        .append("state", this.getState())
+        .toString();
   }
 
   /**
-   *
    * @return String
    */
   @Override
-  public String toString() {
-    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-        append("id", ""+seq + "(" + this.containerId + ")").
-        append("state", this.getState()).
-        append("operators", this.operators).
-        toString();
+  public String toString()
+  {
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+        .append("id", "" + seq + "(" + this.containerId + ")")
+        .append("state", this.getState())
+        .append("operators", this.operators)
+        .toString();
   }
 
   public Set<PTContainer> getPreferredAntiPrefs()

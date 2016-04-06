@@ -25,9 +25,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.StreamCodec;
-
 import com.datatorrent.bufferserver.client.Publisher;
-import com.datatorrent.bufferserver.packet.*;
+import com.datatorrent.bufferserver.packet.BeginWindowTuple;
+import com.datatorrent.bufferserver.packet.DataTuple;
+import com.datatorrent.bufferserver.packet.EndStreamTuple;
+import com.datatorrent.bufferserver.packet.EndWindowTuple;
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.PayloadTuple;
+import com.datatorrent.bufferserver.packet.ResetWindowTuple;
+import com.datatorrent.bufferserver.packet.WindowIdTuple;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.stram.codec.StatefulStreamCodec;
@@ -104,12 +110,10 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
         default:
           throw new UnsupportedOperationException("this data type is not handled in the stream");
       }
-    }
-    else {
+    } else {
       if (statefulSerde == null) {
         array = PayloadTuple.getSerializedTuple(serde.getPartition(payload), serde.toByteArray(payload));
-      }
-      else {
+      } else {
         DataStatePair dsp = statefulSerde.toDataStatePair(payload);
         /*
          * if there is any state write that for the subscriber before we write the data.
@@ -136,8 +140,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
         sleep(5);
       }
       publishedByteCount.addAndGet(array.length);
-    }
-    catch (InterruptedException ie) {
+    } catch (InterruptedException ie) {
       throw new RuntimeException(ie);
     }
   }
@@ -178,12 +181,10 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   {
     StreamCodec<?> codec = context.get(StreamContext.CODEC);
     if (codec == null) {
-      statefulSerde = ((StatefulStreamCodec < Object >)StreamContext.CODEC.defaultValue).newInstance();
-    }
-    else if (codec instanceof StatefulStreamCodec) {
+      statefulSerde = ((StatefulStreamCodec<Object>)StreamContext.CODEC.defaultValue).newInstance();
+    } else if (codec instanceof StatefulStreamCodec) {
       statefulSerde = ((StatefulStreamCodec<Object>)codec).newInstance();
-    }
-    else {
+    } else {
       serde = (StreamCodec<Object>)codec;
     }
   }
@@ -208,8 +209,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   {
     try {
       return count;
-    }
-    finally {
+    } finally {
       if (reset) {
         count = 0;
       }

@@ -107,8 +107,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
     if (windowId == MAX_WINDOW_ID) {
       advanceWindow();
       run();
-    }
-    else {
+    } else {
       advanceWindow();
       queue.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
     }
@@ -119,8 +118,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   {
     try {
       resetBeginNewWindow();
-    }
-    catch (InterruptedException ie) {
+    } catch (InterruptedException ie) {
       handleException(ie);
     }
   }
@@ -168,8 +166,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
       {
         try {
           endCurrentBeginNewWindow();
-        }
-        catch (InterruptedException ie) {
+        } catch (InterruptedException ie) {
           handleException(ie);
         }
       }
@@ -180,27 +177,23 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
     if (currentWindowMillis < currentTms) {
       logger.info("Catching up from {} to {}", currentWindowMillis, currentTms);
       ses.schedule(
-              new Runnable()
-      {
-        @Override
-        public void run()
-        {
-          try {
-            resetBeginNewWindow();
-            do {
-              endCurrentBeginNewWindow();
+          new Runnable()
+          {
+            @Override
+            public void run()
+            {
+              try {
+                resetBeginNewWindow();
+                do {
+                  endCurrentBeginNewWindow();
+                } while (currentWindowMillis < ses.getCurrentTimeMillis());
+              } catch (InterruptedException ie) {
+                handleException(ie);
+              }
             }
-            while (currentWindowMillis < ses.getCurrentTimeMillis());
-          }
-          catch (InterruptedException ie) {
-            handleException(ie);
-          }
-        }
-
-      },
-              0, TimeUnit.MILLISECONDS);
-    }
-    else {
+          },
+          0, TimeUnit.MILLISECONDS);
+    } else {
       logger.info("The input will start to be sliced in {} milliseconds", currentWindowMillis - currentTms);
       ses.schedule(this, currentWindowMillis - currentTms, TimeUnit.MILLISECONDS);
     }
@@ -218,8 +211,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   {
     if (e instanceof InterruptedException) {
       ses.shutdown();
-    }
-    else {
+    } else {
       throw new RuntimeException(e);
     }
   }

@@ -45,7 +45,8 @@ import org.apache.hadoop.yarn.util.Records;
  * RM and negotiates a new attempt id. Then it waits for the RM app state to
  * reach be YarnApplicationState.ACCEPTED after which it runs the AM logic.
  */
-public abstract class InlineAM {
+public abstract class InlineAM
+{
   private static final Log LOG = LogFactory.getLog(InlineAM.class);
 
   // Handle to talk to the Resource Manager/Applications Manager
@@ -60,7 +61,8 @@ public abstract class InlineAM {
 
   /**
    */
-  public InlineAM(Configuration conf) throws Exception {
+  public InlineAM(Configuration conf) throws Exception
+  {
 
     appName = "UnmanagedAM";
     amPriority = 0;
@@ -73,7 +75,8 @@ public abstract class InlineAM {
 
   public abstract void runAM(ApplicationAttemptId attemptId) throws Exception;
 
-  public boolean run() throws Exception {
+  public boolean run() throws Exception
+  {
     LOG.info("Starting Client");
 
     // Connect to ResourceManager
@@ -160,7 +163,8 @@ public abstract class InlineAM {
    * @throws YarnRemoteException
    */
   private ApplicationReport monitorApplication(ApplicationId appId,
-      Set<YarnApplicationState> finalState) throws YarnException, IOException {
+      Set<YarnApplicationState> finalState) throws YarnException, IOException
+  {
 
     while (true) {
 

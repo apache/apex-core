@@ -18,35 +18,41 @@
  */
 package com.datatorrent.stram.security;
 
+import java.security.Principal;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
-import java.security.Principal;
 
 /**
  * Borrowed from
  *
  * @since 0.9.2
  */
-public class StramWSServletRequestWrapper extends HttpServletRequestWrapper {
+public class StramWSServletRequestWrapper extends HttpServletRequestWrapper
+{
   private final StramWSPrincipal principal;
 
-  public StramWSServletRequestWrapper(HttpServletRequest request, StramWSPrincipal principal) {
+  public StramWSServletRequestWrapper(HttpServletRequest request, StramWSPrincipal principal)
+  {
     super(request);
     this.principal = principal;
   }
 
   @Override
-  public Principal getUserPrincipal() {
+  public Principal getUserPrincipal()
+  {
     return principal;
   }
 
   @Override
-  public String getRemoteUser() {
+  public String getRemoteUser()
+  {
     return principal.getName();
   }
 
   @Override
-  public boolean isUserInRole(String role) {
+  public boolean isUserInRole(String role)
+  {
     //No role info so far
     return false;
   }

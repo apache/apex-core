@@ -18,9 +18,12 @@
  */
 package com.datatorrent.stram.client;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.codehaus.jettison.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,8 +36,9 @@ import org.slf4j.LoggerFactory;
 public abstract class FSPartFileAgent 
 {
   private static final Logger LOG = LoggerFactory.getLogger(FSPartFileAgent.class);
-  private final Map<String, String> lastIndexLines = new HashMap<String, String>();
+  private final Map<String, String> lastIndexLines = new HashMap<>();
   protected final StramAgent stramAgent;
+
   protected abstract IndexLine parseIndexLine(String line) throws JSONException;
 
   public FSPartFileAgent(StramAgent stramAgent)
@@ -77,13 +81,11 @@ public abstract class FSPartFileAgent
         IndexLine il = parseIndexLine(line);
         if (il.partFile != null && !il.partFile.equals(lastPartFile)) {
           return il;
-        }
-        else {
+        } else {
           lastIndexLines.remove(basePath);
         }
         return null;
-      }
-      else if (line != null) {
+      } else if (line != null) {
         IndexLine il = parseIndexLine(line);
         lastPartFile = il.partFile;
         return il;
@@ -97,8 +99,7 @@ public abstract class FSPartFileAgent
   {
     if (partFile == null) {
       return "part0.txt";
-    }
-    else if (partFile.startsWith("part") && partFile.endsWith(".txt")) {
+    } else if (partFile.startsWith("part") && partFile.endsWith(".txt")) {
       return "part" + (Integer.valueOf(partFile.substring(4, partFile.length() - 4)) + 1) + ".txt";
     }
     return null;

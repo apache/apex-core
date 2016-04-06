@@ -20,13 +20,16 @@ package com.datatorrent.stram.engine;
 
 import java.io.File;
 
-import com.datatorrent.common.util.AsyncFSStorageAgent;
-import com.datatorrent.common.util.BaseOperator;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.datatorrent.api.*;
-
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;

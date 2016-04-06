@@ -44,15 +44,16 @@ import com.datatorrent.stram.webapp.asm.Type.WildcardTypeNode;
 public abstract class BaseSignatureVisitor extends SignatureVisitor
 {
   
-  protected List<TypeVariableNode> typeV = new LinkedList<Type.TypeVariableNode>();
+  protected List<TypeVariableNode> typeV = new LinkedList<>();
   
   protected int stage = -1;
   
   public static final int VISIT_FORMAL_TYPE = 0;
   
-  protected Stack<Type> visitingStack = new Stack<Type>();
+  protected Stack<Type> visitingStack = new Stack<>();
 
-  public BaseSignatureVisitor() {
+  public BaseSignatureVisitor()
+  {
     super(Opcodes.ASM5);
   }
 
@@ -63,7 +64,6 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
   @Override
   public SignatureVisitor visitArrayType()
   {
-    //System.out.println("visitArrayType　");
     ArrayTypeNode at = new ArrayTypeNode();
     visitingStack.push(at);
     return this;
@@ -75,7 +75,6 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
     
     Type.TypeNode tn = new Type.TypeNode();
     tn.setObjByteCode(baseType + "");
-//    System.out.println(tn.typeObj);
     visitingStack.push(tn);
     resolveStack();
     // base type could only appear in method parameter list or return type  
@@ -85,7 +84,6 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
 //    if(stage == VISIT_RETURN) {
 //      returnType = tn;
 //    }
-    //System.out.println("visitBaseType:'" + baseType);
   }
 
 
@@ -95,7 +93,6 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
 
     Type.TypeNode tn = new Type.TypeNode();
     tn.setObjByteCode("L" + classType + ";");
-//    System.out.println(tn.typeObj);
     visitingStack.push(tn);
     // base type could only appear in method parameter list or return type  
 //    if(stage == VISIT_PARAM) {
@@ -106,26 +103,26 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
 //    } if(stage == VISIT_EXCEPTION) {
 //      exceptionType = tn;
 //    } 
-    //System.out.print("visitClassType:'" + classType + "'  ,  ");
   }
   
-  private void resolveStack() {
-    if(visitingStack.isEmpty() || visitingStack.size()==1){
+  private void resolveStack()
+  {
+    if (visitingStack.isEmpty() || visitingStack.size() == 1) {
       return;
     }
     Type top = visitingStack.pop();
     Type peek = visitingStack.peek();
-    
-    if(peek instanceof ParameterizedTypeNode){
+
+    if (peek instanceof ParameterizedTypeNode) {
       ((ParameterizedTypeNode)peek).actualTypeArguments.add(top);
       return;
-    } else if(peek instanceof ArrayTypeNode) {
+    } else if (peek instanceof ArrayTypeNode) {
       ((ArrayTypeNode)peek).actualArrayType = top;
       resolveStack();
-    } else if(peek instanceof WildcardTypeNode) {
+    } else if (peek instanceof WildcardTypeNode) {
       ((WildcardTypeNode)peek).bounds.add(top);
       resolveStack();
-    } else if(peek instanceof TypeVariableNode){
+    } else if (peek instanceof TypeVariableNode) {
       ((TypeVariableNode)peek).bounds.add(top);
       resolveStack();
     } else {
@@ -139,15 +136,12 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
   public void visitEnd()
   {
     resolveStack();
-    //System.out.print("visitEnd　");
-    //System.out.println();
   }
   
   @Override
   public void visitInnerClassType(String classType)
   {
     visitClassType(classType); 
-    //System.out.print("visitInnerClassType:'" + classType + "'  ,  ");
   }
 
 
@@ -163,7 +157,7 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
   @Override
   public SignatureVisitor visitTypeArgument(char typeArg)
   {
-    TypeNode t = (TypeNode) visitingStack.pop();
+    TypeNode t = (TypeNode)visitingStack.pop();
     if (t instanceof ParameterizedTypeNode) {
       visitingStack.push(t);
     } else {
@@ -172,14 +166,13 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
       visitingStack.push(pt);
     }
     
-    if(typeArg == SignatureVisitor.INSTANCEOF){
+    if (typeArg == SignatureVisitor.INSTANCEOF) {
       return this;
     }        
     WildcardTypeNode wtn = new WildcardTypeNode();
     wtn.boundChar = typeArg;
     visitingStack.push(wtn);
     
-    //System.out.print("visitTypeArgument:'" + typeArg + "'  ,  ");
     return this;
   }
   
@@ -190,20 +183,19 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
   {
     boolean found = false;
     for (TypeVariableNode typeVariableNode : typeV) {
-      if(typeVariableNode.typeLiteral.equals(typeVariable)){
+      if (typeVariableNode.typeLiteral.equals(typeVariable)) {
         visitingStack.push(typeVariableNode);
         found = true;
         break;
       }
     }
-    if(!found) {
+    if (!found) {
       TypeNode tn = new TypeNode();
       tn.setObjByteCode("T" + typeVariable + ";");
       visitingStack.push(tn);
       
     }
     resolveStack();
-    //System.out.println("visitTypeVariable:'" + typeVariable);
   }
   
   @Override
@@ -215,8 +207,6 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
   @Override
   public SignatureVisitor visitInterfaceBound()
   {
-//    System.out.println("*******************visitInterfaceBound");
-//    System.out.println("visitInterfaceBound");
     return this;
   }
 
@@ -229,7 +219,7 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
   @Override
   public void visitFormalTypeParameter(String typeVariable)
   {
-    if(stage==VISIT_FORMAL_TYPE && !visitingStack.isEmpty()){
+    if (stage == VISIT_FORMAL_TYPE && !visitingStack.isEmpty()) {
       visitingStack.pop();
     }
     stage = VISIT_FORMAL_TYPE;
@@ -237,18 +227,12 @@ public abstract class BaseSignatureVisitor extends SignatureVisitor
     tvn.typeLiteral = typeVariable;
     visitingStack.push(tvn);
     typeV.add(tvn);
-//    System.out.println("****************" + typeVariable);
-//    System.out.println("visitFormalTypeParameter");
-
-//    throw new UnsupportedOperationException();
   }
 
   @Override
   public SignatureVisitor visitClassBound()
   {
-//    System.out.println("*******************visitClassBound");
     return this;
-    //throw new UnsupportedOperationException();
   }
   
   public List<TypeVariableNode> getTypeV()

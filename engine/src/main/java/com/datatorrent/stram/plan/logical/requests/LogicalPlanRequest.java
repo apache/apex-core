@@ -18,9 +18,11 @@
  */
 package com.datatorrent.stram.plan.logical.requests;
 
-import com.datatorrent.stram.plan.physical.PlanModifier;
 import java.io.IOException;
+
 import org.codehaus.jackson.map.ObjectMapper;
+
+import com.datatorrent.stram.plan.physical.PlanModifier;
 
 /**
  * <p>Abstract LogicalPlanRequest class.</p>
@@ -39,12 +41,11 @@ public abstract class LogicalPlanRequest
   {
     try {
       return new ObjectMapper().writeValueAsString(this);
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       return ex.toString();
     }
   }
-  
+
   public abstract void execute(PlanModifier pm);
 
 }

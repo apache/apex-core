@@ -123,7 +123,7 @@ public class StreamingAppMasterService extends CompositeService
   private static final long DELEGATION_TOKEN_MAX_LIFETIME = Long.MAX_VALUE / 2;
   private static final long DELEGATION_TOKEN_RENEW_INTERVAL = Long.MAX_VALUE / 2;
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
-  private static final int UPDATE_NODE_REPORTS_INTERVAL = 10* 60 * 1000;
+  private static final int UPDATE_NODE_REPORTS_INTERVAL = 10 * 60 * 1000;
   private AMRMClient<ContainerRequest> amRmClient;
   private NMClientAsync nmClient;
   private LogicalPlan dag;
@@ -145,7 +145,7 @@ public class StreamingAppMasterService extends CompositeService
   private final Map<String, NodeFailureStats> failedContainerNodesMap = Maps.newHashMap();
   // Count of failed containers
   private final AtomicInteger numFailedContainers = new AtomicInteger();
-  private final ConcurrentLinkedQueue<Runnable> pendingTasks = new ConcurrentLinkedQueue<Runnable>();
+  private final ConcurrentLinkedQueue<Runnable> pendingTasks = new ConcurrentLinkedQueue<>();
   // child container callback
   private StreamingContainerParent heartbeatListener;
   private StreamingContainerManager dnmgr;
@@ -600,9 +600,9 @@ public class StreamingAppMasterService extends CompositeService
     // start web service
     try {
       org.mortbay.log.Log.setLog(null);
-    }
-    catch (Throwable throwable) {
-      // SPOI-2687. As part of Pivotal Certification, we need to catch ClassNotFoundException as Pivotal was using Jetty 7 where as other distros are using Jetty 6.
+    } catch (Throwable throwable) {
+      // SPOI-2687. As part of Pivotal Certification, we need to catch ClassNotFoundException as Pivotal was using
+      // Jetty 7 where as other distros are using Jetty 6.
       // LOG.error("can't set the log to null: ", throwable);
     }
 
@@ -616,8 +616,7 @@ public class StreamingAppMasterService extends CompositeService
       LOG.info("Started web service at port: " + webApp.port());
       this.appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       LOG.error("Webapps failed to start. Ignoring for now:", e);
     }
   }
@@ -646,8 +645,7 @@ public class StreamingAppMasterService extends CompositeService
     try {
       StreamingContainer.eventloop.start();
       execute();
-    }
-    finally {
+    } finally {
       StreamingContainer.eventloop.stop();
     }
     return status;
@@ -700,7 +698,7 @@ public class StreamingAppMasterService extends CompositeService
 
     int loopCounter = -1;
     long nodeReportUpdateTime = 0;
-    List<ContainerId> releasedContainers = new ArrayList<ContainerId>();
+    List<ContainerId> releasedContainers = new ArrayList<>();
     int numTotalContainers = 0;
     // keep track of already requested containers to not request them again while waiting for allocation
     int numRequestedContainers = 0;
@@ -723,7 +721,7 @@ public class StreamingAppMasterService extends CompositeService
       if (ar != null) {
         appDone = true;
         dnmgr.shutdownDiagnosticsMessage = String.format("Application master failed due to application %s with duplicate application name \"%s\" by the same user \"%s\" is already started.",
-          ar.getApplicationId().toString(), ar.getName(), ar.getUser());
+            ar.getApplicationId().toString(), ar.getName(), ar.getUser());
         LOG.info("Forced shutdown due to {}", dnmgr.shutdownDiagnosticsMessage);
         finishApplication(FinalApplicationStatus.FAILED, numTotalContainers);
         return;
@@ -741,8 +739,8 @@ public class StreamingAppMasterService extends CompositeService
     checkContainerStatus();
     FinalApplicationStatus finalStatus = FinalApplicationStatus.SUCCEEDED;
     final InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
-      YarnConfiguration.DEFAULT_RM_ADDRESS,
-      YarnConfiguration.DEFAULT_RM_PORT);
+        YarnConfiguration.DEFAULT_RM_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_PORT);
 
     while (!appDone) {
       loopCounter++;
@@ -779,8 +777,8 @@ public class StreamingAppMasterService extends CompositeService
       }
 
       // Setup request to be sent to RM to allocate containers
-      List<ContainerRequest> containerRequests = new ArrayList<ContainerRequest>();
-      List<ContainerRequest> removedContainerRequests = new ArrayList<ContainerRequest>();
+      List<ContainerRequest> containerRequests = new ArrayList<>();
+      List<ContainerRequest> removedContainerRequests = new ArrayList<>();
 
       // request containers for pending deploy requests
       if (!dnmgr.containerStartRequests.isEmpty()) {
@@ -826,7 +824,7 @@ public class StreamingAppMasterService extends CompositeService
       resourceRequestor.reissueContainerRequests(amRmClient, requestedResources, loopCounter, resourceRequestor, containerRequests, removedContainerRequests);
 
      /* Remove nodes from blacklist after timeout */
-      List<String> blacklistRemovals = new ArrayList<String>();
+      List<String> blacklistRemovals = new ArrayList<>();
       for (String hostname : failedBlackListedNodes) {
         Long timeDiff = currentTimeMillis - failedContainerNodesMap.get(hostname).blackListAdditionTime;
         if (timeDiff >= blacklistRemovalTime) {
@@ -895,8 +893,7 @@ public class StreamingAppMasterService extends CompositeService
           // allocated container no longer needed, add release request
           LOG.warn("Container {} allocated but nothing to deploy, going to release this container.", allocatedContainer.getId());
           releasedContainers.add(allocatedContainer.getId());
-        }
-        else {
+        } else {
           AllocatedContainer allocatedContainerHolder = new AllocatedContainer(allocatedContainer);
           this.allocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainerHolder);
           ByteBuffer tokens = null;
@@ -927,7 +924,7 @@ public class StreamingAppMasterService extends CompositeService
       // Check the completed containers
       List<ContainerStatus> completedContainers = amResp.getCompletedContainersStatuses();
       // LOG.debug("Got response from RM for container ask, completedCnt=" + completedContainers.size());
-      List<String> blacklistAdditions = new ArrayList<String>();
+      List<String> blacklistAdditions = new ArrayList<>();
       for (ContainerStatus containerStatus : completedContainers) {
         LOG.info("Completed containerId=" + containerStatus.getContainerId() + ", state=" + containerStatus.getState() + ", exitStatus=" + containerStatus.getExitStatus() + ", diagnostics=" + containerStatus.getDiagnostics());
 
@@ -983,8 +980,7 @@ public class StreamingAppMasterService extends CompositeService
           LOG.debug("Container {} failed or killed.", containerStatus.getContainerId());
           dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
 //          }
-        }
-        else {
+        } else {
           // container completed successfully
           numCompletedContainers.incrementAndGet();
           LOG.info("Container completed successfully." + ", containerId=" + containerStatus.getContainerId());
@@ -1017,8 +1013,7 @@ public class StreamingAppMasterService extends CompositeService
         LOG.info("Forced shutdown due to {}", dnmgr.shutdownDiagnosticsMessage);
         finalStatus = FinalApplicationStatus.FAILED;
         appDone = true;
-      }
-      else if (allocatedContainers.isEmpty() && numRequestedContainers == 0 && dnmgr.containerStartRequests.isEmpty()) {
+      } else if (allocatedContainers.isEmpty() && numRequestedContainers == 0 && dnmgr.containerStartRequests.isEmpty()) {
         LOG.debug("Exiting as no more containers are allocated or requested");
         finalStatus = FinalApplicationStatus.SUCCEEDED;
         appDone = true;
@@ -1058,7 +1053,7 @@ public class StreamingAppMasterService extends CompositeService
   {
     StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(username), new Text(""), new Text(""));
     String service = address.getAddress().getHostAddress() + ":" + address.getPort();
-    Token<StramDelegationTokenIdentifier> stramToken = new Token<StramDelegationTokenIdentifier>(identifier, delegationTokenManager);
+    Token<StramDelegationTokenIdentifier> stramToken = new Token<>(identifier, delegationTokenManager);
     stramToken.setService(new Text(service));
     return stramToken;
   }
@@ -1198,7 +1193,7 @@ public class StreamingAppMasterService extends CompositeService
 
   private class AllocatedContainer
   {
-    final private Container container;
+    private final Container container;
     private boolean stopRequested;
     private Token<StramDelegationTokenIdentifier> delegationToken;
 

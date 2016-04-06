@@ -35,11 +35,9 @@ public class SecurityUtilsTest
   {
     checkWebSecurity(false, false);
     Configuration conf = new Configuration();
-    checkSecurityConfiguration(conf, new boolean[][] {{false, false}, {false, true}, {false, false}, {false, false},
-        {false, false}});
+    checkSecurityConfiguration(conf, new boolean[][]{{false, false}, {false, true}, {false, false}, {false, false}, {false, false}});
     conf.set(SecurityUtils.HADOOP_HTTP_AUTH_PROP, "kerberos");
-    checkSecurityConfiguration(conf, new boolean[][] {{true, false}, {true, true}, {true, false}, {true, false},
-        {true, true}});
+    checkSecurityConfiguration(conf, new boolean[][]{{true, false}, {true, true}, {true, false}, {true, false}, {true, true}});
   }
 
   private void checkSecurityConfiguration(Configuration conf, boolean[][] securityConf)

@@ -18,36 +18,39 @@
  */
 package com.datatorrent.stram.webapp.asm;
 
-
 import org.apache.xbean.asm5.signature.SignatureVisitor;
+
 /**
  * <p>FieldSignatureVisitor class.</p>
  *
  * @since 3.2.0
  */
-public class FieldSignatureVisitor extends BaseSignatureVisitor{
-
+public class FieldSignatureVisitor extends BaseSignatureVisitor
+{
   private Type fieldType;
-  
+
   @Override
-  public SignatureVisitor visitExceptionType() {
+  public SignatureVisitor visitExceptionType()
+  {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public SignatureVisitor visitParameterType() {
+  public SignatureVisitor visitParameterType()
+  {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public SignatureVisitor visitReturnType() {
+  public SignatureVisitor visitReturnType()
+  {
     throw new UnsupportedOperationException();
   }
 
-  public Type getFieldType() {
+  public Type getFieldType()
+  {
     if (!visitingStack.isEmpty()) {
       fieldType = visitingStack.pop();
-      ;
       visitingStack.push(fieldType);
       return fieldType;
     } else {

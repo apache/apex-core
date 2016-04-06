@@ -18,18 +18,18 @@
  */
 package com.datatorrent.stram;
 
-
 import java.io.File;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
-import org.junit.Assert;
-import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -37,7 +37,6 @@ import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
-
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -55,7 +54,7 @@ public class HostLocalTest
     {
       Collection<Partition<GenericTestOperator>> newPartitions = super.definePartitions(partitions, context);
       Iterator<Partition<GenericTestOperator>> it = newPartitions.iterator();
-      for (int i=0; i<newPartitions.size() && it.hasNext(); i++) {
+      for (int i = 0; i < newPartitions.size() && it.hasNext(); i++) {
         it.next().getAttributes().put(OperatorContext.LOCALITY_HOST, "host" + (i + 1));
       }
       return newPartitions;
@@ -84,21 +83,21 @@ public class HostLocalTest
 
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
-    for(int i = 0; i< partitionCount; i++) {
-      NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host" + (i+1), 0),
-        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+    for (int i = 0; i < partitionCount; i++) {
+      NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host" + (i + 1), 0),
+          NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
       nodeReports.put(nr.getNodeId().getHost(), nr);
     }
 
     // set resources
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
     Set<String> expectedHosts = Sets.newHashSet();
-    for(int i =0; i< partitionCount; i++){
-      expectedHosts.add("host"+(i+1));
+    for (int i = 0; i < partitionCount; i++) {
+      expectedHosts.add("host" + (i + 1));
     }
     for (ContainerStartRequest csr : scm.containerStartRequests) {
       String host = rr.getHost(csr, true);
-      if(host != null){
+      if (host != null) {
         expectedHosts.remove(host);
       }
     }
@@ -130,10 +129,10 @@ public class HostLocalTest
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
     NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-                                               NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
     nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-                                    NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources
@@ -169,10 +168,10 @@ public class HostLocalTest
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
     NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
     nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources
@@ -206,11 +205,9 @@ public class HostLocalTest
 
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
-    NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-                                               NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+    NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0), NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
-    nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-                                    NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+    nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0), NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources
@@ -246,10 +243,10 @@ public class HostLocalTest
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
     NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
     nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources
@@ -275,9 +272,9 @@ public class HostLocalTest
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.CONTAINER_LOCAL);
-    dag.setAttribute(o1,OperatorContext.MEMORY_MB,256);
-    dag.setAttribute(o1,OperatorContext.VCORES,2);
-    dag.setAttribute(partitioned,OperatorContext.VCORES,1);
+    dag.setAttribute(o1, OperatorContext.MEMORY_MB, 256);
+    dag.setAttribute(o1, OperatorContext.VCORES, 2);
+    dag.setAttribute(partitioned, OperatorContext.VCORES, 1);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
 
@@ -286,10 +283,10 @@ public class HostLocalTest
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
     NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
     nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources

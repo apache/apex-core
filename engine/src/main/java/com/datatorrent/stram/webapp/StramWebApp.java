@@ -18,7 +18,6 @@
  */
 package com.datatorrent.stram.webapp;
 
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -27,15 +26,15 @@ import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
 import javax.xml.bind.JAXBContext;
 
-
 import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
 import org.apache.hadoop.yarn.webapp.RemoteExceptionData;
 import org.apache.hadoop.yarn.webapp.WebApp;
 
-import com.datatorrent.stram.StreamingContainerManager;
 import com.google.inject.Singleton;
 import com.sun.jersey.api.json.JSONConfiguration;
 import com.sun.jersey.api.json.JSONJAXBContext;
+
+import com.datatorrent.stram.StreamingContainerManager;
 
 /**
  *
@@ -46,47 +45,48 @@ import com.sun.jersey.api.json.JSONJAXBContext;
  *
  * @since 0.3.2
  */
-public class StramWebApp extends WebApp {
+public class StramWebApp extends WebApp
+{
 
   private final StreamingContainerManager moduleManager;
 
   /**
-   *
    * @param topolManager
    */
-  public StramWebApp(StreamingContainerManager topolManager) {
+  public StramWebApp(StreamingContainerManager topolManager)
+  {
     this.moduleManager = topolManager;
   }
 
   @Singleton
   @Provider
-  public static class JAXBContextResolver implements ContextResolver<JAXBContext> {
+  public static class JAXBContextResolver implements ContextResolver<JAXBContext>
+  {
 
     private final JAXBContext context;
     private final Set<Class<?>> types;
 
     // you have to specify all the dao classes here
     private final Class<?>[] cTypes = {
-      AppInfo.class, RemoteExceptionData.class
+        AppInfo.class, RemoteExceptionData.class
     };
 
     /**
-     *
      * @throws Exception
      */
-    public JAXBContextResolver() throws Exception {
-      this.types = new HashSet<Class<?>>(Arrays.asList(cTypes));
-      this.context = new JSONJAXBContext(JSONConfiguration.natural().
-          rootUnwrapping(false).build(), cTypes);
+    public JAXBContextResolver() throws Exception
+    {
+      this.types = new HashSet<>(Arrays.asList(cTypes));
+      this.context = new JSONJAXBContext(JSONConfiguration.natural().rootUnwrapping(false).build(), cTypes);
     }
 
     /**
-     *
      * @param type
      * @return JAXContext
      */
     @Override
-    public JAXBContext getContext(Class<?> type) {
+    public JAXBContext getContext(Class<?> type)
+    {
       return (types.contains(type)) ? context : null;
     }
 
@@ -96,7 +96,8 @@ public class StramWebApp extends WebApp {
    *
    */
   @Override
-  public void setup() {
+  public void setup()
+  {
     bind(JAXBContextResolver.class);
     bind(GenericExceptionHandler.class);
     bind(WebServices.class);

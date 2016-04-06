@@ -21,20 +21,29 @@ package com.datatorrent.stram.debug;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.*;
-import com.datatorrent.common.codec.JsonStreamCodec;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.Stats;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.StringCodec;
 import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.netlet.util.Slice;
+import com.datatorrent.common.codec.JsonStreamCodec;
 import com.datatorrent.common.util.ObjectMapperString;
+import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.stram.util.FSPartFileCollection;
@@ -51,15 +60,15 @@ public class TupleRecorder
 {
   public static final String VERSION = "1.2";
   private int totalTupleCount = 0;
-  private final HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
-  private final HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
+  private final HashMap<String, PortInfo> portMap = new HashMap<>(); // used for output portInfo <name, id> map
+  private final HashMap<String, PortCount> portCountMap = new HashMap<>(); // used for tupleCount of each port <name, count> map
   private transient long currentWindowId = WindowGenerator.MIN_WINDOW_ID - 1;
-  private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
+  private transient ArrayList<Range> windowIdRanges = new ArrayList<>();
   private long startTime = Stats.INVALID_TIME_MILLIS;
   private String id;
   private final String appId;
   private int nextPortIndex = 0;
-  private final HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
+  private final HashMap<String, Sink<Object>> sinks = new HashMap<>();
   private transient long endWindowTuplesProcessed = 0;
   private transient StreamCodec<Object> streamCodec;
   private int numSubscribers = 0;
@@ -162,8 +171,7 @@ public class TupleRecorder
   {
     if (this.startTime == Stats.INVALID_TIME_MILLIS) {
       this.startTime = startTime;
-    }
-    else {
+    } else {
       throw new IllegalStateException("Tuple recorder has already started at " + this.startTime);
     }
   }
@@ -188,7 +196,7 @@ public class TupleRecorder
   {
     public long startTime;
     public String appId;
-    public Map<String, ObjectMapperString> properties = new HashMap<String, ObjectMapperString>();
+    public Map<String, ObjectMapperString> properties = new HashMap<>();
   }
 
   public static class Range
@@ -274,7 +282,7 @@ public class TupleRecorder
       recordInfo.startTime = startTime;
       recordInfo.appId = appId;
 
-      streamCodec = new JsonStreamCodec<Object>(codecs);
+      streamCodec = new JsonStreamCodec<>(codecs);
 
       if (operator != null) {
         BeanInfo beanInfo = Introspector.getBeanInfo(operator.getClass());
@@ -311,8 +319,7 @@ public class TupleRecorder
         recordingNameTopic = "applications." + appId + ".tupleRecorder." + getStartTime();
         setupWsClient();
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       logger.error("Trouble setting up tuple recorder", ex);
     }
   }
@@ -359,8 +366,7 @@ public class TupleRecorder
       endWindowTuplesProcessed = 0;
       try {
         storage.writeDataItem(("B:" + System.currentTimeMillis() + ":" + windowId + "\n").getBytes(), false);
-      }
-      catch (IOException ex) {
+      } catch (IOException ex) {
         logger.error(ex.toString());
       }
     }
@@ -375,8 +381,7 @@ public class TupleRecorder
         if (!storage.flushData() && wsClient != null) {
           wsClient.publish(SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".tuple." + storage.getBasePath(), storage.getLatestIndexLine());
         }
-      }
-      catch (IOException ex) {
+      } catch (IOException ex) {
         logger.error("Exception caught in endWindow", ex);
       }
     }
@@ -410,8 +415,7 @@ public class TupleRecorder
         // this is not asynchronous.  we need to fix this
         publishTupleData(pi.id, obj);
       }
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       logger.error(ex.toString());
     }
   }
@@ -427,8 +431,7 @@ public class TupleRecorder
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
       storage.writeDataItem(bos.toByteArray(), false);
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       logger.error(ex.toString());
     }
   }
@@ -452,15 +455,14 @@ public class TupleRecorder
   {
     try {
       if (wsClient != null && wsClient.isConnectionOpen()) {
-        HashMap<String, Object> map = new HashMap<String, Object>();
+        HashMap<String, Object> map = new HashMap<>();
         map.put("portId", String.valueOf(portId));
         map.put("windowId", currentWindowId);
         map.put("tupleCount", totalTupleCount);
         map.put("data", obj);
         wsClient.publish(recordingNameTopic, map);
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       logger.warn("Error publishing tuple data", ex);
     }
   }
@@ -498,8 +500,7 @@ public class TupleRecorder
         if (messageType == MessageType.END_WINDOW) {
           endWindow();
         }
-      }
-      else {
+      } else {
         writeTuple(payload, portName);
       }
     }
@@ -509,8 +510,7 @@ public class TupleRecorder
     {
       try {
         return count;
-      }
-      finally {
+      } finally {
         if (reset) {
           count = 0;
         }

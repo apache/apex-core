@@ -34,8 +34,8 @@ import org.slf4j.LoggerFactory;
  */
 public class StatsRevisions implements Serializable
 {
-  private final IdentityHashMap<Object, Integer> longsIndex = new IdentityHashMap<Object, Integer>();
-  private transient ThreadLocal<Revision> VERSION = new ThreadLocal<Revision>();
+  private final IdentityHashMap<Object, Integer> longsIndex = new IdentityHashMap<>();
+  private transient ThreadLocal<Revision> VERSION = new ThreadLocal<>();
   private Revision current = new Revision();
 
   public VersionedLong newVersionedLong()

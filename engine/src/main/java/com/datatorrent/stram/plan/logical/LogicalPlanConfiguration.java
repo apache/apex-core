@@ -18,7 +18,6 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,17 +27,19 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeMap;
 
 import javax.validation.ValidationException;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
@@ -46,6 +47,7 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.CollectionUtils;
@@ -54,14 +56,24 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 
-import com.datatorrent.api.*;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.StringCodec.JsonStringCodec;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
-
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -80,7 +92,8 @@ import com.datatorrent.stram.util.ObjectMapperFactory;
  *
  * @since 0.3.2
  */
-public class LogicalPlanConfiguration {
+public class LogicalPlanConfiguration
+{
 
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
@@ -94,7 +107,7 @@ public class LogicalPlanConfiguration {
   public static final String STREAM_LOCALITY = "locality";
   public static final String STREAM_SCHEMA = "schema";
 
-  public static final String OPERATOR_PREFIX =  StreamingApplication.DT_PREFIX + "operator.";
+  public static final String OPERATOR_PREFIX = StreamingApplication.DT_PREFIX + "operator.";
   public static final String OPERATOR_CLASSNAME = "classname";
   public static final String OPERATOR_TEMPLATE = "template";
 
@@ -115,40 +128,48 @@ public class LogicalPlanConfiguration {
    * This is done to initialize the serial id of these interfaces.
    */
   static {
-    Object serial[] = new Object[] {Context.DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID};
+    Object[] serial = new Object[]{Context.DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID};
     LOG.debug("Initialized attributes {}", serial);
   }
 
   /**
    * This represents an element that can be referenced in a DT property.
    */
-  protected enum StramElement {
-    APPLICATION("application"), GATEWAY("gateway"), TEMPLATE("template"), OPERATOR("operator"),STREAM("stream"), PORT("port"), INPUT_PORT("inputport"),OUTPUT_PORT("outputport"),
-    ATTR("attr"), PROP("prop"),CLASS("class"),PATH("path"),UNIFIER("unifier");
+  protected enum StramElement
+  {
+    APPLICATION("application"), GATEWAY("gateway"), TEMPLATE("template"), OPERATOR("operator"), STREAM("stream"),
+    PORT("port"), INPUT_PORT("inputport"), OUTPUT_PORT("outputport"),
+    ATTR("attr"), PROP("prop"), CLASS("class"), PATH("path"), UNIFIER("unifier");
     private final String value;
 
     /**
      * Creates a {@link StramElement} with the corresponding name.
+     *
      * @param value The name of the {@link StramElement}.
      */
-    StramElement(String value) {
+    StramElement(String value)
+    {
       this.value = value;
     }
 
     /**
      * Gets the name of the {@link StramElement}.
+     *
      * @return The name of the {@link StramElement}.
      */
-    public String getValue() {
+    public String getValue()
+    {
       return value;
     }
 
     /**
      * Gets the {@link StramElement} corresponding to the given name.
+     *
      * @param value The name for which a {@link StramElement} is desired.
      * @return The {@link StramElement} corresponding to the given name.
      */
-    public static StramElement fromValue(String value) {
+    public static StramElement fromValue(String value)
+    {
       StramElement velement = null;
       for (StramElement element : StramElement.values()) {
         if (element.getValue().equals(value)) {
@@ -251,8 +272,7 @@ public class LogicalPlanConfiguration {
         ambiguousAttributes.addAll(childElement.getAmbiguousAttributes());
 
         @SuppressWarnings("unchecked")
-        Set<String> intersection = (Set<String>)Sets.newHashSet(CollectionUtils.intersection(allChildAttributes,
-                                                                                             allAttributes));
+        Set<String> intersection = (Set<String>)Sets.newHashSet(CollectionUtils.intersection(allChildAttributes, allAttributes));
         ambiguousAttributes.addAll(intersection);
         allChildAttributes.addAll(allAttributes);
       }
@@ -283,9 +303,9 @@ public class LogicalPlanConfiguration {
      * be used by this {@link ConfElement}.
      */
     ConfElement(StramElement element,
-                ConfElement parent,
-                Set<StramElement> additionalRelatedElements,
-                Class<? extends Context> contextClass)
+        ConfElement parent,
+        Set<StramElement> additionalRelatedElements,
+        Class<? extends Context> contextClass)
     {
       this.element = element;
       this.parent = parent;
@@ -505,8 +525,7 @@ public class LogicalPlanConfiguration {
      */
     public static List<StramElement> getPathFromParentToChildInclusive(StramElement child, StramElement parent)
     {
-      List<StramElement> path = getPathFromChildToParentInclusive(child,
-                                                                  parent);
+      List<StramElement> path = getPathFromChildToParentInclusive(child, parent);
       return Lists.reverse(path);
     }
 
@@ -526,8 +545,7 @@ public class LogicalPlanConfiguration {
       }
 
       for (ConfElement childConfElement: current.getChildren()) {
-        ConfElement result = findConfElementWithAttribute(childConfElement,
-                                                          simpleAttributeName);
+        ConfElement result = findConfElementWithAttribute(childConfElement, simpleAttributeName);
 
         if (result != null) {
           return result;
@@ -540,8 +558,7 @@ public class LogicalPlanConfiguration {
     protected static Conf addConfs(Conf parentConf, ConfElement childConfElement)
     {
       //Figure out what configurations need to be added to hold this attribute
-      List<StramElement> path = ConfElement.getPathFromParentToChildInclusive(childConfElement.getStramElement(),
-                                                                              parentConf.getConfElement().getStramElement());
+      List<StramElement> path = ConfElement.getPathFromParentToChildInclusive(childConfElement.getStramElement(), parentConf.getConfElement().getStramElement());
 
       for (int pathIndex = 1; pathIndex < path.size(); pathIndex++) {
         LOG.debug("Adding conf");
@@ -603,16 +620,16 @@ public class LogicalPlanConfiguration {
             continue;
           }
 
-          Type fieldType = ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
+          Type fieldType = ((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0];
           contextAttributes.add(field.getName());
 
           Type existingType = ATTRIBUTES_TO_TYPE.get(field.getName());
 
           if (existingType != null && !existingType.equals(fieldType)) {
             throw new ValidationException("The attribute " + field.getName() +
-                                          " is defined with two different types in two different context classes: " +
-                                          fieldType + " and " + existingType + "\n" +
-                                          "Attributes with the same name are required to have the same type accross all Context classes.");
+                " is defined with two different types in two different context classes: " +
+                fieldType + " and " + existingType + "\n" +
+                "Attributes with the same name are required to have the same type accross all Context classes.");
           }
 
           ATTRIBUTES_TO_TYPE.put(field.getName(), fieldType);
@@ -916,8 +933,8 @@ public class LogicalPlanConfiguration {
   /**
    * This is an abstract class representing the configuration applied to an element in the DAG.
    */
-  private static abstract class Conf {
-
+  private abstract static class Conf
+  {
     protected Conf parentConf = null;
 
     protected final Map<Attribute<Object>, String> attributes = Maps.newHashMap();
@@ -927,32 +944,39 @@ public class LogicalPlanConfiguration {
 
     protected String id;
 
-    public void setId(String id) {
+    public void setId(String id)
+    {
       this.id = id;
     }
 
-    public String getId() {
+    public String getId()
+    {
       return id;
     }
 
-    public void setParentConf(Conf parentConf) {
+    public void setParentConf(Conf parentConf)
+    {
       this.parentConf = parentConf;
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Conf> T getParentConf() {
+    public <T extends Conf> T getParentConf()
+    {
       return (T)parentConf;
     }
 
     /**
      * Gets an ancestor {@link Conf} of this {@link Conf} of the given {@link StramElement} type.
-     * @param <T> The {@link Conf} Class of the ancestor conf
+     *
+     * @param <T>             The {@link Conf} Class of the ancestor conf
      * @param ancestorElement The {@link StramElement} representing the type of the ancestor {@link Conf}.
-     * @return The ancestor {@link Conf} of the corresponding {@link StramElement} type, or null if no ancestor {@link Conf} with
+     * @return The ancestor {@link Conf} of the corresponding {@link StramElement} type, or null if no ancestor
+     * {@link Conf} with
      * the given {@link StramElement} type exists.
      */
     @SuppressWarnings("unchecked")
-    public <T extends Conf> T getAncestorConf(StramElement ancestorElement) {
+    public <T extends Conf> T getAncestorConf(StramElement ancestorElement)
+    {
       if (getConfElement().getStramElement() == ancestorElement) {
         return (T)this;
       }
@@ -973,7 +997,8 @@ public class LogicalPlanConfiguration {
      * and {@link StramElement} type is not present.
      * @return A child {@link Conf} of this {@link Conf} with the given id and {@link StramElement} type.
      */
-    public <T extends Conf> T getOrAddChild(String id, StramElement childType, Class<T> clazz) {
+    public <T extends Conf> T getOrAddChild(String id, StramElement childType, Class<T> clazz)
+    {
       @SuppressWarnings("unchecked")
       Map<String, T> elChildren = (Map<String, T>)children.get(childType);
       if (elChildren == null) {
@@ -987,15 +1012,18 @@ public class LogicalPlanConfiguration {
       return conf;
     }
 
-    public void setAttribute(Attribute<Object> attr, String value) {
+    public void setAttribute(Attribute<Object> attr, String value)
+    {
       attributes.put(attr, value);
     }
 
-    public void setProperty(String name, String value) {
+    public void setProperty(String name, String value)
+    {
       properties.setProperty(name, value);
     }
 
-    public void setDefaultProperties(Properties defaults) {
+    public void setDefaultProperties(Properties defaults)
+    {
       properties.setDefaultProperties(defaults);
     }
 
@@ -1008,7 +1036,8 @@ public class LogicalPlanConfiguration {
      * @param childType The {@link StramElement} corresponding to the type of a child {@link Conf}.
      * @return The list of child {@link Conf}s with a matching name and {@link StramElement} type.
      */
-    public <T extends Conf> List<T> getMatchingChildConf(String name, StramElement childType) {
+    public <T extends Conf> List<T> getMatchingChildConf(String name, StramElement childType)
+    {
       List<T> childConfs = new ArrayList<>();
       Map<String, T> elChildren = getChildren(childType);
       for (Map.Entry<String, T> entry : elChildren.entrySet()) {
@@ -1058,22 +1087,25 @@ public class LogicalPlanConfiguration {
      * the given name is not present in the given map.
      * @return A {@link Conf} with the given name, contained in the given map.
      */
-    protected <T extends Conf> T getOrAddConf(Map<String, T> map, String id, Class<T> clazz) {
+    protected <T extends Conf> T getOrAddConf(Map<String, T> map, String id, Class<T> clazz)
+    {
       T conf = map.get(id);
       if (conf == null) {
         try {
-          Constructor<T> declaredConstructor = clazz.getDeclaredConstructor(new Class<?>[] {});
-          conf = declaredConstructor.newInstance(new Object[] {});
+          Constructor<T> declaredConstructor = clazz.getDeclaredConstructor(new Class<?>[]{});
+          conf = declaredConstructor.newInstance(new Object[]{});
           conf.setId(id);
           map.put(id, conf);
-        } catch (IllegalAccessException | IllegalArgumentException | InstantiationException | NoSuchMethodException | SecurityException | InvocationTargetException e) {
+        } catch (IllegalAccessException | IllegalArgumentException | InstantiationException | NoSuchMethodException |
+            SecurityException | InvocationTargetException e) {
           LOG.error("Error instantiating configuration", e);
         }
       }
       return conf;
     }
 
-    public  <T extends Conf> T getChild(String id, StramElement childType) {
+    public <T extends Conf> T getChild(String id, StramElement childType)
+    {
       T conf = null;
       @SuppressWarnings("unchecked")
       Map<String, T> elChildren = (Map<String, T>)children.get(childType);
@@ -1084,7 +1116,8 @@ public class LogicalPlanConfiguration {
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Conf> Map<String, T> getChildren(StramElement childType) {
+    public <T extends Conf> Map<String, T> getChildren(StramElement childType)
+    {
       // Always return non null so caller will not have to do extra check as expected
       Map<String, T> elChildren = (Map<String, T>)children.get(childType);
       if (elChildren == null) {
@@ -1095,11 +1128,14 @@ public class LogicalPlanConfiguration {
     }
 
     // Override for parsing of custom elements other than attributes and opProps
-    // Make this config parse element as the entry point for parsing in future instead of the generic method in parent class
-    public void parseElement(StramElement element, String[] keys, int index, String propertyValue) {
+    // Make this config parse element as the entry point for parsing in future instead of the generic method in
+    // parent class
+    public void parseElement(StramElement element, String[] keys, int index, String propertyValue)
+    {
     }
 
-    public boolean isAllowedChild(StramElement childType) {
+    public boolean isAllowedChild(StramElement childType)
+    {
       StramElement[] childElements = getChildElements();
       if (childElements != null) {
         for (StramElement childElement : childElements) {
@@ -1111,14 +1147,16 @@ public class LogicalPlanConfiguration {
       return false;
     }
 
-    public StramElement getDefaultChildElement() {
+    public StramElement getDefaultChildElement()
+    {
       if ((getConfElement().getContextClass() == null) && isAllowedChild(StramElement.PROP)) {
         return StramElement.PROP;
       }
       return null;
     }
 
-    public boolean ignoreUnknownChildren() {
+    public boolean ignoreUnknownChildren()
+    {
       return getDefaultChildElement() == null;
     }
 
@@ -1127,14 +1165,18 @@ public class LogicalPlanConfiguration {
     public abstract ConfElement getConfElement();
   }
 
-  private static class StramConf extends Conf {
+  private static class StramConf extends Conf
+  {
 
     private final Map<String, String> appAliases = Maps.newHashMap();
 
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.APPLICATION, StramElement.GATEWAY, StramElement.TEMPLATE, StramElement.OPERATOR,
-            StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.TEMPLATE, StramElement.ATTR, StramElement.UNIFIER};
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.APPLICATION,
+        StramElement.GATEWAY, StramElement.TEMPLATE, StramElement.OPERATOR,
+        StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM,
+        StramElement.TEMPLATE, StramElement.ATTR, StramElement.UNIFIER};
 
-    StramConf() {
+    StramConf()
+    {
     }
 
     @Override
@@ -1153,18 +1195,21 @@ public class LogicalPlanConfiguration {
   /**
    * This holds the configuration information for an Apex application.
    */
-  private static class AppConf extends Conf {
+  private static class AppConf extends Conf
+  {
 
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.GATEWAY, StramElement.OPERATOR, StramElement.PORT,
-            StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.ATTR, StramElement.CLASS, StramElement.PATH,
-            StramElement.PROP, StramElement.UNIFIER};
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.GATEWAY, StramElement.OPERATOR,
+        StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.ATTR,
+        StramElement.CLASS, StramElement.PATH, StramElement.PROP, StramElement.UNIFIER};
 
     @SuppressWarnings("unused")
-    AppConf() {
+    AppConf()
+    {
     }
 
     @Override
-    public void parseElement(StramElement element, String[] keys, int index, String propertyValue) {
+    public void parseElement(StramElement element, String[] keys, int index, String propertyValue)
+    {
       if ((element == StramElement.CLASS) || (element == StramElement.PATH)) {
         StramConf stramConf = getParentConf();
         stramConf.appAliases.put(propertyValue, getId());
@@ -1177,9 +1222,9 @@ public class LogicalPlanConfiguration {
       return CHILD_ELEMENTS;
     }
 
-
     @Override
-    public StramElement getDefaultChildElement() {
+    public StramElement getDefaultChildElement()
+    {
       return StramElement.PROP;
     }
 
@@ -1190,12 +1235,14 @@ public class LogicalPlanConfiguration {
     }
   }
 
-  private static class GatewayConf extends Conf {
+  private static class GatewayConf extends Conf
+  {
 
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.PROP};
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.PROP};
 
     @SuppressWarnings("unused")
-    GatewayConf() {
+    GatewayConf()
+    {
     }
 
     @Override
@@ -1215,12 +1262,14 @@ public class LogicalPlanConfiguration {
    * Named set of opProps that can be used to instantiate streams or operators
    * with common settings.
    */
-  private static class TemplateConf extends Conf {
+  private static class TemplateConf extends Conf
+  {
 
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.PROP};
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.PROP};
 
     @SuppressWarnings("unused")
-    TemplateConf() {
+    TemplateConf()
+    {
     }
 
     @Override
@@ -1258,15 +1307,17 @@ public class LogicalPlanConfiguration {
   /**
    * This holds the configuration information for a stream that connects two operators in an Apex application.
    */
-  private static class StreamConf extends Conf {
+  private static class StreamConf extends Conf
+  {
 
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.TEMPLATE, StramElement.PROP};
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.TEMPLATE, StramElement.PROP};
 
     private OperatorConf sourceNode;
     private final Set<OperatorConf> targetNodes = new HashSet<>();
 
     @SuppressWarnings("unused")
-    StreamConf() {
+    StreamConf()
+    {
     }
 
     @Override
@@ -1279,7 +1330,8 @@ public class LogicalPlanConfiguration {
      * Locality for adjacent operators.
      * @return boolean
      */
-    public DAG.Locality getLocality() {
+    public DAG.Locality getLocality()
+    {
       String v = properties.getProperty(STREAM_LOCALITY, null);
       return (v != null) ? DAG.Locality.valueOf(v) : null;
     }
@@ -1289,7 +1341,8 @@ public class LogicalPlanConfiguration {
      * @param portName
      * @param node
      */
-    public StreamConf setSource(String portName, OperatorConf node) {
+    public StreamConf setSource(String portName, OperatorConf node)
+    {
       if (this.sourceNode != null) {
         throw new IllegalArgumentException(String.format("Stream already receives input from %s", sourceNode));
       }
@@ -1298,7 +1351,8 @@ public class LogicalPlanConfiguration {
       return this;
     }
 
-    public StreamConf addSink(String portName, OperatorConf targetNode) {
+    public StreamConf addSink(String portName, OperatorConf targetNode)
+    {
       if (targetNode.inputs.containsKey(portName)) {
         throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, targetNode.inputs.get(portName)));
       }
@@ -1309,7 +1363,8 @@ public class LogicalPlanConfiguration {
     }
 
     @Override
-    public void setProperty(String name, String value) {
+    public void setProperty(String name, String value)
+    {
       AppConf appConf = getParentConf();
       if (STREAM_SOURCE.equals(name)) {
         if (sourceNode != null) {
@@ -1334,7 +1389,8 @@ public class LogicalPlanConfiguration {
       }
     }
 
-    private String[] getNodeAndPortId(String s) {
+    private String[] getNodeAndPortId(String s)
+    {
       String[] parts = s.split("\\.");
       if (parts.length != 2) {
         throw new IllegalArgumentException("Invalid node.port reference: " + s);
@@ -1349,10 +1405,11 @@ public class LogicalPlanConfiguration {
     }
 
     @Override
-    public String toString() {
-      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-          append("id", this.id).
-          toString();
+    public String toString()
+    {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+          .append("id", this.id)
+          .toString();
     }
 
   }
@@ -1360,13 +1417,15 @@ public class LogicalPlanConfiguration {
   /**
    * This is a simple extension of {@link java.util.Properties} which allows you to specify default properties.
    */
-  private static class PropertiesWithModifiableDefaults extends Properties {
+  private static class PropertiesWithModifiableDefaults extends Properties
+  {
     private static final long serialVersionUID = -4675421720308249982L;
 
     /**
      * @param defaults
      */
-    void setDefaultProperties(Properties defaults) {
+    void setDefaultProperties(Properties defaults)
+    {
       super.defaults = defaults;
     }
   }
@@ -1374,14 +1433,17 @@ public class LogicalPlanConfiguration {
   /**
    * This holds the configuration information for an operator in an Apex application.
    */
-  private static class OperatorConf extends Conf {
-
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT,
-            StramElement.ATTR, StramElement.PROP};
+  private static class OperatorConf extends Conf
+  {
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.PORT,
+        StramElement.INPUT_PORT, StramElement.OUTPUT_PORT,
+        StramElement.ATTR, StramElement.PROP};
 
     @SuppressWarnings("unused")
-    OperatorConf() {
+    OperatorConf()
+    {
     }
+
     private final Map<String, StreamConf> inputs = Maps.newHashMap();
     private final Map<String, StreamConf> outputs = Maps.newHashMap();
     private String templateRef;
@@ -1400,14 +1462,16 @@ public class LogicalPlanConfiguration {
         // Setting opProps from the template as default opProps as before
         // Revisit this
         StramConf stramConf = getAncestorConf(null);
-        TemplateConf templateConf = (TemplateConf)stramConf.getOrAddChild(value, StramElement.TEMPLATE, elementMaps.get(StramElement.TEMPLATE));
+        TemplateConf templateConf = (TemplateConf)stramConf
+            .getOrAddChild(value, StramElement.TEMPLATE, elementMaps.get(StramElement.TEMPLATE));
         setDefaultProperties(templateConf.properties);
       } else {
         super.setProperty(name, value);
       }
     }
 
-    private String getClassNameReqd() {
+    private String getClassNameReqd()
+    {
       String className = properties.getProperty(OPERATOR_CLASSNAME);
       if (className == null) {
         throw new IllegalArgumentException(String.format("Operator '%s' is missing property '%s'", getId(), LogicalPlanConfiguration.OPERATOR_CLASSNAME));
@@ -1417,9 +1481,11 @@ public class LogicalPlanConfiguration {
 
     /**
      * Properties for the node. Template values (if set) become property defaults.
+     *
      * @return Map<String,String>
      */
-    private Map<String, String> getProperties() {
+    private Map<String, String> getProperties()
+    {
       return Maps.fromProperties(properties);
     }
 
@@ -1430,7 +1496,8 @@ public class LogicalPlanConfiguration {
     }
 
     @Override
-    public StramElement getDefaultChildElement() {
+    public StramElement getDefaultChildElement()
+    {
       return StramElement.PROP;
     }
 
@@ -1439,10 +1506,11 @@ public class LogicalPlanConfiguration {
      * @return String
      */
     @Override
-    public String toString() {
-      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-          append("id", this.id).
-          toString();
+    public String toString()
+    {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+          .append("id", this.id)
+          .toString();
     }
 
   }
@@ -1450,12 +1518,14 @@ public class LogicalPlanConfiguration {
   /**
    * This holds the configuration information for a port on an operator in an Apex application.
    */
-  private static class PortConf extends Conf {
+  private static class PortConf extends Conf
+  {
 
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.ATTR, StramElement.UNIFIER};
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.ATTR, StramElement.UNIFIER};
 
     @SuppressWarnings("unused")
-    PortConf() {
+    PortConf()
+    {
     }
 
     @Override
@@ -1499,7 +1569,8 @@ public class LogicalPlanConfiguration {
    * @param ancestorConf The {@link Conf} to return.
    * @return The given {@link Conf}, or null if the first call to this method passes a null {@link StramElement}.
    */
-  private static Conf getConf(StramElement element, Conf ancestorConf) {
+  private static Conf getConf(StramElement element, Conf ancestorConf)
+  {
     if (element == ancestorConf.getConfElement().getStramElement()) {
       return ancestorConf;
     }
@@ -1511,7 +1582,7 @@ public class LogicalPlanConfiguration {
     StramElement parentElement = ConfElement.getAllowedParentConf(element);
     Conf parentConf = getConf(parentElement, ancestorConf);
 
-    if(parentConf == null) {
+    if (parentConf == null) {
       throw new IllegalArgumentException("The given StramElement is not the same type as the given ancestorConf, " +
                                          "and it is not a valid type for a parent conf.");
     }
@@ -1527,7 +1598,8 @@ public class LogicalPlanConfiguration {
    * @param ancestorConf The {@link Conf} to add a child {@link Conf} to.
    * @return The child {@link Conf} that was added to the given ancestorConf.
    */
-  private static Conf addConf(StramElement element, String name, Conf ancestorConf) {
+  private static Conf addConf(StramElement element, String name, Conf ancestorConf)
+  {
     StramElement parentElement = ConfElement.getAllowedParentConf(element);
     Conf conf1 = null;
     Conf parentConf = getConf(parentElement, ancestorConf);
@@ -1547,7 +1619,8 @@ public class LogicalPlanConfiguration {
    * @param childType The {@link StramElement} corresponding to the type of a child {@link Conf}.
    * @return The list of child {@link Conf}s with a matching name and {@link StramElement} type.
    */
-  private <T extends Conf> List<T> getMatchingChildConf(List<? extends Conf> confs, String name, StramElement childType) {
+  private <T extends Conf> List<T> getMatchingChildConf(List<? extends Conf> confs, String name, StramElement childType)
+  {
     List<T> childConfs = Lists.newArrayList();
     for (Conf conf1 : confs) {
       List<T> matchingConfs = conf1.getMatchingChildConf(name, childType);
@@ -1576,7 +1649,8 @@ public class LogicalPlanConfiguration {
     addFromProperties(toProperties(conf, StreamingApplication.DT_PREFIX), null);
   }
 
-  public static Properties toProperties(Configuration conf, String prefix) {
+  public static Properties toProperties(Configuration conf, String prefix)
+  {
     Iterator<Entry<String, String>> it = conf.iterator();
     Properties props = new Properties();
     while (it.hasNext()) {
@@ -1598,7 +1672,8 @@ public class LogicalPlanConfiguration {
    * @param appPath The path of the application class in the jar
    * @return The alias name if one is available, null otherwise
    */
-  public String getAppAlias(String appPath) {
+  public String getAppAlias(String appPath)
+  {
     String appAlias;
     if (appPath.endsWith(CLASS_SUFFIX)) {
       appPath = appPath.replace("/", KEY_SEPARATOR).substring(0, appPath.length() - CLASS_SUFFIX.length());
@@ -1610,8 +1685,7 @@ public class LogicalPlanConfiguration {
         if (an != null && StringUtils.isNotBlank(an.name())) {
           appAlias = an.name();
         }
-      }
-      catch (ClassNotFoundException e) {
+      } catch (ClassNotFoundException e) {
         // ignore
       }
     }
@@ -1740,7 +1814,8 @@ public class LogicalPlanConfiguration {
    * @param propertyValue The value corresponding to the Apex property.
    * @param conf The current {@link Conf} to add properties to.
    */
-  private void parseStramPropertyTokens(String[] keys, int index, String propertyName, String propertyValue, Conf conf) {
+  private void parseStramPropertyTokens(String[] keys, int index, String propertyName, String propertyValue, Conf conf)
+  {
     if (index < keys.length) {
       String key = keys[index];
       StramElement element = getElement(key, conf);
@@ -1748,8 +1823,8 @@ public class LogicalPlanConfiguration {
         return;
       }
       if ((element == StramElement.APPLICATION) || (element == StramElement.OPERATOR) || (element == StramElement.STREAM)
-              || (element == StramElement.PORT) || (element == StramElement.INPUT_PORT) || (element == StramElement.OUTPUT_PORT)
-              || (element == StramElement.TEMPLATE)) {
+          || (element == StramElement.PORT) || (element == StramElement.INPUT_PORT) || (element == StramElement.OUTPUT_PORT)
+          || (element == StramElement.TEMPLATE)) {
         parseAppElement(index, keys, element, conf, propertyName, propertyValue);
       } else if (element == StramElement.GATEWAY) {
         parseGatewayElement(element, conf, keys, index, propertyName, propertyValue);
@@ -1776,7 +1851,7 @@ public class LogicalPlanConfiguration {
   private void parseAppElement(int index, String[] keys, StramElement element, Conf conf1, String propertyName, String propertyValue)
   {
     if ((index + 1) < keys.length) {
-      String name = keys[index+1];
+      String name = keys[index + 1];
       Conf elConf = addConf(element, name, conf1);
       if (elConf != null) {
         parseStramPropertyTokens(keys, index + 2, propertyName, propertyValue, elConf);
@@ -1800,7 +1875,7 @@ public class LogicalPlanConfiguration {
   {
     Conf elConf = addConf(element, null, conf1);
     if (elConf != null) {
-      parseStramPropertyTokens(keys, index+1, propertyName, propertyValue, elConf);
+      parseStramPropertyTokens(keys, index + 1, propertyName, propertyValue, elConf);
     } else {
       LOG.error("Invalid configuration key: {}", propertyName);
     }
@@ -1818,7 +1893,7 @@ public class LogicalPlanConfiguration {
   {
     Conf elConf = addConf(element, null, conf1);
     if (elConf != null) {
-      parseStramPropertyTokens(keys, index+1, propertyName, propertyValue, elConf);
+      parseStramPropertyTokens(keys, index + 1, propertyName, propertyValue, elConf);
     } else {
       LOG.error("Invalid configuration key: {}", propertyName);
     }
@@ -1858,7 +1933,7 @@ public class LogicalPlanConfiguration {
         }
         if (conf.getConfElement().getContextAttributes().contains(attributeName)) {
           @SuppressWarnings(value = "unchecked")
-                  Attribute<Object> attr = (Attribute<Object>)ContextUtils.CONTEXT_TO_ATTRIBUTE_NAME_TO_ATTRIBUTE.get(conf.getConfElement().getContextClass()).get(attributeName);
+          Attribute<Object> attr = (Attribute<Object>)ContextUtils.CONTEXT_TO_ATTRIBUTE_NAME_TO_ATTRIBUTE.get(conf.getConfElement().getContextClass()).get(attributeName);
           conf.setAttribute(attr, propertyValue);
         } else {
           AttributeParseUtils.processAllConfsForAttribute(conf, attributeName, propertyValue);
@@ -1897,7 +1972,7 @@ public class LogicalPlanConfiguration {
     // Supporting current implementation where property can be directly specified under operator
     String prop;
     if (element == StramElement.PROP) {
-      prop = getCompleteKey(keys, index+1);
+      prop = getCompleteKey(keys, index + 1);
     } else {
       prop = getCompleteKey(keys, index);
     }
@@ -1908,11 +1983,13 @@ public class LogicalPlanConfiguration {
     }
   }
 
-  private StramElement getElement(String value, Conf conf) {
+  private StramElement getElement(String value, Conf conf)
+  {
     StramElement element = null;
     try {
       element = StramElement.fromValue(value);
     } catch (IllegalArgumentException ie) {
+      // fall through
     }
     // If element is not allowed treat it as text
     if ((element != null) && !conf.isAllowedChild(element)) {
@@ -1928,7 +2005,8 @@ public class LogicalPlanConfiguration {
    * @param start The token to start creating a string from.
    * @return The completed key.
    */
-  private static String getCompleteKey(String[] keys, int start) {
+  private static String getCompleteKey(String[] keys, int start)
+  {
     return getCompleteKey(keys, start, keys.length);
   }
 
@@ -1940,7 +2018,8 @@ public class LogicalPlanConfiguration {
    * @param end 1 + the last index to include in the concatenation.
    * @return The completed key.
    */
-  private static String getCompleteKey(String[] keys, int start, int end) {
+  private static String getCompleteKey(String[] keys, int start, int end)
+  {
     int length = 0;
     for (int keyIndex = 0; keyIndex < keys.length; keyIndex++) {
       length += keys[keyIndex].length();
@@ -1961,11 +2040,13 @@ public class LogicalPlanConfiguration {
    * Can be serialized to property file and used to read back into builder.
    * @return Properties
    */
-  public Properties getProperties() {
+  public Properties getProperties()
+  {
     return this.properties;
   }
 
-  public Map<String, String> getAppAliases() {
+  public Map<String, String> getAppAliases()
+  {
     return Collections.unmodifiableMap(this.stramConf.appAliases);
   }
 
@@ -2117,7 +2198,7 @@ public class LogicalPlanConfiguration {
   {
     // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attribute below is used
     String connectAddress = conf.get(StreamingApplication.DT_PREFIX + Context.DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
-    dag.setAttribute(Context.DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null? conf.get(GATEWAY_LISTEN_ADDRESS): connectAddress);
+    dag.setAttribute(Context.DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null ? conf.get(GATEWAY_LISTEN_ADDRESS) : connectAddress);
     if (app != null) {
       app.populateDAG(dag, conf);
     }
@@ -2162,21 +2243,24 @@ public class LogicalPlanConfiguration {
    * @param appName
    * @return
    */
-  public Map<String, String> getProperties(OperatorMeta ow, String appName) {
+  public Map<String, String> getProperties(OperatorMeta ow, String appName)
+  {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
     List<OperatorConf> opConfs = getMatchingChildConf(appConfs, ow.getName(), StramElement.OPERATOR);
     return getProperties(getPropertyArgs(ow), opConfs, appName);
   }
 
-  private Map<String,String> getApplicationProperties(List<AppConf> appConfs){
+  private Map<String, String> getApplicationProperties(List<AppConf> appConfs)
+  {
     Map<String, String> appProps = Maps.newHashMap();
     // Apply the configurations in reverse order since the higher priority ones are at the beginning
-    for(int i = appConfs.size()-1; i >= 0; i--){
+    for (int i = appConfs.size() - 1; i >= 0; i--) {
       AppConf conf1 = appConfs.get(i);
       appProps.putAll(Maps.fromProperties(conf1.properties));
     }
     return appProps;
   }
+
   /**
    * Get the configuration opProps for the given operator.
    * These can be operator specific settings or settings from matching templates.
@@ -2205,14 +2289,15 @@ public class LogicalPlanConfiguration {
     }
     // direct settings
     // Apply the configurations in reverse order since the higher priority ones are at the beginning
-    for (int i = opConfs.size()-1; i >= 0; i--) {
+    for (int i = opConfs.size() - 1; i >= 0; i--) {
       Conf conf1 = opConfs.get(i);
       opProps.putAll(Maps.fromProperties(conf1.properties));
     }
     return opProps;
   }
 
-  private List<TemplateConf> getDirectTemplates(List<OperatorConf> opConfs, Map<String, TemplateConf> templates) {
+  private List<TemplateConf> getDirectTemplates(List<OperatorConf> opConfs, Map<String, TemplateConf> templates)
+  {
     List<TemplateConf> refTemplates = Lists.newArrayList();
     for (TemplateConf t : templates.values()) {
       for (OperatorConf opConf : opConfs) {
@@ -2282,8 +2367,7 @@ public class LogicalPlanConfiguration {
       // populate custom opProps
       BeanUtils.populate(operator, properties);
       return operator;
-    }
-    catch (IllegalAccessException | InvocationTargetException e) {
+    } catch (IllegalAccessException | InvocationTargetException e) {
       throw new IllegalArgumentException("Error setting operator properties", e);
     }
   }
@@ -2313,8 +2397,7 @@ public class LogicalPlanConfiguration {
     try {
       BeanUtils.populate(application, properties);
       return application;
-    }
-    catch (IllegalAccessException | InvocationTargetException e) {
+    } catch (IllegalAccessException | InvocationTargetException e) {
       throw new IllegalArgumentException("Error setting application properties", e);
     }
   }
@@ -2332,7 +2415,8 @@ public class LogicalPlanConfiguration {
    * @param dag
    * @param applicationName
    */
-  public void setOperatorProperties(LogicalPlan dag, String applicationName) {
+  public void setOperatorProperties(LogicalPlan dag, String applicationName)
+  {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(applicationName, StramElement.APPLICATION);
     for (OperatorMeta ow : dag.getAllOperators()) {
       List<OperatorConf> opConfs = getMatchingChildConf(appConfs, ow.getName(), StramElement.OPERATOR);
@@ -2364,10 +2448,11 @@ public class LogicalPlanConfiguration {
   public void setApplicationConfiguration(final LogicalPlan dag, String appName, StreamingApplication app)
   {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
-    setApplicationConfiguration(dag, appConfs,app);
+    setApplicationConfiguration(dag, appConfs, app);
   }
 
-  private void setApplicationConfiguration(final LogicalPlan dag, List<AppConf> appConfs,StreamingApplication app) {
+  private void setApplicationConfiguration(final LogicalPlan dag, List<AppConf> appConfs, StreamingApplication app)
+  {
     setAttributes(appConfs, dag.getAttributes());
     if (app != null) {
       Map<String, String> appProps = getApplicationProperties(appConfs);
@@ -2375,7 +2460,8 @@ public class LogicalPlanConfiguration {
     }
   }
 
-  private void setOperatorConfiguration(final LogicalPlan dag, List<AppConf> appConfs, String appName) {
+  private void setOperatorConfiguration(final LogicalPlan dag, List<AppConf> appConfs, String appName)
+  {
     for (final OperatorMeta ow : dag.getAllOperators()) {
       List<OperatorConf> opConfs = getMatchingChildConf(appConfs, ow.getName(), StramElement.OPERATOR);
 
@@ -2403,7 +2489,7 @@ public class LogicalPlanConfiguration {
         outPortConfs.addAll(portConfs);
         setAttributes(outPortConfs, om.getAttributes());
         List<OperatorConf> unifConfs = getMatchingChildConf(outPortConfs, null, StramElement.UNIFIER);
-        if(unifConfs.size() != 0) {
+        if (unifConfs.size() != 0) {
           setAttributes(unifConfs, om.getUnifierMeta().getAttributes());
         }
       }
@@ -2420,7 +2506,8 @@ public class LogicalPlanConfiguration {
     }
   }
 
-  private void setStreamConfiguration(LogicalPlan dag, List<AppConf> appConfs, String appAlias) {
+  private void setStreamConfiguration(LogicalPlan dag, List<AppConf> appConfs, String appAlias)
+  {
     for (StreamMeta sm : dag.getAllStreams()) {
       List<StreamConf> smConfs = getMatchingChildConf(appConfs, sm.getName(), StramElement.STREAM);
       for (StreamConf smConf : smConfs) {
@@ -2433,7 +2520,8 @@ public class LogicalPlanConfiguration {
     }
   }
 
-  private void setAttributes(List<? extends Conf> confs, Attribute.AttributeMap attributeMap) {
+  private void setAttributes(List<? extends Conf> confs, Attribute.AttributeMap attributeMap)
+  {
     Set<Attribute<Object>> processedAttributes = Sets.newHashSet();
     //json object codec for complex attributes
     JSONObject2String jsonCodec = new JSONObject2String();
@@ -2444,8 +2532,7 @@ public class LogicalPlanConfiguration {
           if (attribute.codec == null) {
             String msg = String.format("Attribute does not support property configuration: %s %s", attribute.name, e.getValue());
             throw new UnsupportedOperationException(msg);
-          }
-          else {
+          } else {
             if (processedAttributes.add(attribute)) {
               String val = e.getValue();
               if (val.trim().charAt(0) == '{' && !(attribute.codec instanceof JsonStringCodec)) {

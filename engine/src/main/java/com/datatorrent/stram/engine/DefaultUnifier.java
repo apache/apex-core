@@ -37,7 +37,7 @@ import com.datatorrent.api.annotation.Stateless;
 @Stateless
 public class DefaultUnifier implements Unifier<Object>, Serializable
 {
-  final public transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>();
+  public final transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<>();
 
   @Override
   public void process(Object tuple)

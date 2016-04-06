@@ -49,10 +49,9 @@ public class StreamingContainerSecurityInfo extends SecurityInfo
   public TokenInfo getTokenInfo(Class<?> type, Configuration c)
   {
     TokenInfo tokenInfo = null;
-    if (type.equals(StreamingContainerUmbilicalProtocol.class))
-    {
-        tokenInfo = new TokenInfo() {
-
+    if (type.equals(StreamingContainerUmbilicalProtocol.class)) {
+      tokenInfo = new TokenInfo()
+      {
         @Override
         public Class<? extends TokenSelector<? extends TokenIdentifier>> value()
         {
@@ -64,7 +63,6 @@ public class StreamingContainerSecurityInfo extends SecurityInfo
         {
           return null;
         }
-
       };
     }
     return tokenInfo;

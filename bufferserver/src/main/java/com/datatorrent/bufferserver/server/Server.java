@@ -722,8 +722,7 @@ public class Server implements ServerListener
           }
           return true;
         }
-      }
-      while (true);
+      } while (true);
     }
 
     private boolean switchToNewBufferOrSuspendRead(final byte[] array, final int offset, final int size)
@@ -862,8 +861,7 @@ public class Server implements ServerListener
         read(remainingCapacity);
 
         offset += remainingCapacity;
-      }
-      while ((len -= remainingCapacity) > 0);
+      } while ((len -= remainingCapacity) > 0);
     }
   }
 

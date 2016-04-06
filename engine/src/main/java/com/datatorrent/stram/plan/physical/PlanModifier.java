@@ -18,23 +18,23 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import com.datatorrent.api.Context.DAGContext;
 import java.util.Collections;
 import java.util.Map;
 
 import javax.validation.ValidationException;
 
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.plan.logical.Operators;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StringCodec;
 import com.datatorrent.stram.StringCodecs;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 
 /**
@@ -44,10 +44,11 @@ import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
  *
  * @since 0.3.2
  */
-public class PlanModifier {
+public class PlanModifier
+{
 
-  final private LogicalPlan logicalPlan;
-  final private PhysicalPlan physicalPlan;
+  private final LogicalPlan logicalPlan;
+  private final PhysicalPlan physicalPlan;
 
   /**
    * For dry run on logical plan only
@@ -260,8 +261,7 @@ public class PlanModifier {
   public void setOperatorProperty(String operatorName, String propertyName, String propertyValue)
   {
     OperatorMeta om = assertGetOperator(operatorName);
-    if (physicalPlan != null)
-    {
+    if (physicalPlan != null) {
       for (PTOperator oper : physicalPlan.getOperators(om)) {
         if (!physicalPlan.newOpers.containsKey(oper)) {
           throw new ValidationException("Properties can only be set on new operators: " + om + " " + propertyName + " " + propertyValue);

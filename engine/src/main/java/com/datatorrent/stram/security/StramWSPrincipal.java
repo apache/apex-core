@@ -26,15 +26,18 @@ import java.security.Principal;
  *
  * @since 0.9.2
  */
-public class StramWSPrincipal implements Principal {
+public class StramWSPrincipal implements Principal
+{
   private final String name;
 
-  public StramWSPrincipal(String name) {
+  public StramWSPrincipal(String name)
+  {
     this.name = name;
   }
 
   @Override
-  public String getName() {
+  public String getName()
+  {
     return name;
   }
 }

@@ -29,7 +29,6 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.eclipse.jetty.websocket.WebSocket;
-import org.eclipse.jetty.websocket.WebSocket.Connection;
 import org.eclipse.jetty.websocket.WebSocketServlet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,10 +48,10 @@ public class PubSubWebSocketServlet<SECURITY_CONTEXT, PRINCIPAL> extends WebSock
 {
   private static final Logger LOG = LoggerFactory.getLogger(PubSubWebSocketServlet.class);
   private static final long serialVersionUID = 1L;
-  private HashMap<String, HashSet<PubSubWebSocket>> topicToSocketMap = new HashMap<String, HashSet<PubSubWebSocket>>();
-  private HashMap<PubSubWebSocket, HashSet<String>> socketToTopicMap = new HashMap<PubSubWebSocket, HashSet<String>>();
+  private HashMap<String, HashSet<PubSubWebSocket>> topicToSocketMap = new HashMap<>();
+  private HashMap<PubSubWebSocket, HashSet<String>> socketToTopicMap = new HashMap<>();
   private ObjectMapper mapper = (new JSONSerializationProvider()).getContext(null);
-  private PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
+  private PubSubMessageCodec<Object> codec = new PubSubMessageCodec<>(mapper);
   private InternalMessageHandler internalMessageHandler = null;
   private static final int latestTopicCount = 100;
   protected SECURITY_CONTEXT securityContext;
@@ -128,7 +127,8 @@ public class PubSubWebSocketServlet<SECURITY_CONTEXT, PRINCIPAL> extends WebSock
     this.internalMessageHandler = internalMessageHandler;
   }
 
-  public class UserHolder {
+  public class UserHolder
+  {
     public String username;
   }
 
@@ -136,7 +136,7 @@ public class PubSubWebSocketServlet<SECURITY_CONTEXT, PRINCIPAL> extends WebSock
   public WebSocket doWebSocketConnect(HttpServletRequest request, String protocol)
   {
     @SuppressWarnings("unchecked")
-    PRINCIPAL principal = (PRINCIPAL) request.getAttribute(authAttribute);
+    PRINCIPAL principal = (PRINCIPAL)request.getAttribute(authAttribute);
     return new PubSubWebSocket(principal);
   }
 
@@ -145,27 +145,24 @@ public class PubSubWebSocketServlet<SECURITY_CONTEXT, PRINCIPAL> extends WebSock
     if (subscribeFilter != null && !subscribeFilter.filter(securityContext, webSocket.getPrincipal(), topic)) {
       LOG.warn("Subscribe filter returns false for topic {}, user {}. Ignoring subscribe request", topic, webSocket.getPrincipal());
       return;
-    }
-    else {
+    } else {
       LOG.debug("Subscribe is allowed for topic {}, user {}", topic, webSocket.getPrincipal());
     }
 
     HashSet<PubSubWebSocket> wsSet;
     if (!topicToSocketMap.containsKey(topic)) {
-      wsSet = new HashSet<PubSubWebSocket>();
+      wsSet = new HashSet<>();
       topicToSocketMap.put(topic, wsSet);
-    }
-    else {
+    } else {
       wsSet = topicToSocketMap.get(topic);
     }
     wsSet.add(webSocket);
 
     HashSet<String> topicSet;
     if (!socketToTopicMap.containsKey(webSocket)) {
-      topicSet = new HashSet<String>(0);
+      topicSet = new HashSet<>(0);
       socketToTopicMap.put(webSocket, topicSet);
-    }
-    else {
+    } else {
       topicSet = socketToTopicMap.get(webSocket);
     }
     topicSet.add(topic);
@@ -222,7 +219,7 @@ public class PubSubWebSocketServlet<SECURITY_CONTEXT, PRINCIPAL> extends WebSock
 
   private synchronized void sendData(PubSubWebSocket webSocket, String topic, Object data) throws IOException
   {
-    PubSubMessage<Object> pubSubMessage = new PubSubMessage<Object>();
+    PubSubMessage<Object> pubSubMessage = new PubSubMessage<>();
     pubSubMessage.setType(PubSubMessageType.DATA);
     pubSubMessage.setTopic(topic);
     pubSubMessage.setData(data);
@@ -244,12 +241,10 @@ public class PubSubWebSocketServlet<SECURITY_CONTEXT, PRINCIPAL> extends WebSock
           if (sendFilter != null) {
             Object filteredData = sendFilter.filter(securityContext, socket.getPrincipal(), topic, data);
             sendData(socket, topic, filteredData);
-          }
-          else {
+          } else {
             sendData(socket, topic, data);
           }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           LOG.error("Cannot send message", ex);
           it.remove();
           disconnect(socket);
@@ -261,7 +256,7 @@ public class PubSubWebSocketServlet<SECURITY_CONTEXT, PRINCIPAL> extends WebSock
   protected class PubSubWebSocket implements WebSocket.OnTextMessage
   {
     private Connection connection;
-    private final BlockingQueue<String> messageQueue = new ArrayBlockingQueue<String>(1024);
+    private final BlockingQueue<String> messageQueue = new ArrayBlockingQueue<>(1024);
     private final Thread messengerThread = new Thread(new Messenger());
     private final PRINCIPAL principal;
 
@@ -290,13 +285,11 @@ public class PubSubWebSocketServlet<SECURITY_CONTEXT, PRINCIPAL> extends WebSock
               if (topic != null) {
                 subscribe(this, topic);
               }
-            }
-            else if (type.equals(PubSubMessageType.UNSUBSCRIBE)) {
+            } else if (type.equals(PubSubMessageType.UNSUBSCRIBE)) {
               if (topic != null) {
                 unsubscribe(this, topic);
               }
-            }
-            else if (type.equals(PubSubMessageType.PUBLISH)) {
+            } else if (type.equals(PubSubMessageType.PUBLISH)) {
               if (topic != null) {
                 Object data = pubSubMessage.getData();
                 if (data != null) {
@@ -308,27 +301,23 @@ public class PubSubWebSocketServlet<SECURITY_CONTEXT, PRINCIPAL> extends WebSock
                   }
                 }
               }
-            }
-            else if (type.equals(PubSubMessageType.SUBSCRIBE_NUM_SUBSCRIBERS)) {
+            } else if (type.equals(PubSubMessageType.SUBSCRIBE_NUM_SUBSCRIBERS)) {
               if (topic != null) {
                 subscribe(this, topic + "." + PubSubMessage.NUM_SUBSCRIBERS_SUFFIX);
                 sendData(this, topic + "." + PubSubMessage.NUM_SUBSCRIBERS_SUFFIX, getNumSubscribers(topic));
               }
-            }
-            else if (type.equals(PubSubMessageType.UNSUBSCRIBE_NUM_SUBSCRIBERS)) {
+            } else if (type.equals(PubSubMessageType.UNSUBSCRIBE_NUM_SUBSCRIBERS)) {
               if (topic != null) {
                 unsubscribe(this, topic + "." + PubSubMessage.NUM_SUBSCRIBERS_SUFFIX);
               }
-            }
-            else if (type.equals(PubSubMessageType.GET_LATEST_TOPICS)) {
+            } else if (type.equals(PubSubMessageType.GET_LATEST_TOPICS)) {
               synchronized (this) {
                 sendData(this, "_latestTopics", latestTopics.keySet());
               }
             }
           }
         }
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         LOG.warn("Exception caught", ex);
       }
     }
@@ -368,15 +357,14 @@ public class PubSubWebSocketServlet<SECURITY_CONTEXT, PRINCIPAL> extends WebSock
         while (!Thread.interrupted()) {
           try {
             String message = messageQueue.take();
-            // This call sendMessage() is blocking. This is why we have this messenger thread per connection so that one bad connection will not affect another
+            // This call sendMessage() is blocking. This is why we have this messenger thread per connection so that
+            // one bad connection will not affect another
             // Jetty 9 has async calls but we can't use Jetty 9 because it requires Java 7
             // When we can use Java 7, we need to upgrade to Jetty 9.
             connection.sendMessage(message);
-          }
-          catch (InterruptedException ex) {
+          } catch (InterruptedException ex) {
             return;
-          }
-          catch (Exception ex) {
+          } catch (Exception ex) {
             LOG.error("Caught exception in websocket messenger.", ex);
             return;
           }

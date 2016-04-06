@@ -132,19 +132,19 @@ public class StreamingContainer extends YarnContainerMain
   private final transient String jvmName;
   private final String containerId;
   private final transient StreamingContainerUmbilicalProtocol umbilical;
-  protected final Map<Integer, Node<?>> nodes = new ConcurrentHashMap<Integer, Node<?>>();
+  protected final Map<Integer, Node<?>> nodes = new ConcurrentHashMap<>();
   protected final Set<Integer> failedNodes = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
-  private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
-  protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<Integer, WindowGenerator>();
+  private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<>();
+  protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<>();
   private transient List<GarbageCollectorMXBean> garbageCollectorMXBeans;
   /**
    * OIO groups map
    * key: operator id of oio owning thread node
    * value: list of nodes which are in oio with oio owning thread node
    */
-  protected final Map<Integer, ArrayList<Integer>> oioGroups = new ConcurrentHashMap<Integer, ArrayList<Integer>>();
-  private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
-  private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
+  protected final Map<Integer, ArrayList<Integer>> oioGroups = new ConcurrentHashMap<>();
+  private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<>();
+  private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<>();
   private int heartbeatIntervalMillis = 1000;
   private volatile boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
@@ -176,10 +176,10 @@ public class StreamingContainer extends YarnContainerMain
   protected StreamingContainer(String containerId, StreamingContainerUmbilicalProtocol umbilical)
   {
     this.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-    this.components = new HashSet<Component<ContainerContext>>();
-    this.eventBus = new MBassador<ContainerEvent>(BusConfiguration.Default(1, 1, 1));
-    this.singletons = new HashMap<String, Object>();
-    this.nodeRequests = new ArrayList<StramToNodeRequest>();
+    this.components = new HashSet<>();
+    this.eventBus = new MBassador<>(BusConfiguration.Default(1, 1, 1));
+    this.singletons = new HashMap<>();
+    this.nodeRequests = new ArrayList<>();
 
     logger.debug("instantiated StramChild {}", containerId);
     this.umbilical = umbilical;
@@ -338,8 +338,8 @@ public class StreamingContainer extends YarnContainerMain
 
   public synchronized void deactivate()
   {
-    ArrayList<Thread> activeThreads = new ArrayList<Thread>();
-    ArrayList<Integer> activeOperators = new ArrayList<Integer>();
+    ArrayList<Thread> activeThreads = new ArrayList<>();
+    ArrayList<Integer> activeOperators = new ArrayList<>();
 
     for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
       Thread t = e.getValue().context.getThread();
@@ -523,7 +523,7 @@ public class StreamingContainer extends YarnContainerMain
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
-    HashMap<Integer, Node<?>> toUndeploy = new HashMap<Integer, Node<?>>();
+    HashMap<Integer, Node<?>> toUndeploy = new HashMap<>();
     for (Integer operatorId : nodeList) {
       Node<?> node = nodes.get(operatorId);
       if (node == null) {
@@ -535,8 +535,8 @@ public class StreamingContainer extends YarnContainerMain
       }
     }
 
-    ArrayList<Thread> joinList = new ArrayList<Thread>();
-    ArrayList<Integer> discoList = new ArrayList<Integer>();
+    ArrayList<Thread> joinList = new ArrayList<>();
+    ArrayList<Integer> discoList = new ArrayList<>();
     for (Integer operatorId : nodeList) {
       Thread t = nodes.get(operatorId).context.getThread();
       if (t == null || !t.isAlive()) {
@@ -579,7 +579,7 @@ public class StreamingContainer extends YarnContainerMain
 
     nodes.clear();
 
-    HashSet<WindowGenerator> gens = new HashSet<WindowGenerator>();
+    HashSet<WindowGenerator> gens = new HashSet<>();
     gens.addAll(generators.values());
     generators.clear();
     for (WindowGenerator wg : gens) {
@@ -658,7 +658,7 @@ public class StreamingContainer extends YarnContainerMain
           hb.setIntervalMs(heartbeatIntervalMillis);
           if (e.getValue().commandResponse.size() > 0) {
             BlockingQueue<StatsListener.OperatorResponse> commandResponse = e.getValue().commandResponse;
-            ArrayList<StatsListener.OperatorResponse> response = new ArrayList<StatsListener.OperatorResponse>();
+            ArrayList<StatsListener.OperatorResponse> response = new ArrayList<>();
             for (int i = 0; i < commandResponse.size(); i++) {
               response.add(commandResponse.poll());
             }
@@ -703,8 +703,7 @@ public class StreamingContainer extends YarnContainerMain
             }
           }
         }
-      }
-      while (rsp.hasPendingRequests);
+      } while (rsp.hasPendingRequests);
 
     }
     logger.debug("Exiting hearbeat loop");
@@ -842,7 +841,7 @@ public class StreamingContainer extends YarnContainerMain
 
     deployNodes(nodeList);
 
-    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
+    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<>();
     for (OperatorDeployInfo ndi : nodeList) {
       groupInputStreams(groupedInputStreams, ndi);
     }
@@ -854,7 +853,7 @@ public class StreamingContainer extends YarnContainerMain
     }
     streams.putAll(newStreams);
 
-    HashMap<Integer, OperatorDeployInfo> operatorMap = new HashMap<Integer, OperatorDeployInfo>(nodeList.size());
+    HashMap<Integer, OperatorDeployInfo> operatorMap = new HashMap<>(nodeList.size());
     for (OperatorDeployInfo o : nodeList) {
       operatorMap.put(o.id, o);
     }
@@ -904,8 +903,9 @@ public class StreamingContainer extends YarnContainerMain
   }
 
   private HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher(
-    String connIdentifier, StreamCodec<?> streamCodec, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
-    throws UnknownHostException
+      String connIdentifier, StreamCodec<?> streamCodec, long finishedWindowId, int queueCapacity,
+      OperatorDeployInfo.OutputDeployInfo nodi)
+      throws UnknownHostException
   {
     String sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(connIdentifier);
 
@@ -924,14 +924,14 @@ public class StreamingContainer extends YarnContainerMain
     }
 
     Stream publisher = fastPublisherSubscriber ? new FastPublisher(connIdentifier, queueCapacity * 256) : new BufferServerPublisher(connIdentifier, queueCapacity);
-    return new HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>>(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(publisher, bssc));
+    return new HashMap.SimpleEntry<>(sinkIdentifier, new ComponentContextPair<>(publisher, bssc));
   }
 
   private HashMap<String, ComponentContextPair<Stream, StreamContext>> deployOutputStreams(
-    List<OperatorDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams)
-    throws Exception
+      List<OperatorDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams)
+      throws Exception
   {
-    HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams = new HashMap<String, ComponentContextPair<Stream, StreamContext>>();
+    HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams = new HashMap<>();
     /*
      * We proceed to deploy all the output streams. At the end of this block, our streams collection
      * will contain all the streams which originate at the output port of the operators. The streams
@@ -963,7 +963,7 @@ public class StreamingContainer extends YarnContainerMain
           String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
 
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-            deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
+              deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
           newStreams.put(sourceIdentifier, deployBufferServerPublisher.getValue());
           node.connectOutputPort(nodi.portName, deployBufferServerPublisher.getValue().component);
         } else {
@@ -986,7 +986,7 @@ public class StreamingContainer extends YarnContainerMain
             context.setFinishedWindowId(checkpointWindowId);
             Stream stream = new MuxStream();
 
-            newStreams.put(sourceIdentifier, pair = new ComponentContextPair<Stream, StreamContext>(stream, context));
+            newStreams.put(sourceIdentifier, pair = new ComponentContextPair<>(stream, context));
             node.connectOutputPort(nodi.portName, stream);
           }
 
@@ -1002,7 +1002,7 @@ public class StreamingContainer extends YarnContainerMain
               String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
 
               SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
+                  deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
               newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
 
               String sinkIdentifier = pair.context.getSinkId();
@@ -1047,10 +1047,10 @@ public class StreamingContainer extends YarnContainerMain
      * collect any input operators along with their smallest window id,
      * those are subsequently used to setup the window generator
      */
-    ArrayList<OperatorDeployInfo> inputNodes = new ArrayList<OperatorDeployInfo>();
+    ArrayList<OperatorDeployInfo> inputNodes = new ArrayList<>();
     long smallestCheckpointedWindowId = Long.MAX_VALUE;
     //a simple map which maps the oio node to it's the node which owns the thread.
-    Map<Integer, Integer> oioNodes = new ConcurrentHashMap<Integer, Integer>();
+    Map<Integer, Integer> oioNodes = new ConcurrentHashMap<>();
 
     /*
      * Hook up all the downstream ports. There are 2 places where we deal with more than 1
@@ -1123,8 +1123,8 @@ public class StreamingContainer extends YarnContainerMain
             context.setFinishedWindowId(checkpoint.windowId);
 
             BufferServerSubscriber subscriber = fastPublisherSubscriber
-              ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity)
-              : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity);
+                ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity)
+                : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity);
             if (streamCodec instanceof StreamCodecWrapperForPersistance) {
               subscriber.acquireReservoirForPersistStream(sinkIdentifier, queueCapacity, streamCodec);
             }
@@ -1167,7 +1167,7 @@ public class StreamingContainer extends YarnContainerMain
             }
 
             node.connectInputPort(nidi.portName, (SweepableReservoir)stream);
-            newStreams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, inlineContext));
+            newStreams.put(sinkIdentifier, new ComponentContextPair<>(stream, inlineContext));
 
             if (!(pair.component instanceof Stream.MultiSinkCapableStream)) {
               String originalSinkId = pair.context.getSinkId();
@@ -1203,7 +1203,7 @@ public class StreamingContainer extends YarnContainerMain
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(streamCodec == null ? nonSerializingStreamCodec : (StreamCodec<Object>)streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
+              PartitionAwareSink<Object> pas = new PartitionAwareSink<>(streamCodec == null ? nonSerializingStreamCodec : (StreamCodec<Object>)streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
               ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
 
@@ -1252,7 +1252,7 @@ public class StreamingContainer extends YarnContainerMain
 
       ArrayList<Integer> children = oioGroups.get(oioParent);
       if (children == null) {
-        oioGroups.put(oioParent, children = new ArrayList<Integer>());
+        oioGroups.put(oioParent, children = new ArrayList<>());
       }
       children.add(child);
     }
@@ -1291,7 +1291,7 @@ public class StreamingContainer extends YarnContainerMain
 
     /* setup context for all the input ports */
     LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = node.getPortMappingDescriptor().inputPorts;
-    LinkedHashMap<String, PortContextPair<InputPort<?>>> newInputPorts = new LinkedHashMap<String, PortContextPair<InputPort<?>>>(inputPorts.size());
+    LinkedHashMap<String, PortContextPair<InputPort<?>>> newInputPorts = new LinkedHashMap<>(inputPorts.size());
     for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
       InputPort<?> port = inputPorts.get(idi.portName).component;
       PortContext context = new PortContext(idi.contextAttributes, node.context);
@@ -1302,7 +1302,7 @@ public class StreamingContainer extends YarnContainerMain
 
     /* setup context for all the output ports */
     LinkedHashMap<String, PortContextPair<OutputPort<?>>> outputPorts = node.getPortMappingDescriptor().outputPorts;
-    LinkedHashMap<String, PortContextPair<OutputPort<?>>> newOutputPorts = new LinkedHashMap<String, PortContextPair<OutputPort<?>>>(outputPorts.size());
+    LinkedHashMap<String, PortContextPair<OutputPort<?>>> newOutputPorts = new LinkedHashMap<>(outputPorts.size());
     for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
       OutputPort<?> port = outputPorts.get(odi.portName).component;
       PortContext context = new PortContext(odi.contextAttributes, node.context);
@@ -1362,7 +1362,7 @@ public class StreamingContainer extends YarnContainerMain
         @Override
         public void run()
         {
-          HashSet<OperatorDeployInfo> setOperators = new HashSet<OperatorDeployInfo>();
+          HashSet<OperatorDeployInfo> setOperators = new HashSet<>();
           OperatorDeployInfo currentdi = ndi;
           try {
             /* primary operator initialization */
@@ -1489,7 +1489,7 @@ public class StreamingContainer extends YarnContainerMain
        */
       ArrayList<String> collection = groupedInputStreams.get(source);
       if (collection == null) {
-        collection = new ArrayList<String>();
+        collection = new ArrayList<>();
         groupedInputStreams.put(source, collection);
       }
       collection.add(Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName));
@@ -1500,7 +1500,7 @@ public class StreamingContainer extends YarnContainerMain
   {
     Checkpoint checkpoint;
     if (ndi.contextAttributes != null
-      && ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == ProcessingMode.AT_MOST_ONCE) {
+        && ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == ProcessingMode.AT_MOST_ONCE) {
       long now = System.currentTimeMillis();
       long windowCount = WindowGenerator.getWindowCount(now, firstWindowMillis, firstWindowMillis);
 
@@ -1519,9 +1519,9 @@ public class StreamingContainer extends YarnContainerMain
       logger.debug("using {} on {} at {}", ProcessingMode.AT_MOST_ONCE, ndi.name, checkpoint);
     } else {
       checkpoint = ndi.checkpoint;
-      logger.debug("using {} on {} at {}", ndi.contextAttributes == null ? ProcessingMode.AT_LEAST_ONCE :
-        (ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == null ? ProcessingMode.AT_LEAST_ONCE :
-          ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE)), ndi.name, checkpoint);
+      logger.debug("using {} on {} at {}",
+          ndi.contextAttributes == null ? ProcessingMode.AT_LEAST_ONCE : (ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == null ? ProcessingMode.AT_LEAST_ONCE : ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE)),
+          ndi.name, checkpoint);
     }
 
     return checkpoint;

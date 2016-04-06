@@ -32,15 +32,15 @@ import com.datatorrent.stram.engine.StreamContext;
  */
 public interface ContainerEvent
 {
-  Class<?> CONTAINER_EVENTS_LISTENERS[] = new Class<?>[] {
-    com.datatorrent.stram.engine.BufferServerStatsSubscriber.class,
-    com.datatorrent.stram.debug.TupleRecorderCollection.class
+  Class<?>[] CONTAINER_EVENTS_LISTENERS = new Class<?>[]{
+      com.datatorrent.stram.engine.BufferServerStatsSubscriber.class,
+      com.datatorrent.stram.debug.TupleRecorderCollection.class
   };
 
   /**
    * Node event used for various events associated with nodes.
    */
-  public static abstract class NodeEvent implements ContainerEvent
+  abstract class NodeEvent implements ContainerEvent
   {
     private Node<?> node;
 
@@ -59,7 +59,7 @@ public interface ContainerEvent
   /**
    * Event representing node activation.
    */
-  public static class NodeActivationEvent extends NodeEvent
+  class NodeActivationEvent extends NodeEvent
   {
     public NodeActivationEvent(Node<?> node)
     {
@@ -71,7 +71,7 @@ public interface ContainerEvent
   /**
    * Event representing node deactivation.
    */
-  public static class NodeDeactivationEvent extends NodeEvent
+  class NodeDeactivationEvent extends NodeEvent
   {
     public NodeDeactivationEvent(Node<?> node)
     {
@@ -83,7 +83,7 @@ public interface ContainerEvent
   /**
    * Event representing stats in the container from the ContainerStats object.
    */
-  public static class ContainerStatsEvent implements ContainerEvent
+  class ContainerStatsEvent implements ContainerEvent
   {
     private ContainerStats containerStats;
 
@@ -102,7 +102,7 @@ public interface ContainerEvent
   /**
    * Event representing streams.
    */
-  public static abstract class StreamEvent implements ContainerEvent
+  abstract class StreamEvent implements ContainerEvent
   {
     private ComponentContextPair<Stream, StreamContext> stream;
 
@@ -121,7 +121,7 @@ public interface ContainerEvent
   /**
    * Event representing stream activation.
    */
-  public static class StreamActivationEvent extends StreamEvent
+  class StreamActivationEvent extends StreamEvent
   {
     public StreamActivationEvent(ComponentContextPair<Stream, StreamContext> stream)
     {
@@ -133,7 +133,7 @@ public interface ContainerEvent
   /**
    * Event representing stream deactivation.
    */
-  public static class StreamDeactivationEvent extends StreamEvent
+  class StreamDeactivationEvent extends StreamEvent
   {
     public StreamDeactivationEvent(ComponentContextPair<Stream, StreamContext> stream)
     {

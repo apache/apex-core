@@ -18,10 +18,26 @@
  */
 package com.datatorrent.stram.client;
 
-import java.io.*;
-import java.net.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.security.PrivilegedExceptionAction;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,7 +49,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -66,7 +81,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 
 import com.datatorrent.api.StreamingApplication;
-
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.ConfigUtils;
@@ -94,7 +108,7 @@ public class StramClientUtils
   public static final int RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
   public static final String DT_HDFS_TOKEN_MAX_LIFE_TIME = StreamingApplication.DT_PREFIX + "namenode.delegation.token.max-lifetime";
   public static final String HDFS_TOKEN_MAX_LIFE_TIME = "dfs.namenode.delegation.token.max-lifetime";
-  public static final String DT_RM_TOKEN_MAX_LIFE_TIME = StreamingApplication.DT_PREFIX + "resourcemanager.delegation.token.max-lifetime" ;
+  public static final String DT_RM_TOKEN_MAX_LIFE_TIME = StreamingApplication.DT_PREFIX + "resourcemanager.delegation.token.max-lifetime";
   public static final String KEY_TAB_FILE = StramUserLogin.DT_AUTH_PREFIX + "store.keytab";
   public static final String TOKEN_ANTICIPATORY_REFRESH_FACTOR = StramUserLogin.DT_AUTH_PREFIX + "token.refresh.factor";
   public static final long DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT = 7 * 24 * 60 * 60 * 1000;
@@ -138,12 +152,11 @@ public class StramClientUtils
     {
       YarnConfiguration yarnConf = new YarnConfiguration(conf);
       InetSocketAddress rmAddress = yarnConf.getSocketAddr(
-        YarnConfiguration.RM_ADDRESS,
-        YarnConfiguration.DEFAULT_RM_ADDRESS,
-        YarnConfiguration.DEFAULT_RM_PORT);
+          YarnConfiguration.RM_ADDRESS,
+          YarnConfiguration.DEFAULT_RM_ADDRESS,
+          YarnConfiguration.DEFAULT_RM_PORT);
       LOG.debug("Connecting to ResourceManager at " + rmAddress);
-      return ((ApplicationClientProtocol) rpc.getProxy(
-        ApplicationClientProtocol.class, rmAddress, conf));
+      return ((ApplicationClientProtocol)rpc.getProxy(ApplicationClientProtocol.class, rmAddress, conf));
     }
 
     /**
@@ -154,11 +167,11 @@ public class StramClientUtils
     public ApplicationMasterProtocol connectToRM()
     {
       InetSocketAddress rmAddress = conf.getSocketAddr(
-        YarnConfiguration.RM_SCHEDULER_ADDRESS,
-        YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
-        YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
+          YarnConfiguration.RM_SCHEDULER_ADDRESS,
+          YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
+          YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
       LOG.debug("Connecting to ResourceManager at " + rmAddress);
-      return ((ApplicationMasterProtocol) rpc.getProxy(ApplicationMasterProtocol.class, rmAddress, conf));
+      return ((ApplicationMasterProtocol)rpc.getProxy(ApplicationMasterProtocol.class, rmAddress, conf));
     }
 
   }
@@ -206,8 +219,7 @@ public class StramClientUtils
         // Check app status every 1 second.
         try {
           Thread.sleep(1000);
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
           LOG.debug("Thread sleep in monitoring loop interrupted");
         }
 
@@ -222,19 +234,17 @@ public class StramClientUtils
           if (FinalApplicationStatus.SUCCEEDED == dsStatus) {
             LOG.info("Application has completed successfully. Breaking monitoring loop");
             return true;
-          }
-          else {
+          } else {
             LOG.info("Application finished unsuccessfully."
-              + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-              + ". Breaking monitoring loop");
+                + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
+                + ". Breaking monitoring loop");
             return false;
           }
-        }
-        else if (YarnApplicationState.KILLED == state
-          || YarnApplicationState.FAILED == state) {
+        } else if (YarnApplicationState.KILLED == state
+            || YarnApplicationState.FAILED == state) {
           LOG.info("Application did not finish."
-            + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-            + ". Breaking monitoring loop");
+              + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
+              + ". Breaking monitoring loop");
           return false;
         }
 
@@ -247,9 +257,10 @@ public class StramClientUtils
     }
 
     // TODO: HADOOP UPGRADE - replace with YarnConfiguration constants
-    private Token<RMDelegationTokenIdentifier> getRMHAToken(org.apache.hadoop.yarn.api.records.Token rmDelegationToken) {
+    private Token<RMDelegationTokenIdentifier> getRMHAToken(org.apache.hadoop.yarn.api.records.Token rmDelegationToken)
+    {
       // Build a list of service addresses to form the service name
-      ArrayList<String> services = new ArrayList<String>();
+      ArrayList<String> services = new ArrayList<>();
       for (String rmId : ConfigUtils.getRMHAIds(conf)) {
         LOG.info("Yarn Resource Manager id: {}", rmId);
         // Set RM_ID to get the corresponding RM_ADDRESS
@@ -258,13 +269,14 @@ public class StramClientUtils
       Text rmTokenService = new Text(Joiner.on(',').join(services));
 
       return new Token<RMDelegationTokenIdentifier>(
-              rmDelegationToken.getIdentifier().array(),
-              rmDelegationToken.getPassword().array(),
-              new Text(rmDelegationToken.getKind()),
-              rmTokenService);
+          rmDelegationToken.getIdentifier().array(),
+          rmDelegationToken.getPassword().array(),
+          new Text(rmDelegationToken.getKind()),
+          rmTokenService);
     }
 
-    public void addRMDelegationToken(final String renewer, final Credentials credentials) throws IOException, YarnException {
+    public void addRMDelegationToken(final String renewer, final Credentials credentials) throws IOException, YarnException
+    {
       // Get the ResourceManager delegation rmToken
       final org.apache.hadoop.yarn.api.records.Token rmDelegationToken = clientRM.getRMDelegationToken(new Text(renewer));
 
@@ -277,8 +289,8 @@ public class StramClientUtils
       } else {
         LOG.info("Yarn Resource Manager HA is not enabled");
         InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
-                YarnConfiguration.DEFAULT_RM_ADDRESS,
-                YarnConfiguration.DEFAULT_RM_PORT);
+            YarnConfiguration.DEFAULT_RM_ADDRESS,
+            YarnConfiguration.DEFAULT_RM_PORT);
 
         token = ConverterUtils.convertFromYarn(rmDelegationToken, rmAddress);
       }
@@ -310,8 +322,7 @@ public class StramClientUtils
   {
     try {
       return java.net.InetAddress.getLocalHost().getHostName();
-    }
-    catch (UnknownHostException ex) {
+    } catch (UnknownHostException ex) {
       return null;
     }
   }
@@ -321,8 +332,7 @@ public class StramClientUtils
     String envHome = System.getenv("HOME");
     if (StringUtils.isEmpty(envHome)) {
       return new File(FileUtils.getUserDirectory(), ".dt");
-    }
-    else {
+    } else {
       return new File(envHome, ".dt");
     }
   }
@@ -335,8 +345,7 @@ public class StramClientUtils
         return getUserDTDirectory();
       }
       return new File(resource.toURI()).getParentFile();
-    }
-    catch (URISyntaxException ex) {
+    } catch (URISyntaxException ex) {
       throw new RuntimeException(ex);
     }
   }
@@ -349,8 +358,7 @@ public class StramClientUtils
         return null;
       }
       return new File(resource.toURI()).getParentFile().getParentFile();
-    }
-    catch (URISyntaxException ex) {
+    } catch (URISyntaxException ex) {
       throw new RuntimeException(ex);
     }
   }
@@ -381,10 +389,8 @@ public class StramClientUtils
   public static Configuration addDTSiteResources(Configuration conf)
   {
     addDTLocalResources(conf);
-    FileSystem fs = null;
     File targetGlobalFile;
-    try {
-      fs = newFileSystemInstance(conf);
+    try (FileSystem fs = newFileSystemInstance(conf)) {
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
       // load global settings from DFS
       targetGlobalFile = new File(String.format("%s/dt-site-global-%s.xml", System.getProperty("java.io.tmpdir"),
@@ -399,28 +405,25 @@ public class StramClientUtils
       }
       // load user config file
       addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       // ignore
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
-    }
-    finally {
+    } finally {
       // Cannot delete the file here because addDTSiteResource which eventually calls Configuration.reloadConfiguration
       // does not actually reload the configuration.  The file is actually read later and it needs to exist.
       //
       //if (targetGlobalFile != null) {
       //targetGlobalFile.delete();
       //}
-      IOUtils.closeQuietly(fs);
     }
 
     //Validate loggers-level settings
     String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
     if (loggersLevel != null) {
-      String targets[] = loggersLevel.split(",");
+      String[] targets = loggersLevel.split(",");
       Preconditions.checkArgument(targets.length > 0, "zero loggers level");
       for (String target : targets) {
-        String parts[] = target.split(":");
+        String[] parts = target.split(":");
         Preconditions.checkArgument(parts.length == 2, "incorrect " + target);
         Preconditions.checkArgument(ConfigValidator.validateLoggersLevel(parts[0], parts[1]), "incorrect " + target);
       }
@@ -462,8 +465,7 @@ public class StramClientUtils
     if (confFile.exists()) {
       LOG.info("Loading settings: " + confFile.toURI());
       conf.addResource(new Path(confFile.toURI()));
-    }
-    else {
+    } else {
       LOG.info("Configuration file {} is not found. Skipping...", confFile.toURI());
     }
     return conf;
@@ -473,7 +475,7 @@ public class StramClientUtils
   private static void convertDeprecatedProperties(Configuration conf)
   {
     Iterator<Map.Entry<String, String>> iterator = conf.iterator();
-    Map<String, String> newEntries = new HashMap<String, String>();
+    Map<String, String> newEntries = new HashMap<>();
     while (iterator.hasNext()) {
       Map.Entry<String, String> entry = iterator.next();
       if (entry.getKey().startsWith("stram.")) {
@@ -493,8 +495,7 @@ public class StramClientUtils
     File cfgResource = new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE);
     try {
       return cfgResource.toURI().toURL();
-    }
-    catch (MalformedURLException ex) {
+    } catch (MalformedURLException ex) {
       throw new RuntimeException(ex);
     }
   }
@@ -504,16 +505,14 @@ public class StramClientUtils
     String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
     if (StringUtils.isBlank(dfsRootDir)) {
       return FileSystem.newInstance(conf);
-    }
-    else {
+    } else {
       if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
         dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
         conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
       }
       try {
         return FileSystem.newInstance(new URI(dfsRootDir), conf);
-      }
-      catch (URISyntaxException ex) {
+      } catch (URISyntaxException ex) {
         LOG.warn("{} is not a valid URI. Returning the default filesystem", dfsRootDir, ex);
         return FileSystem.newInstance(conf);
       }
@@ -525,8 +524,7 @@ public class StramClientUtils
     String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
     if (StringUtils.isBlank(dfsRootDir)) {
       return new Path(fs.getHomeDirectory(), "datatorrent");
-    }
-    else {
+    } else {
       try {
         if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
           dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
@@ -536,11 +534,9 @@ public class StramClientUtils
         if (uri.isAbsolute()) {
           return new Path(uri);
         }
-      }
-      catch (IOException ex) {
+      } catch (IOException ex) {
         LOG.warn("Error getting user login name {}", dfsRootDir, ex);
-      }
-      catch (URISyntaxException ex) {
+      } catch (URISyntaxException ex) {
         LOG.warn("{} is not a valid URI. Using the default filesystem to construct the path", dfsRootDir, ex);
       }
       return new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), dfsRootDir);
@@ -573,21 +569,15 @@ public class StramClientUtils
     URL resource = StramClientUtils.class.getClassLoader().getResource(CUSTOM_ENV_SH_FILE);
     if (resource == null) {
       File envFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.CUSTOM_ENV_SH_FILE);
-      FileOutputStream out = new FileOutputStream(envFile);
-      try {
+      try (FileOutputStream out = new FileOutputStream(envFile)) {
         out.write(("export " + key + "=\"" + value + "\"\n").getBytes());
       }
-      finally {
-        out.close();
-      }
-    }
-    else {
+    } else {
       try {
         File cfgResource = new File(resource.toURI());
         synchronized (StramClientUtils.class) {
-          BufferedReader br = new BufferedReader(new FileReader(cfgResource));
           StringBuilder sb = new StringBuilder(1024);
-          try {
+          try (BufferedReader br = new BufferedReader(new FileReader(cfgResource))) {
             String line;
             boolean changed = false;
             while ((line = br.readLine()) != null) {
@@ -600,8 +590,7 @@ public class StramClientUtils
                   line = "export " + key + "=\"" + value + "\"";
                   changed = true;
                 }
-              }
-              finally {
+              } finally {
                 sb.append(line).append("\n");
               }
             }
@@ -609,21 +598,13 @@ public class StramClientUtils
               sb.append("export ").append(key).append("=\"").append(value).append("\"\n");
             }
           }
-          finally {
-            br.close();
-          }
           if (sb.length() > 0) {
-            FileOutputStream out = new FileOutputStream(cfgResource);
-            try {
+            try (FileOutputStream out = new FileOutputStream(cfgResource)) {
               out.write(sb.toString().getBytes());
-            }
-            finally {
-              out.close();
             }
           }
         }
-      }
-      catch (URISyntaxException ex) {
+      } catch (URISyntaxException ex) {
         LOG.error("Caught exception when getting env resource:", ex);
       }
     }
@@ -636,8 +617,7 @@ public class StramClientUtils
     // and the checksum will fail if the file is again copied to HDFS
     try {
       new File(fromLocal.getParentFile(), "." + fromLocal.getName() + ".crc").delete();
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       // ignore
     }
     fs.copyFromLocalFile(new Path(fromLocal.toURI()), toDFS);
@@ -725,11 +705,9 @@ public class StramClientUtils
   {
     if (StringUtils.isNotBlank(userName) && !userName.equals(UserGroupInformation.getLoginUser().getShortUserName())) {
       LOG.info("Executing command as {}", userName);
-      UserGroupInformation ugi
-        = UserGroupInformation.createProxyUser(userName, UserGroupInformation.getLoginUser());
+      UserGroupInformation ugi = UserGroupInformation.createProxyUser(userName, UserGroupInformation.getLoginUser());
       return ugi.doAs(action);
-    }
-    else {
+    } else {
       LOG.info("Executing command as if there is no login info: {}", userName);
       return action.run();
     }
@@ -737,8 +715,7 @@ public class StramClientUtils
 
   public static ApplicationReport getStartedAppInstanceByName(YarnClient clientRMService, String appName, String user, String excludeAppId) throws YarnException, IOException
   {
-    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE),
-      EnumSet.of(YarnApplicationState.RUNNING,
+    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE), EnumSet.of(YarnApplicationState.RUNNING,
         YarnApplicationState.ACCEPTED,
         YarnApplicationState.NEW,
         YarnApplicationState.NEW_SAVING,
@@ -746,8 +723,8 @@ public class StramClientUtils
     // see whether there is an app with the app name and user name running
     for (ApplicationReport app : applications) {
       if (!app.getApplicationId().toString().equals(excludeAppId)
-        && app.getName().equals(appName)
-        && app.getUser().equals(user)) {
+          && app.getName().equals(appName)
+          && app.getUser().equals(user)) {
         return app;
       }
     }
@@ -819,9 +796,7 @@ public class StramClientUtils
   {
     List<ApplicationReport> result = new ArrayList<>();
     List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE),
-        EnumSet.of(YarnApplicationState.FAILED,
-            YarnApplicationState.FINISHED,
-            YarnApplicationState.KILLED));
+        EnumSet.of(YarnApplicationState.FAILED, YarnApplicationState.FINISHED, YarnApplicationState.KILLED));
     Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
     for (ApplicationReport ar : applications) {
       long finishTime = ar.getFinishTime();

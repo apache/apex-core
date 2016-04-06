@@ -19,7 +19,11 @@
 package com.datatorrent.stram.api;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -143,7 +147,7 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
     /*
      public StreamCodec streamCodec;
      */
-    public Map<Integer, StreamCodec<?>> streamCodecs = new HashMap<Integer, StreamCodec<?>>();
+    public Map<Integer, StreamCodec<?>> streamCodecs = new HashMap<>();
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
@@ -158,14 +162,14 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-              .append("portName", this.portName)
-              .append("streamId", this.declaredStreamId)
-              .append("sourceNodeId", this.sourceNodeId)
-              .append("sourcePortName", this.sourcePortName)
-              .append("locality", this.locality)
-              .append("partitionMask", this.partitionMask)
-              .append("partitionKeys", this.partitionKeys)
-              .toString();
+          .append("portName", this.portName)
+          .append("streamId", this.declaredStreamId)
+          .append("sourceNodeId", this.sourceNodeId)
+          .append("sourcePortName", this.sourcePortName)
+          .append("locality", this.locality)
+          .append("partitionMask", this.partitionMask)
+          .append("partitionKeys", this.partitionKeys)
+          .toString();
     }
 
     @Override
@@ -223,7 +227,7 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
     public String bufferServerHost;
     public int bufferServerPort;
     public byte[] bufferServerToken;
-    public Map<Integer, StreamCodec<?>> streamCodecs = new HashMap<Integer, StreamCodec<?>>();
+    public Map<Integer, StreamCodec<?>> streamCodecs = new HashMap<>();
     /**
      * Context attributes for output port
      */
@@ -310,13 +314,13 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
   @Override
   public String toString()
   {
-    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.id).
-            append("name", this.name).
-            append("type", this.type).
-            append("checkpoint", this.checkpoint).
-            append("inputs", this.inputs).
-            append("outputs", this.outputs).
-            toString();
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.id)
+        .append("name", this.name)
+        .append("type", this.type)
+        .append("checkpoint", this.checkpoint)
+        .append("inputs", this.inputs)
+        .append("outputs", this.outputs)
+        .toString();
   }
 
 }

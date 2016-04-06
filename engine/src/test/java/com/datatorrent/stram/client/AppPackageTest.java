@@ -18,22 +18,24 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.stram.util.JSONSerializationProvider;
-import net.lingala.zip4j.exception.ZipException;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
+
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Test;
+
+import org.apache.commons.io.IOUtils;
+
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.util.JSONSerializationProvider;
+
+import net.lingala.zip4j.exception.ZipException;
 
 /**
  *

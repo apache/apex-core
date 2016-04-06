@@ -18,24 +18,29 @@
  */
 package com.datatorrent.stram.stream;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.bufferserver.server.Server;
+import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.bufferserver.server.Server;
-import com.datatorrent.netlet.DefaultEventLoop;
-import com.datatorrent.netlet.EventLoop;
-import java.io.IOException;
-
-import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static java.lang.Thread.sleep;
 
@@ -53,8 +58,7 @@ public class SocketStreamTest
   static {
     try {
       eventloop = DefaultEventLoop.createEventLoop("StreamTestEventLoop");
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
   }

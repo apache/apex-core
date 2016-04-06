@@ -20,7 +20,11 @@ package com.datatorrent.stram.engine;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -32,7 +36,6 @@ import com.datatorrent.api.DAG;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
-
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.StramLocalCluster;
@@ -72,8 +75,7 @@ public class StatsTest
         if (!shutdown) {
           super.emitTuples();
         }
-      }
-      catch (ShutdownException ex) {
+      } catch (ShutdownException ex) {
         shutdown = true;
       }
     }
@@ -222,8 +224,7 @@ public class StatsTest
 
       Assert.assertEquals("Tuple Count processed", tupleCount, inputPortTupleCount);
       Assert.assertTrue("Buffer server bytes", outputPortBufferServerBytes > 0);
-    }
-    finally {
+    } finally {
       lc.shutdown();
     }
   }
@@ -259,8 +260,7 @@ public class StatsTest
         Thread.sleep(300);
         LOG.debug("Waiting for stats");
       }
-    }
-    else {
+    } else {
       while (collector.collectorOperatorStats.isEmpty() && (StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms)) {
         Thread.sleep(300);
         LOG.debug("Waiting for stats");
@@ -268,8 +268,7 @@ public class StatsTest
     }
     if (statsListener != null) {
       statsListener.validateStats();
-    }
-    else {
+    } else {
       collector.validateStats();
     }
     lc.shutdown();

@@ -68,7 +68,8 @@ public class WebServicesClient
     connectionManager.setMaxTotal(200);
     connectionManager.setDefaultMaxPerRoute(5);
     credentialsProvider = new BasicCredentialsProvider();
-    credentialsProvider.setCredentials(AuthScope.ANY, new Credentials() {
+    credentialsProvider.setCredentials(AuthScope.ANY, new Credentials()
+    {
 
       @Override
       public Principal getUserPrincipal()
@@ -100,8 +101,8 @@ public class WebServicesClient
       httpClientBuilder.setConnectionManager(connectionManager);
       httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
       Lookup<AuthSchemeProvider> authProviders = RegistryBuilder.<AuthSchemeProvider>create()
-              .register(AuthSchemes.SPNEGO, new SPNegoSchemeFactory(true))
-              .build();
+          .register(AuthSchemes.SPNEGO, new SPNegoSchemeFactory(true))
+          .build();
       httpClientBuilder.setDefaultAuthSchemeRegistry(authProviders);
       ApacheHttpClient4Handler httpClientHandler = new ApacheHttpClient4Handler(httpClientBuilder.build(), new BasicCookieStore(), false);
       client = new Client(httpClientHandler, config);
@@ -110,25 +111,34 @@ public class WebServicesClient
     }
   }
 
-  public WebServicesClient(Client client) {
+  public WebServicesClient(Client client)
+  {
     this.client = client;
   }
 
-  public Client getClient() {
+  public Client getClient()
+  {
     return client;
   }
 
-  public <T> T process(String url, Class<T> clazz, WebServicesHandler<T> handler) throws IOException {
+  public <T> T process(String url, Class<T> clazz, WebServicesHandler<T> handler) throws IOException
+  {
     WebResource wr = client.resource(url);
     return process(wr.getRequestBuilder(), clazz, handler);
   }
-  public <T> Future<T> process(String url, final ITypeListener<T> listener, WebServicesAsyncHandler<T> handler) throws IOException {
+
+  public <T> Future<T> process(String url, final ITypeListener<T> listener, WebServicesAsyncHandler<T> handler)
+      throws IOException
+  {
     AsyncWebResource wr = client.asyncResource(url);
     return process(wr, listener, handler);
   }
 
-  public <T> T process(final WebResource.Builder wr, final Class<T> clazz, final WebServicesHandler<T> handler) throws IOException {
-    return SecureExecutor.execute(new SecureExecutor.WorkLoad<T>(){
+  public <T> T process(final WebResource.Builder wr, final Class<T> clazz, final WebServicesHandler<T> handler)
+      throws IOException
+  {
+    return SecureExecutor.execute(new SecureExecutor.WorkLoad<T>()
+    {
       @Override
       public T run()
       {
@@ -137,8 +147,10 @@ public class WebServicesClient
     });
   }
 
-  public <T> Future<T> process(final AsyncWebResource wr, final ITypeListener<T> listener, final WebServicesAsyncHandler<T> handler) throws IOException {
-    return SecureExecutor.execute(new SecureExecutor.WorkLoad<Future<T>>(){
+  public <T> Future<T> process(final AsyncWebResource wr, final ITypeListener<T> listener, final WebServicesAsyncHandler<T> handler) throws IOException
+  {
+    return SecureExecutor.execute(new SecureExecutor.WorkLoad<Future<T>>()
+    {
       @Override
       public Future<T> run()
       {
@@ -151,7 +163,8 @@ public class WebServicesClient
    *
    * @param <T>
    */
-  public static abstract class WebServicesHandler<T> {
+  public abstract static class WebServicesHandler<T>
+  {
     public abstract T process(WebResource.Builder webResource, Class<T> clazz);
 
     @Override
@@ -165,7 +178,8 @@ public class WebServicesClient
    *
    * @param <T>
    */
-  public static abstract class WebServicesAsyncHandler<T> {
+  public abstract static class WebServicesAsyncHandler<T>
+  {
     public abstract Future<T> process(AsyncWebResource webResource, ITypeListener<T> listener);
 
     @Override
@@ -175,7 +189,8 @@ public class WebServicesClient
     }
   }
 
-  public static class GetWebServicesHandler<T> extends WebServicesHandler<T> {
+  public static class GetWebServicesHandler<T> extends WebServicesHandler<T>
+  {
 
     @Override
     public T process(WebResource.Builder webResource, Class<T> clazz)
@@ -184,7 +199,9 @@ public class WebServicesClient
     }
 
   }
-  public static class GetWebServicesAsyncHandler<T> extends WebServicesAsyncHandler<T> {
+
+  public static class GetWebServicesAsyncHandler<T> extends WebServicesAsyncHandler<T>
+  {
 
     @Override
     public Future<T> process(AsyncWebResource webResource, ITypeListener<T> listener)

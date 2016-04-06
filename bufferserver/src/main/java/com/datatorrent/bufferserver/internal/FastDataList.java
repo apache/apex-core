@@ -94,8 +94,7 @@ public class FastDataList extends DataList
         }
         break;
       }
-    }
-    while (true);
+    } while (true);
 
     last.writingOffset = writeOffset;
 

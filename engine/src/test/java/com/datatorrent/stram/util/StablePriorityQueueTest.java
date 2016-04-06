@@ -18,10 +18,15 @@
  */
 package com.datatorrent.stram.util;
 
-import static org.junit.Assert.*;
-import org.junit.*;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import com.datatorrent.stram.util.StablePriorityQueue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  *

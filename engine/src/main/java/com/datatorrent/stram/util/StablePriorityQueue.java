@@ -19,11 +19,19 @@
 package com.datatorrent.stram.util;
 
 import java.lang.reflect.Array;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.PriorityQueue;
+import java.util.Queue;
+import java.util.SortedSet;
 
 /**
  *
- * Implements a priority queue by implementing {@link java.util.queue} interface<p>
+ * Implements a priority queue by implementing {@link java.util.Queue} interface<p>
  * <br>
  *
  * @since 0.3.2
@@ -36,53 +44,53 @@ public class StablePriorityQueue<E> implements Queue<E>
 
   /**
    *
-   * Constructs a {@link com.datatorrent.util.StablePriorityQueue} class<p>
+   * Constructs a {@link com.datatorrent.stram.util.StablePriorityQueue} class<p>
    * <br>
    * @param initialCapacity The size of the queue to be set up
    * <br>
    */
   public StablePriorityQueue(int initialCapacity)
   {
-    queue = new PriorityQueue<StableWrapper<E>>(initialCapacity, new StableWrapperNaturalComparator<E>());
+    queue = new PriorityQueue<>(initialCapacity, new StableWrapper.NaturalComparator<E>());
   }
 
   /**
    *
-   * Constructs a {@link com.datatorrent.util.StablePriorityQueue} class by absorbing all objects from a {@link java.util.Collection} object<p>
+   * Constructs a {@link com.datatorrent.stram.util.StablePriorityQueue} class by absorbing all objects from a {@link java.util.Collection} object<p>
    * <br>
    * @param c a {@link java.util.Collection} object
    * <br>
    */
   public StablePriorityQueue(Collection<? extends E> c)
   {
-    queue = new PriorityQueue<StableWrapper<E>>(c.size(), new StableWrapperNaturalComparator<E>());
+    queue = new PriorityQueue<>(c.size(), new StableWrapper.NaturalComparator<E>());
     for (E e : c) {
-      queue.add(new StableWrapper<E>(e, counter++));
+      queue.add(new StableWrapper<>(e, counter++));
     }
   }
 
   /**
+   * Constructs a {@link com.datatorrent.stram.util.StablePriorityQueue} class with provided capacity<p>
+   * <br>
    *
-   * Constructs a {@link com.datatorrent.util.StablePriorityQueue} class with provided capacity<p>
-   * <br>
    * @param initialCapacity Size of the queue to be set up
-   * @param comparator {@link java.util.Comparator} object for comparison
-   * <br>
+   * @param comparator      {@link java.util.Comparator} object for comparison
+   *                        <br>
    */
   public StablePriorityQueue(int initialCapacity, Comparator<? super E> comparator)
   {
-    queue = new PriorityQueue<StableWrapper<E>>(initialCapacity, new StableWrapperProvidedComparator<E>(comparator));
+    queue = new PriorityQueue<>(initialCapacity, new StableWrapper.ProvidedComparator<>(comparator));
   }
 
   @SuppressWarnings("unchecked")
   public StablePriorityQueue(StablePriorityQueue<? extends E> c)
   {
-    queue = new PriorityQueue<StableWrapper<E>>(c.size(), (Comparator<? super StableWrapper<E>>) c.comparator());
+    queue = new PriorityQueue<>(c.size(), (Comparator<? super StableWrapper<E>>)c.comparator());
   }
 
   public StablePriorityQueue(SortedSet<? extends E> c)
   {
-    this((Collection<? extends E>) c);
+    this((Collection<? extends E>)c);
   }
 
   @Override
@@ -90,8 +98,7 @@ public class StablePriorityQueue<E> implements Queue<E>
   {
     try {
       return queue.element().object;
-    }
-    catch (NoSuchElementException nsee) {
+    } catch (NoSuchElementException nsee) {
       counter = 0;
       throw nsee;
     }
@@ -100,7 +107,7 @@ public class StablePriorityQueue<E> implements Queue<E>
   @Override
   public boolean offer(E e)
   {
-    return queue.offer(new StableWrapper<E>(e, counter++));
+    return queue.offer(new StableWrapper<>(e, counter++));
   }
 
   @Override
@@ -119,8 +126,7 @@ public class StablePriorityQueue<E> implements Queue<E>
   {
     try {
       return queue.remove().object;
-    }
-    catch (NoSuchElementException nsee) {
+    } catch (NoSuchElementException nsee) {
       counter = 0;
       throw nsee;
     }
@@ -137,12 +143,12 @@ public class StablePriorityQueue<E> implements Queue<E>
     return sw.object;
   }
 
-  @SuppressWarnings({ "unchecked", "rawtypes" })
+  @SuppressWarnings({"unchecked", "rawtypes"})
   public Comparator<? super E> comparator()
   {
     Comparator<? super StableWrapper<E>> comparator = queue.comparator();
-    if (comparator instanceof StableWrapperProvidedComparator) {
-      return ((StableWrapperProvidedComparator) comparator).comparator;
+    if (comparator instanceof StableWrapper.ProvidedComparator) {
+      return ((StableWrapper.ProvidedComparator)comparator).comparator;
     }
 
     return null;
@@ -151,7 +157,7 @@ public class StablePriorityQueue<E> implements Queue<E>
   @Override
   public boolean add(E e)
   {
-    return queue.add(new StableWrapper<E>(e, counter++));
+    return queue.add(new StableWrapper<>(e, counter++));
   }
 
   @Override
@@ -229,8 +235,8 @@ public class StablePriorityQueue<E> implements Queue<E>
   {
     Object[] array = queue.toArray();
 
-    for (int i = array.length; i-- > 0;) {
-      array[i] = ((StableWrapper<E>) array[i]).object;
+    for (int i = array.length; i-- > 0; ) {
+      array[i] = ((StableWrapper<E>)array[i]).object;
     }
 
     return array;
@@ -246,22 +252,19 @@ public class StablePriorityQueue<E> implements Queue<E>
 
     final int length = queue.size();
     if (a.length < length) {
-      finalArray = (T[]) Array.newInstance(a.getClass().getComponentType(), length);
-    }
-    else {
+      finalArray = (T[])Array.newInstance(a.getClass().getComponentType(), length);
+    } else {
       finalArray = a;
     }
 
     Iterator<StableWrapper<E>> iterator = queue.iterator();
     for (int i = 0; i < length; i++) {
       if (iterator.hasNext()) {
-        finalArray[i] = (T) iterator.next().object;
-      }
-      else {
+        finalArray[i] = (T)iterator.next().object;
+      } else {
         if (finalArray != a) {
           finalArray = Arrays.copyOf(finalArray, i);
-        }
-        else {
+        } else {
           finalArray[i] = null;
         }
       }
@@ -327,13 +330,11 @@ public class StablePriorityQueue<E> implements Queue<E>
       if (size() > 0) {
         clear();
         modified = true;
-      }
-      else {
+      } else {
         modified = false;
       }
       counter = 0;
-    }
-    else if (c != null) {
+    } else if (c != null) {
       for (Object o : c) {
         if (remove(o)) {
           modified = true;
@@ -351,7 +352,7 @@ public class StablePriorityQueue<E> implements Queue<E>
   @Override
   public boolean retainAll(Collection<?> c)
   {
-    ArrayList<StableWrapper<E>> removeThese = new ArrayList<StableWrapper<E>>();
+    ArrayList<StableWrapper<E>> removeThese = new ArrayList<>();
     for (StableWrapper<E> swe : queue) {
       if (!c.contains(swe.object)) {
         removeThese.add(swe);

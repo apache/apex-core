@@ -28,12 +28,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
-import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Sink;
-
-import com.datatorrent.stram.engine.*;
+import com.datatorrent.common.util.BaseOperator;
+import com.datatorrent.stram.engine.AbstractReservoir;
+import com.datatorrent.stram.engine.GenericNode;
+import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.datatorrent.stram.tuple.Tuple;
@@ -71,10 +74,6 @@ public class InlineStreamTest
     prev = null;
     Sink<Object> sink = new Sink<Object>()
     {
-      /**
-       *
-       * @param t the value of t
-       */
       @Override
       public void put(Object payload)
       {
@@ -84,8 +83,7 @@ public class InlineStreamTest
 
         if (prev == null) {
           prev = payload;
-        }
-        else {
+        } else {
           if (Integer.valueOf(payload.toString()) - Integer.valueOf(prev.toString()) != 1) {
             synchronized (InlineStreamTest.this) {
               InlineStreamTest.this.notify();

@@ -52,8 +52,8 @@ public class StramWSFilterInitializer extends FilterInitializer
   public void initFilter(FilterContainer container, Configuration conf)
   {
     logger.debug("Conf {}", conf);
-    Map<String, String> params = new HashMap<String, String>();
-    Collection<String> proxies = new ArrayList<String>();
+    Map<String, String> params = new HashMap<>();
+    Collection<String> proxies = new ArrayList<>();
     if (ConfigUtils.isRMHAEnabled(conf)) {
       // HA is enabled get all
       for (String rmId : ConfigUtils.getRMHAIds(conf)) {

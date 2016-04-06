@@ -21,16 +21,25 @@ package com.datatorrent.stram;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.hadoop.io.DataInputByteBuffer;
-import org.apache.hadoop.io.DataOutputByteBuffer;
+import org.codehaus.jettison.json.JSONObject;
+import org.eclipse.jetty.websocket.WebSocket;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.io.DataInputByteBuffer;
+import org.apache.hadoop.io.DataOutputByteBuffer;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -64,7 +73,13 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHea
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.appdata.AppDataPushAgent;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
-import com.datatorrent.stram.engine.*;
+import com.datatorrent.stram.engine.DefaultUnifier;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestAppDataQueryOperator;
+import com.datatorrent.stram.engine.TestAppDataResultOperator;
+import com.datatorrent.stram.engine.TestAppDataSourceOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -79,10 +94,6 @@ import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.stram.webapp.LogicalOperatorInfo;
-
-import org.apache.commons.lang.StringUtils;
-import org.codehaus.jettison.json.JSONObject;
-import org.eclipse.jetty.websocket.WebSocket;
 
 public class StreamingContainerManagerTest
 {
@@ -161,9 +172,9 @@ public class StreamingContainerManagerTest
     dag.setOutputPortAttribute(o1.outport, PortContext.SPIN_MILLIS, 99);
 
     dag.addStream("o2.outport1", o2.outport1, o3.inport1)
-      .setLocality(Locality.CONTAINER_LOCAL);
+        .setLocality(Locality.CONTAINER_LOCAL);
     dag.addStream("o3.outport1", o3.outport1, o4.inport1)
-      .setLocality(Locality.THREAD_LOCAL);
+        .setLocality(Locality.THREAD_LOCAL);
 
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
@@ -277,8 +288,8 @@ public class StreamingContainerManagerTest
 
     Assert.assertEquals("number containers", 6, plan.getContainers().size());
     List<StreamingContainerAgent> containerAgents = Lists.newArrayList();
-    for (int i=0; i < plan.getContainers().size(); i++) {
-      containerAgents.add(assignContainer(dnm, "container"+(i+1)));
+    for (int i = 0; i < plan.getContainers().size(); i++) {
+      containerAgents.add(assignContainer(dnm, "container" + (i + 1)));
     }
 
     PTContainer c = plan.getOperators(dag.getMeta(node1)).get(0).getContainer();
@@ -290,7 +301,7 @@ public class StreamingContainerManagerTest
     List<PTOperator> o2Partitions = plan.getOperators(dag.getMeta(node2));
     Assert.assertEquals("number partitions", TestStaticPartitioningSerDe.partitions.length, o2Partitions.size());
 
-    for (int i=0; i<o2Partitions.size(); i++) {
+    for (int i = 0; i < o2Partitions.size(); i++) {
       String containerId = o2Partitions.get(i).getContainer().getExternalId();
       List<OperatorDeployInfo> cc = getDeployInfo(dnm.getContainerAgent(containerId));
       Assert.assertEquals("number operators assigned to container", 1, cc.size());
@@ -325,7 +336,7 @@ public class StreamingContainerManagerTest
       Assert.assertEquals("portName " + nidi, mergePortName, nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
       Assert.assertNotNull("contextAttributes " + nidi, nidi.contextAttributes);
-      Assert.assertEquals("contextAttributes " , new Integer(1111), nidi.getValue(PortContext.QUEUE_CAPACITY));
+      Assert.assertEquals("contextAttributes ", new Integer(1111), nidi.getValue(PortContext.QUEUE_CAPACITY));
       sourceNodeIds.add(nidi.sourceNodeId);
     }
     for (PTOperator node : dnm.getPhysicalPlan().getOperators(dag.getMeta(node2))) {
@@ -335,14 +346,13 @@ public class StreamingContainerManagerTest
     Assert.assertEquals("outputs " + mergeNodeDI, 1, mergeNodeDI.outputs.size());
     for (OutputDeployInfo odi : mergeNodeDI.outputs) {
       Assert.assertNotNull("contextAttributes " + odi, odi.contextAttributes);
-      Assert.assertEquals("contextAttributes " , new Integer(2222), odi.getValue(PortContext.QUEUE_CAPACITY));
+      Assert.assertEquals("contextAttributes ", new Integer(2222), odi.getValue(PortContext.QUEUE_CAPACITY));
     }
 
     try {
       Object operator = msa.load(mergeNodeDI.id, Stateless.WINDOW_ID);
-      Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
-    }
-    catch (IOException ex) {
+      Assert.assertTrue("" + operator, operator instanceof DefaultUnifier);
+    } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
 
@@ -375,19 +385,19 @@ public class StreamingContainerManagerTest
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
-    Assert.assertEquals(""+scm.containerStartRequests, 2, scm.containerStartRequests.size());
+    Assert.assertEquals("" + scm.containerStartRequests, 2, scm.containerStartRequests.size());
     scm.containerStartRequests.clear();
 
     PhysicalPlan plan = scm.getPhysicalPlan();
 
     List<PTContainer> containers = plan.getContainers();
-    Assert.assertEquals(""+containers, 2, plan.getContainers().size());
+    Assert.assertEquals("" + containers, 2, plan.getContainers().size());
 
     PTContainer c1 = containers.get(0);
-    Assert.assertEquals("c1.operators "+c1.getOperators(), 2, c1.getOperators().size());
+    Assert.assertEquals("c1.operators " + c1.getOperators(), 2, c1.getOperators().size());
 
     PTContainer c2 = containers.get(1);
-    Assert.assertEquals("c2.operators "+c2.getOperators(), 1, c2.getOperators().size());
+    Assert.assertEquals("c2.operators " + c2.getOperators(), 1, c2.getOperators().size());
 
     assignContainer(scm, "container1");
     assignContainer(scm, "container2");
@@ -400,12 +410,12 @@ public class StreamingContainerManagerTest
     scm.scheduleContainerRestart(c1.getExternalId());
     Assert.assertEquals("", 0, countState(sca1.container, PTOperator.State.PENDING_UNDEPLOY));
     Assert.assertEquals("", 2, countState(sca1.container, PTOperator.State.PENDING_DEPLOY));
-    Assert.assertEquals(""+scm.containerStartRequests, 1, scm.containerStartRequests.size());
+    Assert.assertEquals("" + scm.containerStartRequests, 1, scm.containerStartRequests.size());
     ContainerStartRequest dr = scm.containerStartRequests.peek();
     Assert.assertNotNull(dr);
 
-    Assert.assertEquals(""+sca2.container, 1, countState(sca2.container, PTOperator.State.PENDING_UNDEPLOY));
-    Assert.assertEquals(""+sca2.container, 0, countState(sca2.container, PTOperator.State.PENDING_DEPLOY));
+    Assert.assertEquals("" + sca2.container, 1, countState(sca2.container, PTOperator.State.PENDING_UNDEPLOY));
+    Assert.assertEquals("" + sca2.container, 0, countState(sca2.container, PTOperator.State.PENDING_DEPLOY));
 
   }
 
@@ -467,8 +477,7 @@ public class StreamingContainerManagerTest
     try {
       sa.getWindowIds(1);
       Assert.fail("There should not be any most recently saved windowId!");
-    }
-    catch (IOException io) {
+    } catch (IOException io) {
       Assert.assertTrue("No State Saved", true);
     }
   }
@@ -527,7 +536,7 @@ public class StreamingContainerManagerTest
 
     ContainerHeartbeatResponse chr = scm.processHeartbeat(hb); // get deploy request
     Assert.assertNotNull(chr.deployRequest);
-    Assert.assertEquals(""+chr.deployRequest, 1, chr.deployRequest.size());
+    Assert.assertEquals("" + chr.deployRequest, 1, chr.deployRequest.size());
     Assert.assertEquals(PTContainer.State.ACTIVE, o1p1.getContainer().getState());
     Assert.assertEquals("state " + o1p1, PTOperator.State.PENDING_DEPLOY, o1p1.getState());
 
@@ -587,11 +596,10 @@ public class StreamingContainerManagerTest
 
   }
 
-  public static class TestStaticPartitioningSerDe extends DefaultStatefulStreamCodec<Object> {
+  public static class TestStaticPartitioningSerDe extends DefaultStatefulStreamCodec<Object>
+  {
 
-    public final static int[] partitions = new int[]{
-      0, 1, 2
-    };
+    public static final int[] partitions = new int[]{0, 1, 2};
 
     @Override
     public int getPartition(Object o)
@@ -604,7 +612,8 @@ public class StreamingContainerManagerTest
 
   }
 
-  private int countState(PTContainer c, PTOperator.State state) {
+  private int countState(PTContainer c, PTOperator.State state)
+  {
     int count = 0;
     for (PTOperator o : c.getOperators()) {
       if (o.getState() == state) {
@@ -614,15 +623,18 @@ public class StreamingContainerManagerTest
     return count;
   }
 
-  private boolean containsNodeContext(List<OperatorDeployInfo> di, OperatorMeta nodeConf) {
+  private boolean containsNodeContext(List<OperatorDeployInfo> di, OperatorMeta nodeConf)
+  {
     return getNodeDeployInfo(di, nodeConf) != null;
   }
 
-  public static List<OperatorDeployInfo> getDeployInfo(StreamingContainerAgent sca) {
+  public static List<OperatorDeployInfo> getDeployInfo(StreamingContainerAgent sca)
+  {
     return sca.getDeployInfoList(sca.container.getOperators());
   }
 
-  private static OperatorDeployInfo getNodeDeployInfo(List<OperatorDeployInfo> di, OperatorMeta nodeConf) {
+  private static OperatorDeployInfo getNodeDeployInfo(List<OperatorDeployInfo> di, OperatorMeta nodeConf)
+  {
     for (OperatorDeployInfo ndi : di) {
       if (nodeConf.getName().equals(ndi.name)) {
         return ndi;
@@ -631,7 +643,8 @@ public class StreamingContainerManagerTest
     return null;
   }
 
-  private static InputDeployInfo getInputDeployInfo(OperatorDeployInfo ndi, String streamId) {
+  private static InputDeployInfo getInputDeployInfo(OperatorDeployInfo ndi, String streamId)
+  {
     for (InputDeployInfo in : ndi.inputs) {
       if (streamId.equals(in.declaredStreamId)) {
         return in;
@@ -640,8 +653,9 @@ public class StreamingContainerManagerTest
     return null;
   }
 
-  public static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId) {
-    return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, 0,null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
+  public static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId)
+  {
+    return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, 0, null), InetSocketAddress.createUnresolved(containerId + "Host", 0));
   }
 
   @Test
@@ -846,7 +860,7 @@ public class StreamingContainerManagerTest
   }
 
   private void setupAppDataSourceLogicalPlan(Class<? extends TestAppDataQueryOperator> qClass,
-          Class<? extends TestAppDataSourceOperator> dsClass, Class<? extends TestAppDataResultOperator> rClass)
+      Class<? extends TestAppDataSourceOperator> dsClass, Class<? extends TestAppDataResultOperator> rClass)
   {
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     TestAppDataQueryOperator q = dag.addOperator("q", qClass);
@@ -1086,9 +1100,7 @@ public class StreamingContainerManagerTest
     Assert.assertTrue("Latency must be greater than or equal to zero", o4Info.latencyMA >= 0);
     StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
     Assert.assertArrayEquals("Critical Path must be the path in the DAG that includes the HighLatencyTestOperator",
-        new Integer[]{o1Info.partitions.iterator().next(),
-            o3Info.partitions.iterator().next(),
-            o4Info.partitions.iterator().next()},
+        new Integer[]{o1Info.partitions.iterator().next(), o3Info.partitions.iterator().next(), o4Info.partitions.iterator().next()},
         criticalPathInfo.path.toArray());
     Assert.assertTrue("Whole DAG latency must be greater than the artificially introduced latency",
         criticalPathInfo.latency > latency);

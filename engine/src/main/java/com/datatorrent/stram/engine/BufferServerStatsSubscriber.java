@@ -42,8 +42,8 @@ import net.engio.mbassy.listener.Handler;
 public class BufferServerStatsSubscriber
 {
   // key: streamId, value: byte counter stream
-  private HashMap<String, ByteCounterStream> inputStreams = new HashMap<String, ByteCounterStream>();
-  private HashMap<String, List<ByteCounterStream>> outputStreams = new HashMap<String, List<ByteCounterStream>>();
+  private HashMap<String, ByteCounterStream> inputStreams = new HashMap<>();
+  private HashMap<String, List<ByteCounterStream>> outputStreams = new HashMap<>();
 
   @Handler
   public void handleStreamActivation(StreamActivationEvent sae)
@@ -55,12 +55,11 @@ public class BufferServerStatsSubscriber
       if (sinkId.startsWith("tcp:")) {
         List<ByteCounterStream> portStreams = outputStreams.get(portId);
         if (portStreams == null) {
-          portStreams = new ArrayList<ByteCounterStream>();
+          portStreams = new ArrayList<>();
           outputStreams.put(portId, portStreams);
         }
-        portStreams.add((ByteCounterStream) stream.component);
-      }
-      else {
+        portStreams.add((ByteCounterStream)stream.component);
+      } else {
         inputStreams.put(portId, (ByteCounterStream)stream.component);
       }
     }
@@ -81,8 +80,7 @@ public class BufferServerStatsSubscriber
             outputStreams.remove(portId);
           }
         }
-      }
-      else {
+      } else {
         inputStreams.remove(portId);
       }
     }

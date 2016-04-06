@@ -31,7 +31,8 @@ import com.datatorrent.api.annotation.RecordField;
  */
 @XmlRootElement(name = "container")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class ContainerInfo {
+public class ContainerInfo
+{
   @RecordField(type = "meta")
   public String id;
   @RecordField(type = "meta", publish = false)

@@ -18,14 +18,10 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.common.util.BaseOperator;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static java.lang.Thread.sleep;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -34,18 +30,24 @@ import org.junit.Rule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.Sink;
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
+
+import static java.lang.Thread.sleep;
 
 /**
  *
@@ -162,8 +164,7 @@ public class ProcessingModeTests
         logger.debug("adding the tuple {}", Codec.getStringWindowId(tuple));
         if (collection.contains(tuple)) {
           duplicates.add(tuple);
-        }
-        else {
+        } else {
           collection.add(tuple);
         }
       }
@@ -260,7 +261,7 @@ public class ProcessingModeTests
     map.put(OperatorContext.PROCESSING_MODE, processingMode);
 
     final GenericNode node = new GenericNode(new MultiInputOperator(),
-                                             new com.datatorrent.stram.engine.OperatorContext(1, map, null));
+        new com.datatorrent.stram.engine.OperatorContext(1, map, null));
     AbstractReservoir reservoir1 = AbstractReservoir.newReservoir("input1", 1024);
     AbstractReservoir reservoir2 = AbstractReservoir.newReservoir("input1", 1024);
     node.connectInputPort("input1", reservoir1);
@@ -358,8 +359,7 @@ public class ProcessingModeTests
         long windowId = t.getWindowId();
         Assert.assertTrue("Valid Window Id", windowId == 1 || windowId == 2 || windowId == 4 || windowId == 5);
         Assert.assertTrue("Valid Tuple Type", t.getType() == MessageType.BEGIN_WINDOW || t.getType() == MessageType.END_WINDOW);
-      }
-      else {
+      } else {
         switch (((Integer)o).intValue()) {
           case 101:
           case 201:

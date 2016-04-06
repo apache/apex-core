@@ -38,7 +38,7 @@ import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IOUtils;
 
-import com.datatorrent.netlet.util.DTThrowable;
+import com.google.common.base.Throwables;
 
 /**
  * <p>AsyncFSStorageAgent class.</p>
@@ -123,7 +123,7 @@ public class AsyncFSStorageAgent extends FSStorageAgent
     } catch (Throwable t) {
       logger.debug("while saving {} {}", operatorId, window, t);
       stateSaved = false;
-      DTThrowable.rethrow(t);
+      throw Throwables.propagate(t);
     } finally {
       try {
         if (stream != null) {

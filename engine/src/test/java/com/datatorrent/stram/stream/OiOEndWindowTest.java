@@ -20,15 +20,18 @@ package com.datatorrent.stram.stream;
 
 import java.io.File;
 
-import com.datatorrent.common.util.AsyncFSStorageAgent;
-import com.datatorrent.common.util.BaseOperator;
-import com.datatorrent.api.*;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -58,7 +61,8 @@ public class OiOEndWindowTest
   {
     public static long endwindowCount;
     public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
-    public final transient DefaultInputPort<Number> input = new DefaultInputPort<Number>() {
+    public final transient DefaultInputPort<Number> input = new DefaultInputPort<Number>()
+    {
       @Override
       public void process(Number tuple)
       {
@@ -77,7 +81,8 @@ public class OiOEndWindowTest
   public static class SecondGenericOperator extends BaseOperator
   {
     public static long endwindowCount;
-    public final transient DefaultInputPort<Number> input = new DefaultInputPort<Number>() {
+    public final transient DefaultInputPort<Number> input = new DefaultInputPort<Number>()
+    {
       @Override
       public void process(Number tuple)
       {

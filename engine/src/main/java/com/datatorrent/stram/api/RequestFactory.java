@@ -39,13 +39,12 @@ public class RequestFactory
 
   public RequestFactory()
   {
-    this.map = new EnumMap<StramToNodeRequest.RequestType, RequestDelegate>(StramToNodeRequest.RequestType.class);
+    this.map = new EnumMap<>(StramToNodeRequest.RequestType.class);
   }
 
   public interface RequestDelegate
   {
-    public OperatorRequest getRequestExecutor(final Node<?> node, final StramToNodeRequest snr);
-
+    OperatorRequest getRequestExecutor(final Node<?> node, final StramToNodeRequest snr);
   }
 
   public void registerDelegate(StramToNodeRequest.RequestType requestType, RequestDelegate delegate)

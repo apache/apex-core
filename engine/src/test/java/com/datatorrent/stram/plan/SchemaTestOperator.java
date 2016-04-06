@@ -26,10 +26,10 @@ import com.datatorrent.stram.engine.GenericTestOperator;
 public class SchemaTestOperator extends GenericTestOperator
 {
   @InputPortFieldAnnotation(schemaRequired = true)
-  final public transient InputPort<Object> schemaRequiredPort = new DefaultInputPort<Object>()
+  public final transient InputPort<Object> schemaRequiredPort = new DefaultInputPort<Object>()
   {
     @Override
-    final public void process(Object payload)
+    public final void process(Object payload)
     {
     }
   };

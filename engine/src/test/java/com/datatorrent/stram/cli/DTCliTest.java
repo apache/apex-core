@@ -19,21 +19,23 @@
 package com.datatorrent.stram.cli;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import org.apache.commons.io.FileUtils;
+
 import com.datatorrent.stram.client.AppPackage;
 import com.datatorrent.stram.client.ConfigPackage;
 import com.datatorrent.stram.client.DTConfiguration;
 import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.stram.support.StramTestSupport.TestHomeDirectory;
+
 import static com.datatorrent.stram.support.StramTestSupport.setEnv;
-import java.util.HashMap;
-import java.util.Map;
-import org.apache.commons.io.FileUtils;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 
 /**
  *

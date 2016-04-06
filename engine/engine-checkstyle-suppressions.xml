@@ -25,4 +25,8 @@
 
 <suppressions>
   <suppress checks="RegexpMultiline" files="DTCli.java"/>
+  <suppress checks="RegexpMultiline" files=".*Tests?.java"/>
+  <suppress checks="RegexpMultiline" files="VersionInfo.java"/>
+  <suppress checks="NoFinalizer" files="FSRecoveryHandler.java"/>
+  <suppress checks="AnnotationLocation" files=".*.java"/>
 </suppressions>

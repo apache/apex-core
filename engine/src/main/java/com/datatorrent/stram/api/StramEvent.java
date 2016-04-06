@@ -18,8 +18,9 @@
  */
 package com.datatorrent.stram.api;
 
-import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 
 /**
  * <p>

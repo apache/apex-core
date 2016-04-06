@@ -28,14 +28,12 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.common.util.AsyncFSStorageAgent;
-import com.datatorrent.common.util.BaseOperator;
-
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator.CheckpointListener;
-
+import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 
@@ -69,7 +67,7 @@ public class StreamingContainerTest
     public static ArrayList<Long> committedWindowIds;
     public static ArrayList<Long> checkpointedWindowIds = new ArrayList<Long>();
 
-    public static synchronized final List<Long> getCommittedWindowIdsContainer()
+    public static final synchronized List<Long> getCommittedWindowIdsContainer()
     {
       return committedWindowIds = new ArrayList<Long>();
     }

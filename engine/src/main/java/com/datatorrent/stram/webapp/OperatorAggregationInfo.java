@@ -18,7 +18,8 @@
  */
 package com.datatorrent.stram.webapp;
 
-import com.datatorrent.common.util.NumberAggregate.*;
+import com.datatorrent.common.util.NumberAggregate.DoubleAggregate;
+import com.datatorrent.common.util.NumberAggregate.LongAggregate;
 
 /**
  * <p>OperatorAggregationInfo class.</p>

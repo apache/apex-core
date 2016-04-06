@@ -40,8 +40,7 @@ public abstract class StramUtils
     try {
       //return Class.forName(className).asSubclass(superClass);
       return Thread.currentThread().getContextClassLoader().loadClass(className).asSubclass(superClass);
-    }
-    catch (ClassNotFoundException e) {
+    } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException("Class not found: " + className, e);
     }
   }
@@ -50,16 +49,14 @@ public abstract class StramUtils
   {
     try {
       return clazz.newInstance();
-    }
-    catch (IllegalAccessException e) {
+    } catch (IllegalAccessException e) {
       throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
-    }
-    catch (InstantiationException e) {
+    } catch (InstantiationException e) {
       throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
     }
   }
 
-  public static abstract class YarnContainerMain
+  public abstract static class YarnContainerMain
   {
     static {
       // set system properties so they can be used in logger configuration
@@ -72,7 +69,7 @@ public abstract class StramUtils
       System.setProperty("hadoop.log.file", "dt.log");
       if (envs.get("CDH_YARN_HOME") != null) {
         // map logging properties to what CHD expects out of the box
-        String[] keys = new String[] { "log.dir", "log.file", "root.logger" };
+        String[] keys = new String[]{"log.dir", "log.file", "root.logger"};
         for (String key : keys) {
           String v = System.getProperty("hadoop." + key);
           if (v != null) {

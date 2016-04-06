@@ -18,7 +18,13 @@
  */
 package com.datatorrent.stram.webapp;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
@@ -48,7 +54,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 public class TypeDiscoverer
 {
 
-  enum UI_TYPE{
+  enum UI_TYPE
+  {
 
     LIST(Collection.class, "List"),
 
@@ -67,15 +74,14 @@ public class TypeDiscoverer
 
     public static UI_TYPE getEnumFor(Class<?> clazz)
     {
-      if(clazz.isEnum()){
+      if (clazz.isEnum()) {
         return ENUM;
       }
-      if(clazz.isArray()){
+      if (clazz.isArray()) {
         return LIST;
       }
-      for(UI_TYPE ui_type : UI_TYPE.values()){
-        if(ui_type.assignableTo.isAssignableFrom(clazz))
-        {
+      for (UI_TYPE ui_type : UI_TYPE.values()) {
+        if (ui_type.assignableTo.isAssignableFrom(clazz)) {
           return ui_type;
         }
       }
@@ -104,7 +110,8 @@ public class TypeDiscoverer
   // map of generic type name to actual type
   public final Map<String, Type> typeArguments = Maps.newHashMap();
 
-  public static Type getParameterizedTypeArgument(Type type, Class<?> rawType) {
+  public static Type getParameterizedTypeArgument(Type type, Class<?> rawType)
+  {
     if (type instanceof ParameterizedType) {
       ParameterizedType ptype = (ParameterizedType)type;
       if (rawType == null || rawType.isAssignableFrom((Class<?>)ptype.getRawType())) {
@@ -128,7 +135,7 @@ public class TypeDiscoverer
         if (actualTypeArguments.length != typeParameters.length) {
           throw new AssertionError("type parameters don't match for " + type);
         }
-        for (int i=0; i<typeParameters.length; i++) {
+        for (int i = 0; i < typeParameters.length; i++) {
           LOG.debug("{} tv {} bounds {} type arg {}", rawTypeClass.getSimpleName(), typeParameters[i].getName(), typeParameters[i].getBounds(), actualTypeArguments[i]);
           if (!typeArguments.containsKey(typeParameters[i].getName())) {
             this.typeArguments.put(typeParameters[i].getName(), actualTypeArguments[i]);
@@ -156,7 +163,7 @@ public class TypeDiscoverer
       meta.put("typeArgs", typeArgs);
       meta.put("type", ((Class<?>)ptype.getRawType()).getName());
       UI_TYPE uiType = UI_TYPE.getEnumFor((Class<?>)ptype.getRawType());
-      if(uiType!=null){
+      if (uiType != null) {
         meta.put("uiType", uiType.getName());
       }
     } else if (type instanceof GenericArrayType) {
@@ -188,10 +195,10 @@ public class TypeDiscoverer
       if (ta == null) {
         ta = type;
       }
-      if(ta instanceof Class){
+      if (ta instanceof Class) {
         meta.put("type", ((Class<?>)ta).getName());
         UI_TYPE uiType = UI_TYPE.getEnumFor(((Class<?>)ta));
-        if(uiType!=null){
+        if (uiType != null) {
           meta.put("uiType", uiType.getName());
         }
       } else if (ta instanceof ParameterizedType) {
@@ -234,6 +241,7 @@ public class TypeDiscoverer
 
   /**
    * Fetches application attributes.
+   *
    * @return all application attributes exposed to user.
    * @throws JSONException
    * @throws IllegalAccessException
@@ -247,6 +255,7 @@ public class TypeDiscoverer
 
   /**
    * Fetches operator attributes.
+   *
    * @return all operator attributes exposed to user.
    * @throws JSONException
    * @throws IllegalAccessException
@@ -260,6 +269,7 @@ public class TypeDiscoverer
 
   /**
    * Fetches port attributes.
+   *
    * @return all port attributes exposed to user.
    * @throws JSONException
    * @throws IllegalAccessException
@@ -272,7 +282,7 @@ public class TypeDiscoverer
   }
 
   private static JSONObject getAttrDescription(Context context, Collection<Field> attributes) throws JSONException,
-    IllegalAccessException
+      IllegalAccessException
   {
     JSONObject response = new JSONObject();
     JSONArray attrArray = new JSONArray();
@@ -280,9 +290,9 @@ public class TypeDiscoverer
     for (Field attrField : attributes) {
       JSONObject attrJson = new JSONObject();
       attrJson.put("name", attrField.getName());
-      ParameterizedType attrType = (ParameterizedType) attrField.getGenericType();
+      ParameterizedType attrType = (ParameterizedType)attrField.getGenericType();
 
-      Attribute<?> attr = (Attribute<?>) attrField.get(context);
+      Attribute<?> attr = (Attribute<?>)attrField.get(context);
       Type pType = attrType.getActualTypeArguments()[0];
 
       TypeDiscoverer discoverer = new TypeDiscoverer();

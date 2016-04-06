@@ -18,12 +18,17 @@
  */
 package com.datatorrent.stram.debug;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
-import org.junit.Assert;
 
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.JSONObject;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -37,17 +42,16 @@ import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
-import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.debug.TupleRecorder.PortInfo;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.datatorrent.stram.util.FSPartFileCollection;
-import org.codehaus.jettison.json.JSONObject;
 
 /**
  *
@@ -324,7 +328,7 @@ public class TupleRecorderTest
       }
     }
 
-    int tupleCount[] = new int[numPorts];
+    int[] tupleCount = new int[numPorts];
     boolean beginWindowExists = false;
     boolean endWindowExists = false;
 

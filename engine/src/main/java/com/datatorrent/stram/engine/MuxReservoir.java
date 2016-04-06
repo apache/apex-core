@@ -18,15 +18,16 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.api.Sink;
-import com.datatorrent.netlet.util.CircularBuffer;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Queue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.Sink;
+import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * <p>Abstract MuxReservoir class.</p>
@@ -37,7 +38,7 @@ public abstract class MuxReservoir
 {
   @SuppressWarnings("VolatileArrayField")
   private volatile SubReservoir[] reservoirs = new SubReservoir[0];
-  private HashMap<String, SubReservoir> reservoirMap = new HashMap<String, SubReservoir>();
+  private HashMap<String, SubReservoir> reservoirMap = new HashMap<>();
 
   public SweepableReservoir acquireReservoir(String id, int capacity)
   {
@@ -106,8 +107,7 @@ public abstract class MuxReservoir
     {
       try {
         return this.sink;
-      }
-      finally {
+      } finally {
         this.sink = sink;
       }
     }
@@ -161,8 +161,7 @@ public abstract class MuxReservoir
     {
       try {
         return count;
-      }
-      finally {
+      } finally {
         if (reset) {
           count = 0;
         }

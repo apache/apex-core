@@ -35,6 +35,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Throwables;
 import com.ning.http.client.AsyncCompletionHandler;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
@@ -48,7 +49,6 @@ import com.ning.http.client.websocket.WebSocketUpgradeHandler;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
 import com.datatorrent.common.util.PubSubMessage.PubSubMessageType;
-import com.datatorrent.netlet.util.DTThrowable;
 
 /**
  * <p>Abstract PubSubWebSocketClient class.</p>
@@ -292,7 +292,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
     if (t instanceof IOException) {
       throw (IOException)t;
     } else {
-      DTThrowable.rethrow(t);
+      throw Throwables.propagate(t);
     }
   }
 

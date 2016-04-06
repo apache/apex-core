@@ -27,7 +27,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.servlet.*;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -98,9 +103,9 @@ public class StramWSFilter implements Filter
   protected Set<String> getProxyAddresses() throws ServletException
   {
     long now = System.currentTimeMillis();
-    synchronized(this) {
-      if(proxyAddresses == null || (lastUpdate + updateInterval) >= now) {
-        proxyAddresses = new HashSet<String>();
+    synchronized (this) {
+      if (proxyAddresses == null || (lastUpdate + updateInterval) >= now) {
+        proxyAddresses = new HashSet<>();
         for (String proxyHost : proxyHosts) {
           try {
             logger.debug("resolving proxy hostname {}", proxyHost);
@@ -126,10 +131,9 @@ public class StramWSFilter implements Filter
   }
 
   @Override
-  public void doFilter(ServletRequest req, ServletResponse resp,
-                       FilterChain chain) throws IOException, ServletException
+  public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain) throws IOException, ServletException
   {
-    if(!(req instanceof HttpServletRequest)) {
+    if (!(req instanceof HttpServletRequest)) {
       throw new ServletException("This filter only works for HTTP/HTTPS");
     }
 
@@ -139,10 +143,10 @@ public class StramWSFilter implements Filter
     String requestURI = httpReq.getRequestURI();
     boolean authenticate = true;
     String user = null;
-    if(getProxyAddresses().contains(httpReq.getRemoteAddr())) {
+    if (getProxyAddresses().contains(httpReq.getRemoteAddr())) {
       if (httpReq.getCookies() != null) {
-        for(Cookie c: httpReq.getCookies()) {
-          if(WEBAPP_PROXY_USER.equals(c.getName())){
+        for (Cookie c : httpReq.getCookies()) {
+          if (WEBAPP_PROXY_USER.equals(c.getName())) {
             user = c.getValue();
             break;
           }
@@ -186,7 +190,7 @@ public class StramWSFilter implements Filter
       }
     }
 
-    if(user == null) {
+    if (user == null) {
       logger.debug("{}: could not find user, so user principal will not be set", remoteAddr);
       chain.doFilter(req, resp);
     } else {
@@ -202,14 +206,14 @@ public class StramWSFilter implements Filter
     //tokenIdentifier.setSequenceNumber(sequenceNumber.getAndAdd(1));
     //byte[] password = tokenManager.addIdentifier(tokenIdentifier);
     //Token<StramDelegationTokenIdentifier> token = new Token<StramDelegationTokenIdentifier>(tokenIdentifier.getBytes(), password, tokenIdentifier.getKind(), new Text(service));
-    Token<StramDelegationTokenIdentifier> token = new Token<StramDelegationTokenIdentifier>(tokenIdentifier, tokenManager);
+    Token<StramDelegationTokenIdentifier> token = new Token<>(tokenIdentifier, tokenManager);
     token.setService(new Text(service));
     return token.encodeToUrlString();
   }
 
   private String verifyClientToken(String tokenstr, String cid) throws IOException
   {
-    Token<StramDelegationTokenIdentifier> token = new Token<StramDelegationTokenIdentifier>();
+    Token<StramDelegationTokenIdentifier> token = new Token<>();
     try {
       token.decodeFromUrlString(tokenstr);
     } catch (IOException e) {

@@ -18,17 +18,23 @@
  */
 package com.datatorrent.stram.util;
 
-import com.datatorrent.common.util.PubSubMessage;
-import com.datatorrent.common.util.PubSubWebSocketClient;
-import com.ning.http.client.websocket.WebSocket;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.ning.http.client.websocket.WebSocket;
+
+import com.datatorrent.common.util.PubSubMessage;
+import com.datatorrent.common.util.PubSubWebSocketClient;
 
 /**
  * <p>SharedPubSubWebSocketClient class.</p>
@@ -39,7 +45,7 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
 {
   public static final String LAST_INDEX_TOPIC_PREFIX = PubSubMessage.INTERNAL_TOPIC_PREFIX + ".lastIndex";
   private static final Logger LOG = LoggerFactory.getLogger(SharedPubSubWebSocketClient.class);
-  private final Map<String, List<Handler>> topicHandlers = new HashMap<String, List<Handler>>();
+  private final Map<String, List<Handler>> topicHandlers = new HashMap<>();
   private long lastConnectTryTime;
   private final long minWaitConnectionRetry = 5000;
   private final long timeoutMillis;
@@ -78,9 +84,8 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
     }
     if (topicHandlers.containsKey(topic)) {
       handlers = topicHandlers.get(topic);
-    }
-    else {
-      handlers = new ArrayList<Handler>();
+    } else {
+      handlers = new ArrayList<>();
       topicHandlers.put(topic, handlers);
     }
     handlers.add(handler);
@@ -88,13 +93,11 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
       if (isConnectionOpen()) {
         if (numSubscribers) {
           subscribeNumSubscribers(originalTopic);
-        }
-        else {
+        } else {
           subscribe(topic);
         }
       }
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       LOG.warn("Cannot subscribe to {}", topic);
     }
   }
@@ -124,8 +127,7 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
     for (String topic : topicHandlers.keySet()) {
       try {
         subscribe(topic);
-      }
-      catch (IOException ex) {
+      } catch (IOException ex) {
         LOG.warn("Cannot subscribe to {}", topic);
       }
     }

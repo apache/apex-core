@@ -18,10 +18,17 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.common.util.BaseOperator;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.After;
@@ -30,13 +37,21 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.google.common.collect.Sets;
 
-import com.datatorrent.api.*;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.DefaultPartition;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Partitioner;
+import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.engine.Node;
@@ -197,7 +212,7 @@ public class PartitioningTest
   public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
   {
     private static final long serialVersionUID = 1L;
-    final private static ThreadLocal<Map<Integer, Integer>> loadIndicators = new ThreadLocal<Map<Integer, Integer>>();
+    private static final ThreadLocal<Map<Integer, Integer>> loadIndicators = new ThreadLocal<>();
 
     @Override
     public Response processStats(BatchedOperatorStats status)
@@ -215,7 +230,8 @@ public class PartitioningTest
       return hbr;
     }
 
-    public static void put(PTOperator oper, int load) {
+    public static void put(PTOperator oper, int load)
+    {
       Map<Integer, Integer> m = loadIndicators.get();
       if (m == null) {
         loadIndicators.set(m = new ConcurrentHashMap<Integer, Integer>());
@@ -223,7 +239,8 @@ public class PartitioningTest
       m.put(oper.getId(), load);
     }
 
-    public static void remove(PTOperator oper) {
+    public static void remove(PTOperator oper)
+    {
       loadIndicators.get().remove(oper.getId());
     }
 
@@ -308,7 +325,7 @@ public class PartitioningTest
 
     for (PTContainer container : lc.dnmgr.getPhysicalPlan().getContainers()) {
       int memory = 0;
-      for(PTOperator operator: container.getOperators()){
+      for (PTOperator operator : container.getOperators()) {
         memory += operator.getBufferServerMemory();
         memory += operator.getOperatorMeta().getValue(OperatorContext.MEMORY_MB);
       }
@@ -415,7 +432,7 @@ public class PartitioningTest
 
       List<PTOperator> partitions = assertNumberPartitions(3, lc, dag.getMeta(input));
       Set<String> partProperties = new HashSet<String>();
-      for (PTOperator p: partitions) {
+      for (PTOperator p : partitions) {
         LocalStreamingContainer c = StramTestSupport.waitForActivation(lc, p);
         Map<Integer, Node<?>> nodeMap = c.getNodes();
         Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
@@ -428,7 +445,7 @@ public class PartitioningTest
         p.setRecoveryCheckpoint(checkpoint);
         AsyncFSStorageAgent agent = new AsyncFSStorageAgent(checkpointDir.getPath(), null);
         agent.save(inputDeployed, p.getId(), 10L);
-        agent.copyToHDFS(p.getId(), 10l);
+        agent.copyToHDFS(p.getId(), 10L);
 
       }
 

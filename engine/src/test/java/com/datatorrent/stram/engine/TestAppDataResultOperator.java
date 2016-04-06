@@ -27,7 +27,7 @@ public class TestAppDataResultOperator extends BaseOperator implements AppData.C
   public final transient InputPort<Object> inport = new DefaultInputPort<Object>()
   {
     @Override
-    final public void process(Object payload)
+    public final void process(Object payload)
     {
     }
   };

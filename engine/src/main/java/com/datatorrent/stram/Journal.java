@@ -18,20 +18,22 @@
  */
 package com.datatorrent.stram;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.annotation.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.ImmutableMap;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
@@ -45,19 +47,18 @@ import com.datatorrent.stram.plan.physical.PTOperator;
  */
 public final class Journal
 {
-  private final static Logger LOG = LoggerFactory.getLogger(Journal.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Journal.class);
 
   private enum RecoverableOperation
   {
-    OPERATOR_STATE             (PTOperator.SET_OPERATOR_STATE),
-    CONTAINER_STATE            (PTContainer.SET_CONTAINER_STATE),
-    OPERATOR_PROPERTY          (StreamingContainerManager.SET_OPERATOR_PROPERTY),
-    PHYSICAL_OPERATOR_PROPERTY (StreamingContainerManager.SET_PHYSICAL_OPERATOR_PROPERTY);
+    OPERATOR_STATE(PTOperator.SET_OPERATOR_STATE),
+    CONTAINER_STATE(PTContainer.SET_CONTAINER_STATE),
+    OPERATOR_PROPERTY(StreamingContainerManager.SET_OPERATOR_PROPERTY),
+    PHYSICAL_OPERATOR_PROPERTY(StreamingContainerManager.SET_PHYSICAL_OPERATOR_PROPERTY);
 
     private static final Map<Class<? extends Recoverable>, Integer> classToId;
 
-    static
-    {
+    static {
       final ImmutableMap.Builder<Class<? extends Recoverable>, Integer> builder = ImmutableMap.builder();
       for (RecoverableOperation recoverableOperation : RecoverableOperation.values()) {
         builder.put(recoverableOperation.operation.getClass(), recoverableOperation.ordinal());
@@ -74,7 +75,7 @@ public final class Journal
 
     private static RecoverableOperation get(int id)
     {
-      return (id < values().length)? values()[id] : null;
+      return (id < values().length) ? values()[id] : null;
     }
 
     private static Integer getId(Class<? extends Recoverable> operationClass)
@@ -86,6 +87,7 @@ public final class Journal
   public interface Recoverable
   {
     void read(Object object, Input in) throws KryoException;
+
     void write(Output out) throws KryoException;
   }
 
@@ -96,7 +98,7 @@ public final class Journal
   public Journal(StreamingContainerManager scm)
   {
     this.scm = scm;
-    output = new AtomicReference<Output>();
+    output = new AtomicReference<>();
     replayMode = new AtomicBoolean(false);
   }
 
@@ -104,9 +106,11 @@ public final class Journal
   {
     final Output output;
     if (out != null) {
-      output = new Output(4096, -1) {
+      output = new Output(4096, -1)
+      {
         @Override
-        public void flush() throws KryoException {
+        public void flush() throws KryoException
+        {
           super.flush();
           // Kryo does not flush internal output stream during flush. We need to flush it explicitly.
           try {
@@ -149,8 +153,7 @@ public final class Journal
             op.write(out);
             out.flush();
             break;
-          }
-          catch (KryoException e) {
+          } catch (KryoException e) {
             // check that no other threads sneaked between get() and synchronized block and set output stream to a new
             // stream or null leading to the current stream being closed
             if (output.get() == out) {
@@ -195,8 +198,7 @@ public final class Journal
         LOG.debug("Done replaying WAL");
         replayMode.set(false);
       }
-    }
-    else {
+    } else {
       throw new IllegalStateException("Request to replay while journal is already replaying other operations");
     }
   }

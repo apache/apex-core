@@ -20,7 +20,6 @@ package com.datatorrent.stram.engine;
 
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
-import static java.lang.Thread.sleep;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,10 +29,11 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
-
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
+
+import static java.lang.Thread.sleep;
 
 /**
  *
@@ -181,8 +181,7 @@ public class AtMostOnceTest extends ProcessingModeTests
         long windowId = t.getWindowId();
         Assert.assertTrue("Valid Window Id", windowId == 1 || windowId == 2 || windowId == 4 || windowId == 5);
         Assert.assertTrue("Valid Tuple Type", t.getType() == MessageType.BEGIN_WINDOW || t.getType() == MessageType.END_WINDOW || t.getType() == MessageType.END_STREAM);
-      }
-      else {
+      } else {
         switch (((Integer)o).intValue()) {
           case 101:
           case 201:

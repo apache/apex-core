@@ -38,7 +38,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class ContainersInfo
 {
-  protected ArrayList<ContainerInfo> containers = new ArrayList<ContainerInfo>();
+  protected ArrayList<ContainerInfo> containers = new ArrayList<>();
 
   /**
    *

@@ -19,9 +19,9 @@
 package com.datatorrent.stram;
 
 import java.net.URI;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,8 +29,9 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.beanutils.ConvertUtils;
 import org.apache.commons.beanutils.Converter;
 
+import com.google.common.base.Throwables;
+
 import com.datatorrent.api.StringCodec;
-import com.datatorrent.netlet.util.DTThrowable;
 
 /**
  * <p>StringCodecs class.</p>
@@ -39,8 +40,8 @@ import com.datatorrent.netlet.util.DTThrowable;
  */
 public class StringCodecs
 {
-  private static final ConcurrentHashMap<ClassLoader, Boolean> classLoaders = new ConcurrentHashMap<ClassLoader, Boolean>();
-  private static final Map<Class<?>, Class<? extends StringCodec<?>>> codecs = new HashMap<Class<?>, Class<? extends StringCodec<?>>>();
+  private static final ConcurrentHashMap<ClassLoader, Boolean> classLoaders = new ConcurrentHashMap<>();
+  private static final Map<Class<?>, Class<? extends StringCodec<?>>> codecs = new HashMap<>();
   private static final Logger LOG = LoggerFactory.getLogger(StringCodecs.class);
 
   private StringCodecs()
@@ -69,11 +70,9 @@ public class StringCodecs
           StringCodec instance;
           try {
             instance = codec.newInstance();
-          }
-          catch (IllegalAccessException ex) {
+          } catch (IllegalAccessException ex) {
             throw new RuntimeException("Internal Error - it's impossible for this exception to be thrown!", ex);
-          }
-          catch (InstantiationException ex) {
+          } catch (InstantiationException ex) {
             throw new RuntimeException("Internal Error - it's impossible for this exception to be thrown!", ex);
           }
 
@@ -113,7 +112,7 @@ public class StringCodecs
       try {
         register(entry.getValue(), entry.getKey());
       } catch (Exception ex) {
-        DTThrowable.rethrow(ex);
+        throw Throwables.propagate(ex);
       }
     }
   }

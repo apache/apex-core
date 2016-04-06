@@ -29,7 +29,6 @@ import org.junit.Test;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator;
-
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -170,8 +169,9 @@ public class OutputUnifiedTest
     }
   }
 
-  private static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId) {
-    return scm.assignContainer(new StreamingContainerManager.ContainerResource(0, containerId, "localhost", 1024, 0, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
+  private static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId)
+  {
+    return scm.assignContainer(new StreamingContainerManager.ContainerResource(0, containerId, "localhost", 1024, 0, null), InetSocketAddress.createUnresolved(containerId + "Host", 0));
   }
 
 }

@@ -58,7 +58,7 @@ public class StreamMapping implements java.io.Serializable
 {
   private static final long serialVersionUID = 8572852828117485193L;
 
-  private final static Logger LOG = LoggerFactory.getLogger(StreamMapping.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StreamMapping.class);
 
   private final StreamMeta streamMeta;
   private final PhysicalPlan plan;
@@ -67,13 +67,14 @@ public class StreamMapping implements java.io.Serializable
   final Set<PTOperator> slidingUnifiers = Sets.newHashSet();
   private final List<PTOutput> upstream = Lists.newArrayList();
 
-
-  public StreamMapping(StreamMeta streamMeta, PhysicalPlan plan) {
+  public StreamMapping(StreamMeta streamMeta, PhysicalPlan plan)
+  {
     this.streamMeta = streamMeta;
     this.plan = plan;
   }
 
-  void addTo(Collection<PTOperator> opers) {
+  void addTo(Collection<PTOperator> opers)
+  {
     if (finalUnifier != null) {
       opers.add(finalUnifier);
     }
@@ -81,7 +82,8 @@ public class StreamMapping implements java.io.Serializable
     opers.addAll(slidingUnifiers);
   }
 
-  public void setSources(Collection<PTOperator> partitions) {
+  public void setSources(Collection<PTOperator> partitions)
+  {
     upstream.clear();
     // add existing inputs
     for (PTOperator uoper : partitions) {
@@ -94,10 +96,12 @@ public class StreamMapping implements java.io.Serializable
     redoMapping();
   }
 
-  public static PTOperator createSlidingUnifier(StreamMeta streamMeta, PhysicalPlan plan, int operatorApplicationWindowCount, int slidingWindowCount)
+  public static PTOperator createSlidingUnifier(StreamMeta streamMeta, PhysicalPlan plan, int
+      operatorApplicationWindowCount, int slidingWindowCount)
   {
     int gcd = IntMath.gcd(operatorApplicationWindowCount, slidingWindowCount);
-    OperatorMeta um = streamMeta.getSource().getSlidingUnifier(operatorApplicationWindowCount / gcd, gcd, slidingWindowCount / gcd);
+    OperatorMeta um = streamMeta.getSource()
+        .getSlidingUnifier(operatorApplicationWindowCount / gcd, gcd, slidingWindowCount / gcd);
     PTOperator pu = plan.newOperator(um, um.getName());
 
     Operator unifier = um.getOperator();
@@ -135,36 +139,36 @@ public class StreamMapping implements java.io.Serializable
     OperatorMeta sourceOM = streamMeta.getSource().getOperatorMeta();
     if (sourceOM.getAttributes().contains(Context.OperatorContext.SLIDE_BY_WINDOW_COUNT)) {
       if (sourceOM.getValue(Context.OperatorContext.SLIDE_BY_WINDOW_COUNT) <
-        sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT)) {
+          sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT)) {
         plan.undeployOpers.addAll(slidingUnifiers);
         slidingUnifiers.clear();
         List<PTOutput> newUpstream = Lists.newArrayList();
         PTOperator slidingUnifier;
         for (PTOutput source : upstream) {
           slidingUnifier = StreamMapping.createSlidingUnifier(streamMeta, plan,
-            sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT),
-            sourceOM.getValue(Context.OperatorContext.SLIDE_BY_WINDOW_COUNT));
+              sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT),
+              sourceOM.getValue(Context.OperatorContext.SLIDE_BY_WINDOW_COUNT));
           addInput(slidingUnifier, source, null);
           this.slidingUnifiers.add(slidingUnifier);
           newUpstream.add(slidingUnifier.outputs.get(0));
         }
         upstream.clear();
         upstream.addAll(newUpstream);
-      }
-      else {
+      } else {
         LOG.warn("Sliding Window Count {} should be less than APPLICATION WINDOW COUNT {}", sourceOM.getValue(Context.OperatorContext.SLIDE_BY_WINDOW_COUNT), sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT));
       }
     }
   }
 
   @SuppressWarnings("AssignmentToForLoopParameter")
-  private List<PTOutput> setupCascadingUnifiers(List<PTOutput> upstream, List<PTOperator> pooledUnifiers, int limit, int level) {
+  private List<PTOutput> setupCascadingUnifiers(List<PTOutput> upstream, List<PTOperator> pooledUnifiers, int limit, int level)
+  {
     List<PTOutput> nextLevel = Lists.newArrayList();
     PTOperator pu = null;
-    for (int i=0; i<upstream.size(); i++) {
+    for (int i = 0; i < upstream.size(); i++) {
       if (i % limit == 0) {
         if (upstream.size() - i < limit) {
-          while(i< upstream.size()) {
+          while (i < upstream.size()) {
             nextLevel.add(upstream.get(i));
             i++;
           }
@@ -195,7 +199,8 @@ public class StreamMapping implements java.io.Serializable
    * rebuild the tree, which may cause more changes to execution layer than need be
    * TODO: investigate incremental logic
    */
-  private void redoMapping() {
+  private void redoMapping()
+  {
 
     Set<Pair<PTOperator, InputPortMeta>> downstreamOpers = Sets.newHashSet();
 
@@ -206,7 +211,7 @@ public class StreamMapping implements java.io.Serializable
       if (!ipm.getValue(PortContext.PARTITION_PARALLEL) && plan.hasMapping(ipm.getOperatorWrapper())) {
         List<PTOperator> partitions = plan.getOperators(ipm.getOperatorWrapper());
         for (PTOperator doper : partitions) {
-          downstreamOpers.add(new Pair<PTOperator, InputPortMeta>(doper, ipm));
+          downstreamOpers.add(new Pair<>(doper, ipm));
         }
       }
     }
@@ -273,7 +278,7 @@ public class StreamMapping implements java.io.Serializable
         PartitionKeys pks = partKeys != null ? partKeys.get(doperEntry.second) : null;
         Boolean sinkSingleFinal = doperEntry.second.getAttributes().get(PortContext.UNIFIER_SINGLE_FINAL);
         boolean lastSingle = (sinkSingleFinal != null) ? sinkSingleFinal :
-                                (sourceSingleFinal != null ? sourceSingleFinal.booleanValue() : PortContext.UNIFIER_SINGLE_FINAL.defaultValue);
+            (sourceSingleFinal != null ? sourceSingleFinal.booleanValue() : PortContext.UNIFIER_SINGLE_FINAL.defaultValue);
 
         if (upstream.size() > 1) {
           if (!separateUnifiers && ((pks == null || pks.mask == 0) || lastSingle)) {
@@ -329,15 +334,16 @@ public class StreamMapping implements java.io.Serializable
       // 1) Upstream operator partitions are scaled down to one. (no unifier needed)
       // 2) Downstream operators partitions are scaled up from one to multiple. (replaced by merged unifier)
       if (finalUnifier != null && finalUnifier.inputs.isEmpty()) {
-          plan.removePTOperator(finalUnifier);
-          finalUnifier = null;
+        plan.removePTOperator(finalUnifier);
+        finalUnifier = null;
       }
 
     }
 
   }
 
-  private void setInput(PTOperator oper, InputPortMeta ipm, PTOperator sourceOper, PartitionKeys pks) {
+  private void setInput(PTOperator oper, InputPortMeta ipm, PTOperator sourceOper, PartitionKeys pks)
+  {
     // TODO: see if this can be handled more efficiently
     for (PTInput in : oper.inputs) {
       if (in.source.source == sourceOper && in.logicalStream == streamMeta && ipm.getPortName().equals(in.portName)) {
@@ -360,7 +366,8 @@ public class StreamMapping implements java.io.Serializable
     target.inputs.add(input);
   }
 
-  private void detachUnifier(PTOperator unifier) {
+  private void detachUnifier(PTOperator unifier)
+  {
     // remove existing unifiers from downstream inputs
     for (PTOutput out : unifier.outputs) {
       for (PTInput input : out.sinks) {

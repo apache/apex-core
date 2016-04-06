@@ -34,13 +34,15 @@ import java.lang.annotation.Target;
 @Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface InjectConfig {
+public @interface InjectConfig
+{
   /**
    * The configuration key.
    * The injector will be provided a configuration accessor for the given key.
+   *
    * @return
    */
-  public String key();
+  String key();
 
   /**
    * If true, and no configuration is found,

@@ -21,9 +21,11 @@ package com.datatorrent.stram;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.*;
-
-import com.google.common.collect.Lists;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +43,11 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
-import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.api.records.Container;
+import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
+import org.apache.hadoop.yarn.api.records.LocalResource;
+import org.apache.hadoop.yarn.api.records.LocalResourceType;
+import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
 import org.apache.hadoop.yarn.client.api.async.NMClientAsync;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.security.AMRMTokenIdentifier;
@@ -49,10 +55,11 @@ import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.DTLoggerFactory;
 
+import com.google.common.collect.Lists;
+
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
-
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -71,7 +78,7 @@ public class LaunchContainerRunnable implements Runnable
 {
   private static final Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
   private static final String JAVA_REMOTE_DEBUG_OPTS = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n";
-  private final Map<String, String> containerEnv = new HashMap<String, String>();
+  private final Map<String, String> containerEnv = new HashMap<>();
   private final LogicalPlan dag;
   private final ByteBuffer tokens;
   private final Container container;
@@ -121,7 +128,7 @@ public class LaunchContainerRunnable implements Runnable
   public static void addFileToLocalResources(final String name, final FileStatus fileStatus, final LocalResourceType type, final Map<String, LocalResource> localResources)
   {
     final LocalResource localResource = LocalResource.newInstance(ConverterUtils.getYarnUrlFromPath(fileStatus.getPath()),
-            type, LocalResourceVisibility.APPLICATION, fileStatus.getLen(), fileStatus.getModificationTime());
+        type, LocalResourceVisibility.APPLICATION, fileStatus.getLen(), fileStatus.getModificationTime());
     localResources.put(name, localResource);
   }
 
@@ -155,13 +162,12 @@ public class LaunchContainerRunnable implements Runnable
     ctx.setTokens(tokens);
 
     // Set the local resources
-    Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
+    Map<String, LocalResource> localResources = new HashMap<>();
 
     // add resources for child VM
     try {
       // child VM dependencies
-      FileSystem fs = StramClientUtils.newFileSystemInstance(nmClient.getConfig());
-      try {
+      try (FileSystem fs = StramClientUtils.newFileSystemInstance(nmClient.getConfig())) {
         addFilesToLocalResources(LocalResourceType.FILE, dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
         String archives = dag.getAttributes().get(LogicalPlan.ARCHIVES);
         if (archives != null) {
@@ -169,11 +175,7 @@ public class LaunchContainerRunnable implements Runnable
         }
         ctx.setLocalResources(localResources);
       }
-      finally {
-        fs.close();
-      }
-    }
-    catch (IOException e) {
+    } catch (IOException e) {
       LOG.error("Failed to prepare local resources.", e);
       return;
     }
@@ -188,7 +190,7 @@ public class LaunchContainerRunnable implements Runnable
     }
     LOG.info("Launching on node: {} command: {}", container.getNodeId(), command);
 
-    List<String> commands = new ArrayList<String>();
+    List<String> commands = new ArrayList<>();
     commands.add(command.toString());
     ctx.setCommands(commands);
 
@@ -204,13 +206,12 @@ public class LaunchContainerRunnable implements Runnable
   public List<CharSequence> getChildVMCommand(String jvmID)
   {
 
-    List<CharSequence> vargs = new ArrayList<CharSequence>(8);
+    List<CharSequence> vargs = new ArrayList<>(8);
 
     if (!StringUtils.isBlank(System.getenv(Environment.JAVA_HOME.key()))) {
       // node manager provides JAVA_HOME
       vargs.add(Environment.JAVA_HOME.$() + "/bin/java");
-    }
-    else {
+    } else {
       vargs.add("java");
     }
 
@@ -219,9 +220,8 @@ public class LaunchContainerRunnable implements Runnable
       if (dag.isDebug()) {
         vargs.add(JAVA_REMOTE_DEBUG_OPTS);
       }
-    }
-    else {
-      Map<String, String> params = new HashMap<String, String>();
+    } else {
+      Map<String, String> params = new HashMap<>();
       params.put("applicationId", Integer.toString(container.getId().getApplicationAttemptId().getApplicationId().getId()));
       params.put("containerId", Integer.toString(container.getId().getId()));
       StrSubstitutor sub = new StrSubstitutor(params, "%(", ")");
@@ -233,18 +233,17 @@ public class LaunchContainerRunnable implements Runnable
 
     List<DAG.OperatorMeta> operatorMetaList = Lists.newArrayList();
     int bufferServerMemory = 0;
-    for(PTOperator operator: sca.getContainer().getOperators()){
+    for (PTOperator operator : sca.getContainer().getOperators()) {
       bufferServerMemory += operator.getBufferServerMemory();
       operatorMetaList.add(operator.getOperatorMeta());
     }
     Context.ContainerOptConfigurator containerOptConfigurator = dag.getAttributes().get(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR);
     jvmOpts = containerOptConfigurator.getJVMOptions(operatorMetaList);
-    jvmOpts = parseJvmOpts(jvmOpts, ((long) bufferServerMemory) * MB_TO_B);
+    jvmOpts = parseJvmOpts(jvmOpts, ((long)bufferServerMemory) * MB_TO_B);
     LOG.info("Jvm opts {} for container {}",jvmOpts,container.getId());
     vargs.add(jvmOpts);
 
-    Path childTmpDir = new Path(Environment.PWD.$(),
-                                YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
+    Path childTmpDir = new Path(Environment.PWD.$(), YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
     vargs.add(String.format("-D%s=%s", StreamingContainer.PROP_APP_PATH, dag.assertAppPath()));
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
     vargs.add(String.format("-D%scid=%s", StreamingApplication.DT_PREFIX, jvmID));
@@ -266,7 +265,7 @@ public class LaunchContainerRunnable implements Runnable
     for (CharSequence str : vargs) {
       mergedCommand.append(str).append(" ");
     }
-    List<CharSequence> vargsFinal = new ArrayList<CharSequence>(1);
+    List<CharSequence> vargsFinal = new ArrayList<>(1);
     vargsFinal.add(mergedCommand.toString());
     return vargsFinal;
 
@@ -285,8 +284,7 @@ public class LaunchContainerRunnable implements Runnable
           long heapSize = Long.valueOf(split.substring(xmx.length()));
           heapSize += memory;
           builder.append(xmx).append(heapSize).append(" ");
-        }
-        else {
+        } else {
           builder.append(split).append(" ");
         }
       }
@@ -303,7 +301,7 @@ public class LaunchContainerRunnable implements Runnable
       UserGroupInformation ugi = UserGroupInformation.getLoginUser();
       StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(ugi.getUserName()), new Text(""), new Text(""));
       String service = heartbeatAddress.getAddress().getHostAddress() + ":" + heartbeatAddress.getPort();
-      Token<StramDelegationTokenIdentifier> stramToken = new Token<StramDelegationTokenIdentifier>(identifier, delegationTokenManager);
+      Token<StramDelegationTokenIdentifier> stramToken = new Token<>(identifier, delegationTokenManager);
       stramToken.setService(new Text(service));
       return getTokens(ugi, stramToken);
     }
@@ -327,8 +325,7 @@ public class LaunchContainerRunnable implements Runnable
       byte[] tokenBytes = dataOutput.getData();
       ByteBuffer cTokenBuf = ByteBuffer.wrap(tokenBytes);
       return cTokenBuf.duplicate();
-    }
-    catch (IOException e) {
+    } catch (IOException e) {
       throw new RuntimeException("Error generating delegation token", e);
     }
   }

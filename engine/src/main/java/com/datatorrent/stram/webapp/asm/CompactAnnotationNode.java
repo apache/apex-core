@@ -19,30 +19,36 @@
 package com.datatorrent.stram.webapp.asm;
 
 import java.util.Map;
+
 /**
  * <p>CompactAnnotationNode class.</p>
  *
  * @since 3.2.0
  */
-public class CompactAnnotationNode {
+public class CompactAnnotationNode
+{
 
   private String desc;
-  
+
   private Map<String, Object> annotations;
-  
-  public String getDesc() {
+
+  public String getDesc()
+  {
     return desc;
   }
 
-  public void setDesc(String desc) {
+  public void setDesc(String desc)
+  {
     this.desc = desc;
   }
 
-  public Map<String, Object> getAnnotations() {
+  public Map<String, Object> getAnnotations()
+  {
     return annotations;
   }
 
-  public void setAnnotations(Map<String, Object> annotations) {
+  public void setAnnotations(Map<String, Object> annotations)
+  {
     this.annotations = annotations;
   }
 }

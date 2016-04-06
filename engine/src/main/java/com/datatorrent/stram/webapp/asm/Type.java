@@ -29,29 +29,28 @@ import org.apache.xbean.asm5.signature.SignatureVisitor;
  */
 public interface Type
 {
-
-  public static class TypeNode implements Type{
-    
+  class TypeNode implements Type
+  {
     private transient org.apache.xbean.asm5.Type typeObj;
-    
+
     private String objByteCode;
-    
+
     public org.apache.xbean.asm5.Type getTypeObj()
     {
-      if(typeObj == null){
+      if (typeObj == null) {
         typeObj = org.apache.xbean.asm5.Type.getType(objByteCode);
       }
       return typeObj;
     }
-    
+
     @Override
     public String toString()
     {
-      if(typeObj == null){
+      if (typeObj == null) {
         typeObj = org.apache.xbean.asm5.Type.getType(objByteCode);
       }
-      
-      if(typeObj.getSort()==org.apache.xbean.asm5.Type.OBJECT){
+
+      if (typeObj.getSort() == org.apache.xbean.asm5.Type.OBJECT) {
         return "class " + typeObj.getClassName();
       } else {
         return typeObj.getClassName();
@@ -61,7 +60,7 @@ public interface Type
     @Override
     public String getByteString()
     {
-      if(typeObj == null){
+      if (typeObj == null) {
         typeObj = org.apache.xbean.asm5.Type.getType(objByteCode);
       }
       if (typeObj.getSort() == org.apache.xbean.asm5.Type.OBJECT) {
@@ -80,34 +79,30 @@ public interface Type
     {
       this.objByteCode = objByteCode;
     }
-    
 
   }
-  
-  public static class WildcardTypeNode implements Type{
+
+  class WildcardTypeNode implements Type
+  {
 
     char boundChar;
-    
+
     ArrayList<Type> bounds = new ArrayList<Type>();
-    
+
     public Type[] getUpperBounds()
     {
-      if(boundChar == SignatureVisitor.EXTENDS)
-      {
+      if (boundChar == SignatureVisitor.EXTENDS) {
         return bounds.toArray(new Type[]{});
-      } else 
-      {
+      } else {
         return null;
       }
     }
 
     public Type[] getLowerBounds()
     {
-      if(boundChar == SignatureVisitor.SUPER)
-      {
+      if (boundChar == SignatureVisitor.SUPER) {
         return bounds.toArray(new Type[]{});
-      } else 
-      {
+      } else {
         return null;
       }
     }
@@ -117,59 +112,63 @@ public interface Type
     {
       return boundChar + "";
     }
-    
-    
-    
+
   }
-  
-  public static class TypeVariableNode implements Type {
+
+  class TypeVariableNode implements Type
+  {
 
     String typeLiteral;
-    
-    ArrayList<Type> bounds = new ArrayList<Type>();
-    
+
+    ArrayList<Type> bounds = new ArrayList<>();
+
     @Override
     public String getByteString()
     {
       return bounds.get(0).getByteString();
     }
-    
-    public Type[] getBounds() {
+
+    public Type[] getBounds()
+    {
       return bounds.toArray(new Type[]{});
     }
-    
+
     public String getTypeLiteral()
     {
       return typeLiteral;
     }
-    
-    public TypeNode getRawTypeBound(){
+
+    public TypeNode getRawTypeBound()
+    {
       Type t = bounds.get(0);
-      
+
       // The bounds can only be TypeNode or TypeVariableNode
-      if(t instanceof TypeNode){
-        return (TypeNode) t;
+      if (t instanceof TypeNode) {
+        return (TypeNode)t;
       }
       return ((TypeVariableNode)t).getRawTypeBound();
     }
-    
+
   }
-  
-  public static class ParameterizedTypeNode extends TypeNode {
-    
+
+  class ParameterizedTypeNode extends TypeNode
+  {
+
     ArrayList<Type> actualTypeArguments = new ArrayList<Type>();
-    
-    public Type[] getActualTypeArguments(){
+
+    public Type[] getActualTypeArguments()
+    {
       return actualTypeArguments.toArray(new Type[]{});
     }
   }
-  
-  
-  public static class ArrayTypeNode implements Type {
-    
+
+  class ArrayTypeNode implements Type
+  {
+
     Type actualArrayType;
-    
-    public Type getActualArrayType(){
+
+    public Type getActualArrayType()
+    {
       return actualArrayType;
     }
 
@@ -178,9 +177,9 @@ public interface Type
     {
       return "[" + actualArrayType.getByteString();
     }
-    
+
   }
-  
+
   String getByteString();
 
 }

@@ -31,12 +31,13 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
  *
  * @since 0.3.2
  */
-public class LocalModeImpl extends LocalMode {
-
+public class LocalModeImpl extends LocalMode
+{
   private final LogicalPlan lp = new LogicalPlan();
 
   @Override
-  public DAG getDAG() {
+  public DAG getDAG()
+  {
     return lp;
   }
 
@@ -62,7 +63,8 @@ public class LocalModeImpl extends LocalMode {
   }
 
   @Override
-  public Controller getController() {
+  public Controller getController()
+  {
     try {
       return new StramLocalCluster(lp);
     } catch (Exception e) {

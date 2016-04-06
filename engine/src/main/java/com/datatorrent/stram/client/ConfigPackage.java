@@ -18,16 +18,28 @@
  */
 package com.datatorrent.stram.client;
 
-import java.io.*;
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
-import java.util.*;
-import java.util.jar.*;
-import net.lingala.zip4j.core.ZipFile;
-import net.lingala.zip4j.exception.ZipException;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.jar.Attributes;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import net.lingala.zip4j.core.ZipFile;
+import net.lingala.zip4j.exception.ZipException;
 
 /**
  * <p>
@@ -53,12 +65,12 @@ public class ConfigPackage extends JarFile implements Closeable
   private final String appPackageMinVersion;
   private final String appPackageMaxVersion;
   private final String configPackageDescription;
-  private final ArrayList<String> classPath = new ArrayList<String>();
-  private final ArrayList<String> files = new ArrayList<String>();
+  private final ArrayList<String> classPath = new ArrayList<>();
+  private final ArrayList<String> files = new ArrayList<>();
   private final String directory;
 
-  private final Map<String, String> properties = new TreeMap<String, String>();
-  private final Map<String, Map<String, String>> appProperties = new TreeMap<String, Map<String, String>>();
+  private final Map<String, String> properties = new TreeMap<>();
+  private final Map<String, Map<String, String>> appProperties = new TreeMap<>();
 
   /**
    * Creates an Config Package object.
@@ -177,7 +189,7 @@ public class ConfigPackage extends JarFile implements Closeable
       String name = file.getName();
       if (name.length() > 15 && name.startsWith("properties-") && name.endsWith(".xml")) {
         String appName = name.substring(11, name.length() - 4);
-        Map<String, String> dp = new TreeMap<String, String>(properties);
+        Map<String, String> dp = new TreeMap<>(properties);
         parsePropertiesXml(file, dp);
         appProperties.put(appName, dp);
       }

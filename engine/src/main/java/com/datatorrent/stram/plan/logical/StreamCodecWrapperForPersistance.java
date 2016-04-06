@@ -19,7 +19,6 @@
 package com.datatorrent.stram.plan.logical;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +28,7 @@ import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+
 /**
  * <p>StreamCodecWrapperForPersistance class.</p>
  *
@@ -46,7 +46,7 @@ public class StreamCodecWrapperForPersistance<T> implements StreamCodec<T>, Seri
   {
     this.codecsToMerge = inputStreamCodecs;
     this.setSpecifiedStreamCodec(specifiedStreamCodec);
-    inputPortToPartitionMap = new HashMap<InputPortMeta, Collection<PartitionKeys>>();
+    inputPortToPartitionMap = new HashMap<>();
   }
 
   @Override

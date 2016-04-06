@@ -18,15 +18,19 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.stram.webapp.WebServices;
+import java.io.ByteArrayInputStream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.http.client.utils.URIBuilder;
+
 import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.ClientRequest;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.filter.ClientFilter;
-import java.io.ByteArrayInputStream;
-import org.apache.http.client.utils.URIBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.stram.webapp.WebServices;
 
 /**
  * <p>WebServicesVersionConversion class.</p>
@@ -35,11 +39,11 @@ import org.slf4j.LoggerFactory;
  */
 public class WebServicesVersionConversion
 {
-  public static interface Converter
+  public interface Converter
   {
-    public String convertCommandPath(String path);
+    String convertCommandPath(String path);
 
-    public String convertResponse(String path, String response);
+    String convertResponse(String path, String response);
 
   }
 
@@ -74,8 +78,7 @@ public class WebServicesVersionConversion
         String newEntity = converter.convertResponse(path, response.getEntity(String.class));
         response.setEntityInputStream(new ByteArrayInputStream(newEntity.getBytes()));
         return response;
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         throw new ClientHandlerException(ex);
       }
     }

@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.util.ReflectionUtils;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.math.IntMath;
@@ -70,7 +71,6 @@ import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.Pair;
-import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -139,16 +139,16 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     this.operator = operator;
     this.context = context;
     executorService = Executors.newSingleThreadExecutor();
-    taskQueue = new LinkedList<Pair<FutureTask<Stats.CheckpointStats>, CheckpointWindowInfo>>();
+    taskQueue = new LinkedList<>();
 
-    outputs = new HashMap<String, Sink<Object>>();
+    outputs = new HashMap<>();
 
     descriptor = new PortMappingDescriptor();
     Operators.describe(operator, descriptor);
 
-    endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>();
+    endWindowDequeueTimes = new HashMap<>();
     tmb = ManagementFactory.getThreadMXBean();
-    commandResponse = new LinkedBlockingQueue<StatsListener.OperatorResponse>();
+    commandResponse = new LinkedBlockingQueue<>();
 
     metricFields = Lists.newArrayList();
     for (Field field : ReflectionUtils.getDeclaredFieldsIncludingInherited(operator.getClass())) {
@@ -226,8 +226,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       if (sink == null) {
         outputPort.component.setSink(null);
         outputs.remove(port);
-      }
-      else {
+      } else {
         outputPort.component.setSink(sink);
         outputs.put(port, sink);
       }
@@ -253,11 +252,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         pcpair.component.setSink(e.getValue());
         outputs.put(e.getKey(), e.getValue());
         changes = true;
-      }
-      else if (ics instanceof MuxSink) {
-        ((MuxSink) ics).add(e.getValue());
-      }
-      else {
+      } else if (ics instanceof MuxSink) {
+        ((MuxSink)ics).add(e.getValue());
+      } else {
         MuxSink muxSink = new MuxSink(ics, e.getValue());
         pcpair.component.setSink(muxSink);
         outputs.put(e.getKey(), muxSink);
@@ -285,17 +282,15 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         pcpair.component.setSink(null);
         outputs.remove(e.getKey());
         changes = true;
-      }
-      else if (ics instanceof MuxSink) {
-        MuxSink ms = (MuxSink) ics;
+      } else if (ics instanceof MuxSink) {
+        MuxSink ms = (MuxSink)ics;
         ms.remove(e.getValue());
         Sink<Object>[] sinks1 = ms.getSinks();
         if (sinks1.length == 0) {
           pcpair.component.setSink(null);
           outputs.remove(e.getKey());
           changes = true;
-        }
-        else if (sinks1.length == 1) {
+        } else if (sinks1.length == 1) {
           pcpair.component.setSink(sinks1[0]);
           outputs.put(e.getKey(), sinks1[0]);
           changes = true;
@@ -321,8 +316,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     if (context == null) {
       logger.warn("Shutdown requested when context is not available!");
-    }
-    else {
+    } else {
       /*
        * Since alive is non-volatile this code explicitly unsets it in the operator lifecycle theread thereby notifying
        * it even when the thread is reading it from the cache
@@ -383,19 +377,16 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         while (size-- > 0) {
           //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
           response = requests.remove().execute(operator, context.getId(), windowId);
-          if(response != null){
+          if (response != null) {
             commandResponse.add(response);
           }
         }
       }
-    }
-    catch (Error er) {
+    } catch (Error er) {
       throw er;
-    }
-    catch (RuntimeException re) {
+    } catch (RuntimeException re) {
       throw re;
-    }
-    catch (IOException e) {
+    } catch (IOException e) {
       throw new RuntimeException(e);
     }
   }
@@ -430,7 +421,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected void reportStats(ContainerStats.OperatorStats stats, long windowId)
   {
-    stats.outputPorts = new ArrayList<ContainerStats.OperatorStats.PortStats>();
+    stats.outputPorts = new ArrayList<>();
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
       ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
       portStats.tupleCount = e.getValue().getCount(true) - controlTupleCount;
@@ -448,8 +439,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       stats.checkpointStats = checkpointStats;
       checkpointStats = null;
       checkpoint = null;
-    }
-    else {
+    } else {
       Pair<FutureTask<Stats.CheckpointStats>, CheckpointWindowInfo> pair = taskQueue.peek();
       if (pair != null && pair.getFirst().isDone()) {
         taskQueue.poll();
@@ -459,10 +449,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
           stats.checkpoint = new Checkpoint(checkpointWindowInfo.windowId, checkpointWindowInfo.applicationWindowCount,
               checkpointWindowInfo.checkpointWindowCount);
           if (operator instanceof Operator.CheckpointListener) {
-            ((Operator.CheckpointListener) operator).checkpointed(checkpointWindowInfo.windowId);
+            ((Operator.CheckpointListener)operator).checkpointed(checkpointWindowInfo.windowId);
           }
         } catch (Exception ex) {
-          throw DTThrowable.wrapIfChecked(ex);
+          throw Throwables.propagate(ex);
         }
       }
     }
@@ -475,10 +465,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     int size = outputs.size();
     if (size == 0) {
       sinks = Sink.NO_SINKS;
-    }
-    else {
+    } else {
       @SuppressWarnings("unchecked")
-      Sink<Object>[] newSinks = (Sink<Object>[]) Array.newInstance(Sink.class, size);
+      Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, size);
       for (Sink<Object> s : outputs.values()) {
         newSinks[--size] = s;
       }
@@ -506,9 +495,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
           checkpointStats.checkpointStartTime = System.currentTimeMillis();
           ba.save(operator, id, windowId);
           if (ba instanceof AsyncFSStorageAgent) {
-            AsyncFSStorageAgent asyncFSStorageAgent = (AsyncFSStorageAgent) ba;
+            AsyncFSStorageAgent asyncFSStorageAgent = (AsyncFSStorageAgent)ba;
             if (!asyncFSStorageAgent.isSyncCheckpoint()) {
-              if(PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
+              if (PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
                 CheckpointWindowInfo checkpointWindowInfo = new CheckpointWindowInfo();
                 checkpointWindowInfo.windowId = windowId;
                 checkpointWindowInfo.applicationWindowCount = applicationWindowCount;
@@ -519,25 +508,23 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
                 checkpointHandler.windowId = windowId;
                 checkpointHandler.stats = checkpointStats;
                 FutureTask<Stats.CheckpointStats> futureTask = new FutureTask<>(checkpointHandler);
-                taskQueue.add(new Pair<FutureTask<Stats.CheckpointStats>, CheckpointWindowInfo>(futureTask, checkpointWindowInfo));
+                taskQueue.add(new Pair<>(futureTask, checkpointWindowInfo));
                 executorService.submit(futureTask);
                 checkpoint = null;
                 checkpointStats = null;
                 return;
-              }else{
+              } else {
                 asyncFSStorageAgent.copyToHDFS(id, windowId);
               }
             }
           }
           checkpointStats.checkpointTime = System.currentTimeMillis() - checkpointStats.checkpointStartTime;
-        }
-        catch (IOException ie) {
+        } catch (IOException ie) {
           try {
             logger.warn("Rolling back checkpoint {} for Operator {} due to the exception {}",
-              Codec.getStringWindowId(windowId), operator, ie);
+                Codec.getStringWindowId(windowId), operator, ie);
             ba.delete(id, windowId);
-          }
-          catch (IOException ex) {
+          } catch (IOException ex) {
             logger.warn("Error while rolling back checkpoint", ex);
           }
           throw new RuntimeException(ie);
@@ -549,14 +536,14 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     dagCheckpointOffsetCount = 0;
     checkpoint = new Checkpoint(windowId, applicationWindowCount, checkpointWindowCount);
     if (operator instanceof Operator.CheckpointListener) {
-      ((Operator.CheckpointListener) operator).checkpointed(windowId);
+      ((Operator.CheckpointListener)operator).checkpointed(windowId);
     }
   }
 
   protected void calculateNextCheckpointWindow()
   {
     if (PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
-      nextCheckpointWindowCount = ((DAG_CHECKPOINT_WINDOW_COUNT - dagCheckpointOffsetCount + CHECKPOINT_WINDOW_COUNT - 1)/CHECKPOINT_WINDOW_COUNT) * CHECKPOINT_WINDOW_COUNT;
+      nextCheckpointWindowCount = ((DAG_CHECKPOINT_WINDOW_COUNT - dagCheckpointOffsetCount + CHECKPOINT_WINDOW_COUNT - 1) / CHECKPOINT_WINDOW_COUNT) * CHECKPOINT_WINDOW_COUNT;
     } else {
       nextCheckpointWindowCount = 1;
     }
@@ -569,16 +556,13 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     Node<?> node;
     if (operator instanceof InputOperator && type == OperatorDeployInfo.OperatorType.INPUT) {
-      node = new InputNode((InputOperator) operator, context);
-    }
-    else if (operator instanceof Unifier && type == OperatorDeployInfo.OperatorType.UNIFIER) {
-      node = new UnifierNode((Unifier<Object>) operator, context);
-    }
-    else if (type == OperatorDeployInfo.OperatorType.OIO) {
-      node = new OiONode((Operator) operator, context);
-    }
-    else {
-      node = new GenericNode((Operator) operator, context);
+      node = new InputNode((InputOperator)operator, context);
+    } else if (operator instanceof Unifier && type == OperatorDeployInfo.OperatorType.UNIFIER) {
+      node = new UnifierNode((Unifier<Object>)operator, context);
+    } else if (type == OperatorDeployInfo.OperatorType.OIO) {
+      node = new OiONode((Operator)operator, context);
+    } else {
+      node = new GenericNode((Operator)operator, context);
     }
 
     return node;
@@ -599,8 +583,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   {
     if (this.id == 0) {
       this.id = id;
-    }
-    else {
+    } else {
       throw new RuntimeException("Id cannot be changed from " + this.id + " to " + id);
     }
   }
@@ -620,9 +603,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     if (CHECKPOINT_WINDOW_COUNT % APPLICATION_WINDOW_COUNT != 0) {
       logger.warn("{} is not exact multiple of {} for operator {}. This may cause side effects such as processing to begin without beginWindow preceding it in the first window after activation.",
-        OperatorContext.CHECKPOINT_WINDOW_COUNT,
-        OperatorContext.APPLICATION_WINDOW_COUNT,
-        operator);
+          OperatorContext.CHECKPOINT_WINDOW_COUNT,
+          OperatorContext.APPLICATION_WINDOW_COUNT,
+          operator);
     }
 
     PROCESSING_MODE = context.getValue(OperatorContext.PROCESSING_MODE);
@@ -633,7 +616,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     activateSinks();
     if (operator instanceof Operator.ActivationListener) {
-      ((Operator.ActivationListener<OperatorContext>) operator).activate(context);
+      ((Operator.ActivationListener<OperatorContext>)operator).activate(context);
     }
 
     if (statsListeners != null) {
@@ -660,7 +643,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public void deactivate()
   {
     if (operator instanceof Operator.ActivationListener) {
-      ((Operator.ActivationListener<?>) operator).deactivate();
+      ((Operator.ActivationListener<?>)operator).deactivate();
     }
 
     if (!shutdown && !alive) {

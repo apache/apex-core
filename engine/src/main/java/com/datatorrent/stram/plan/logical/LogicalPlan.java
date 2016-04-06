@@ -152,38 +152,38 @@ public class LogicalPlan implements Serializable, DAG
    * from DAGContext. This can be here till the fast publisher is fully tested and working as desired.
    * Then it can be moved back to DAGContext.
    */
-  public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
-  public static Attribute<Long> HDFS_TOKEN_LIFE_TIME = new Attribute<Long>(604800000l);
-  public static Attribute<Long> RM_TOKEN_LIFE_TIME = new Attribute<Long>(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT);
-  public static Attribute<String> KEY_TAB_FILE = new Attribute<String>((String) null, new StringCodec.String2String());
-  public static Attribute<Double> TOKEN_REFRESH_ANTICIPATORY_FACTOR = new Attribute<Double>(0.7);
+  public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<>(false);
+  public static Attribute<Long> HDFS_TOKEN_LIFE_TIME = new Attribute<>(604800000L);
+  public static Attribute<Long> RM_TOKEN_LIFE_TIME = new Attribute<>(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT);
+  public static Attribute<String> KEY_TAB_FILE = new Attribute<>((String)null, new StringCodec.String2String());
+  public static Attribute<Double> TOKEN_REFRESH_ANTICIPATORY_FACTOR = new Attribute<>(0.7);
   /**
    * Comma separated list of jar file dependencies to be deployed with the application.
    * The launcher will combine the list with built-in dependencies and those specified
    * that are made available through the distributed file system to application master
    * and child containers.
    */
-  public static Attribute<String> LIBRARY_JARS = new Attribute<String>(new StringCodec.String2String());
+  public static Attribute<String> LIBRARY_JARS = new Attribute<>(new StringCodec.String2String());
   /**
    * Comma separated list of archives to be deployed with the application.
    * The launcher will include the archives into the final set of resources
    * that are made available through the distributed file system to application master
    * and child containers.
    */
-  public static Attribute<String> ARCHIVES = new Attribute<String>(new StringCodec.String2String());
+  public static Attribute<String> ARCHIVES = new Attribute<>(new StringCodec.String2String());
   /**
    * Comma separated list of files to be deployed with the application. The launcher will include the files into the
    * final set of resources that are made available through the distributed file system to application master and child
    * containers.
    */
-  public static Attribute<String> FILES = new Attribute<String>(new StringCodec.String2String());
+  public static Attribute<String> FILES = new Attribute<>(new StringCodec.String2String());
   /**
    * The maximum number of containers (excluding the application master) that the application is allowed to request.
    * If the DAG plan requires less containers, remaining count won't be allocated from the resource manager.
    * Example: DAG with several operators and all streams container local would require one container,
    * only one container will be requested from the resource manager.
    */
-  public static Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
+  public static Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<>(Integer.MAX_VALUE);
 
   /**
    * The application attempt ID from YARN
@@ -194,10 +194,10 @@ public class LogicalPlan implements Serializable, DAG
     Attribute.AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);
   }
 
-  private final Map<String, StreamMeta> streams = new HashMap<String, StreamMeta>();
-  private final Map<String, OperatorMeta> operators = new HashMap<String, OperatorMeta>();
+  private final Map<String, StreamMeta> streams = new HashMap<>();
+  private final Map<String, OperatorMeta> operators = new HashMap<>();
   public final Map<String, ModuleMeta> modules = new LinkedHashMap<>();
-  private final List<OperatorMeta> rootOperators = new ArrayList<OperatorMeta>();
+  private final List<OperatorMeta> rootOperators = new ArrayList<>();
   private final List<OperatorMeta> leafOperators = new ArrayList<>();
   private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
   private transient Map<String, ArrayListMultimap<OutputPort<?>, InputPort<?>>> streamLinks = new HashMap<>();
@@ -257,7 +257,8 @@ public class LogicalPlan implements Serializable, DAG
       return fieldName;
     }
 
-    public InputPort<?> getPortObject() {
+    public InputPort<?> getPortObject()
+    {
       for (Map.Entry<InputPort<?>, InputPortMeta> e : operatorMeta.getPortMapping().inPortMap.entrySet()) {
         if (e.getValue() == this) {
           return e.getKey();
@@ -274,12 +275,12 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public String toString()
     {
-      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-              append("operator", this.operatorMeta).
-              append("portAnnotation", this.portAnnotation).
-              append("adqAnnotation", this.adqAnnotation).
-              append("field", this.fieldName).
-              toString();
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+          .append("operator", this.operatorMeta)
+          .append("portAnnotation", this.portAnnotation)
+          .append("adqAnnotation", this.adqAnnotation)
+          .append("field", this.fieldName)
+          .toString();
     }
 
     @Override
@@ -351,11 +352,10 @@ public class LogicalPlan implements Serializable, DAG
     {
       if (sliderMeta == null) {
         @SuppressWarnings("unchecked")
-        Slider slider = new Slider((Unifier<Object>) getUnifier(), numberOfBuckets, numberOfSlidingWindows);
+        Slider slider = new Slider((Unifier<Object>)getUnifier(), numberOfBuckets, numberOfSlidingWindows);
         try {
           sliderMeta = new OperatorMeta(operatorMeta.getName() + '.' + fieldName + "#slider", slider, getUnifierMeta().attributes.clone());
-        }
-        catch (CloneNotSupportedException ex) {
+        } catch (CloneNotSupportedException ex) {
           throw new RuntimeException(ex);
         }
         sliderMeta.getAttributes().put(OperatorContext.APPLICATION_WINDOW_COUNT, slidingApplicationWindowCount);
@@ -368,7 +368,8 @@ public class LogicalPlan implements Serializable, DAG
       return fieldName;
     }
 
-    public OutputPort<?> getPortObject() {
+    public OutputPort<?> getPortObject()
+    {
       for (Map.Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
         if (e.getValue() == this) {
           return e.getKey();
@@ -377,7 +378,8 @@ public class LogicalPlan implements Serializable, DAG
       throw new AssertionError("Cannot find the port object for " + this);
     }
 
-    public Operator.Unifier<?> getUnifier() {
+    public Operator.Unifier<?> getUnifier()
+    {
       for (Map.Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
         if (e.getValue() == this) {
           Unifier<?> unifier = e.getKey().getUnifier();
@@ -418,12 +420,12 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public String toString()
     {
-      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-              append("operator", this.operatorMeta).
-              append("portAnnotation", this.portAnnotation).
-              append("adrAnnotation", this.adrAnnotation).
-              append("field", this.fieldName).
-              toString();
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+          .append("operator", this.operatorMeta)
+          .append("portAnnotation", this.portAnnotation)
+          .append("adrAnnotation", this.adrAnnotation)
+          .append("field", this.fieldName)
+          .toString();
     }
 
     @Override
@@ -447,7 +449,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     private static final long serialVersionUID = 1L;
     private Locality locality;
-    private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
+    private final List<InputPortMeta> sinks = new ArrayList<>();
     private OutputPortMeta source;
     private final String id;
     private OperatorMeta persistOperatorForStream;
@@ -460,9 +462,9 @@ public class LogicalPlan implements Serializable, DAG
     private StreamMeta(String id)
     {
       this.id = id;
-      enableSinksForPersisting = new HashSet<InputPortMeta>();
-      sinkSpecificPersistOperatorMap = new HashMap<LogicalPlan.InputPortMeta, OperatorMeta>();
-      sinkSpecificPersistInputPortMap = new HashMap<LogicalPlan.InputPortMeta, InputPortMeta>();
+      enableSinksForPersisting = new HashSet<>();
+      sinkSpecificPersistOperatorMap = new HashMap<>();
+      sinkSpecificPersistInputPortMap = new HashMap<>();
     }
 
     @Override
@@ -567,9 +569,9 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public String toString()
     {
-      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-              append("id", this.id).
-              toString();
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+          .append("id", this.id)
+          .toString();
     }
 
     @Override
@@ -728,12 +730,16 @@ public class LogicalPlan implements Serializable, DAG
 
     private void addStreamCodec(InputPortMeta sinkToPersistPortMeta, InputPort<?> port)
     {
-      StreamCodec<Object> inputStreamCodec = sinkToPersistPortMeta.getValue(PortContext.STREAM_CODEC) != null ? (StreamCodec<Object>) sinkToPersistPortMeta.getValue(PortContext.STREAM_CODEC) : (StreamCodec<Object>) sinkToPersistPortMeta.getPortObject().getStreamCodec();
+      StreamCodec<Object> inputStreamCodec = sinkToPersistPortMeta.getValue(PortContext.STREAM_CODEC) != null
+          ? (StreamCodec<Object>)sinkToPersistPortMeta.getValue(PortContext.STREAM_CODEC)
+          : (StreamCodec<Object>)sinkToPersistPortMeta.getPortObject().getStreamCodec();
       if (inputStreamCodec != null) {
-        Map<InputPortMeta, StreamCodec<Object>> codecs = new HashMap<InputPortMeta, StreamCodec<Object>>();
+        Map<InputPortMeta, StreamCodec<Object>> codecs = new HashMap<>();
         codecs.put(sinkToPersistPortMeta, inputStreamCodec);
         InputPortMeta persistOperatorPortMeta = assertGetPortMeta(port);
-        StreamCodec<Object> specifiedCodecForPersistOperator = (persistOperatorPortMeta.getValue(PortContext.STREAM_CODEC) != null) ? (StreamCodec<Object>) persistOperatorPortMeta.getValue(PortContext.STREAM_CODEC) : (StreamCodec<Object>) port.getStreamCodec();
+        StreamCodec<Object> specifiedCodecForPersistOperator = (persistOperatorPortMeta.getValue(PortContext.STREAM_CODEC) != null)
+            ? (StreamCodec<Object>)persistOperatorPortMeta.getValue(PortContext.STREAM_CODEC)
+            : (StreamCodec<Object>)port.getStreamCodec();
         StreamCodecWrapperForPersistance<Object> codec = new StreamCodecWrapperForPersistance<Object>(codecs, specifiedCodecForPersistOperator);
         setInputPortAttribute(port, PortContext.STREAM_CODEC, codec);
       }
@@ -777,8 +783,8 @@ public class LogicalPlan implements Serializable, DAG
    */
   public final class OperatorMeta implements DAG.OperatorMeta, Serializable
   {
-    private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
-    private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
+    private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<>();
+    private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<>();
     private final Attribute.AttributeMap attributes;
     @SuppressWarnings("unused")
     private final int id;
@@ -832,9 +838,9 @@ public class LogicalPlan implements Serializable, DAG
     {
       T attr = attributes.get(key);
       if (attr == null) {
-        attr =  LogicalPlan.this.getValue(key);
+        attr = LogicalPlan.this.getValue(key);
       }
-      if(attr == null){
+      if (attr == null) {
         return key.defaultValue;
       }
       return attr;
@@ -903,14 +909,13 @@ public class LogicalPlan implements Serializable, DAG
             metricNames.add(field.getName());
 
             if (field.getType() == int.class || field.getType() == Integer.class ||
-              field.getType() == long.class || field.getType() == Long.class) {
+                field.getType() == long.class || field.getType() == Long.class) {
               if (defAggregator == null) {
                 defAggregator = new MetricsAggregator();
               }
               defAggregator.addAggregators(field.getName(), new SingleMetricAggregator[]{new LongSumAggregator()});
-            }
-            else if (field.getType() == float.class || field.getType() == Float.class ||
-              field.getType() == double.class || field.getType() == Double.class) {
+            } else if (field.getType() == float.class || field.getType() == Float.class ||
+                field.getType() == double.class || field.getType() == Double.class) {
               if (defAggregator == null) {
                 defAggregator = new MetricsAggregator();
               }
@@ -931,7 +936,7 @@ public class LogicalPlan implements Serializable, DAG
                 }
 
                 if (readMethod.getReturnType() == int.class || readMethod.getReturnType() == Integer.class ||
-                  readMethod.getReturnType() == long.class || readMethod.getReturnType() == Long.class) {
+                    readMethod.getReturnType() == long.class || readMethod.getReturnType() == Long.class) {
 
                   if (defAggregator == null) {
                     defAggregator = new MetricsAggregator();
@@ -939,7 +944,7 @@ public class LogicalPlan implements Serializable, DAG
                   defAggregator.addAggregators(propName, new SingleMetricAggregator[]{new LongSumAggregator()});
 
                 } else if (readMethod.getReturnType() == float.class || readMethod.getReturnType() == Float.class ||
-                  readMethod.getReturnType() == double.class || readMethod.getReturnType() == Double.class) {
+                    readMethod.getReturnType() == double.class || readMethod.getReturnType() == Double.class) {
 
                   if (defAggregator == null) {
                     defAggregator = new MetricsAggregator();
@@ -958,7 +963,7 @@ public class LogicalPlan implements Serializable, DAG
         }
       }
       this.metricAggregatorMeta = new MetricAggregatorMeta(aggregator,
-        getValue(OperatorContext.METRICS_DIMENSIONS_SCHEME));
+          getValue(OperatorContext.METRICS_DIMENSIONS_SCHEME));
     }
 
     /**
@@ -1002,9 +1007,9 @@ public class LogicalPlan implements Serializable, DAG
 
     private class PortMapping implements Operators.OperatorDescriptor
     {
-      private final Map<Operator.InputPort<?>, InputPortMeta> inPortMap = new HashMap<Operator.InputPort<?>, InputPortMeta>();
-      private final Map<Operator.OutputPort<?>, OutputPortMeta> outPortMap = new HashMap<Operator.OutputPort<?>, OutputPortMeta>();
-      private final Map<String, Object> portNameMap = new HashMap<String, Object>();
+      private final Map<Operator.InputPort<?>, InputPortMeta> inPortMap = new HashMap<>();
+      private final Map<Operator.OutputPort<?>, OutputPortMeta> outPortMap = new HashMap<>();
+      private final Map<String, Object> portNameMap = new HashMap<>();
 
       @Override
       public void addInputPort(InputPort<?> portObject, Field field, InputPortFieldAnnotation portAnnotation, AppData.QueryPort adqAnnotation)
@@ -1073,6 +1078,7 @@ public class LogicalPlan implements Serializable, DAG
         }
       }
     }
+
     /**
      * Ports objects are transient, we keep a lazy initialized mapping
      */
@@ -1136,7 +1142,7 @@ public class LogicalPlan implements Serializable, DAG
         return false;
       }
 
-      OperatorMeta that = (OperatorMeta) o;
+      OperatorMeta that = (OperatorMeta)o;
 
       if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
         return false;
@@ -1373,7 +1379,7 @@ public class LogicalPlan implements Serializable, DAG
     for (Map.Entry<InputPortMeta, StreamMeta> e : inputStreams.entrySet()) {
       StreamMeta stream = e.getValue();
       if (e.getKey().getOperatorWrapper() == om) {
-         stream.sinks.remove(e.getKey());
+        stream.sinks.remove(e.getKey());
       }
       // If persistStream was enabled for stream, reset stream when sink removed
       stream.resetStreamPersistanceOnSinkRemoval(e.getKey());
@@ -1657,7 +1663,7 @@ public class LogicalPlan implements Serializable, DAG
    */
   public Set<String> getClassNames()
   {
-    Set<String> classNames = new HashSet<String>();
+    Set<String> classNames = new HashSet<>();
     for (OperatorMeta n: this.operators.values()) {
       String className = n.getOperator().getClass().getName();
       if (className != null) {
@@ -1683,8 +1689,8 @@ public class LogicalPlan implements Serializable, DAG
   public static class ValidationContext
   {
     public int nodeIndex = 0;
-    public Stack<OperatorMeta> stack = new Stack<OperatorMeta>();
-    public Stack<OperatorMeta> path = new Stack<OperatorMeta>();
+    public Stack<OperatorMeta> stack = new Stack<>();
+    public Stack<OperatorMeta> path = new Stack<>();
     public List<Set<OperatorMeta>> stronglyConnected = new ArrayList<>();
     public OperatorMeta invalidLoopAt;
     public List<Set<OperatorMeta>> invalidCycles = new ArrayList<>();
@@ -1706,26 +1712,25 @@ public class LogicalPlan implements Serializable, DAG
    */
   public void validate() throws ConstraintViolationException
   {
-    ValidatorFactory factory =
-            Validation.buildDefaultValidatorFactory();
+    ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
     Validator validator = factory.getValidator();
 
     checkAttributeValueSerializable(this.getAttributes(), DAG.class.getName());
 
     // clear oioRoot values in all operators
-    for (OperatorMeta n: operators.values()) {
+    for (OperatorMeta n : operators.values()) {
       n.oioRoot = null;
     }
 
     // clear visited on all operators
-    for (OperatorMeta n: operators.values()) {
+    for (OperatorMeta n : operators.values()) {
       n.nindex = null;
       n.lowlink = null;
 
       // validate configuration
       Set<ConstraintViolation<Operator>> constraintViolations = validator.validate(n.getOperator());
       if (!constraintViolations.isEmpty()) {
-        Set<ConstraintViolation<?>> copySet = new HashSet<ConstraintViolation<?>>(constraintViolations.size());
+        Set<ConstraintViolation<?>> copySet = new HashSet<>(constraintViolations.size());
         // workaround bug in ConstraintViolationException constructor
         // (should be public <T> ConstraintViolationException(String message, Set<ConstraintViolation<T>> constraintViolations) { ... })
         for (ConstraintViolation<Operator> cv: constraintViolations) {
@@ -1953,7 +1958,7 @@ public class LogicalPlan implements Serializable, DAG
         for (int i = 0; i < list.size(); i++) {
           for (int j = i + 1; j < list.size(); j++) {
             OperatorPair pair = new OperatorPair(list.get(i), list.get(j));
-            if(rule.getType() == com.datatorrent.api.AffinityRule.Type.AFFINITY) {
+            if (rule.getType() == com.datatorrent.api.AffinityRule.Type.AFFINITY) {
               addToMap(affinities, rule, pair);
             } else {
               addToMap(antiAffinities, rule, pair);
@@ -2146,7 +2151,8 @@ public class LogicalPlan implements Serializable, DAG
    *  1. all its input streams should be OIO
    *  2. all its input streams should have OIO from single source node
    */
-  private void validateThreadLocal(OperatorMeta om) {
+  private void validateThreadLocal(OperatorMeta om)
+  {
     Integer oioRoot = null;
 
     // already visited and validated
@@ -2159,11 +2165,11 @@ public class LogicalPlan implements Serializable, DAG
       throw new ValidationException(msg);
     }
 
-    for (StreamMeta sm: om.inputStreams.values()){
+    for (StreamMeta sm: om.inputStreams.values()) {
       // validation fail as each input stream should be OIO
-      if (sm.locality != Locality.THREAD_LOCAL){
+      if (sm.locality != Locality.THREAD_LOCAL) {
         String msg = String.format("Locality %s invalid for operator %s with multiple input streams as at least one of the input streams is not %s",
-                                   Locality.THREAD_LOCAL, om, Locality.THREAD_LOCAL);
+            Locality.THREAD_LOCAL, om, Locality.THREAD_LOCAL);
         throw new ValidationException(msg);
       }
 
@@ -2175,9 +2181,9 @@ public class LogicalPlan implements Serializable, DAG
       Integer oioStreamRoot = getOioRoot(sm.source.operatorMeta);
 
       // validation fail as each input stream should have a common OIO root
-      if (om.oioRoot != null && oioStreamRoot != om.oioRoot){
+      if (om.oioRoot != null && oioStreamRoot != om.oioRoot) {
         String msg = String.format("Locality %s invalid for operator %s with multiple input streams as at least one of the input streams is not originating from common OIO owner node",
-                                   Locality.THREAD_LOCAL, om, Locality.THREAD_LOCAL);
+            Locality.THREAD_LOCAL, om, Locality.THREAD_LOCAL);
         throw new ValidationException(msg);
       }
 
@@ -2198,9 +2204,10 @@ public class LogicalPlan implements Serializable, DAG
    * For a given operator, visits all upstream operators in DFS, validates and marks them as visited
    * returns hashcode of owner oio node if it exists, else returns hashcode of the supplied node
    */
-  private Integer getOioRoot(OperatorMeta om) {
+  private Integer getOioRoot(OperatorMeta om)
+  {
     // operators which were already marked a visited
-    if (om.oioRoot != null){
+    if (om.oioRoot != null) {
       return om.oioRoot;
     }
 
@@ -2210,8 +2217,7 @@ public class LogicalPlan implements Serializable, DAG
         StreamMeta sm = om.inputStreams.values().iterator().next();
         if (sm.locality == Locality.THREAD_LOCAL) {
           om.oioRoot = getOioRoot(sm.source.operatorMeta);
-        }
-        else {
+        } else {
           om.oioRoot = om.hashCode();
         }
         break;
@@ -2257,12 +2263,11 @@ public class LogicalPlan implements Serializable, DAG
           // not visited yet
           findStronglyConnected(successor, ctx);
           om.lowlink = Math.min(om.lowlink, successor.lowlink);
-        }
-        else if (ctx.stack.contains(successor)) {
+        } else if (ctx.stack.contains(successor)) {
           om.lowlink = Math.min(om.lowlink, successor.nindex);
           boolean isDelayLoop = false;
-          for (int i=ctx.stack.size(); i>0; i--) {
-            OperatorMeta om2 = ctx.stack.get(i-1);
+          for (int i = ctx.stack.size(); i > 0; i--) {
+            OperatorMeta om2 = ctx.stack.get(i - 1);
             if (om2.getOperator() instanceof Operator.DelayOperator) {
               isDelayLoop = true;
             }
@@ -2344,14 +2349,16 @@ public class LogicalPlan implements Serializable, DAG
     for (StreamMeta os : om.outputStreams.values()) {
       for (InputPortMeta sink: os.sinks) {
         OperatorMeta sinkOm = sink.getOperatorWrapper();
-        Operator.ProcessingMode sinkPm = sinkOm.attributes == null? null: sinkOm.attributes.get(OperatorContext.PROCESSING_MODE);
+        Operator.ProcessingMode sinkPm = sinkOm.attributes == null ? null : sinkOm.attributes.get(OperatorContext.PROCESSING_MODE);
         if (sinkPm == null) {
-          // If the source processing mode is AT_MOST_ONCE and a processing mode is not specified for the sink then set it to AT_MOST_ONCE as well
+          // If the source processing mode is AT_MOST_ONCE and a processing mode is not specified for the sink then
+          // set it to AT_MOST_ONCE as well
           if (Operator.ProcessingMode.AT_MOST_ONCE.equals(pm)) {
             LOG.warn("Setting processing mode for operator {} to {}", sinkOm.getName(), pm);
             sinkOm.getAttributes().put(OperatorContext.PROCESSING_MODE, pm);
           } else if (Operator.ProcessingMode.EXACTLY_ONCE.equals(pm)) {
-            // If the source processing mode is EXACTLY_ONCE and a processing mode is not specified for the sink then throw a validation error
+            // If the source processing mode is EXACTLY_ONCE and a processing mode is not specified for the sink then
+            // throw a validation error
             String msg = String.format("Processing mode for %s should be AT_MOST_ONCE for source %s/%s", sinkOm.getName(), om.getName(), pm);
             throw new ValidationException(msg);
           }
@@ -2361,7 +2368,7 @@ public class LogicalPlan implements Serializable, DAG
            * If the source processing mode is EXACTLY_ONCE and the processing mode for the sink is not AT_MOST_ONCE throw a validation error
            */
           if ((Operator.ProcessingMode.AT_MOST_ONCE.equals(pm) && (sinkPm != pm))
-                  || (Operator.ProcessingMode.EXACTLY_ONCE.equals(pm) && !Operator.ProcessingMode.AT_MOST_ONCE.equals(sinkPm))) {
+              || (Operator.ProcessingMode.EXACTLY_ONCE.equals(pm) && !Operator.ProcessingMode.AT_MOST_ONCE.equals(sinkPm))) {
             String msg = String.format("Processing mode %s/%s not valid for source %s/%s", sinkOm.getName(), sinkPm, om.getName(), pm);
             throw new ValidationException(msg);
           }
@@ -2392,30 +2399,24 @@ public class LogicalPlan implements Serializable, DAG
       Type typeArgument = t.getActualTypeArguments()[0];
       if (typeArgument instanceof Class) {
         return typeArgument;
-      }
-      else if (typeArgument instanceof TypeVariable) {
+      } else if (typeArgument instanceof TypeVariable) {
         TypeVariable<?> tv = (TypeVariable<?>)typeArgument;
-        LOG.debug("bounds: " + Arrays.asList(tv.getBounds()));
+        LOG.debug("bounds: {}", Arrays.asList(tv.getBounds()));
         // variable may contain other variables, java.util.Map<java.lang.String, ? extends T2>
         return tv.getBounds()[0];
-      }
-      else if (typeArgument instanceof GenericArrayType) {
+      } else if (typeArgument instanceof GenericArrayType) {
         LOG.debug("type {} is of GenericArrayType", typeArgument);
         return typeArgument;
-      }
-      else if (typeArgument instanceof WildcardType) {
+      } else if (typeArgument instanceof WildcardType) {
         LOG.debug("type {} is of WildcardType", typeArgument);
         return typeArgument;
-      }
-      else if (typeArgument instanceof ParameterizedType) {
+      } else if (typeArgument instanceof ParameterizedType) {
         return typeArgument;
-      }
-      else {
+      } else {
         LOG.error("Type argument is of expected type {}", typeArgument);
         return null;
       }
-    }
-    else {
+    } else {
       // ports are always parameterized
       LOG.error("No type variable: {}, typeParameters: {}", f.getType(), Arrays.asList(f.getClass().getTypeParameters()));
       return null;
@@ -2425,11 +2426,11 @@ public class LogicalPlan implements Serializable, DAG
   @Override
   public String toString()
   {
-    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-            append("operators", this.operators).
-            append("streams", this.streams).
-            append("properties", this.attributes).
-            toString();
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+        .append("operators", this.operators)
+        .append("streams", this.streams)
+        .append("properties", this.attributes)
+        .toString();
   }
 
   @Override
@@ -2442,7 +2443,7 @@ public class LogicalPlan implements Serializable, DAG
       return false;
     }
 
-    LogicalPlan that = (LogicalPlan) o;
+    LogicalPlan that = (LogicalPlan)o;
 
     if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
       return false;

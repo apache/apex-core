@@ -22,6 +22,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,8 +46,7 @@ public class StreamGobbler extends Thread
   {
     try {
       return content.toString();
-    }
-    finally {
+    } finally {
       content.setLength(0);
     }
   }
@@ -65,12 +65,10 @@ public class StreamGobbler extends Thread
             content.append("\n");
           }
         }
-      }
-      finally {
+      } finally {
         br.close();
       }
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       LOG.error("Caught exception", ex);
     }
   }

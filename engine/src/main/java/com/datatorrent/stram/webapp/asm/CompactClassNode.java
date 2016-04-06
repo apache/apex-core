@@ -31,23 +31,23 @@ public class CompactClassNode
 {
   
   private int access;
-  
+
   private String name;
-  
+
   private List<CompactFieldNode> ports;
 
   private List<CompactMethodNode> getterMethods;
-  
+
   private List<CompactMethodNode> setterMethods;
-  
+
   private CompactMethodNode defaultConstructor;
-  
+
   private List<CompactClassNode> innerClasses;
-  
+
   private List<String> enumValues;
-  
+
   private ClassSignatureVisitor csv;
-  
+
   public int getAccess()
   {
     return access;
@@ -133,11 +133,13 @@ public class CompactClassNode
     this.csv = csv;
   }
 
-  public List<CompactFieldNode> getPorts() {
+  public List<CompactFieldNode> getPorts()
+  {
     return ports;
   }
 
-  public void setPorts(List<CompactFieldNode> ports) {
+  public void setPorts(List<CompactFieldNode> ports)
+  {
     this.ports = ports;
   }
 }

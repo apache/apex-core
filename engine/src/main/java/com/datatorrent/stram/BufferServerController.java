@@ -18,13 +18,13 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.StreamingContainer;
 import java.net.InetSocketAddress;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.bufferserver.client.Controller;
+import com.datatorrent.stram.engine.StreamingContainer;
 
 /**
  * Encapsulates buffer server control interface, used by the master for purging data.

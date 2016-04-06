@@ -64,12 +64,12 @@ public class ObjectMapperFactory
     returnVal.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
     return returnVal;
   }
-  
-  
+
   /**
    * This class filter out all direct field access and fields with one of setter/getter
    */
-  public static class VC implements VisibilityChecker<VC>{
+  public static class VC implements VisibilityChecker<VC>
+  {
 
     @Override
     public VC with(JsonAutoDetect ann)
@@ -122,15 +122,15 @@ public class ObjectMapperFactory
     @Override
     public boolean isGetterVisible(Method m)
     {
-      if(m == null || !Modifier.isPublic(m.getModifiers())){
+      if (m == null || !Modifier.isPublic(m.getModifiers())) {
         return false;
       }
       try {
         PropertyDescriptor[] pds = Introspector.getBeanInfo(m.getDeclaringClass()).getPropertyDescriptors();
         for (PropertyDescriptor pd : pds) {
-          if(pd.getReadMethod() != null && pd.getReadMethod().equals(m)){
+          if (pd.getReadMethod() != null && pd.getReadMethod().equals(m)) {
             Method setter = pd.getWriteMethod();
-            if(setter == null || !Modifier.isPublic(setter.getModifiers())){
+            if (setter == null || !Modifier.isPublic(setter.getModifiers())) {
               return false;
             } else {
               return true;
@@ -164,15 +164,15 @@ public class ObjectMapperFactory
     @Override
     public boolean isSetterVisible(Method m)
     {
-      if(m == null || !Modifier.isPublic(m.getModifiers())){
+      if (m == null || !Modifier.isPublic(m.getModifiers())) {
         return false;
       }
       try {
         PropertyDescriptor[] pds = Introspector.getBeanInfo(m.getDeclaringClass()).getPropertyDescriptors();
         for (PropertyDescriptor pd : pds) {
-          if(pd.getWriteMethod() != null && pd.getWriteMethod().equals(m)){
+          if (pd.getWriteMethod() != null && pd.getWriteMethod().equals(m)) {
             Method getter = pd.getReadMethod();
-            if(getter == null || !Modifier.isPublic(getter.getModifiers())){
+            if (getter == null || !Modifier.isPublic(getter.getModifiers())) {
               return false;
             } else {
               return true;
@@ -214,7 +214,7 @@ public class ObjectMapperFactory
     {
       return false;
     }
-    
+
   }
 
 }

@@ -114,8 +114,7 @@ public class InputNodeTest
           Assert.assertTrue(insideWindow);
           insideWindow = false;
         }
-      }
-      else {
+      } else {
         Assert.assertTrue(insideWindow);
       }
     }
@@ -149,7 +148,7 @@ public class InputNodeTest
     private State currentState = State.RESET_WINDOW_NO_TUPLE;
     private long lastTime;
 
-    public static enum State
+    public enum State
     {
       RESET_WINDOW_NO_TUPLE,
       RESET_WINDOW_TUPLE,
@@ -172,14 +171,14 @@ public class InputNodeTest
     @Override
     public Tuple sweep()
     {
-      switch(currentState) {
+      switch (currentState) {
         case RESET_WINDOW_NO_TUPLE: {
           currentTuple = new ResetWindowTuple(baseSeconds | 500L);
           currentState = State.RESET_WINDOW_TUPLE;
           break;
         }
         case RESET_WINDOW_TUPLE: {
-          if(currentTuple == null) {
+          if (currentTuple == null) {
             currentState = State.BEGIN_WINDOW;
           }
           break;
@@ -198,6 +197,8 @@ public class InputNodeTest
           currentState = State.BEGIN_WINDOW;
           break;
         }
+        default:
+          break;
       }
 
       return currentTuple;

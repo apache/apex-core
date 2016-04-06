@@ -18,26 +18,41 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Map.Entry;
+
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.*;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import org.apache.commons.lang3.BooleanUtils;
+
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.*;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+
+import org.apache.commons.lang3.BooleanUtils;
+
+import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 /**
  * <p>
@@ -52,7 +67,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     GLOBAL, LOCAL, USER, TRANSIENT
   }
 
-  private final Map<String, ValueEntry> map = new LinkedHashMap<String, ValueEntry>();
+  private final Map<String, ValueEntry> map = new LinkedHashMap<>();
   private static final Logger LOG = LoggerFactory.getLogger(DTConfiguration.class);
 
   public static class ValueEntry
@@ -77,7 +92,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
   @Override
   public Iterator<Entry<String, String>> iterator()
   {
-    Map<String, String> result = new HashMap<String, String>();
+    Map<String, String> result = new HashMap<>();
     for (Map.Entry<String, ValueEntry> entry : map.entrySet()) {
       result.put(entry.getKey(), entry.getValue().value);
     }
@@ -91,8 +106,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     Document doc;
     try {
       doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
-    }
-    catch (ParserConfigurationException ex) {
+    } catch (ParserConfigurationException ex) {
       throw new RuntimeException(ex);
     }
     Element rootElement = doc.createElement("configuration");
@@ -133,11 +147,9 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
       transformer.setOutputProperty(OutputKeys.INDENT, "yes");
       transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
       transformer.transform(source, result);
-    }
-    catch (TransformerConfigurationException ex) {
+    } catch (TransformerConfigurationException ex) {
       throw new RuntimeException(ex);
-    }
-    catch (TransformerException ex) {
+    } catch (TransformerException ex) {
       throw new IOException(ex);
     }
   }
@@ -161,8 +173,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
         if (propertyNode.getNodeType() == Node.ELEMENT_NODE) {
           if (propertyNode.getNodeName().equals("property")) {
             processPropertyNode((Element)propertyNode, defaultScope);
-          }
-          else {
+          } else {
             LOG.warn("Ignoring unknown element {}", propertyNode.getNodeName());
           }
         }
@@ -187,8 +198,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     nodeList = propertyNode.getElementsByTagName("value");
     if (nodeList.getLength() == 0) {
       valueEntry.value = null;
-    }
-    else {
+    } else {
       valueEntry.value = nodeList.item(0).getTextContent().trim();
     }
     nodeList = propertyNode.getElementsByTagName("description");
@@ -271,8 +281,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     if (map.containsKey(key)) {
       valueEntry = map.get(key);
       valueEntry.value = value;
-    }
-    else {
+    } else {
       valueEntry = new ValueEntry();
       valueEntry.scope = isLocalKey(key) ? Scope.LOCAL : Scope.TRANSIENT;
       map.put(key, valueEntry);
@@ -288,8 +297,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
       if (valueEntry.isFinal) {
         throw new ConfigException("Cannot set final property " + key);
       }
-    }
-    else {
+    } else {
       valueEntry = new ValueEntry();
     }
     valueEntry.value = value;
@@ -302,10 +310,10 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
   public static boolean isLocalKey(String key)
   {
     return key.equals(StramClientUtils.DT_DFS_ROOT_DIR)
-            || key.equals(LogicalPlanConfiguration.GATEWAY_LISTEN_ADDRESS)
-            || key.equals(StramClientUtils.DT_CONFIG_STATUS)
-            || key.equals(StramClientUtils.DT_VERSION)
-            || key.equals(StreamingApplication.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName());
+        || key.equals(LogicalPlanConfiguration.GATEWAY_LISTEN_ADDRESS)
+        || key.equals(StramClientUtils.DT_CONFIG_STATUS)
+        || key.equals(StramClientUtils.DT_VERSION)
+        || key.equals(StreamingApplication.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName());
   }
 
   public JSONObject toJSONObject()
@@ -320,8 +328,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
         }
         jsonValue.put("scope", entry.getValue().scope);
         json.put(entry.getKey(), jsonValue);
-      }
-      catch (JSONException ex) {
+      } catch (JSONException ex) {
         // should not happen here
         throw new RuntimeException(ex);
       }
@@ -343,14 +350,12 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
         if (valueEntry.scope == Scope.LOCAL) {
           json.put("scope", valueEntry.scope);
         }
-      }
-      catch (JSONException ex) {
+      } catch (JSONException ex) {
         // should not happen here
         throw new RuntimeException(ex);
       }
       return json;
-    }
-    else {
+    } else {
       return null;
     }
   }

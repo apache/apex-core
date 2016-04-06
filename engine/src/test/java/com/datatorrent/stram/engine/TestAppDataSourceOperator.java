@@ -29,22 +29,20 @@ public class TestAppDataSourceOperator extends BaseOperator
   public final transient InputPort<Object> query = new DefaultInputPort<Object>()
   {
     @Override
-    final public void process(Object payload)
+    public final void process(Object payload)
     {
     }
   };
 
   @AppData.ResultPort
-  public final transient DefaultOutputPort<Object> result = new DefaultOutputPort<Object>();
-
+  public final transient DefaultOutputPort<Object> result = new DefaultOutputPort<>();
 
   public final transient InputPort<Object> inport1 = new DefaultInputPort<Object>()
   {
     @Override
-    final public void process(Object payload)
+    public final void process(Object payload)
     {
     }
   };
-
 
 }

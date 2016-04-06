@@ -35,12 +35,14 @@ import com.datatorrent.api.DAG.Locality;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class StreamInfo
 {
-  public static class Port {
+  public static class Port
+  {
     public String operatorId;
     public String portName;
   }
+
   public String logicalName;
   public Port source = new Port();
-  public List<Port> sinks = new ArrayList<Port>();
+  public List<Port> sinks = new ArrayList<>();
   public Locality locality;
 }

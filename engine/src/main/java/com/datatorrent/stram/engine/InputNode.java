@@ -23,15 +23,14 @@ import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Throwables;
+
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator.IdleTimeHandler;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.ShutdownException;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.annotation.Stateless;
-
-import com.datatorrent.netlet.util.DTThrowable;
-
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.tuple.Tuple;
 
@@ -43,7 +42,7 @@ import com.datatorrent.stram.tuple.Tuple;
  */
 public class InputNode extends Node<InputOperator>
 {
-  private final ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<SweepableReservoir>();
+  private final ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<>();
   protected SweepableReservoir controlTuples;
   long lastCheckpointWindowId = Stateless.WINDOW_ID;
 
@@ -58,8 +57,7 @@ public class InputNode extends Node<InputOperator>
     if (Node.INPUT.equals(port)) {
       if (controlTuples == null) {
         controlTuples = reservoir;
-      }
-      else {
+      } else {
         deferredInputConnections.add(reservoir);
       }
     }
@@ -99,24 +97,21 @@ public class InputNode extends Node<InputOperator>
             if (generatedTuples == 0) {
               if (handleIdleTime) {
                 ((IdleTimeHandler)operator).handleIdleTime();
-              }
-              else {
+              } else {
                 Thread.sleep(spinMillis);
                 spinMillis = Math.min(spinMillis + 1, maxSpinMillis);
               }
             } else {
               spinMillis = 0;
             }
-          }
-          else {
+          } else {
             Thread.sleep(0);
           }
-        }
-        else {
+        } else {
           controlTuples.remove();
           switch (t.getType()) {
             case BEGIN_WINDOW:
-              for (int i = sinks.length; i-- > 0;) {
+              for (int i = sinks.length; i-- > 0; ) {
                 sinks[i].put(t);
               }
               controlTupleCount++;
@@ -154,8 +149,7 @@ public class InputNode extends Node<InputOperator>
                   checkpoint(currentWindowId);
                   lastCheckpointWindowId = currentWindowId;
                   doCheckpoint = false;
-                }
-                else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
+                } else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
                   checkpoint(currentWindowId);
                   lastCheckpointWindowId = currentWindowId;
                 }
@@ -163,7 +157,7 @@ public class InputNode extends Node<InputOperator>
 
               ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
               reportStats(stats, currentWindowId);
-              if(!insideApplicationWindow){
+              if (!insideApplicationWindow) {
                 stats.metrics = collectMetrics();
               }
               handleRequests(currentWindowId);
@@ -192,8 +186,7 @@ public class InputNode extends Node<InputOperator>
                 }
                 controlTupleCount++;
                 alive = false;
-              }
-              else {
+              } else {
                 controlTuples = deferredInputConnections.remove(0);
               }
               break;
@@ -207,15 +200,13 @@ public class InputNode extends Node<InputOperator>
           }
         }
       }
-    }
-    catch (ShutdownException se) {
+    } catch (ShutdownException se) {
       logger.debug("Shutdown requested by the operator when alive = {}.", alive);
       alive = false;
-    }
-    catch (Throwable cause) {
+    } catch (Throwable cause) {
       synchronized (this) {
         if (alive) {
-          DTThrowable.rethrow(cause);
+          throw Throwables.propagate(cause);
         }
       }
 
@@ -228,9 +219,8 @@ public class InputNode extends Node<InputOperator>
       }
 
       if (rootCause == null) {
-        DTThrowable.rethrow(cause);
-      }
-      else {
+        throw Throwables.propagate(cause);
+      } else {
         logger.debug("Ignoring InterruptedException after shutdown", cause);
       }
     }

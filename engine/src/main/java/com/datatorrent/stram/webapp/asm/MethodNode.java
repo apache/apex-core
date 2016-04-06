@@ -45,8 +45,6 @@ public class MethodNode extends org.apache.xbean.asm5.tree.MethodNode
   {
     super.visitEnd();
     String methodString = signature != null ? signature : desc;
-    // System.out.println(methodString);
-    // System.out.println("RRRRRRRRRRRR" + methodString + "%%%%%" + name);
     SignatureReader reader = new SignatureReader(methodString);
     signatureNode = new MethodSignatureVisitor();
 //    signatureNode.signature = methodString;

@@ -80,11 +80,11 @@ public class AutoMetricTest
       {
         for (OperatorStats os : stats.getLastWindowedStats()) {
           Assert.assertNotNull("metrics", os.metrics.get("operatorMetric"));
-          TestOperatorStats loperatorStats = (TestOperatorStats) os.metrics.get("operatorMetric");
+          TestOperatorStats loperatorStats = (TestOperatorStats)os.metrics.get("operatorMetric");
           loperatorStats.attributeListenerCalled = true;
           lastPropVal = loperatorStats.currentPropVal;
         }
-        if(lastPropVal){
+        if (lastPropVal) {
           Assert.assertNotNull(stats.getOperatorResponse());
           Assert.assertTrue(1 == stats.getOperatorResponse().size());
           Assert.assertEquals("test", stats.getOperatorResponse().get(0).getResponse());
@@ -151,7 +151,7 @@ public class AutoMetricTest
           definePartitionsThread = Thread.currentThread();
           for (OperatorStats os : stats.getLastWindowedStats()) {
             if (os.metrics.get("operatorMetric") != null) {
-              lastMetric = (TestOperatorStats) os.metrics.get("operatorMetric");
+              lastMetric = (TestOperatorStats)os.metrics.get("operatorMetric");
             }
           }
         }
@@ -226,7 +226,6 @@ public class AutoMetricTest
       LOG.debug("Waiting for property set");
     }
 
-
     lc.shutdown();
 
     Assert.assertNotNull("metric received", TestOperator.lastMetric);
@@ -262,7 +261,7 @@ public class AutoMetricTest
     lc.runAsync();
     latch.await();
 
-    Assert.assertEquals("progress", 1L, ((Long) aggregator.result.get("progress")).longValue());
+    Assert.assertEquals("progress", 1L, ((Long)aggregator.result.get("progress")).longValue());
     lc.shutdown();
   }
 
@@ -289,7 +288,7 @@ public class AutoMetricTest
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.runAsync();
     latch.await();
-    Assert.assertEquals("progress", 2L, ((Long) aggregator.result.get("progress")).longValue());
+    Assert.assertEquals("progress", 2L, ((Long)aggregator.result.get("progress")).longValue());
     lc.shutdown();
   }
 
@@ -356,9 +355,9 @@ public class AutoMetricTest
       long sum = 0;
       int myMetricSum = 0;
       for (AutoMetric.PhysicalMetricsContext physicalMetricsContext : physicalMetrics) {
-        sum += (Integer) physicalMetricsContext.getMetrics().get("progress");
+        sum += (Integer)physicalMetricsContext.getMetrics().get("progress");
         if (physicalMetricsContext.getMetrics().containsKey("myMetric")) {
-          myMetricSum += (Integer) physicalMetricsContext.getMetrics().get("myMetric");
+          myMetricSum += (Integer)physicalMetricsContext.getMetrics().get("myMetric");
         }
       }
       cachedSum = sum;
@@ -441,7 +440,7 @@ public class AutoMetricTest
     lc.runAsync();
     latch.await();
 
-    Assert.assertEquals("myMetric", 3, ((Integer) aggregator.result.get("myMetric")).intValue());
+    Assert.assertEquals("myMetric", 3, ((Integer)aggregator.result.get("myMetric")).intValue());
     lc.shutdown();
   }
 }

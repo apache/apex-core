@@ -18,9 +18,9 @@
  */
 package com.datatorrent.stram.debug;
 
+import com.datatorrent.api.Sink;
 import com.datatorrent.stram.engine.SweepableReservoir;
 import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.api.Sink;
 
 /**
  * <p>TappedReservoir class.</p>
@@ -45,8 +45,7 @@ public class TappedReservoir extends MuxSink implements SweepableReservoir
   {
     try {
       return this.sink;
-    }
-    finally {
+    } finally {
       this.sink = sink;
     }
   }

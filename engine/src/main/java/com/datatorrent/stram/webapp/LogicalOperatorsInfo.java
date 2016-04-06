@@ -40,24 +40,24 @@ import javax.xml.bind.annotation.XmlSeeAlso;
 @XmlRootElement(name = "operators")
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlSeeAlso({OperatorInfo.class})
-public class LogicalOperatorsInfo {
+public class LogicalOperatorsInfo
+{
 
-  protected List<LogicalOperatorInfo> operators = new ArrayList<LogicalOperatorInfo>();
+  protected List<LogicalOperatorInfo> operators = new ArrayList<>();
 
   /**
-   *
    * @param operatorInfo
    */
-  public void add(LogicalOperatorInfo operatorInfo) {
+  public void add(LogicalOperatorInfo operatorInfo)
+  {
     operators.add(operatorInfo);
   }
 
   /**
-   *
    * @return list of operator info
-   *
    */
-  public List<LogicalOperatorInfo> getOperators() {
+  public List<LogicalOperatorInfo> getOperators()
+  {
     return Collections.unmodifiableList(operators);
   }
 

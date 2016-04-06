@@ -21,9 +21,10 @@ package com.datatorrent.stram.engine;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
-public class TestNonOptionalOutportInputOperator extends TestGeneratorInputOperator{
+public class TestNonOptionalOutportInputOperator extends TestGeneratorInputOperator
+{
 
   @OutputPortFieldAnnotation(optional = false)
-  public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
+  public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<>();
 
 }

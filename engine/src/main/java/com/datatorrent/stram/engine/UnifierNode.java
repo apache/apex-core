@@ -72,8 +72,7 @@ public class UnifierNode extends GenericNode
     {
       try {
         return count;
-      }
-      finally {
+      } finally {
         if (reset) {
           count = 0;
         }

@@ -23,6 +23,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.hadoop.yarn.api.records.NodeReport;
@@ -32,8 +35,6 @@ import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.util.Records;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -52,8 +53,8 @@ import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 public class ResourceRequestHandler
 {
 
-  private final static Logger LOG = LoggerFactory.getLogger(ResourceRequestHandler.class);
-  private final static String INVALID_HOST = "INVALID_HOST";
+  private static final Logger LOG = LoggerFactory.getLogger(ResourceRequestHandler.class);
+  private static final String INVALID_HOST = "INVALID_HOST";
 
   protected static final int NUMBER_MISSED_HEARTBEATS = 30;
 
@@ -274,8 +275,8 @@ public class ResourceRequestHandler
 
   /**
    * Populate list of nodes where container cannot be allocated due to anti-affinity constraints
-   * @param container
-   * @param List of nodes where container cannot be allocated
+   * @param c container
+   * @param antiHosts List of nodes where container cannot be allocated
    */
   public void populateAntiHostList(PTContainer c, List<String> antiHosts)
   {

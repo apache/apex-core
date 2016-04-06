@@ -18,10 +18,18 @@
  */
 package com.datatorrent.stram.util;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.hadoop.io.Writable;
 
@@ -54,8 +62,7 @@ public abstract class AbstractWritableAdapter implements Writable, Serializable
         }
       }
       ois.close();
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       throw new IOException(e);
     }
   }
@@ -66,7 +73,7 @@ public abstract class AbstractWritableAdapter implements Writable, Serializable
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(bos);
     try {
-      Map<String, Object> properties = new java.util.HashMap<String, Object>();
+      Map<String, Object> properties = new HashMap<>();
       Field[] fields = this.getClass().getFields();
       AccessibleObject.setAccessible(fields, true);
       for (int i = 0; i < fields.length; i++) {
@@ -78,8 +85,7 @@ public abstract class AbstractWritableAdapter implements Writable, Serializable
         }
       }
       oos.writeObject(properties);
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       throw new IOException(e);
     }
     oos.flush();

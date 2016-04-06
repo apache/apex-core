@@ -18,8 +18,9 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.api.StringCodec;
 import java.io.Serializable;
+
+import com.datatorrent.api.StringCodec;
 
 /**
  *

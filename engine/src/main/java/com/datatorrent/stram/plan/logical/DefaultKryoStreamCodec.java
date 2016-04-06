@@ -28,9 +28,10 @@ import org.slf4j.LoggerFactory;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.base.Throwables;
+
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.common.util.SerializableObject;
-import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.netlet.util.Slice;
 
 /**
@@ -41,7 +42,7 @@ import com.datatorrent.netlet.util.Slice;
  */
 public class DefaultKryoStreamCodec<T> extends SerializableObject implements StreamCodec<T>
 {
-  final static Logger logger = LoggerFactory.getLogger(DefaultKryoStreamCodec.class);
+  private static final Logger logger = LoggerFactory.getLogger(DefaultKryoStreamCodec.class);
 
   private static final long serialVersionUID = 1L;
   protected final transient Kryo kryo;
@@ -62,9 +63,8 @@ public class DefaultKryoStreamCodec<T> extends SerializableObject implements Str
       is.close();
       return returnObject;
     } catch (IOException e) {
-      DTThrowable.wrapIfChecked(e);
+      throw Throwables.propagate(e);
     }
-    return null;
   }
 
   @Override
@@ -79,7 +79,7 @@ public class DefaultKryoStreamCodec<T> extends SerializableObject implements Str
       slice = new Slice(os.toByteArray(), 0, os.toByteArray().length);
       os.close();
     } catch (IOException e) {
-      DTThrowable.wrapIfChecked(e);
+      throw Throwables.propagate(e);
     }
     return slice;
   }

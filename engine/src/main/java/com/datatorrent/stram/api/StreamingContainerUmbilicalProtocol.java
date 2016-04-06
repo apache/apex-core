@@ -34,7 +34,6 @@ import com.datatorrent.api.Context;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StatsListener.OperatorRequest;
-
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**
@@ -51,7 +50,8 @@ import com.datatorrent.stram.util.AbstractWritableAdapter;
 // @TokenInfo(JobTokenSelector.class)
 @InterfaceAudience.Private
 @InterfaceStability.Stable
-public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
+public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
+{
   public static final long versionID = 201208081755L;
 
   /**
@@ -60,9 +60,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * be deployed and removed dynamically.
    * <p>
    * <br>
-   *
    */
-  public static class StreamingContainerContext extends BaseContext implements ContainerContext
+  class StreamingContainerContext extends BaseContext implements ContainerContext
   {
     /**
      * Operators should start processing the initial window at this time.
@@ -85,9 +84,10 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-              .append("applicationAttributes", getAttributes()).toString();
+          .append("applicationAttributes", getAttributes()).toString();
     }
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
@@ -98,16 +98,17 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * Stats of deployed operator sent to the application master
    * <p>
    */
-  public static class OperatorHeartbeat implements Serializable
+  class OperatorHeartbeat implements Serializable
   {
     private static final long serialVersionUID = 201208171625L;
-    public ArrayList<ContainerStats.OperatorStats> windowStats = new ArrayList<ContainerStats.OperatorStats>();
+    public ArrayList<ContainerStats.OperatorStats> windowStats = new ArrayList<>();
 
     /**
      * The operator stats for the windows processed during the heartbeat interval.
      * @return
      */
-    public ArrayList<ContainerStats.OperatorStats> getOperatorStatsContainer() {
+    public ArrayList<ContainerStats.OperatorStats> getOperatorStatsContainer()
+    {
       return windowStats;
     }
 
@@ -116,11 +117,13 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
      */
     public int nodeId;
 
-    public int getNodeId() {
+    public int getNodeId()
+    {
       return nodeId;
     }
 
-    public void setNodeId(int nodeId) {
+    public void setNodeId(int nodeId)
+    {
       this.nodeId = nodeId;
     }
 
@@ -129,11 +132,13 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
      */
     public long generatedTms;
 
-    public long getGeneratedTms() {
+    public long getGeneratedTms()
+    {
       return generatedTms;
     }
 
-    public void setGeneratedTms(long generatedTms) {
+    public void setGeneratedTms(long generatedTms)
+    {
       this.generatedTms = generatedTms;
     }
 
@@ -143,18 +148,21 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
      */
     public long intervalMs;
 
-    public long getIntervalMs() {
+    public long getIntervalMs()
+    {
       return intervalMs;
     }
 
-    public void setIntervalMs(long intervalMs) {
+    public void setIntervalMs(long intervalMs)
+    {
       this.intervalMs = intervalMs;
     }
 
     /**
      * State of the operator (processing, idle etc).
      */
-    public static enum DeployState {
+    public enum DeployState
+    {
       ACTIVE,
       SHUTDOWN,
       FAILED // problemo!
@@ -162,11 +170,13 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     public DeployState state;
 
-    public DeployState getState() {
+    public DeployState getState()
+    {
       return state;
     }
 
-    public void setState(DeployState state) {
+    public void setState(DeployState state)
+    {
       this.state = state;
     }
 
@@ -176,7 +186,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public ArrayList<StatsListener.OperatorResponse> requestResponse;
   }
 
-  public static class ContainerStats implements Stats
+  class ContainerStats implements Stats
   {
     private static final long serialVersionUID = 201309131904L;
     public final String id;
@@ -185,7 +195,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public ContainerStats(String id)
     {
       this.id = id;
-      operators = new ArrayList<OperatorHeartbeat>();
+      operators = new ArrayList<>();
     }
 
     @Override
@@ -207,7 +217,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class ContainerHeartbeat extends AbstractWritableAdapter
+  class ContainerHeartbeat extends AbstractWritableAdapter
   {
     private static final long serialVersionUID = 1L;
 
@@ -228,32 +238,34 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     public long sentTms = System.currentTimeMillis();
 
-    public ContainerStats getContainerStats() {
+    public ContainerStats getContainerStats()
+    {
       return stats;
     }
 
-    public void setContainerStats(ContainerStats stats) {
+    public void setContainerStats(ContainerStats stats)
+    {
       this.stats = stats;
     }
 
-    public String getContainerId() {
+    public String getContainerId()
+    {
       return stats.id;
     }
 
   }
 
   /**
-   *
    * Request by stram as response to heartbeat for further communication
    * <p>
    * <br>
    * The child container will continue RPC communication depending on the type
    * of request.<br>
    * <br>
-   *
    */
-  public static class StramToNodeRequest implements Serializable {
-    public static enum RequestType
+  class StramToNodeRequest implements Serializable
+  {
+    public enum RequestType
     {
       START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_LOG_LEVEL, CUSTOM
     }
@@ -278,44 +290,53 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.deleted = deleted;
     }
 
-    public int getOperatorId() {
+    public int getOperatorId()
+    {
       return operatorId;
     }
 
-    public void setOperatorId(int id) {
+    public void setOperatorId(int id)
+    {
       this.operatorId = id;
     }
 
-    public StramToNodeRequest.RequestType getRequestType() {
+    public StramToNodeRequest.RequestType getRequestType()
+    {
       return requestType;
     }
 
-    public void setRequestType(StramToNodeRequest.RequestType requestType) {
+    public void setRequestType(StramToNodeRequest.RequestType requestType)
+    {
       this.requestType = requestType;
     }
 
-    public long getRecoveryCheckpoint() {
+    public long getRecoveryCheckpoint()
+    {
       return recoveryCheckpoint;
     }
 
-    public void setRecoveryCheckpoint(long recoveryCheckpoint) {
+    public void setRecoveryCheckpoint(long recoveryCheckpoint)
+    {
       this.recoveryCheckpoint = recoveryCheckpoint;
     }
 
-    public String getPortName() {
+    public String getPortName()
+    {
       return portName;
     }
 
-    public void setPortName(String portName) {
+    public void setPortName(String portName)
+    {
       this.portName = portName;
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-              .append("operatorId", this.operatorId)
-              .append("requestType", this.requestType)
-              .append("portName", this.portName).toString();
+          .append("operatorId", this.operatorId)
+          .append("requestType", this.requestType)
+          .append("portName", this.portName).toString();
     }
   }
 
@@ -326,7 +347,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class ContainerHeartbeatResponse extends AbstractWritableAdapter {
+  class ContainerHeartbeatResponse extends AbstractWritableAdapter
+  {
     private static final long serialVersionUID = 1L;
     /**
      * Indicate container to exit heartbeat loop and shutdown.
@@ -368,8 +390,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    *
    * @param containerId
    * @return
-   * @throws IOException
-   * <br>
+   * @throws IOException <br>
    */
   StreamingContainerContext getInitContext(String containerId) throws IOException;
 

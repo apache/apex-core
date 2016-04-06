@@ -27,7 +27,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import com.datatorrent.api.Stats.OperatorStats;
-
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -58,11 +57,13 @@ public class MockContainer
     Assert.assertEquals(PTContainer.State.ACTIVE, container.getState());
   }
 
-  private StreamingContainerAgent assignContainer(StreamingContainerManager scm, PTContainer c) {
+  private StreamingContainerAgent assignContainer(StreamingContainerManager scm, PTContainer c)
+  {
     c.setResourceRequestPriority(c.getId());
     String containerId = "container" + c.getId();
-    InetSocketAddress bufferServerAddress = InetSocketAddress.createUnresolved(containerId+"Host", 0);
-    return scm.assignContainer(new StreamingContainerManager.ContainerResource(c.getId(), containerId, "localhost", 1024,0, null), bufferServerAddress);
+    InetSocketAddress bufferServerAddress = InetSocketAddress.createUnresolved(containerId + "Host", 0);
+    return scm.assignContainer(new StreamingContainerManager.ContainerResource(c.getId(), containerId, "localhost",
+        1024, 0, null), bufferServerAddress);
   }
 
   public void deploy()
@@ -77,7 +78,7 @@ public class MockContainer
 
     ContainerHeartbeatResponse chr = sca.dnmgr.processHeartbeat(hb); // get deploy request
     Assert.assertNotNull(chr.deployRequest);
-    Assert.assertEquals(""+chr.deployRequest, container.getOperators().size(), chr.deployRequest.size());
+    Assert.assertEquals("" + chr.deployRequest, container.getOperators().size(), chr.deployRequest.size());
     Assert.assertEquals(PTContainer.State.ACTIVE, container.getState());
 
     for (PTOperator oper : container.getOperators()) {
@@ -113,7 +114,8 @@ public class MockContainer
     Assert.assertNull(chr.deployRequest);
   }
 
-  public MockOperatorStats stats(int operatorId) {
+  public MockOperatorStats stats(int operatorId)
+  {
     MockOperatorStats os = this.stats.get(operatorId);
     if (os == null) {
       os = new MockOperatorStats(operatorId);
@@ -134,17 +136,20 @@ public class MockContainer
       this.operatorId = operatorId;
     }
 
-    public MockOperatorStats deployState(OperatorHeartbeat.DeployState s) {
+    public MockOperatorStats deployState(OperatorHeartbeat.DeployState s)
+    {
       this.deployState = s;
       return this;
     }
 
-    public MockOperatorStats currentWindowId(long windowId) {
+    public MockOperatorStats currentWindowId(long windowId)
+    {
       this.currentWindowId = windowId;
       return this;
     }
 
-    public MockOperatorStats checkpointWindowId(long windowId) {
+    public MockOperatorStats checkpointWindowId(long windowId)
+    {
       this.checkpointWindowId = windowId;
       return this;
     }

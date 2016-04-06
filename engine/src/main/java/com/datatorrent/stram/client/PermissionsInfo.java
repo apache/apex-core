@@ -178,8 +178,7 @@ public class PermissionsInfo
       readWrite.put("everyone", readWriteEveryone);
       result.put("readOnly", readOnly);
       result.put("readWrite", readWrite);
-    }
-    catch (JSONException ex) {
+    } catch (JSONException ex) {
       throw new RuntimeException(ex);
     }
     return result;

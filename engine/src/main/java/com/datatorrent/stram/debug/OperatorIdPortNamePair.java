@@ -39,8 +39,7 @@ class OperatorIdPortNamePair
   {
     if (portName == null) {
       return String.valueOf(operatorId);
-    }
-    else {
+    } else {
       return String.valueOf(operatorId).concat(Component.CONCAT_SEPARATOR).concat(portName);
     }
   }

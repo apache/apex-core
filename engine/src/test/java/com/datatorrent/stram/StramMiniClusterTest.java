@@ -18,39 +18,67 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.common.util.BaseOperator;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.URL;
 import java.util.List;
 import java.util.Properties;
 
 import javax.ws.rs.core.MediaType;
 
+import org.codehaus.jettison.json.JSONObject;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
-import org.apache.hadoop.yarn.api.protocolrecords.*;
-import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterRequest;
+import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.Container;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
+import org.apache.hadoop.yarn.api.records.NodeReport;
+import org.apache.hadoop.yarn.api.records.Priority;
+import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.records.ResourceRequest;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.server.MiniYARNCluster;
 import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
 import org.apache.hadoop.yarn.util.Records;
-import org.codehaus.jettison.json.JSONObject;
-import org.junit.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 
-import com.datatorrent.api.*;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
-
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -113,7 +141,7 @@ public class StramMiniClusterTest
 
     if (yarnCluster == null) {
       yarnCluster = new MiniYARNCluster(StramMiniClusterTest.class.getName(),
-                                        1, 1, 1);
+          1, 1, 1);
       yarnCluster.init(conf);
       yarnCluster.start();
     }
@@ -133,8 +161,7 @@ public class StramMiniClusterTest
 
     try {
       Thread.sleep(2000);
-    }
-    catch (InterruptedException e) {
+    } catch (InterruptedException e) {
       LOG.info("setup thread sleep interrupted. message=" + e.getMessage());
     }
   }
@@ -152,7 +179,7 @@ public class StramMiniClusterTest
   public void testSetupShutdown() throws Exception
   {
     GetClusterNodesRequest request =
-            Records.newRecord(GetClusterNodesRequest.class);
+        Records.newRecord(GetClusterNodesRequest.class);
     ClientRMService clientRMService = yarnCluster.getResourceManager().getClientRMService();
     GetClusterNodesResponse response = clientRMService.getClusterNodes(request);
     List<NodeReport> nodeReports = response.getNodeReports();
@@ -218,8 +245,7 @@ public class StramMiniClusterTest
 
       LOG.info("Client run completed. Result=" + result);
       Assert.assertTrue(result);
-    }
-    finally {
+    } finally {
       client.stop();
     }
   }
@@ -283,8 +309,7 @@ public class StramMiniClusterTest
       json = response.getEntity(JSONObject.class);
       LOG.info("Got response: " + json.toString());
 
-    }
-    finally {
+    } finally {
       //LOG.info("waiting...");
       //synchronized (this) {
       //  this.wait();
@@ -310,7 +335,7 @@ public class StramMiniClusterTest
       // Check maven pom.xml for generated classpath info
       // Works in tests where compile time env is same as runtime.
       ClassLoader thisClassLoader =
-              Thread.currentThread().getContextClassLoader();
+          Thread.currentThread().getContextClassLoader();
       String generatedClasspathFile = "mvn-generated-classpath";
       classpathFileStream =
               thisClassLoader.getResourceAsStream(generatedClasspathFile);
@@ -326,8 +351,7 @@ public class StramMiniClusterTest
       }
       // Put the file itself on classpath for tasks.
       envClassPath += thisClassLoader.getResource(generatedClasspathFile).getFile();
-    }
-    catch (IOException e) {
+    } catch (IOException e) {
       LOG.info("Could not find the necessary resource to generate class path for tests. Error=" + e.getMessage());
     }
 
@@ -338,8 +362,7 @@ public class StramMiniClusterTest
       if (reader != null) {
         reader.close();
       }
-    }
-    catch (IOException e) {
+    } catch (IOException e) {
       LOG.info("Failed to close class path file stream or reader. Error=" + e.getMessage());
     }
     return envClassPath;
@@ -381,11 +404,10 @@ public class StramMiniClusterTest
 
       ApplicationReport ar = client.getApplicationReport();
       Assert.assertEquals("should fail", FinalApplicationStatus.FAILED, ar.getFinalApplicationStatus());
-    // unable to get the diagnostics message set by the AM here - see YARN-208
+      // unable to get the diagnostics message set by the AM here - see YARN-208
       // diagnostics message does not make it here even with Hadoop 2.2 (but works on standalone cluster)
       //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
-    }
-    finally {
+    } finally {
       client.stop();
     }
   }
@@ -400,12 +422,15 @@ public class StramMiniClusterTest
 
   @Ignore
   @Test
-  public void testUnmanagedAM() throws Exception {
+  public void testUnmanagedAM() throws Exception
+  {
 
-    new InlineAM(conf) {
+    new InlineAM(conf)
+    {
       @Override
       @SuppressWarnings("SleepWhileInLoop")
-      public void runAM(ApplicationAttemptId attemptId) throws Exception {
+      public void runAM(ApplicationAttemptId attemptId) throws Exception
+      {
         LOG.debug("AM running {}", attemptId);
 
         //AMRMClient amRmClient = new AMRMClientImpl(attemptId);
@@ -459,13 +484,13 @@ public class StramMiniClusterTest
         LOG.info("Requesting: " + req.getAskList());
         resourceManager.allocate(req);
 
-        for (int i=0; i<100; i++) {
+        for (int i = 0; i < 100; i++) {
           req = Records.newRecord(AllocateRequest.class);
           req.setResponseId(responseId++);
 
           AllocateResponse ar = resourceManager.allocate(req);
           sleep(1000);
-          LOG.debug("allocateResponse: {}" , ar);
+          LOG.debug("allocateResponse: {}", ar);
         }
 
         // unregister from RM
@@ -510,13 +535,16 @@ public class StramMiniClusterTest
 
   @Ignore
   @Test
-  public void testUnmanagedAM2() throws Exception {
+  public void testUnmanagedAM2() throws Exception
+  {
 
-    new InlineAM(conf) {
+    new InlineAM(conf)
+    {
 
       @Override
       @SuppressWarnings("SleepWhileInLoop")
-      public void runAM(ApplicationAttemptId attemptId) throws Exception {
+      public void runAM(ApplicationAttemptId attemptId) throws Exception
+      {
         LOG.debug("AM running {}", attemptId);
         AMRMClient<ContainerRequest> amRmClient = AMRMClient.createAMRMClient();
         amRmClient.init(conf);
@@ -548,10 +576,10 @@ public class StramMiniClusterTest
         req = new AMRMClient.ContainerRequest(capability, hosts, racks, priority, 3);
         amRmClient.addContainerRequest(req);
 */
-        for (int i=0; i<100; i++) {
+        for (int i = 0; i < 100; i++) {
           AllocateResponse ar = amRmClient.allocate(0);
           sleep(1000);
-          LOG.debug("allocateResponse: {}" , ar);
+          LOG.debug("allocateResponse: {}", ar);
           for (Container c : ar.getAllocatedContainers()) {
             LOG.debug("*** allocated {}", c.getResource());
             amRmClient.removeContainerRequest(req);

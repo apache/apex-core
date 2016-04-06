@@ -21,11 +21,17 @@ package com.datatorrent.stram.plan;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
@@ -67,8 +73,7 @@ public class TestPlanContext implements PlanContext, StorageAgent
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     try {
       FSStorageAgent.store(byteArrayOutputStream, operator);
-    }
-    finally {
+    } finally {
       byteArrayOutputStream.close();
     }
     backupRequests++;
@@ -90,8 +95,7 @@ public class TestPlanContext implements PlanContext, StorageAgent
     ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(m.get(windowId));
     try {
       return FSStorageAgent.retrieve(byteArrayInputStream);
-    }
-    finally {
+    } finally {
       byteArrayInputStream.close();
     }
   }

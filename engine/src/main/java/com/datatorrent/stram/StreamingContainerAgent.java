@@ -19,16 +19,22 @@
 package com.datatorrent.stram;
 
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
+
+import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -38,7 +44,6 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
@@ -67,19 +72,23 @@ import com.datatorrent.stram.webapp.ContainerInfo;
  *
  * @since 0.3.2
  */
-public class StreamingContainerAgent {
+public class StreamingContainerAgent
+{
   private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerAgent.class);
 
-  public static class ContainerStartRequest {
+  public static class ContainerStartRequest
+  {
     final PTContainer container;
 
-    ContainerStartRequest(PTContainer container) {
+    ContainerStartRequest(PTContainer container)
+    {
       this.container = container;
     }
   }
 
-
-  public StreamingContainerAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager dnmgr) {
+  public StreamingContainerAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager
+      dnmgr)
+  {
     this.container = container;
     this.initCtx = initCtx;
     this.memoryMBFree = this.container.getAllocatedMemoryMB();
@@ -102,9 +111,10 @@ public class StreamingContainerAgent {
   long gcCollectionTime;
   final StreamingContainerManager dnmgr;
 
-  private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
+  private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<>();
 
-  public StreamingContainerContext getInitContext() {
+  public StreamingContainerContext getInitContext()
+  {
     return initCtx;
   }
 
@@ -113,7 +123,8 @@ public class StreamingContainerAgent {
     return container;
   }
 
-  public boolean hasPendingWork() {
+  public boolean hasPendingWork()
+  {
     for (PTOperator oper : container.getOperators()) {
       if (oper.getState() == PTOperator.State.PENDING_DEPLOY) {
         return true;
@@ -122,29 +133,33 @@ public class StreamingContainerAgent {
     return false;
   }
 
-  public void addOperatorRequest(StramToNodeRequest r) {
+  public void addOperatorRequest(StramToNodeRequest r)
+  {
     LOG.info("Adding operator request {} {}", container.getExternalId(), r);
     this.operatorRequests.add(r);
   }
 
   @SuppressWarnings("ReturnOfCollectionOrArrayField")
-  protected ConcurrentLinkedQueue<StramToNodeRequest> getOperatorRequests() {
+  protected ConcurrentLinkedQueue<StramToNodeRequest> getOperatorRequests()
+  {
     return this.operatorRequests;
   }
 
   /**
    * Create deploy info for StramChild.
+   *
    * @param operators
    * @return StreamingContainerContext
    */
-  public List<OperatorDeployInfo> getDeployInfoList(Collection<PTOperator> operators) {
+  public List<OperatorDeployInfo> getDeployInfoList(Collection<PTOperator> operators)
+  {
 
     if (container.bufferServerAddress == null) {
       throw new AssertionError("No buffer server address assigned");
     }
 
-    Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
-    HashSet<PTOperator.PTOutput> publishers = new HashSet<PTOperator.PTOutput>();
+    Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<>();
+    HashSet<PTOperator.PTOutput> publishers = new HashSet<>();
 
     PhysicalPlan physicalPlan = dnmgr.getPhysicalPlan();
 
@@ -156,8 +171,8 @@ public class StreamingContainerAgent {
       OperatorDeployInfo ndi = createOperatorDeployInfo(oper);
 
       nodes.put(ndi, oper);
-      ndi.inputs = new ArrayList<InputDeployInfo>(oper.getInputs().size());
-      ndi.outputs = new ArrayList<OutputDeployInfo>(oper.getOutputs().size());
+      ndi.inputs = new ArrayList<>(oper.getInputs().size());
+      ndi.outputs = new ArrayList<>(oper.getOutputs().size());
 
       for (PTOperator.PTOutput out : oper.getOutputs()) {
         final StreamMeta streamMeta = out.logicalStream;
@@ -168,8 +183,7 @@ public class StreamingContainerAgent {
 
         try {
           portInfo.contextAttributes = streamMeta.getSource().getAttributes().clone();
-        }
-        catch (CloneNotSupportedException ex) {
+        } catch (CloneNotSupportedException ex) {
           throw new RuntimeException("Cannot clone attributes", ex);
         }
 
@@ -279,7 +293,7 @@ public class StreamingContainerAgent {
       }
     }
 
-    return new ArrayList<OperatorDeployInfo>(nodes.keySet());
+    return new ArrayList<>(nodes.keySet());
   }
 
   public static InputPortMeta getInputPortMeta(LogicalPlan.OperatorMeta operatorMeta, StreamMeta streamMeta)
@@ -349,7 +363,6 @@ public class StreamingContainerAgent {
    * <p>
    *
    * @return {@link com.datatorrent.stram.api.OperatorDeployInfo}
-   *
    */
   private OperatorDeployInfo createOperatorDeployInfo(PTOperator oper)
   {
@@ -359,13 +372,11 @@ public class StreamingContainerAgent {
       UnifierDeployInfo udi = new UnifierDeployInfo(); /* the constructor auto sets the type */
       try {
         udi.operatorAttributes = oper.getUnifiedOperatorMeta().getAttributes().clone();
-      }
-      catch (CloneNotSupportedException ex) {
+      } catch (CloneNotSupportedException ex) {
         throw new RuntimeException("Cannot clone unifier attributes", ex);
       }
       ndi = udi;
-    }
-    else {
+    } else {
       ndi = new OperatorDeployInfo();
       Operator operator = oper.getOperatorMeta().getOperator();
       if (operator instanceof InputOperator) {
@@ -374,15 +385,14 @@ public class StreamingContainerAgent {
         if (!oper.getInputs().isEmpty()) {
           //If there are no input ports then it has to be an input operator. But if there are input ports then
           //we check if any input port is connected which would make it a Generic operator.
-          for (PTOperator.PTInput ptInput: oper.getInputs()) {
+          for (PTOperator.PTInput ptInput : oper.getInputs()) {
             if (ptInput.logicalStream != null && ptInput.logicalStream.getSource() != null) {
               ndi.type = OperatorType.GENERIC;
               break;
             }
           }
         }
-      }
-      else {
+      } else {
         ndi.type = OperatorType.GENERIC;
       }
     }
@@ -410,8 +420,7 @@ public class StreamingContainerAgent {
         if (checkpoint == null || checkpoint.windowId != checkpointId) {
           checkpoint = new Checkpoint(checkpointId, 0, 0);
         }
-      }
-      catch (Exception e) {
+      } catch (Exception e) {
         throw new RuntimeException("Failed to determine checkpoint window id " + oper, e);
       }
     }
@@ -423,8 +432,7 @@ public class StreamingContainerAgent {
     try {
       // clone map before modifying it
       ndi.contextAttributes = oper.getOperatorMeta().getAttributes().clone();
-    }
-    catch (CloneNotSupportedException ex) {
+    } catch (CloneNotSupportedException ex) {
       throw new RuntimeException("Cannot clone operator attributes", ex);
     }
     if (oper.isOperatorStateLess()) {
@@ -433,7 +441,8 @@ public class StreamingContainerAgent {
     return ndi;
   }
 
-  public ContainerInfo getContainerInfo() {
+  public ContainerInfo getContainerInfo()
+  {
     ContainerInfo ci = new ContainerInfo();
     ci.id = container.getExternalId();
     ci.host = container.host;
@@ -449,8 +458,12 @@ public class StreamingContainerAgent {
     ci.finishedTime = container.getFinishedTime();
     if (this.container.nodeHttpAddress != null) {
       YarnConfiguration conf = new YarnConfiguration();
-      ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
-      ci.rawContainerLogsUrl = ConfigUtils.getRawContainerLogsUrl(conf, container.nodeHttpAddress, container.getPlan().getLogicalPlan().getAttributes().get(LogicalPlan.APPLICATION_ID), ci.id);
+      ci.containerLogsUrl = ConfigUtils
+          .getSchemePrefix(conf) + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System
+          .getenv(ApplicationConstants.Environment.USER.toString());
+      ci.rawContainerLogsUrl = ConfigUtils
+          .getRawContainerLogsUrl(conf, container.nodeHttpAddress, container.getPlan().getLogicalPlan().getAttributes()
+              .get(LogicalPlan.APPLICATION_ID), ci.id);
     }
     return ci;
   }

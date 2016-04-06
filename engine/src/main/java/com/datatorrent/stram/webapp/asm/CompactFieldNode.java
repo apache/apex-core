@@ -18,62 +18,70 @@
  */
 package com.datatorrent.stram.webapp.asm;
 
-import java.util.LinkedList;
 import java.util.List;
 
-import org.apache.xbean.asm5.tree.AnnotationNode;
-import org.apache.xbean.asm5.tree.FieldNode;
 /**
  * <p>CompactFieldNode class.</p>
  *
  * @since 3.2.0
  */
-public class CompactFieldNode {
+public class CompactFieldNode
+{
   private String name;
   private String desc;
   private String signature;
-  
+
   private List<CompactAnnotationNode> visibleAnnotations;
   private FieldSignatureVisitor fieldSignatureNode;
 
-  public String getName() {
+  public String getName()
+  {
     return name;
   }
 
-  public void setName(String name) {
+  public void setName(String name)
+  {
     this.name = name;
   }
 
-  public String getDescription() {
+  public String getDescription()
+  {
     return desc;
   }
 
-  public void setDescription(String desc) {
+  public void setDescription(String desc)
+  {
     this.desc = desc;
   }
 
-  public String getSignature() {
+  public String getSignature()
+  {
     return signature;
   }
 
-  public void setSignature(String signature) {
+  public void setSignature(String signature)
+  {
     this.signature = signature;
   }
 
-  public List<CompactAnnotationNode> getVisibleAnnotations() {
+  public List<CompactAnnotationNode> getVisibleAnnotations()
+  {
     return visibleAnnotations;
   }
 
-  public void setVisibleAnnotations(List<CompactAnnotationNode> visibleAnnotations) {
+  public void setVisibleAnnotations(List<CompactAnnotationNode> visibleAnnotations)
+  {
     this.visibleAnnotations = visibleAnnotations;
   }
 
-  public FieldSignatureVisitor getFieldSignatureNode() {
+  public FieldSignatureVisitor getFieldSignatureNode()
+  {
     return fieldSignatureNode;
   }
 
-  public void setFieldSignatureNode(FieldSignatureVisitor fieldSignatureNode) {
+  public void setFieldSignatureNode(FieldSignatureVisitor fieldSignatureNode)
+  {
     this.fieldSignatureNode = fieldSignatureNode;
   }
-  
+
 }

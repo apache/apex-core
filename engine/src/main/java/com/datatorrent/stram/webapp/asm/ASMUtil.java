@@ -34,102 +34,92 @@ import org.apache.xbean.asm5.tree.MethodNode;
  */
 public class ASMUtil
 {
-  
   public static final String CONSTRUCTOR_NAME = "<init>";
-  
 
   public static boolean isEnum(ClassNode cn)
   {
     return (cn.access & Opcodes.ACC_ENUM) == Opcodes.ACC_ENUM;
   }
-  
+
   public static boolean isEnumValue(FieldNode fn)
   {
     return (fn.access & Opcodes.ACC_ENUM) == Opcodes.ACC_ENUM;
   }
-  
-  
 
   @SuppressWarnings("unchecked")
   public static List<String> getEnumValues(ClassNode cn)
-  { 
-    List<String> result = new LinkedList<String>();
-    for(FieldNode fn : (List<FieldNode>)cn.fields){
-      if(isEnumValue(fn))
+  {
+    List<String> result = new LinkedList<>();
+    for (FieldNode fn : (List<FieldNode>)cn.fields) {
+      if (isEnumValue(fn)) {
         result.add(fn.name);
-    };
+      }
+    }
     return result;
   }
-  
+
   public static List<FieldNode> getPorts(ClassNode asmNode)
   {
-    List<FieldNode> result = new LinkedList<FieldNode>();
+    List<FieldNode> result = new LinkedList<>();
     List<FieldNode> fields = asmNode.fields;
-    for(FieldNode fn : fields)
-    {
+    for (FieldNode fn : fields) {
       // 'L' represents <class>, ignore primitive types
-      if(fn.desc.charAt(0) == 'L')
-      {
+      if (fn.desc.charAt(0) == 'L') {
         result.add(fn);
       }
     }
 
     return result;
   }
-  
 
   /**
    * Get a list of setter methods from classnode asmNode
    * @param asmNode
    * @return empty list if there is no setter method
    */
-  public static List<MethodNode> getPublicSetter(ClassNode asmNode){
-    List<MethodNode> result = new LinkedList<MethodNode>();
+  public static List<MethodNode> getPublicSetter(ClassNode asmNode)
+  {
+    List<MethodNode> result = new LinkedList<>();
     @SuppressWarnings("unchecked")
     List<MethodNode> mList = asmNode.methods;
     for (MethodNode methodNode : mList) {
 
-      if(methodNode.name.startsWith("set") && 
-          isPublic(methodNode.access) && 
+      if (methodNode.name.startsWith("set") &&
+          isPublic(methodNode.access) &&
           Type.getArgumentTypes(methodNode.desc).length == 1 &&
-          Type.getReturnType(methodNode.desc) == Type.VOID_TYPE)
+          Type.getReturnType(methodNode.desc) == Type.VOID_TYPE) {
         result.add(methodNode);
+      }
     }
     return result;
   }
-  
-  
+
   /**
    * Get a list of getter methods from classnode asmNode
    * @param asmNode
    * @return empty list if there is no getter method
    */
-  public static List<MethodNode> getPublicGetter(ClassNode asmNode){
-    List<MethodNode> result = new LinkedList<MethodNode>();
+  public static List<MethodNode> getPublicGetter(ClassNode asmNode)
+  {
+    List<MethodNode> result = new LinkedList<>();
     @SuppressWarnings("unchecked")
     List<MethodNode> mList = asmNode.methods;
     for (MethodNode methodNode : mList) {
-
-      if(
-          //arg-list is 0 and return type is not void
-          (Type.getArgumentTypes(methodNode.desc).length == 0 && 
-          Type.getReturnType(methodNode.desc) != Type.VOID_TYPE) &&
-          // and method name start with get or start with is if return type is boolean
-          (methodNode.name.startsWith("get") || (methodNode.name.startsWith("is") && Type.getReturnType(methodNode.desc) == Type.BOOLEAN_TYPE))
-          &&
-          // and must be public
-          isPublic(methodNode.access)  
-          )
+      // arg-list is 0 and return type is not void
+      // and method name start with get or start with is if return type is boolean
+      // and must be public
+      if ((Type.getArgumentTypes(methodNode.desc).length == 0 && Type.getReturnType(methodNode.desc) != Type.VOID_TYPE) &&
+          (methodNode.name.startsWith("get") || (methodNode.name.startsWith("is") && Type.getReturnType(methodNode.desc) == Type.BOOLEAN_TYPE)) &&
+          isPublic(methodNode.access)) {
         result.add(methodNode);
+      }
     }
     return result;
   }
 
-  
-
   /**
    * Get all public default constructor(0-arg) for the classnode
-   * 
+   *
    * @param asmNode
    * @return null if there is no public default constructor
    */
@@ -138,15 +128,14 @@ public class ASMUtil
     @SuppressWarnings("unchecked")
     List<MethodNode> mList = asmNode.methods;
     for (MethodNode methodNode : mList) {
-      if(methodNode.name.equals(CONSTRUCTOR_NAME) && 
-          isPublic(methodNode.access) && 
-          Type.getArgumentTypes(methodNode.desc).length == 0)
+      if (methodNode.name.equals(CONSTRUCTOR_NAME) &&
+          isPublic(methodNode.access) &&
+          Type.getArgumentTypes(methodNode.desc).length == 0) {
         return methodNode;
+      }
     }
     return null;
   }
-
-
 
   public static boolean isPublic(int opCode)
   {
@@ -162,7 +151,7 @@ public class ASMUtil
   {
     return (opCode & Opcodes.ACC_TRANSIENT) == Opcodes.ACC_TRANSIENT;
   }
-  
+
   public static boolean isFinal(int opCode)
   {
     return (opCode & Opcodes.ACC_FINAL) == Opcodes.ACC_FINAL;

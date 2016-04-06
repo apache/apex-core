@@ -18,7 +18,14 @@
  */
 package com.datatorrent.stram;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -26,15 +33,6 @@ import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.mutable.MutableInt;
-import org.apache.commons.lang.mutable.MutableBoolean;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.ipc.RPC;
-import org.apache.hadoop.ipc.RPC.Server;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.test.MockitoUtil;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -44,12 +42,20 @@ import org.mockito.invocation.InvocationOnMock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.lang.mutable.MutableBoolean;
+import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.ipc.RPC;
+import org.apache.hadoop.ipc.RPC.Server;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.test.MockitoUtil;
+
 import com.google.common.collect.Lists;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.api.Checkpoint;
@@ -210,7 +216,7 @@ public class StramRecoveryTest
 
     StreamingContainerAgent sca = scm.getContainerAgent(originalContainer.getExternalId());
     Assert.assertNotNull("allocated container restored " + originalContainer, sca);
-    assertEquals("memory usage allocated container", (int) OperatorContext.MEMORY_MB.defaultValue, sca.container.getAllocatedMemoryMB());
+    assertEquals("memory usage allocated container", (int)OperatorContext.MEMORY_MB.defaultValue, sca.container.getAllocatedMemoryMB());
 
     // YARN-1490 - simulate container terminated on AM recovery
     scm.scheduleContainerRestart(originalContainer.getExternalId());
@@ -294,14 +300,18 @@ public class StramRecoveryTest
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan plan = scm.getPhysicalPlan();
     Journal j = scm.getJournal();
-    ByteArrayOutputStream bos = new ByteArrayOutputStream() {
+    ByteArrayOutputStream bos = new ByteArrayOutputStream()
+    {
       @Override
-      public void flush() throws IOException {
+      public void flush() throws IOException
+      {
         super.flush();
         flushCount.increment();
       }
+
       @Override
-      public void close() throws IOException {
+      public void close() throws IOException
+      {
         super.close();
         isClosed.setValue(true);
       }
@@ -424,8 +434,7 @@ public class StramRecoveryTest
     try {
       sc.start();
       sc.copyInitialState(new Path(appPath1));
-    }
-    finally {
+    } finally {
       sc.stop();
     }
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
@@ -465,20 +474,24 @@ public class StramRecoveryTest
 
     StreamingContainerUmbilicalProtocol impl = MockitoUtil.mockProtocol(StreamingContainerUmbilicalProtocol.class);
 
-    Mockito.doAnswer(new org.mockito.stubbing.Answer<Void>() {
+    Mockito.doAnswer(new org.mockito.stubbing.Answer<Void>()
+    {
       @Override
-      public Void answer(InvocationOnMock invocation) {
+      public Void answer(InvocationOnMock invocation)
+      {
         LOG.debug("got call: " + invocation.getMethod());
         if (!timedout.get()) {
           try {
             timedout.set(true);
             Thread.sleep(1000);
           } catch (Exception e) {
+            // ignore
           }
           //throw new RuntimeException("fail");
         }
         return null;
-      }})
+      }
+    })
     .when(impl).log("containerId", "timeout");
 
     Server server = new RPC.Builder(conf).setProtocol(StreamingContainerUmbilicalProtocol.class).setInstance(impl)
@@ -552,7 +565,6 @@ public class StramRecoveryTest
     protocolProxy.log("containerId", "timeout");
     Assert.assertTrue("timedout", timedout.get());
 
-
     restoreSystemProperty(RecoverableRpcProxy.RPC_TIMEOUT, rpcTimeout);
     restoreSystemProperty(RecoverableRpcProxy.RETRY_DELAY, rpcRetryDelay);
     restoreSystemProperty(RecoverableRpcProxy.RETRY_TIMEOUT, rpcRetryTimeout);
@@ -562,7 +574,7 @@ public class StramRecoveryTest
 
   private static String restoreSystemProperty(final String key, final String value)
   {
-    return (value == null)? System.clearProperty(key) : System.setProperty(key, value);
+    return (value == null) ? System.clearProperty(key) : System.setProperty(key, value);
   }
 
 }
