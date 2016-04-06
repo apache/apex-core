@@ -104,18 +104,18 @@ and unpack the archive to, say, `C:\hadoop`; this file should be present under
 `hadoop-common-2.2.0-bin-master\bin` within it.
 
 Set the `HADOOP_HOME` environment variable system-wide to
-`c:\hadoop\Software\hadoop-common-2.2.0-bin-master` as described at:
+`c:\hadoop\hadoop-common-2.2.0-bin-master` as described at:
 <https://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/sysdm_advancd_environmnt_addchange_variable.mspx?mfr=true>. You should now be able to run unit tests normally.
 
 If you prefer not to set the variable globally, you can set it on the command line or within
 your IDE. For example, on the command line, specify the maven
 property `hadoop.home.dir`:
 
-    mvn -Dhadoop.home.dir=c:\hadoop\Software\hadoop-common-2.2.0-bin-master test
+    mvn -Dhadoop.home.dir=c:\hadoop\hadoop-common-2.2.0-bin-master test
 
 or set the environment variable separately:
 
-    set HADOOP_HOME=c:\hadoop\Software\hadoop-common-2.2.0-bin-master
+    set HADOOP_HOME=c:\hadoop\hadoop-common-2.2.0-bin-master
     mvn test
 
 Within your IDE, set the environment variable and then run the desired
