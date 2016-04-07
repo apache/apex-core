@@ -22,6 +22,7 @@ import com.datatorrent.common.util.BaseOperator;
 import java.io.*;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import javax.ws.rs.core.MediaType;
@@ -204,7 +205,7 @@ public class StramMiniClusterTest
     LOG.info("Initializing Client");
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration(conf);
     tb.addFromProperties(dagProps, null);
-    LogicalPlan dag = createDAG(tb);
+    LogicalPlan dag = createDAG(tb, true);
     Configuration yarnConf = new Configuration(yarnCluster.getConfig());
     StramClient client = new StramClient(yarnConf, dag);
     try {
@@ -214,6 +215,20 @@ public class StramMiniClusterTest
       }
       LOG.info("Running client");
       client.startApplication();
+
+      String libjars = dag.getAttributes().get(LogicalPlan.LIBRARY_JARS);
+      Map<String, Boolean> extraJarResources = dag.getJarResources();
+      for (Map.Entry<String, Boolean> entry : extraJarResources.entrySet()) {
+        File originalJar = new File(entry.getKey());
+        File copiedJar = new File(testMeta.toURI().getPath() + "/" + originalJar.getName());
+        // Check if copied jar exist
+        Assert.assertTrue(copiedJar.exists());
+        // Check if original jar is deleted if its marked so
+        Assert.assertEquals(!entry.getValue(), originalJar.exists());
+        // Check if the copied file path is added to LIBRARY_JARS as classpath.
+        Assert.assertTrue(libjars.contains(copiedJar.getAbsolutePath()));
+      }
+
       boolean result = client.monitorApplication();
 
       LOG.info("Client run completed. Result=" + result);
@@ -224,15 +239,28 @@ public class StramMiniClusterTest
     }
   }
 
-  private LogicalPlan createDAG(LogicalPlanConfiguration lpc) throws Exception
+  private LogicalPlan createDAG(LogicalPlanConfiguration lpc, boolean addExtraTestJar) throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    if (addExtraTestJar) {
+      addExtraTestJar(dag);
+    }
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.toURI().toString());
     lpc.prepareDAG(dag, null, "testApp");
     dag.validate();
     Assert.assertEquals("", Integer.valueOf(128), dag.getValue(DAG.MASTER_MEMORY_MB));
     Assert.assertEquals("", "-Dlog4j.properties=custom_log4j.properties", dag.getValue(DAG.CONTAINER_JVM_OPTIONS));
     return dag;
+  }
+
+  private void addExtraTestJar(LogicalPlan dag) throws IOException
+  {
+    File tmp1 = File.createTempFile("tmp1", null);
+    File tmp2 = File.createTempFile("tmp2", null);
+    tmp1.deleteOnExit();
+    tmp2.deleteOnExit();
+    dag.addJarResource(tmp1.getAbsolutePath(), true);
+    dag.addJarResource(tmp2.getAbsolutePath(), false);
   }
 
   /**
@@ -255,7 +283,7 @@ public class StramMiniClusterTest
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
     tb.addFromProperties(props, null);
 
-    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
+    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb, false));
     if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
       client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
     }

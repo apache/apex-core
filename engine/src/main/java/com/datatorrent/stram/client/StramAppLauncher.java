@@ -452,10 +452,25 @@ public class StramAppLauncher
    */
   public void runLocal(AppFactory appConfig) throws Exception
   {
+    propertiesBuilder.conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.LOCAL);
+    LogicalPlan lp = appConfig.createApp(propertiesBuilder);
+
+    /**
+     * Add extra jars if any at the same level of context loader as that of operators.
+     * Idea is to make the class loadable from the operator classes.
+     * If done the other way round, the operator threads won't be able to find the extra classes.
+     */
+    if (lp.getJarResources().size() != 0) {
+      for (String jarPath : lp.getJarResources().keySet()) {
+        File file = new File(jarPath);
+        URL url = file.toURI().toURL();
+        launchDependencies.add(url);
+      }
+    }
+
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    propertiesBuilder.conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.LOCAL);
-    StramLocalCluster lc = new StramLocalCluster(appConfig.createApp(propertiesBuilder));
+    StramLocalCluster lc = new StramLocalCluster(lp);
     lc.run();
   }
 

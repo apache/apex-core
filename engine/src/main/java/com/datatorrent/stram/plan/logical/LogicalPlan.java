@@ -198,6 +198,7 @@ public class LogicalPlan implements Serializable, DAG
   private final List<OperatorMeta> leafOperators = new ArrayList<>();
   private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
   private transient Map<String, ArrayListMultimap<OutputPort<?>, InputPort<?>>> streamLinks = new HashMap<>();
+  private transient Map<String, Boolean> extraResources = new LinkedHashMap<>();
 
   @Override
   public Attribute.AttributeMap getAttributes()
@@ -230,6 +231,16 @@ public class LogicalPlan implements Serializable, DAG
   public void sendMetrics(Collection<String> metricNames)
   {
     throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  public void addJarResource(String jarPath, boolean deleteOnCopy)
+  {
+    extraResources.put(jarPath, deleteOnCopy);
+  }
+
+  public Map<String, Boolean> getJarResources()
+  {
+    return extraResources;
   }
 
   public final class InputPortMeta implements DAG.InputPortMeta, Serializable
@@ -1470,6 +1481,9 @@ public class LogicalPlan implements Serializable, DAG
       StreamMeta streamMetaNew = this.addStream(name, sourceMeta.getPortObject(), inputPorts);
       streamMetaNew.setLocality(streamMeta.getLocality());
     }
+
+    // Add extra resource of module's DAG to parent DAG.
+    extraResources.putAll(subDag.getJarResources());
   }
 
   @Override
