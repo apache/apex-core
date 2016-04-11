@@ -1,7 +1,7 @@
 Apache Apex Command Line Interface
 ================================================================================
 
-dtCli, the Apache Apex command line interface, can be used to launch, monitor, and manage Apache Apex applications.  It provides a developer friendly way of interacting with Apache Apex platform.  Another advantage of dtCli is to provide scope, by connecting and executing commands in a context of specific application.  dtCli enables easy integration with existing enterprise toolset for automated application monitoring and management.  Currently the following high level tasks are supported.
+Apex CLI, the Apache Apex command line interface, can be used to launch, monitor, and manage Apache Apex applications.  It provides a developer friendly way of interacting with Apache Apex platform.  Another advantage of Apex CLI is to provide scope, by connecting and executing commands in a context of specific application.  Apex CLI enables easy integration with existing enterprise toolset for automated application monitoring and management.  Currently the following high level tasks are supported.
 
 -   Launch or kill applications
 -   View system metrics including load, throughput, latency, etc.
@@ -12,11 +12,11 @@ dtCli, the Apache Apex command line interface, can be used to launch, monitor, a
 -   Create custom macros
 
 
-## dtcli Commands
+## Apex CLI Commands
 
-dtCli can be launched by running following command
+Apex CLI can be launched by running following command
 
-    dtcli
+    apex
 
 Help on all commands is available via “help” command in the CLI
 
@@ -240,7 +240,7 @@ submit
 An example of defining a custom macro.  The macro updates a running application by inserting a new operator.  It takes three parameters and executes a logical plan changes.
 
 ```
-dt> begin-macro add-console-output
+apex> begin-macro add-console-output
 macro> begin-logical-plan-change
 macro> create-operator $1 com.datatorrent.lib.io.ConsoleOutputOperator
 macro> create-stream stream_$1 $2 $3 $1 in
@@ -251,7 +251,7 @@ macro> submit
 Then execute the `add-console-output` macro like this
 
 ```
-dt> add-console-output xyz opername portname
+apex> add-console-output xyz opername portname
 ```
 
 This macro then expands to run the following command

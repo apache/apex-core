@@ -484,7 +484,7 @@ There are four top level directories in an Application Package:
 
 ## Examining and Launching Application Packages Through CLI
 
-If you are working with Application Packages in the local filesystem, you can use the Apex Command Line Interface (dtcli).  
+If you are working with Application Packages in the local filesystem, you can use the Apex Command Line Interface (apex).
 
 ### Getting Application Package Meta Information
 
@@ -492,7 +492,7 @@ You can get the meta information about the Application Package using
 this Apex CLI command.
 
 ```
- dt> get-app-package-info <app-package-file>
+ apex> get-app-package-info <app-package-file>
 ```
 
 ### Getting Available Operators In Application Package
@@ -501,7 +501,7 @@ You can get the list of available operators in the Application Package
 using this command.
 
 ```
- dt> get-app-package-operators <app-package-file> <package-prefix>
+ apex> get-app-package-operators <app-package-file> <package-prefix>
  [parent-class]
 ```
 
@@ -510,14 +510,14 @@ using this command.
 You can get the list of properties of any operator in the Application
 Package using this command.
 
- dt> get-app-package-operator-properties <app-package-file> <operator-class>
+ apex> get-app-package-operator-properties <app-package-file> <operator-class>
 
 
 ### Launching an Application Package
 
 You can launch an application within an Application Package.
 ```
-dt> launch [-D property-name=property-value, ...] [-conf config-name]
+apex> launch [-D property-name=property-value, ...] [-conf config-name]
  [-apconf config-file-within-app-package] <app-package-file>
  [matching-app-name]
 ```

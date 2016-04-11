@@ -10,7 +10,7 @@ pages:
     - Operators: operator_development.md
     - AutoMetric API: autometrics.md
 - Operations:
-    - dtCli: dtcli.md
+    - Apex CLI : apex_cli.md
     - Security: security.md
 - Compatibility: compatibility.md
 
