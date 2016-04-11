@@ -26,7 +26,7 @@
   <parent>
     <groupId>org.apache.apex</groupId>
     <artifactId>apex</artifactId>
-    <version>3.2.1-incubating-SNAPSHOT</version>
+    <version>3.2.2-incubating-SNAPSHOT</version>
   </parent>
 
   <artifactId>apex-api</artifactId>
