@@ -2,6 +2,35 @@ Apex Changelog
 ========================================================================================================================
 
 
+Version 3.2.1-incubating - 2016-04-18
+------------------------------------------------------------------------------------------------------------------------
+
+### Bug
+* [APEXCORE-130] - Throwing A Runtime Exception In Setup Causes The Operator To Block
+* [APEXCORE-274] - removeTerminatedPartition fails for Unifier operator
+* [APEXCORE-275] - Two threads can try to reconnect to websocket server upon disconnection
+* [APEXCORE-350] - STRAM's REST service sometimes returns duplicate and conflicting Content-Type headers
+* [APEXCORE-353] - Buffer server may stop processing data
+* [APEXCORE-362] - NPE in StreamingContainerManager
+* [APEXCORE-363] - NPE in StreamingContainerManager
+* [APEXCORE-374] - Block with positive reference count is found during buffer server purge
+* [APEXCORE-375] - Container killed because of Out of Sequence tuple error.
+* [APEXCORE-385] - Temp directories/files not always cleaned up when launching applications
+* [APEXCORE-391] - AsyncFSStorageAgent creates tmp directory unnecessarily
+* [APEXCORE-398] - Ack may not be delivered from buffer server to it's client
+
+### Task
+* [APEXCORE-410] - Upgrade to netlet 1.2.1
+
+### Sub-task
+* [APEXCORE-365] - Buffer server handling for tuple length that exceeds data list block size
+
+### Improvement
+* [APEXCORE-327] - Implement proper semantic version checks in patch release branches
+* [APEXCORE-358] - Make RPC timeout configurable
+
+
+
 Version 3.2.0-incubating - 2015-10-23
 ------------------------------------------------------------------------------------------------------------------------
 
