@@ -438,6 +438,10 @@ public interface Context
      */
     Attribute<String> GATEWAY_PASSWORD = new Attribute<String>(new String2String());
     /**
+     * The timeout when connecting to the pubsub service in gateway
+     */
+    Attribute<Integer> PUBSUB_CONNECT_TIMEOUT_MILLIS = new Attribute<>(500);
+    /**
      * Maximum number of simultaneous heartbeat connections to process. Default value is 30.
      */
     Attribute<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new Attribute<Integer>(30);

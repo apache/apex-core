@@ -952,6 +952,8 @@ public class StreamingContainerManagerTest
       dag.addStream("o1.outport", o1.outport, o2.inport1);
       dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, new AutoMetricBuiltInTransport(topic));
       dag.setAttribute(LogicalPlan.GATEWAY_CONNECT_ADDRESS, "localhost:" + port);
+      dag.setAttribute(LogicalPlan.PUBSUB_CONNECT_TIMEOUT_MILLIS, 2000);
+
       StramLocalCluster lc = new StramLocalCluster(dag);
       StreamingContainerManager dnmgr = lc.dnmgr;
       StramAppContext appContext = new StramTestSupport.TestAppContext(dag.getAttributes());
