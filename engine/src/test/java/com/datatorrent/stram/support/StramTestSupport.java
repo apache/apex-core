@@ -629,6 +629,7 @@ public abstract class StramTestSupport
       if (port == 0) {
         port = server.getConnectors()[0].getLocalPort();
       }
+      LOG.info("Embedded websocket server started listening on port {}", port);
     }
 
     public int getPort()

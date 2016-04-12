@@ -36,6 +36,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.io.DataInputByteBuffer;
@@ -953,6 +955,7 @@ public class StreamingContainerManagerTest
       dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, new AutoMetricBuiltInTransport(topic));
       dag.setAttribute(LogicalPlan.GATEWAY_CONNECT_ADDRESS, "localhost:" + port);
       dag.setAttribute(LogicalPlan.PUBSUB_CONNECT_TIMEOUT_MILLIS, 2000);
+      LOG.info("GATEWAY_CONNECT_ADDRESS is {}", dag.getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS));
 
       StramLocalCluster lc = new StramLocalCluster(dag);
       StreamingContainerManager dnmgr = lc.dnmgr;
@@ -1108,4 +1111,6 @@ public class StreamingContainerManagerTest
         criticalPathInfo.latency > latency);
     lc.shutdown();
   }
+
+  private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerManagerTest.class);
 }
