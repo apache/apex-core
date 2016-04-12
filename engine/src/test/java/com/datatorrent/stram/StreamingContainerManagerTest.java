@@ -948,13 +948,15 @@ public class StreamingContainerManagerTest
     });
     try {
       server.start();
+      // allows time for the server to start
+      Thread.sleep(2000);
       int port = server.getPort();
       TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
       GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
       dag.addStream("o1.outport", o1.outport, o2.inport1);
       dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, new AutoMetricBuiltInTransport(topic));
       dag.setAttribute(LogicalPlan.GATEWAY_CONNECT_ADDRESS, "localhost:" + port);
-      dag.setAttribute(LogicalPlan.PUBSUB_CONNECT_TIMEOUT_MILLIS, 5000);
+      dag.setAttribute(LogicalPlan.PUBSUB_CONNECT_TIMEOUT_MILLIS, 2000);
       LOG.info("GATEWAY_CONNECT_ADDRESS is {}", dag.getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS));
 
       StramLocalCluster lc = new StramLocalCluster(dag);
