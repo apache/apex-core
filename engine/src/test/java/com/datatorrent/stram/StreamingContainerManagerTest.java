@@ -924,6 +924,7 @@ public class StreamingContainerManagerTest
   @Test
   public void testAppDataPush() throws Exception
   {
+
     final String topic = "xyz";
     final List<String> messages = new ArrayList<>();
     EmbeddedWebSocketServer server = new EmbeddedWebSocketServer(0);
@@ -955,8 +956,8 @@ public class StreamingContainerManagerTest
       GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
       dag.addStream("o1.outport", o1.outport, o2.inport1);
       dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, new AutoMetricBuiltInTransport(topic));
-      dag.setAttribute(LogicalPlan.GATEWAY_CONNECT_ADDRESS, "localhost:" + port);
-      dag.setAttribute(LogicalPlan.PUBSUB_CONNECT_TIMEOUT_MILLIS, 2000);
+      dag.setAttribute(LogicalPlan.GATEWAY_CONNECT_ADDRESS, "0.0.0.0:" + port);
+      dag.setAttribute(LogicalPlan.PUBSUB_CONNECT_TIMEOUT_MILLIS, 30000);
       LOG.info("GATEWAY_CONNECT_ADDRESS is {}", dag.getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS));
 
       StramLocalCluster lc = new StramLocalCluster(dag);
@@ -964,8 +965,22 @@ public class StreamingContainerManagerTest
       StramAppContext appContext = new StramTestSupport.TestAppContext(dag.getAttributes());
 
       AppDataPushAgent pushAgent = new AppDataPushAgent(dnmgr, appContext);
-      pushAgent.init();
-      pushAgent.pushData();
+      int i = 0;
+      while (true) {
+        // to get around travis problem with connecting to localhost
+        // http://stackoverflow.com/questions/32172925/travis-ci-sporadic-timeouts-to-localhost
+        try {
+          pushAgent.init();
+          pushAgent.pushData();
+          break;
+        } catch (IOException ex) {
+          if (i++ >= 10) {
+            throw ex;
+          } else {
+            LOG.warn("Retrying...");
+          }
+        }
+      }
       Thread.sleep(1000);
       Assert.assertTrue(messages.size() > 0);
       pushAgent.close();
