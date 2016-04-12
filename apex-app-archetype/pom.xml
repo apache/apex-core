@@ -25,7 +25,7 @@
   <parent>
     <groupId>org.apache.apex</groupId>
     <artifactId>apex</artifactId>
-    <version>3.2.1-incubating-SNAPSHOT</version>
+    <version>3.2.1-incubating</version>
   </parent>
 
   <artifactId>apex-app-archetype</artifactId>
