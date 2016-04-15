@@ -40,7 +40,7 @@ import static com.datatorrent.stram.support.StramTestSupport.setEnv;
 /**
  *
  */
-public class DTCliTest
+public class ApexCliTest
 {
 
   // file basename for the created jar
@@ -56,7 +56,7 @@ public class DTCliTest
   private static AppPackage ap;
   private static ConfigPackage cp;
   static TemporaryFolder testFolder = new TemporaryFolder();
-  static DTCli cli = new DTCli();
+  static ApexCli cli = new ApexCli();
 
   static Map<String, String> env = new HashMap<String, String>();
   static String userHome;
@@ -103,7 +103,8 @@ public class DTCliTest
   public void testLaunchAppPackagePropertyPrecedence() throws Exception
   {
     // set launch command options
-    DTCli.LaunchCommandLineInfo commandLineInfo = DTCli.getLaunchCommandLineInfo(new String[]{"-D", "dt.test.1=launch-define", "-apconf", "my-app-conf1.xml", "-conf", "src/test/resources/testAppPackage/local-conf.xml"});
+    ApexCli.LaunchCommandLineInfo commandLineInfo = ApexCli
+        .getLaunchCommandLineInfo(new String[]{"-D", "dt.test.1=launch-define", "-apconf", "my-app-conf1.xml", "-conf", "src/test/resources/testAppPackage/local-conf.xml"});
     // process and look at launch config
 
     DTConfiguration props = cli.getLaunchAppPackageProperties(ap, null, commandLineInfo, null);
@@ -125,9 +126,10 @@ public class DTCliTest
   @Test
   public void testLaunchAppPackageParametersWithConfigPackage() throws Exception
   {
-    DTCli.LaunchCommandLineInfo commandLineInfo = DTCli.getLaunchCommandLineInfo(new String[]{"-exactMatch", "-conf", configFile.getAbsolutePath(), appFile.getAbsolutePath(), "MyFirstApplication"});
+    ApexCli.LaunchCommandLineInfo commandLineInfo = ApexCli
+        .getLaunchCommandLineInfo(new String[]{"-exactMatch", "-conf", configFile.getAbsolutePath(), appFile.getAbsolutePath(), "MyFirstApplication"});
     String[] args = cli.getLaunchAppPackageArgs(ap, cp, commandLineInfo, null);
-    commandLineInfo = DTCli.getLaunchCommandLineInfo(args);
+    commandLineInfo = ApexCli.getLaunchCommandLineInfo(args);
     StringBuilder sb = new StringBuilder();
     for (String f : ap.getClassPath()) {
       if (sb.length() != 0) {
@@ -159,7 +161,8 @@ public class DTCliTest
   public void testLaunchAppPackagePrecedenceWithConfigPackage() throws Exception
   {
     // set launch command options
-    DTCli.LaunchCommandLineInfo commandLineInfo = DTCli.getLaunchCommandLineInfo(new String[]{"-D", "dt.test.1=launch-define", "-apconf", "my-app-conf1.xml", "-conf", configFile.getAbsolutePath()});
+    ApexCli.LaunchCommandLineInfo commandLineInfo = ApexCli
+        .getLaunchCommandLineInfo(new String[]{"-D", "dt.test.1=launch-define", "-apconf", "my-app-conf1.xml", "-conf", configFile.getAbsolutePath()});
     // process and look at launch config
 
     DTConfiguration props = cli.getLaunchAppPackageProperties(ap, cp, commandLineInfo, null);

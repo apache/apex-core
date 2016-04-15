@@ -92,7 +92,7 @@ When the run completes successfully, you should see a new directory named `myape
     cd myapexapp
     mvn clean package -DskipTests
 
-The build should create the application package file `myapexapp/target/myapexapp-1.0-SNAPSHOT.apa`. This application package can then be used to launch example application via **dtCli**, or other visual management tools.  When running, this application will generate a stream of random numbers and print them out, each prefixed by the string `hello world:`.
+The build should create the application package file `myapexapp/target/myapexapp-1.0-SNAPSHOT.apa`. This application package can then be used to launch example application via **apex** CLI, or other visual management tools.  When running, this application will generate a stream of random numbers and print them out, each prefixed by the string `hello world:`.
 
 Running Unit Tests
 ----

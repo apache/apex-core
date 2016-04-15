@@ -148,9 +148,9 @@ import sun.misc.SignalHandler;
  * @since 0.3.2
  */
 @SuppressWarnings("UseOfSystemOutOrSystemErr")
-public class DTCli
+public class ApexCli
 {
-  private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ApexCli.class);
   private Configuration conf;
   private FileSystem fs;
   private StramAgent stramAgent;
@@ -576,7 +576,7 @@ public class DTCli
 
   }
 
-  DTCli()
+  ApexCli()
   {
     //
     // Global command specification starts here
@@ -1050,7 +1050,7 @@ public class DTCli
       }
       if (cmd.hasOption("h")) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp(DTCli.class.getSimpleName(), options);
+        formatter.printHelp(ApexCli.class.getSimpleName(), options);
         System.exit(0);
       }
       if (cmd.hasOption("kp")) {
@@ -1094,7 +1094,7 @@ public class DTCli
 
     for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[]{
         org.apache.log4j.Logger.getRootLogger(),
-        org.apache.log4j.Logger.getLogger(DTCli.class)
+        org.apache.log4j.Logger.getLogger(ApexCli.class)
     }) {
       @SuppressWarnings("unchecked")
       Enumeration<Appender> allAppenders = logger.getAllAppenders();
@@ -1492,7 +1492,7 @@ public class DTCli
   private void printWelcomeMessage()
   {
     VersionInfo v = VersionInfo.APEX_VERSION;
-    System.out.println("DT CLI " + v.getVersion() + " " + v.getDate() + " " + v.getRevision());
+    System.out.println("Apex CLI " + v.getVersion() + " " + v.getDate() + " " + v.getRevision());
   }
 
   private void printHelp(String command, CommandSpec commandSpec, PrintStream os)
@@ -1561,7 +1561,7 @@ public class DTCli
         if (changingLogicalPlan) {
           prompt = "logical-plan-change";
         } else {
-          prompt = "dt";
+          prompt = "apex";
         }
         if (currentApp != null) {
           prompt += " (";
@@ -3925,7 +3925,7 @@ public class DTCli
 
   public static void main(final String[] args) throws Exception
   {
-    final DTCli shell = new DTCli();
+    final ApexCli shell = new ApexCli();
     shell.preImpersonationInit(args);
     String hadoopUserName = System.getenv("HADOOP_USER_NAME");
     if (UserGroupInformation.isSecurityEnabled()
