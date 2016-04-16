@@ -20,6 +20,8 @@ package com.datatorrent.stram.util;
 
 import java.io.IOException;
 import java.security.Principal;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Future;
 
 import com.sun.jersey.api.client.AsyncWebResource;
@@ -28,6 +30,7 @@ import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.async.ITypeListener;
 import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
+import com.sun.jersey.api.client.filter.ClientFilter;
 import com.sun.jersey.client.apache4.ApacheHttpClient4Handler;
 
 import org.slf4j.Logger;
@@ -63,6 +66,8 @@ public class WebServicesClient
   private static final int DEFAULT_READ_TIMEOUT = 10000;
 
   private final Client client;
+
+  private final Set<ClientFilter> clientFilters = new HashSet<>();
 
   static {
     connectionManager = new PoolingHttpClientConnectionManager();
@@ -119,7 +124,27 @@ public class WebServicesClient
     return client;
   }
 
-  public <T> T process(String url, Class<T> clazz, WebServicesHandler<T> handler) throws IOException {
+  // A bug in jersey Client results in a ClassCastException when using the built-in method in Client to check if
+  // the filter is already present. Hence using a wrapper method to keep track of added filters.
+  public boolean isFilterPresent(ClientFilter clientFilter)
+  {
+    return clientFilters.contains(clientFilter);
+  }
+
+  public void addFilter(ClientFilter clientFilter)
+  {
+    client.addFilter(clientFilter);
+    clientFilters.add(clientFilter);
+  }
+
+  public void clearFilters()
+  {
+    client.removeAllFilters();
+    clientFilters.clear();
+  }
+
+  public <T> T process(String url, Class<T> clazz, WebServicesHandler<T> handler) throws IOException
+  {
     WebResource wr = client.resource(url);
     return process(wr.getRequestBuilder(), clazz, handler);
   }

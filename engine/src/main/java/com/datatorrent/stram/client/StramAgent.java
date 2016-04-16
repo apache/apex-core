@@ -200,8 +200,8 @@ public class StramAgent extends FSAgent
 
   private UriBuilder getStramWebURIBuilder(WebServicesClient webServicesClient, String appid) throws IncompatibleVersionException
   {
-    Client wsClient = webServicesClient.getClient();
-    wsClient.setFollowRedirects(true);
+    webServicesClient.getClient().setFollowRedirects(true);
+    webServicesClient.clearFilters();
     StramWebServicesInfo info = getWebServicesInfo(appid);
     UriBuilder ub = null;
     if (info != null) {
@@ -211,14 +211,10 @@ public class StramAgent extends FSAgent
       WebServicesVersionConversion.Converter versionConverter = WebServicesVersionConversion.getConverter(info.version);
       if (versionConverter != null) {
         VersionConversionFilter versionConversionFilter = new VersionConversionFilter(versionConverter);
-        if (!wsClient.isFilterPreset(versionConversionFilter)) {
-          wsClient.addFilter(versionConversionFilter);
-        }
+        webServicesClient.addFilter(versionConversionFilter);
       }
       if (info.securityInfo != null) {
-        if (!wsClient.isFilterPreset(info.securityInfo.secClientFilter)) {
-          wsClient.addFilter(info.securityInfo.secClientFilter);
-        }
+        webServicesClient.addFilter(info.securityInfo.secClientFilter);
       }
     }
     return ub;
