@@ -1144,6 +1144,7 @@ public class StreamingContainer extends YarnContainerMain
             inlineContext.setSinkId(sinkIdentifier);
 
             Stream stream;
+            SweepableReservoir reservoir;
             switch (nidi.locality) {
               case CONTAINER_LOCAL:
                 int outputQueueCapacity = getOutputQueueCapacity(operatorList, nidi.sourceNodeId, nidi.sourcePortName);
@@ -1152,13 +1153,17 @@ public class StreamingContainer extends YarnContainerMain
                 }
 
                 stream = new InlineStream(queueCapacity);
+                reservoir = ((InlineStream)stream).getReservoir();
                 if (checkpoint.windowId >= 0) {
-                  node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, (SweepableReservoir)stream, checkpoint.windowId));
+                  node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, reservoir,
+                      checkpoint.windowId));
                 }
                 break;
 
               case THREAD_LOCAL:
                 stream = new OiOStream();
+                reservoir = ((OiOStream)stream).getReservoir();
+                ((OiOStream.OiOReservoir)reservoir).setControlSink(((OiONode)node).getControlSink(reservoir));
                 oioNodes.put(ndi.id, nidi.sourceNodeId);
                 break;
 
@@ -1166,7 +1171,7 @@ public class StreamingContainer extends YarnContainerMain
                 throw new IllegalStateException("Locality can be either ContainerLocal or ThreadLocal");
             }
 
-            node.connectInputPort(nidi.portName, (SweepableReservoir)stream);
+            node.connectInputPort(nidi.portName, reservoir);
             newStreams.put(sinkIdentifier, new ComponentContextPair<>(stream, inlineContext));
 
             if (!(pair.component instanceof Stream.MultiSinkCapableStream)) {

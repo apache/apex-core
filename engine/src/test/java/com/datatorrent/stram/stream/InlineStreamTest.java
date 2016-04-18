@@ -37,6 +37,7 @@ import com.datatorrent.stram.engine.GenericNode;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.StreamContext;
+import com.datatorrent.stram.engine.SweepableReservoir;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.datatorrent.stram.tuple.Tuple;
@@ -69,7 +70,7 @@ public class InlineStreamTest
     stream.setup(streamContext);
 
     node1.connectOutputPort("output", stream);
-    node2.connectInputPort("input", stream);
+    node2.connectInputPort("input", stream.getReservoir());
 
     prev = null;
     Sink<Object> sink = new Sink<Object>()
@@ -137,8 +138,9 @@ public class InlineStreamTest
       @Override
       public boolean isComplete()
       {
-        logger.debug("stream {} empty {}, size {}", stream, stream.isEmpty(), stream.size(false));
-        return stream.isEmpty();
+        final SweepableReservoir reservoir = stream.getReservoir();
+        logger.debug("stream {} empty {}, size {}", stream, reservoir.isEmpty(), reservoir.size(false));
+        return reservoir.isEmpty();
       }
     };
 
