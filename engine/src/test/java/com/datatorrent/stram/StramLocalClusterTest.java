@@ -22,8 +22,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -33,7 +36,16 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.conf.Configuration;
+
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.LocalMode;
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.StramLocalCluster.MockComponentFactory;
 import com.datatorrent.stram.api.Checkpoint;
@@ -47,6 +59,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.ManualScheduledExecutorService;
 import com.datatorrent.stram.support.StramTestSupport;
+
 
 public class StramLocalClusterTest
 {
@@ -273,5 +286,114 @@ public class StramLocalClusterTest
 
     localCluster.shutdown();
   }
+
+  @Test
+  public void testDynamicLoading() throws Exception
+  {
+    String generatedJar = generatejar("POJO");
+    URLClassLoader uCl = URLClassLoader.newInstance(new URL[] {new File(generatedJar).toURI().toURL()});
+    Class<?> pojo = uCl.loadClass("POJO");
+
+    DynamicLoaderApp app = new DynamicLoaderApp();
+    app.generatedJar = generatedJar;
+    app.pojo = pojo;
+
+    LocalMode lma = LocalMode.newInstance();
+    lma.prepareDAG(app, new Configuration());
+    LocalMode.Controller lc = lma.getController();
+    lc.runAsync();
+    DynamicLoaderApp.latch.await();
+    Assert.assertTrue(DynamicLoaderApp.passed);
+    lc.shutdown();
+  }
+
+  static class DynamicLoaderApp implements StreamingApplication
+  {
+    static boolean passed = false;
+    static CountDownLatch latch = new CountDownLatch(2);
+
+    DynamicLoader test;
+    String generatedJar;
+    Class<?> pojo;
+
+    @Override
+    public void populateDAG(DAG dag, Configuration conf)
+    {
+      TestGeneratorInputOperator input = dag.addOperator("Input", new TestGeneratorInputOperator());
+      test = dag.addOperator("Test", new DynamicLoader());
+
+      dag.addStream("S1", input.outport, test.input);
+      dag.setAttribute(Context.DAGContext.LIBRARY_JARS, generatedJar);
+      dag.setInputPortAttribute(test.input, Context.PortContext.TUPLE_CLASS, pojo);
+    }
+  }
+
+  static class DynamicLoader extends BaseOperator
+  {
+    public final transient DefaultInputPort input = new DefaultInputPort()
+    {
+      @Override
+      public void setup(Context.PortContext context)
+      {
+        Class<?> value = context.getValue(Context.PortContext.TUPLE_CLASS);
+        if (value.getName().equals("POJO")) {
+          DynamicLoaderApp.passed = true;
+        } else {
+          DynamicLoaderApp.passed = false;
+        }
+        DynamicLoaderApp.latch.countDown();
+      }
+
+      @Override
+      public void process(Object tuple)
+      {
+      }
+    };
+
+    @Override
+    public void setup(Context.OperatorContext context)
+    {
+      ClassLoader cl = Thread.currentThread().getContextClassLoader();
+      try {
+        cl.loadClass("POJO");
+      } catch (ClassNotFoundException e) {
+        DynamicLoaderApp.passed = false;
+        DynamicLoaderApp.latch.countDown();
+        throw new RuntimeException(e);
+      }
+
+      try {
+        Class.forName("POJO", true, Thread.currentThread().getContextClassLoader());
+      } catch (ClassNotFoundException e) {
+        DynamicLoaderApp.passed = false;
+        DynamicLoaderApp.latch.countDown();
+        throw new RuntimeException(e);
+      }
+
+      DynamicLoaderApp.passed = true;
+      DynamicLoaderApp.latch.countDown();
+    }
+  }
+
+  private String generatejar(String pojoClassName) throws IOException, InterruptedException
+  {
+    String sourceDir = "src/test/resources/dynamicJar/";
+    String destDir = testMeta.getPath();
+
+    Process p = Runtime.getRuntime()
+        .exec(new String[] {"javac", "-d", destDir, sourceDir + pojoClassName + ".java"}, null, null);
+    IOUtils.copy(p.getInputStream(), System.out);
+    IOUtils.copy(p.getErrorStream(), System.err);
+    Assert.assertEquals(0, p.waitFor());
+
+    p = Runtime.getRuntime()
+        .exec(new String[] {"jar", "-cf", pojoClassName + ".jar", pojoClassName + ".class"}, null, new File(destDir));
+    IOUtils.copy(p.getInputStream(), System.out);
+    IOUtils.copy(p.getErrorStream(), System.err);
+    Assert.assertEquals(0, p.waitFor());
+
+    return new File(destDir, pojoClassName + ".jar").getAbsolutePath();
+  }
+
 
 }

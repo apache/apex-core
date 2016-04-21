@@ -74,6 +74,7 @@ import org.apache.log4j.DTLoggerFactory;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
@@ -223,7 +224,7 @@ public class StramClient
       localJarFiles.add(jar);
     }
 
-    String libJarsPath = dag.getValue(LogicalPlan.LIBRARY_JARS);
+    String libJarsPath = dag.getValue(Context.DAGContext.LIBRARY_JARS);
     if (!StringUtils.isEmpty(libJarsPath)) {
       String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, LIB_JARS_SEP);
       localJarFiles.addAll(Arrays.asList(libJars));
@@ -442,7 +443,7 @@ public class StramClient
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[]{}));
 
       LOG.info("libjars: {}", libJarsCsv);
-      dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
+      dag.getAttributes().put(Context.DAGContext.LIBRARY_JARS, libJarsCsv);
       LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, libJarsCsv, localResources, fs);
 
       if (archives != null) {
