@@ -168,7 +168,7 @@ public class LaunchContainerRunnable implements Runnable
     try {
       // child VM dependencies
       try (FileSystem fs = StramClientUtils.newFileSystemInstance(nmClient.getConfig())) {
-        addFilesToLocalResources(LocalResourceType.FILE, dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
+        addFilesToLocalResources(LocalResourceType.FILE, dag.getAttributes().get(Context.DAGContext.LIBRARY_JARS), localResources, fs);
         String archives = dag.getAttributes().get(LogicalPlan.ARCHIVES);
         if (archives != null) {
           addFilesToLocalResources(LocalResourceType.ARCHIVE, archives, localResources, fs);

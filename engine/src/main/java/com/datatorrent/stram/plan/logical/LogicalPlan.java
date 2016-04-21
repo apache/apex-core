@@ -61,6 +61,8 @@ import javax.validation.constraints.NotNull;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.io.input.ClassLoaderObjectInputStream;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
@@ -157,13 +159,6 @@ public class LogicalPlan implements Serializable, DAG
   public static Attribute<Long> RM_TOKEN_LIFE_TIME = new Attribute<>(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT);
   public static Attribute<String> KEY_TAB_FILE = new Attribute<>((String)null, new StringCodec.String2String());
   public static Attribute<Double> TOKEN_REFRESH_ANTICIPATORY_FACTOR = new Attribute<>(0.7);
-  /**
-   * Comma separated list of jar file dependencies to be deployed with the application.
-   * The launcher will combine the list with built-in dependencies and those specified
-   * that are made available through the distributed file system to application master
-   * and child containers.
-   */
-  public static Attribute<String> LIBRARY_JARS = new Attribute<>(new StringCodec.String2String());
   /**
    * Comma separated list of archives to be deployed with the application.
    * The launcher will include the archives into the final set of resources
@@ -2386,7 +2381,7 @@ public class LogicalPlan implements Serializable, DAG
 
   public static LogicalPlan read(InputStream is) throws IOException, ClassNotFoundException
   {
-    return (LogicalPlan)new ObjectInputStream(is).readObject();
+    return (LogicalPlan)new ClassLoaderObjectInputStream(Thread.currentThread().getContextClassLoader(), is).readObject();
   }
 
 

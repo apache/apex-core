@@ -18,8 +18,14 @@
  */
 package com.datatorrent.stram;
 
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+
 import org.apache.hadoop.conf.Configuration;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode;
 import com.datatorrent.api.StreamingApplication;
@@ -66,9 +72,32 @@ public class LocalModeImpl extends LocalMode
   public Controller getController()
   {
     try {
+      addLibraryJarsToClasspath(lp);
       return new StramLocalCluster(lp);
     } catch (Exception e) {
       throw new RuntimeException("Error creating local cluster", e);
     }
+  }
+
+  private void addLibraryJarsToClasspath(LogicalPlan lp) throws MalformedURLException
+  {
+    String libJarsCsv = lp.getAttributes().get(Context.DAGContext.LIBRARY_JARS);
+
+    if (libJarsCsv != null && libJarsCsv.length() != 0) {
+      String[] split = libJarsCsv.split(StramClient.LIB_JARS_SEP);
+      if (split.length != 0) {
+        URL[] urlList = new URL[split.length];
+        for (int i = 0; i < split.length; i++) {
+          File file = new File(split[i]);
+          urlList[i] = file.toURI().toURL();
+        }
+
+        // Set class loader.
+        ClassLoader prevCl = Thread.currentThread().getContextClassLoader();
+        URLClassLoader cl = URLClassLoader.newInstance(urlList, prevCl);
+        Thread.currentThread().setContextClassLoader(cl);
+      }
+    }
+
   }
 }

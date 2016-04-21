@@ -285,7 +285,7 @@ public class StramAppLauncher
     // don't rely on object deserialization for changing the app id in the future.
     try {
       JSONObject attributes = metaJson.getJSONObject("attributes");
-      originalLibJars = attributes.getString(LogicalPlan.LIBRARY_JARS.getSimpleName());
+      originalLibJars = attributes.getString(Context.DAGContext.LIBRARY_JARS.getSimpleName());
       recoveryAppName = attributes.getString(Context.DAGContext.APPLICATION_NAME.getSimpleName());
     } catch (JSONException ex) {
       recoveryAppName = "Recovery App From " + originalAppId;
@@ -532,10 +532,22 @@ public class StramAppLauncher
    */
   public void runLocal(AppFactory appConfig) throws Exception
   {
+    propertiesBuilder.conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.LOCAL);
+    LogicalPlan lp = appConfig.createApp(propertiesBuilder);
+
+    String libJarsCsv = lp.getAttributes().get(Context.DAGContext.LIBRARY_JARS);
+    if (libJarsCsv != null && libJarsCsv.length() != 0) {
+      String[] split = libJarsCsv.split(StramClient.LIB_JARS_SEP);
+      for (String jarPath : split) {
+        File file = new File(jarPath);
+        URL url = file.toURI().toURL();
+        launchDependencies.add(url);
+      }
+    }
+
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    propertiesBuilder.conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.LOCAL);
-    StramLocalCluster lc = new StramLocalCluster(appConfig.createApp(propertiesBuilder));
+    StramLocalCluster lc = new StramLocalCluster(lp);
     lc.run();
   }
 

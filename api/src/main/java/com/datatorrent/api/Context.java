@@ -519,6 +519,14 @@ public interface Context
      */
     Attribute<AffinityRulesSet> AFFINITY_RULES_SET = new Attribute<AffinityRulesSet>(new JsonStringCodec<AffinityRulesSet>(AffinityRulesSet.class));
 
+    /**
+     * Comma separated list of jar file dependencies to be deployed with the application.
+     * The launcher will combine the list with built-in dependencies and those specified
+     * that are made available through the distributed file system to application master
+     * and child containers.
+     */
+    Attribute<String> LIBRARY_JARS = new Attribute<>(new StringCodec.String2String());
+
     @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(DAGContext.class);
   }

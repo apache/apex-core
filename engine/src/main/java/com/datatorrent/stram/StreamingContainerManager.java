@@ -3136,7 +3136,7 @@ public class StreamingContainerManager implements PlanContext
 
       lp.setAttribute(LogicalPlan.APPLICATION_ID, appId);
       lp.setAttribute(LogicalPlan.APPLICATION_PATH, newApp.assertAppPath());
-      lp.setAttribute(LogicalPlan.LIBRARY_JARS, newApp.getValue(LogicalPlan.LIBRARY_JARS));
+      lp.setAttribute(Context.DAGContext.LIBRARY_JARS, newApp.getValue(Context.DAGContext.LIBRARY_JARS));
       lp.setAttribute(LogicalPlan.ARCHIVES, newApp.getValue(LogicalPlan.ARCHIVES));
 
       this.finals = new FinalVars(finals, lp);
