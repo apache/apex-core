@@ -20,25 +20,43 @@ package com.datatorrent.stram.plan.physical;
 
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.validation.constraints.Min;
 
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.lang3.mutable.MutableInt;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.datatorrent.api.*;
+
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultPartition;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
+import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.PartitioningTest;
@@ -1482,6 +1500,98 @@ public class PhysicalPlanTest
       Assert.assertEquals("deploy", expDeploy, ctx.deploy);
     }
 
+  }
+
+  /**
+   * Test covering scenario when only new partitions are added during dynamic partitioning and there
+   * are no changes to existing partitions and partition mapping
+   */
+  @Test
+  public void testAugmentedDynamicPartitioning()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    dag.setAttribute(o1, OperatorContext.PARTITIONER, new TestAugmentingPartitioner<TestGeneratorInputOperator>(3));
+    dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
+    OperatorMeta o1Meta = dag.getMeta(o1);
+
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    OperatorMeta o2Meta = dag.getMeta(o2);
+
+    dag.addStream("o1.outport1", o1.outport, o2.inport1);
+
+    int maxContainers = 10;
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
+
+    TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    Assert.assertEquals("number of containers", 5, plan.getContainers().size());
+
+    List<PTOperator> o1ops = plan.getOperators(o1Meta);
+    Assert.assertEquals("number of o1 operators", 3, o1ops.size());
+
+    List<PTOperator> o2ops = plan.getOperators(o2Meta);
+    Assert.assertEquals("number of o2 operators", 1, o2ops.size());
+
+    List<PTOperator> uops = plan.getMergeOperators(o1Meta);
+
+    Set<PTOperator> expUndeploy = Sets.newLinkedHashSet();
+    expUndeploy.addAll(plan.getOperators(o2Meta));
+    expUndeploy.addAll(uops);
+
+    for (int i = 0; i < 2; ++i) {
+      PartitioningTest.PartitionLoadWatch.put(o1ops.get(i), 1);
+      plan.onStatusUpdate(o1ops.get(i));
+    }
+
+    ctx.backupRequests = 0;
+    ctx.events.remove(0).run();
+
+    Assert.assertEquals("number of containers", 7, plan.getContainers().size());
+
+    Assert.assertEquals("undeployed opertors", expUndeploy, ctx.undeploy);
+  }
+
+  private class TestAugmentingPartitioner<T> implements Partitioner<T>
+  {
+
+    int initalPartitionCount = 1;
+
+    private TestAugmentingPartitioner(int initialPartitionCount)
+    {
+      this.initalPartitionCount = initialPartitionCount;
+    }
+
+    @Override
+    public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, PartitioningContext context)
+    {
+      Collection<Partition<T>> newPartitions = Lists.newArrayList(partitions);
+      int numTotal = partitions.size();
+      Partition<T> first = partitions.iterator().next();
+      if (first.getStats() == null) {
+        // Initial partition
+        numTotal = initalPartitionCount;
+      } else {
+        for (Partition<T> p : partitions) {
+          // Assumption load is non-negative
+          numTotal += p.getLoad();
+        }
+      }
+      T paritionable = first.getPartitionedInstance();
+      for (int i = partitions.size(); i < numTotal; ++i) {
+        newPartitions.add(new DefaultPartition<T>(paritionable));
+      }
+      return newPartitions;
+    }
+
+    @Override
+    public void partitioned(Map<Integer, Partition<T>> partitions)
+    {
+
+    }
   }
 
   @Test
