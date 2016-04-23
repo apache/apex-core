@@ -976,11 +976,20 @@ public class PhysicalPlan implements Serializable
     Set<PTContainer> releaseContainers = Sets.newHashSet();
     assignContainers(newContainers, releaseContainers);
     updatePartitionsInfoForPersistOperator(this.dag);
-    this.undeployOpers.removeAll(newOpers.keySet());
-    //make sure all the new operators are included in deploy operator list
-    this.deployOpers.addAll(this.newOpers.keySet());
+
+    // redeploy dependencies of the new operators excluding the new operators themselves
+    Set<PTOperator> ndeps = getDependents(this.newOpers.keySet());
+    this.undeployOpers.addAll(ndeps);
+    this.undeployOpers.removeAll(this.newOpers.keySet());
+
     // include downstream dependencies of affected operators into redeploy
     Set<PTOperator> deployOperators = this.getDependents(this.deployOpers);
+    // include new operators and their dependencies for deployment
+    deployOperators.addAll(ndeps);
+
+    //make sure all the new operators are included in deploy operator list
+    this.deployOpers.addAll(this.newOpers.keySet());
+
     ctx.deploy(releaseContainers, this.undeployOpers, newContainers, deployOperators);
     this.newOpers.clear();
     this.deployOpers.clear();
