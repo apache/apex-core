@@ -1001,6 +1001,9 @@ public class PhysicalPlan implements Serializable
     // redeploy dependencies of the new operators excluding the new operators themselves
     Set<PTOperator> ndeps = getDependents(newOpers.keySet());
     ndeps.removeAll(newOpers.keySet());
+    // don't redeploy operators already going to be undeployed
+    ndeps.removeAll(this.undeployOpers);
+    // redeploy remaining dependencies
     this.undeployOpers.addAll(ndeps);
     this.deployOpers.addAll(ndeps);
     // include downstream dependencies of affected operators into redeploy
