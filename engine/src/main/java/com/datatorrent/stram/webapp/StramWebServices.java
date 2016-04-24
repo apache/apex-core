@@ -492,6 +492,34 @@ public class StramWebServices
     return new JSONObject(objectMapper.writeValueAsString(ci));
   }
 
+  @GET
+  @Path(PATH_PHYSICAL_PLAN_CONTAINERS + "/{containerId}" + "/stackTrace")
+  @Produces(MediaType.APPLICATION_JSON)
+  public String getContainerStackTrace(@PathParam("containerId") String containerId) throws Exception
+  {
+    init();
+
+    StreamingContainerAgent sca = dagManager.getContainerAgent(containerId);
+
+    if ( !sca.getContainerInfo().state.equals("ACTIVE") ) {
+      return "Container is not active";
+    }
+
+    String ret;
+
+    for ( int i = 0; i < 10; ++i ) {
+      ret = sca.getStackTrace();
+
+      if ( ret != null ) {
+        return ret;
+      }
+
+      Thread.sleep(300);
+    }
+
+    return "ERROR: Not able to get the stack trace.";
+  }
+
   @POST // not supported by WebAppProxyServlet, can only be called directly
   @Path(PATH_PHYSICAL_PLAN_CONTAINERS + "/{containerId}/kill")
   @Produces(MediaType.APPLICATION_JSON)
