@@ -253,6 +253,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
       return stats.id;
     }
 
+    public String stackTrace;
   }
 
   /**
@@ -380,6 +381,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
      * Set when dag purges a particular windowId as it's processed by all the operators.
      */
     public long committedWindowId = -1;
+
+    public boolean stackTraceRequired = false;
   }
 
   /**
