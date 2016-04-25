@@ -137,21 +137,21 @@ If you want to see more substantial Apex demo applications and the associated so
 
 1.  Check out the source code repositories:
 
-        git clone https://github.com/apache/incubator-apex-core
-        git clone https://github.com/apache/incubator-apex-malhar
+        git clone https://github.com/apache/apex-core
+        git clone https://github.com/apache/apex-malhar
 
 2.  Switch to the appropriate release branch and build each repository:
 
-        cd incubator-apex-core
+        cd apex-core
         mvn clean install -DskipTests
 
-        cd incubator-apex-malhar
+        cd apex-malhar
         mvn clean install -DskipTests
 
 
 The `install` argument to the `mvn` command installs resources from each project to your local maven repository (typically `.m2/repository` under your home directory), and **not** to the system directories, so Administrator privileges are not required. The  `-DskipTests` argument skips running unit tests since they take a long time. If this is a first-time installation, it might take several minutes to complete because maven will download a number of associated plugins.
 
-After the build completes, you should see the demo application package files in the target directory under each demo subdirectory in `incubator-apex-malhar/demos`.
+After the build completes, you should see the demo application package files in the target directory under each demo subdirectory in `apex-malhar/demos`.
 
 
 

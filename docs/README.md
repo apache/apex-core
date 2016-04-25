@@ -35,10 +35,10 @@ APEX_VERSION=3.3
 mkdocs build --clean
 
 # copy docs from site into target folder on apex-site
-cd ../incubator-apex-site
+cd ../apex-site
 git checkout asf-site
 rm -rf docs/apex-${APEX_VERSION}
-cp -r ../incubator-apex-core/site docs/apex-${APEX_VERSION}
+cp -r ../apex-core/site docs/apex-${APEX_VERSION}
 # Set this to be latest available docs version
 cd docs && ln -nsf apex-${APEX_VERSION} apex
 git add -A
@@ -46,4 +46,4 @@ git commit -m "Adding apex-${APEX_VERSION} documentation"
 git push
 ```
 
-2.  Go to [apex-site repository](https://github.com/apache/incubator-apex-site#contributing) and add the new link to the [docs.md](https://github.com/apache/incubator-apex-site/blob/master/src/md/docs.md) and follow committer steps to commit and push these changes, and deploy the site.
+2.  Go to [apex-site repository](https://github.com/apache/apex-site#contributing) and add the new link to the [docs.md](https://github.com/apache/apex-site/blob/master/src/md/docs.md) and follow committer steps to commit and push these changes, and deploy the site.

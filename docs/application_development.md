@@ -28,7 +28,7 @@ Running A Test Application
 
 If you are starting with the Apex platform for the first time,
 it can be informative to launch an existing application and see it run.
-One of the simplest examples provided in [Apex-Malhar repository](https://github.com/apache/incubator-apex-malhar) is a Pi demo application,
+One of the simplest examples provided in [Apex-Malhar repository](https://github.com/apache/apex-malhar) is a Pi demo application,
 which computes the value of PI using random numbers.  After [setting up development environment](apex_development_setup.md)
 Pi demo can be launched as follows:
 
@@ -796,7 +796,7 @@ project name “Malhar” as part of our efforts to foster community
 innovation. These operators can be used in a DAG as is, while others
 have properties that can be set to specify the
 desired computation. Those interested in details, should refer to
-[Apex-Malhar operator library](https://github.com/apache/incubator-apex-malhar).
+[Apex-Malhar operator library](https://github.com/apache/apex-malhar).
 
 
 
@@ -1236,7 +1236,7 @@ Create a json file under src/main/resources/app, For example `myApplication.json
 - The `operators` field is the list of operators the application has. You can specifiy the name, the Java class, and the properties of each operator here.
 - The `streams` field is the list of streams that connects the operators together to form the DAG. Each stream consists of the stream name, the operator and port that it connects from, and the list of operators and ports that it connects to. Note that you can connect from *one* output port of an operator to *multiple* different input ports of different operators.
 
-In Apex Malhar, there is an [example](https://github.com/apache/incubator-apex-malhar/blob/master/demos/pi/src/main/resources/app/PiJsonDemo.json) in the Pi Demo doing just that.
+In Apex Malhar, there is an [example](https://github.com/apache/apex-malhar/blob/master/demos/pi/src/main/resources/app/PiJsonDemo.json) in the Pi Demo doing just that.
 
 
 ### Properties File DAG Specification
@@ -2949,7 +2949,7 @@ Demos
 ==================
 
 The source code for the demos is available in the open-source
-[Apache Apex-Malhar repository](https://github.com/apache/incubator-apex-malhar).
+[Apache Apex-Malhar repository](https://github.com/apache/apex-malhar).
 All of these do computations in real-time. Developers are encouraged to
 review them as they use various features of the platform and provide an
 opportunity for quick learning.

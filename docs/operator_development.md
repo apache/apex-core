@@ -452,4 +452,4 @@ replaced.
 Malhar Operator Library
 ==========================
 
-To see the full list of Apex Malhar operators along with related documentation, visit [Apex Malhar on Github](https://github.com/apache/incubator-apex-malhar)
+To see the full list of Apex Malhar operators along with related documentation, visit [Apex Malhar on Github](https://github.com/apache/apex-malhar)

@@ -9,7 +9,7 @@ Apache Apex is a unified platform for big data stream and batch processing. Use 
 
 Please visit the [documentation section](http://apex.apache.org/docs.html). 
 
-[Malhar](https://github.com/apache/incubator-apex-malhar) is a library of application building blocks and examples that will help you build out your first Apex application quickly.
+[Malhar](https://github.com/apache/apex-malhar) is a library of application building blocks and examples that will help you build out your first Apex application quickly.
 
 Documentation build and hosting process is explained in [docs README](docs/README.md).
 
