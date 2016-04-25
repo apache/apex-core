@@ -28,7 +28,7 @@ appropriate values (make sure this is all on one line):
 
     $ mvn archetype:generate \
      -DarchetypeGroupId=org.apache.apex \
-     -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.2.0-incubating \
+     -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.4.0 \
      -DgroupId=com.example -Dpackage=com.example.mydtapp -DartifactId=mydtapp \
      -Dversion=1.0-SNAPSHOT
 
@@ -84,7 +84,7 @@ Alternatively you can perform the same steps within your IDE (IDEA IntelliJ, Ecl
 
 Group ID: org.apache.apex
 Artifact ID: apex-app-archetype
-Version: 3.2.0-incubating (or any later version)
+Version: 3.4.0 (or any later version)
 
 ## Writing Your Own App Package
 
@@ -435,7 +435,7 @@ section that looks like:
 
 ```
 <properties>
-  <apex.version>3.2.0-incubating</apex.version>
+  <apex.version>3.4.0</apex.version>
   <apex.apppackage.classpath\>lib*.jar</apex.apppackage.classpath>
 </properties>
 ```
@@ -535,7 +535,7 @@ package project using Maven by running the following command. Replace "com.examp
 
 ```
 $ mvn archetype:generate -DarchetypeGroupId=org.apache.apex \
-  -DarchetypeArtifactId=apex-conf-archetype -DarchetypeVersion=3.2.0-incubating \
+  -DarchetypeArtifactId=apex-conf-archetype -DarchetypeVersion=3.4.0 \
   -DgroupId=com.example -Dpackage=com.example.mydtconfig -DartifactId=mydtconfig \
   -Dversion=1.0-SNAPSHOT
 ```

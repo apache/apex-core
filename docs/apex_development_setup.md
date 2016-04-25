@@ -62,7 +62,7 @@ Confirm by running the following commands and comparing with output that show in
 Creating New Apex Project
 -------------------------------------------------------------------------------
 
-After development tools are configured, you can now use the maven archetype to create a basic Apache Apex project.  **Note:** When executing the commands below, replace `3.3.0-incubating` by [latest available version](http://apex.apache.org/downloads.html) of Apache Apex.
+After development tools are configured, you can now use the maven archetype to create a basic Apache Apex project.  **Note:** When executing the commands below, replace `3.4.0` by [latest available version](http://apex.apache.org/downloads.html) of Apache Apex.
 
 
 * **Windows** - Create a new Windows command file called `newapp.cmd` by copying the lines below, and execute it.  When you run this file, the properties will be displayed and you will be prompted with `` Y: :``; just press **Enter** to complete the project generation.  The caret (^) at the end of some lines indicates that a continuation line follows. 
@@ -72,7 +72,7 @@ After development tools are configured, you can now use the maven archetype to c
         setlocal
         mvn archetype:generate ^
          -DarchetypeGroupId=org.apache.apex ^
-         -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.3.0-incubating ^
+         -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.4.0 ^
          -DgroupId=com.example -Dpackage=com.example.myapexapp -DartifactId=myapexapp ^
          -Dversion=1.0-SNAPSHOT
         endlocal
@@ -82,7 +82,7 @@ After development tools are configured, you can now use the maven archetype to c
 
         mvn archetype:generate \
          -DarchetypeGroupId=org.apache.apex \
-         -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.2.0-incubating \
+         -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.4.0 \
          -DgroupId=com.example -Dpackage=com.example.myapexapp -DartifactId=myapexapp \
          -Dversion=1.0-SNAPSHOT
 
