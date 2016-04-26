@@ -47,7 +47,6 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   {
     super();
     conf = null;
-    localBasePath = null;
   }
 
   public AsyncFSStorageAgent(String path, Configuration conf)
@@ -63,19 +62,24 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   public AsyncFSStorageAgent(String localBasePath, String path, Configuration conf)
   {
     this(path, conf);
+    this.localBasePath = localBasePath;
   }
 
   @Override
   public void save(final Object object, final int operatorId, final long windowId) throws IOException
   {
-    // save() is only called by one thread in the worker container so the following is okay
-    if (this.localBasePath == null) {
-      this.localBasePath = Files.createTempDirectory("chkp").toString();
-      logger.info("using {} as the basepath for checkpointing.", this.localBasePath);
-    }
     if (syncCheckpoint) {
       super.save(object, operatorId, windowId);
       return;
+    }
+
+    if (localBasePath == null) {
+      synchronized (this) {
+        if (localBasePath == null) {
+          localBasePath = Files.createTempDirectory("chkp").toString();
+          logger.info("using {} as the basepath for checkpointing.", localBasePath);
+        }
+      }
     }
     String operatorIdStr = String.valueOf(operatorId);
     File directory = new File(localBasePath, operatorIdStr);
