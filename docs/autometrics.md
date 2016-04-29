@@ -7,6 +7,8 @@ Metrics collect various statistical information about a process which can be ver
 # Specifying AutoMetrics in an Operator
 An *AutoMetric* can be any object. It can be of a primitive type - int, long, etc. or a complex one. A field or a `get` method in an operator can be annotated with `@AutoMetric` to specify that its value is a metric. After every application end window, the platform collects the values of these fields/methods in a map and sends it to application master.
 
+<a name="lineReceiver"></a>
+
 ```java
 public class LineReceiver extends BaseOperator
 {
@@ -174,4 +176,4 @@ GET /ws/v2/applications/{appid}/logicalPlan/operators/{opName}
 }
 ```
 
-However, just like AutoMetrics, the Gateway only provides the latest metrics.  For historical metrics, we will need the help of [App Data Tracker](http://docs.datatorrent.com/autometrics/#app-data-tracker).
+However, just like AutoMetrics, the Gateway only provides the latest metrics.  For historical metrics, we will need the help of [App Data Tracker](http://docs.datatorrent.com/app_data_tracker/).
