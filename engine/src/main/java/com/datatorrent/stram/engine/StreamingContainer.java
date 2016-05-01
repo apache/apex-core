@@ -117,6 +117,7 @@ import com.datatorrent.stram.stream.MuxStream;
 import com.datatorrent.stram.stream.OiOStream;
 import com.datatorrent.stram.stream.PartitionAwareSink;
 import com.datatorrent.stram.stream.PartitionAwareSinkForPersistence;
+import com.datatorrent.stram.util.StackTrace;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
@@ -609,7 +610,7 @@ public class StreamingContainer extends YarnContainerMain
     long tokenLifeTime = (long)(containerContext.getValue(LogicalPlan.TOKEN_REFRESH_ANTICIPATORY_FACTOR) * containerContext.getValue(LogicalPlan.HDFS_TOKEN_LIFE_TIME));
     long expiryTime = System.currentTimeMillis();
     final Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
-    String stackTrace = "default";
+    String stackTrace = null;
     Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
     while (iter.hasNext()) {
       Token<?> token = iter.next();
@@ -698,18 +699,7 @@ public class StreamingContainer extends YarnContainerMain
         rsp = umbilical.processHeartbeat(msg);
 
         if ( rsp.stackTraceRequired ) {
-          Map<Thread, StackTraceElement[]> stackTraces = Thread.getAllStackTraces();
-
-          for ( Map.Entry<Thread,StackTraceElement[]> elements : stackTraces.entrySet() ) {
-
-            String ret = "";
-
-            for ( int i = 0; i < elements.getValue().length; ++i ) {
-              ret += elements.getValue()[i].toString() + "\n";
-            }
-
-            stackTrace += elements.getKey().toString() + ret + "\n";
-          }
+          stackTrace = StackTrace.getJsonFormat();
         } else {
           stackTrace = null;
         }

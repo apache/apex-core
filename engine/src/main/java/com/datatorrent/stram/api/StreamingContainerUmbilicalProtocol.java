@@ -254,7 +254,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
     }
 
     public String stackTrace;
-
   }
 
   /**

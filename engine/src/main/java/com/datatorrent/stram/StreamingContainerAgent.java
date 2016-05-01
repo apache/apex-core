@@ -477,5 +477,4 @@ public class StreamingContainerAgent
   }
 
   public volatile String containerStackTrace = null;
-
 }
