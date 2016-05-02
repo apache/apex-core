@@ -117,6 +117,7 @@ import com.datatorrent.stram.stream.MuxStream;
 import com.datatorrent.stram.stream.OiOStream;
 import com.datatorrent.stram.stream.PartitionAwareSink;
 import com.datatorrent.stram.stream.PartitionAwareSinkForPersistence;
+import com.datatorrent.stram.util.StackTrace;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
@@ -609,6 +610,7 @@ public class StreamingContainer extends YarnContainerMain
     long tokenLifeTime = (long)(containerContext.getValue(LogicalPlan.TOKEN_REFRESH_ANTICIPATORY_FACTOR) * containerContext.getValue(LogicalPlan.HDFS_TOKEN_LIFE_TIME));
     long expiryTime = System.currentTimeMillis();
     final Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
+    String stackTrace = null;
     Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
     while (iter.hasNext()) {
       Token<?> token = iter.next();
@@ -649,6 +651,7 @@ public class StreamingContainer extends YarnContainerMain
 
       ContainerHeartbeatResponse rsp;
       do {
+
         ContainerStats stats = new ContainerStats(containerId);
         // gather heartbeat info for all operators
         for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
@@ -690,8 +693,19 @@ public class StreamingContainer extends YarnContainerMain
         // heartbeat call and follow-up processing
         //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
         msg.sentTms = System.currentTimeMillis();
+
+        msg.stackTrace = stackTrace;
+
         rsp = umbilical.processHeartbeat(msg);
+
+        if ( rsp.stackTraceRequired ) {
+          stackTrace = StackTrace.getJsonFormat();
+        } else {
+          stackTrace = null;
+        }
+
         processHeartbeatResponse(rsp);
+
         if (rsp.hasPendingRequests) {
           logger.info("Waiting for pending request.");
           synchronized (this.heartbeatTrigger) {

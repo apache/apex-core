@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
@@ -91,6 +92,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigValidator;
 import com.datatorrent.stram.util.JSONSerializationProvider;
+import com.datatorrent.stram.util.StackTrace;
 
 /**
  *
@@ -490,6 +492,42 @@ public class StramWebServices
       }
     }
     return new JSONObject(objectMapper.writeValueAsString(ci));
+  }
+
+  @GET
+  @Path(PATH_PHYSICAL_PLAN_CONTAINERS + "/{containerId}" + "/stackTrace")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getContainerStackTrace(@PathParam("containerId") String containerId) throws Exception
+  {
+    init();
+
+    if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
+      return new JSONObject(StackTrace.getJsonFormat());
+    }
+
+    StreamingContainerAgent sca = dagManager.getContainerAgent(containerId);
+
+    if (sca == null) {
+      throw new NotFoundException();
+    }
+
+    if (!sca.getContainerInfo().state.equals("ACTIVE")) {
+      throw new RuntimeException("Container is not active");
+    }
+
+    int timeOut = 1000;
+
+    for (int i = 0; i < 10; ++i) {
+      String result = sca.getStackTrace();
+
+      if (result != null) {
+        return new JSONObject(result);
+      }
+
+      Thread.sleep(timeOut);
+    }
+
+    throw new TimeoutException("Not able to get the stack trace");
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
