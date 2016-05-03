@@ -770,6 +770,10 @@ public class ApexCli
         null,
         new Arg[]{new Arg("operator-id"), new Arg("start-time")},
         "Get tuple recording info"));
+    connectedCommands.put("get-container-stacktrace", new CommandSpec(new GetContainerStackTrace(),
+        null,
+        new Arg[]{new Arg("container-id")},
+        "Get the stack trace for the container"));
 
     //
     // Logical plan change command specification starts here
@@ -3361,6 +3365,28 @@ public class ApexCli
       response.put("state", appReport.getYarnApplicationState().name());
       response.put("trackingUrl", appReport.getTrackingUrl());
       response.put("finalStatus", appReport.getFinalApplicationStatus());
+      printJson(response);
+    }
+
+  }
+
+  private class GetContainerStackTrace implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String containerLongId = getContainerLongId(args[1]);
+      if (containerLongId == null) {
+        throw new CliException("Container " + args[1] + " not found");
+      }
+
+      JSONObject response;
+      try {
+        response = getResource(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS + "/" + args[1] + "/" + StramWebServices.PATH_STACKTRACE, currentApp);
+      } catch (Exception ex) {
+        throw new CliException("Webservice call to AppMaster failed.", ex);
+      }
+
       printJson(response);
     }
 

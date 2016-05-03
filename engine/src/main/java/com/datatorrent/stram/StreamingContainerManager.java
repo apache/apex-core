@@ -1489,6 +1489,8 @@ public class StreamingContainerManager implements PlanContext
       });
     }
 
+    sca.containerStackTrace = heartbeat.stackTrace;
+
     if (heartbeat.restartRequested) {
       LOG.error("Container {} restart request", sca.container.getExternalId());
       containerStopRequests.put(sca.container.getExternalId(), sca.container.getExternalId());
@@ -1820,6 +1822,9 @@ public class StreamingContainerManager implements PlanContext
     }
     rsp.nodeRequests = requests;
     rsp.committedWindowId = committedWindowId;
+    rsp.stackTraceRequired = sca.stackTraceRequested;
+    sca.stackTraceRequested = false;
+
     return rsp;
   }
 

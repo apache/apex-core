@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
@@ -80,6 +81,7 @@ import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StringCodec;
 import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.StreamingContainerAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.StringCodecs;
@@ -122,7 +124,11 @@ public class StramWebServices
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   public static final String PATH_ALERTS = "alerts";
   public static final String PATH_LOGGERS = "loggers";
+  public static final String PATH_STACKTRACE = "stackTrace";
   public static final long WAIT_TIME = 5000;
+  public static final long STACK_TRACE_WAIT_TIME = 1000;
+  public static final long STACK_TRACE_ATTEMPTS = 10;
+
 
   //public static final String PATH_ACTION_OPERATOR_CLASSES = "actionOperatorClasses";
   private StramAppContext appCtx;
@@ -490,6 +496,40 @@ public class StramWebServices
       }
     }
     return new JSONObject(objectMapper.writeValueAsString(ci));
+  }
+
+  @GET
+  @Path(PATH_PHYSICAL_PLAN_CONTAINERS + "/{containerId}/" + PATH_STACKTRACE)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getContainerStackTrace(@PathParam("containerId") String containerId) throws Exception
+  {
+    init();
+
+    if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
+      return StramUtils.getStackTrace();
+    }
+
+    StreamingContainerAgent sca = dagManager.getContainerAgent(containerId);
+
+    if (sca == null) {
+      throw new NotFoundException("Container not found.");
+    }
+
+    if (!sca.getContainerInfo().state.equals("ACTIVE")) {
+      throw new NotFoundException("Container is not active.");
+    }
+
+    for (int i = 0; i < STACK_TRACE_ATTEMPTS; ++i) {
+      String result = sca.getStackTrace();
+
+      if (result != null) {
+        return new JSONObject(result);
+      }
+
+      Thread.sleep(STACK_TRACE_WAIT_TIME);
+    }
+
+    throw new TimeoutException("Not able to get the stack trace");
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly

@@ -21,6 +21,12 @@ package com.datatorrent.stram;
 
 import java.util.Map;
 
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.log4j.DTLoggerFactory;
 
@@ -35,6 +41,8 @@ import com.datatorrent.api.StreamingApplication;
  */
 public abstract class StramUtils
 {
+  private static final Logger LOG = LoggerFactory.getLogger(StramUtils.class);
+
   public static <T> Class<? extends T> classForName(String className, Class<T> superClass)
   {
     try {
@@ -79,6 +87,50 @@ public abstract class StramUtils
       }
       DTLoggerFactory.getInstance().initialize();
     }
+  }
+
+  public static JSONObject getStackTrace()
+  {
+    Map<Thread, StackTraceElement[]> stackTraces = Thread.getAllStackTraces();
+
+    JSONObject jsonObject = new JSONObject();
+    JSONArray jsonArray = new JSONArray();
+
+    for (Map.Entry<Thread, StackTraceElement[]> elements : stackTraces.entrySet()) {
+
+      JSONObject jsonThread = new JSONObject();
+
+      Thread thread = elements.getKey();
+
+      try {
+
+        jsonThread.put("name", thread.getName());
+        jsonThread.put("state", thread.getState());
+        jsonThread.put("id", thread.getId());
+
+        JSONArray stackTraceElements = new JSONArray();
+
+        for (StackTraceElement stackTraceElement : elements.getValue()) {
+
+          stackTraceElements.put(stackTraceElement.toString());
+        }
+
+        jsonThread.put("stackTraceElements", stackTraceElements);
+
+        jsonArray.put(jsonThread);
+      } catch (Exception ex) {
+        LOG.warn("Getting stack trace for the thread " + thread.getName() + " failed.");
+        continue;
+      }
+    }
+
+    try {
+      jsonObject.put("threads", jsonArray);
+    } catch (JSONException e) {
+      throw new RuntimeException(e);
+    }
+
+    return jsonObject;
   }
 
 }

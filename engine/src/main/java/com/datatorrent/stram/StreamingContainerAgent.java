@@ -96,6 +96,7 @@ public class StreamingContainerAgent
   }
 
   boolean shutdownRequested = false;
+  boolean stackTraceRequested = false;
 
   Set<PTOperator> deployOpers = Sets.newHashSet();
   Set<Integer> undeployOpers = Sets.newHashSet();
@@ -468,4 +469,12 @@ public class StreamingContainerAgent
     return ci;
   }
 
+  public String getStackTrace()
+  {
+
+    stackTraceRequested = true;
+    return containerStackTrace;
+  }
+
+  public volatile String containerStackTrace = null;
 }
