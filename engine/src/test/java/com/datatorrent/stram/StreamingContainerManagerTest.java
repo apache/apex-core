@@ -36,6 +36,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.io.DataInputByteBuffer;
@@ -922,6 +924,7 @@ public class StreamingContainerManagerTest
   @Test
   public void testAppDataPush() throws Exception
   {
+
     final String topic = "xyz";
     final List<String> messages = new ArrayList<>();
     EmbeddedWebSocketServer server = new EmbeddedWebSocketServer(0);
@@ -946,21 +949,38 @@ public class StreamingContainerManagerTest
     });
     try {
       server.start();
+      // allows time for the server to start
+      Thread.sleep(2000);
       int port = server.getPort();
       TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
       GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
       dag.addStream("o1.outport", o1.outport, o2.inport1);
       dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, new AutoMetricBuiltInTransport(topic));
-      dag.setAttribute(LogicalPlan.GATEWAY_CONNECT_ADDRESS, "localhost:" + port);
-      dag.setAttribute(LogicalPlan.PUBSUB_CONNECT_TIMEOUT_MILLIS, 2000);
+      dag.setAttribute(LogicalPlan.GATEWAY_CONNECT_ADDRESS, "0.0.0.0:" + port);
+      dag.setAttribute(LogicalPlan.PUBSUB_CONNECT_TIMEOUT_MILLIS, 30000);
+      LOG.info("GATEWAY_CONNECT_ADDRESS is {}", dag.getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS));
 
       StramLocalCluster lc = new StramLocalCluster(dag);
       StreamingContainerManager dnmgr = lc.dnmgr;
       StramAppContext appContext = new StramTestSupport.TestAppContext(dag.getAttributes());
 
       AppDataPushAgent pushAgent = new AppDataPushAgent(dnmgr, appContext);
-      pushAgent.init();
-      pushAgent.pushData();
+      int i = 0;
+      while (true) {
+        // to get around travis problem with connecting to localhost
+        // http://stackoverflow.com/questions/32172925/travis-ci-sporadic-timeouts-to-localhost
+        try {
+          pushAgent.init();
+          pushAgent.pushData();
+          break;
+        } catch (IOException ex) {
+          if (i++ >= 10) {
+            throw ex;
+          } else {
+            LOG.warn("Retrying...");
+          }
+        }
+      }
       Thread.sleep(1000);
       Assert.assertTrue(messages.size() > 0);
       pushAgent.close();
@@ -1108,4 +1128,6 @@ public class StreamingContainerManagerTest
         criticalPathInfo.latency > latency);
     lc.shutdown();
   }
+
+  private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerManagerTest.class);
 }
