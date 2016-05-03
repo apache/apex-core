@@ -387,6 +387,11 @@ public abstract class StramTestSupport
     return createDAG(testMeta, "");
   }
 
+  public static boolean isInTravis()
+  {
+    return "1".equals(System.getenv("TRAVIS"));
+  }
+
   public static class MemoryStorageAgent implements StorageAgent, Serializable
   {
     static class OperatorWindowIdPair implements Serializable
