@@ -1,13 +1,13 @@
 
 
-Apache Apex (incubating)
+Apache Apex
 ========================
 
 Apache Apex is a unified platform for big data stream and batch processing. Use cases include ingestion, ETL, real-time analytics, alerts and real-time actions. Apex is a Hadoop-native YARN implementation and uses HDFS by default. It simplifies development and productization of Hadoop applications by reducing time to market. Key features include Enterprise Grade Operability with Fault Tolerance,  State Management, Event Processing Guarantees, No Data Loss, In-memory Performance & Scalability and Native Window Support.
 
 ##Documentation
 
-Please visit the [documentation section](http://apex.incubator.apache.org/docs.html). 
+Please visit the [documentation section](http://apex.apache.org/docs.html). 
 
 [Malhar](https://github.com/apache/incubator-apex-malhar) is a library of application building blocks and examples that will help you build out your first Apex application quickly.
 
@@ -15,7 +15,7 @@ Documentation build and hosting process is explained in [docs README](docs/READM
 
 ##Contributing
 
-This project welcomes new contributors.  If you would like to help by adding new features, enhancements or fixing bugs, check out the [contributing guidelines](http://apex.incubator.apache.org/contributing.html).
+This project welcomes new contributors.  If you would like to help by adding new features, enhancements or fixing bugs, check out the [contributing guidelines](http://apex.apache.org/contributing.html).
 
 You acknowledge that your submissions to this repository are made pursuant the terms of the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0.html) and constitute "Contributions," as defined therein, and you represent and warrant that you have the right and authority to do so.
  
@@ -56,5 +56,5 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 ##Contact
 
-Please visit http://apex.incubator.apache.org and [subscribe](http://apex.incubator.apache.org/community.html) to the mailing lists.
+Please visit http://apex.apache.org and [subscribe](http://apex.apache.org/community.html) to the mailing lists.
 

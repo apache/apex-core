@@ -1,6 +1,6 @@
 # Apex Documentation
 
-Apex documentation repository for content available on http://apex.incubator.apache.org/docs/
+Apex documentation repository for content available on http://apex.apache.org/docs/
 
 Documentation is written in [Markdown](https://guides.github.com/features/mastering-markdown/) format and statically generated into HTML using [MkDocs](http://www.mkdocs.org/).  All documentation is located in the [docs](docs) directory, and [mkdocs.yml](mkdocs.yml) file describes the navigation structure of the published documentation.
 

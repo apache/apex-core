@@ -1,4 +1,4 @@
-Apache Apex (Incubating)
+Apache Apex
 ================================================================================
 
 Apex is a Hadoop YARN native big data processing platform, enabling real time stream as well as batch processing for your big data.  Apex provides the following benefits:
@@ -14,6 +14,6 @@ Platform has been demonstated to scale linearly across Hadoop clusters under ext
 
 The core Apex platform is supplemented by Malhar, a library of connector and logic functions, enabling rapid application development.  These operators and modules provide access to HDFS, S3, NFS, FTP, and other file systems; Kafka, ActiveMQ, RabbitMQ, JMS, and other message systems; MySql, Cassandra, MongoDB, Redis, HBase, CouchDB, generic JDBC, and other database connectors.  In addition to the operators, the library contains a number of demos applications, demonstrating operator features and capabilities.  To see the full list of available operators and related documentation, visit [Apex Malhar on Github](https://github.com/apache/incubator-apex-malhar)
 
-For additional information visit [Apache Apex (incubating)](http://apex.incubator.apache.org/).
+For additional information visit [Apache Apex](http://apex.apache.org/).
 
-[![](favicon.ico)](http://apex.incubator.apache.org/)
+[![](favicon.ico)](http://apex.apache.org/)
