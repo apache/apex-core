@@ -37,6 +37,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
@@ -329,6 +331,7 @@ public class DelayOperatorTest
     if (StramTestSupport.isInTravis()) {
       // disable this test in travis because the failure is apparently intermittently not invoked only on travis
       // We should remove this when we find a solution to this.
+      LOG.info("Test testFibonacciRecovery1 is disabled in Travis");
       return;
     }
     LogicalPlan dag = StramTestSupport.createDAG(testMeta);
@@ -368,6 +371,7 @@ public class DelayOperatorTest
     if (StramTestSupport.isInTravis()) {
       // disable this test in travis because the failure is apparently intermittently not invoked only on travis
       // We should remove this when we find a solution to this.
+      LOG.info("Test testFibonacciRecovery2 is disabled in Travis");
       return;
     }
     LogicalPlan dag = StramTestSupport.createDAG(testMeta);
@@ -481,5 +485,7 @@ public class DelayOperatorTest
 
     dag.validate();
   }
+
+  private static final Logger LOG = LoggerFactory.getLogger(DelayOperatorTest.class);
 
 }

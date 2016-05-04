@@ -36,6 +36,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.io.DataInputByteBuffer;
@@ -926,6 +928,7 @@ public class StreamingContainerManagerTest
       // disable this test in travis because of an intermittent problem similar to this:
       // http://stackoverflow.com/questions/32172925/travis-ci-sporadic-timeouts-to-localhost
       // We should remove this when we find a solution to this.
+      LOG.info("Test testAppDataPush is disabled in Travis");
       return;
     }
     final String topic = "xyz";
@@ -1114,4 +1117,6 @@ public class StreamingContainerManagerTest
         criticalPathInfo.latency > latency);
     lc.shutdown();
   }
+
+  private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerManagerTest.class);
 }
