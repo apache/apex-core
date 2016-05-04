@@ -1736,11 +1736,11 @@ Affinity Rules
 ------------------
 Affinity Rules in Apex provide a way to specify hints on how operators should be deployed in a cluster. Sometimes you may want to allocate certain operators on the same or different nodes for performance or other reasons. Affinity rules can be used in such cases to make sure these considerations are honored by platform.
 
-There can be two types of rules: Affinity and Anti-affinity rules. Affinity rule indicates that group of operators in the rule should be allocated together.  On the other hand, anti-affinity rule indicates that the group of operators should be allocated separately.
+There can be two types of rules: Affinity and anti-affinity rules. Affinity rule indicates that the group of operators in the rule should be allocated together.  On the other hand, anti-affinity rule indicates that the group of operators should be allocated separately.
 
 ### Specifying Affinity Rules
 A list of Affinity Rules can be specified for an application by setting attribute: DAGContext.AFFINITY_RULES_SET.
-Here is code snippet for setting Affinity rules for an application in populateDag method:
+Here is an example for setting Affinity rules for an application in the populateDag method:
 ```java
 AffinityRulesSet ruleSet = new AffinityRulesSet();
 List<AffinityRule> rules = new ArrayList<>();
@@ -1751,7 +1751,7 @@ ruleSet.setAffinityRules(rules);
 dag.setAttribute(DAGContext.AFFINITY_RULES_SET, ruleSet);
 ```
 
-As shown in the example above, each rule has a type Affinity or Anti_Affinity indicating whether operators in group should be allocated together or separate. These can be applied on any operators in DAG.
+As shown in the example above, each rule has a type AFFINITY or ANTI_AFFINITY indicating whether operators in the group should be allocated together or separate. These can be applied on any operators in DAG.
 
 The operators for rule can be provided either as a list of 2 or more operator names or as a regular expression. The regex should match at least two operators in DAG to be considered a valid rule. Here is example of rule with regex to allocate all the operators in DAG on the same node:
 ```java
@@ -1768,9 +1768,9 @@ To indicate affinity or anti-affinity between partitions of a single operator, l
 // Rule for Partitions of TestOperator should not be allocated on the same node
 rules.add(new AffinityRule(Type.ANTI_AFFINITY, Locality.NODE_LOCAL, false, "TestOperator", "TestOperator"));
 ```
-Another important parameter to indicate affinity rule is the Locality constraint. Similar to Stream locality, the affinity rule will be applied at either THREAD_LOCAL, CONTAINER_LOCAL or NODE_LOCAL level. Support for RACK_LOCAL is not added yet.
+Another important parameter to indicate affinity rule is the locality constraint. Similar to stream locality, the affinity rule will be applied at either THREAD_LOCAL, CONTAINER_LOCAL or NODE_LOCAL level. Support for RACK_LOCAL is not added yet.
 
-The last configurable parameter for Affinity Rules is strict or preferred rule. A true value for this parameter indicates that the rule should be relaxed in case sufficient resources are not available.
+The last configurable parameter for affinity rules is strict or preferred rule. A true value for this parameter indicates that the rule should be relaxed in case sufficient resources are not available.
 
 ### Specifying affinity rules from properties
 The same set of rules can also be added from properties.xml by setting value for attribute DAGContext.AFFINITY_RULES_SET as JSON string.  For example:
@@ -1808,7 +1808,7 @@ The same set of rules can also be added from properties.xml by setting value for
     }
 </property>
 ```
-Affinity rules which conflict with Stream locality or Host preference are validated during DAG validation phase.
+Affinity rules which conflict with stream locality or host preference are validated during DAG validation phase.
 
 Validating an Application
 --------------------------------------
