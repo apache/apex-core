@@ -22,6 +22,7 @@ import java.lang.reflect.Field;
 import java.util.LinkedHashMap;
 
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.GenericOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -80,7 +81,7 @@ public abstract class Operators
     }
   }
 
-  public static void describe(Operator operator, OperatorDescriptor descriptor)
+  public static void describe(GenericOperator operator, OperatorDescriptor descriptor)
   {
     for (Class<?> c = operator.getClass(); c != Object.class; c = c.getSuperclass()) {
       Field[] fields = c.getDeclaredFields();

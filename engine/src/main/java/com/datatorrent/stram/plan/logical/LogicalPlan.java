@@ -63,13 +63,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.input.ClassLoaderObjectInputStream;
+import org.apache.commons.lang.ClassUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Sets;
 
 import com.datatorrent.api.AffinityRule;
@@ -195,7 +195,6 @@ public class LogicalPlan implements Serializable, DAG
   private final List<OperatorMeta> rootOperators = new ArrayList<>();
   private final List<OperatorMeta> leafOperators = new ArrayList<>();
   private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
-  private transient Map<String, ArrayListMultimap<OutputPort<?>, InputPort<?>>> streamLinks = new HashMap<>();
 
   @Override
   public Attribute.AttributeMap getAttributes()
@@ -489,6 +488,10 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public StreamMeta setSource(Operator.OutputPort<?> port)
     {
+      if (port instanceof ProxyOutputPort) {
+        proxySource = port;
+        return this;
+      }
       OutputPortMeta portMeta = assertGetPortMeta(port);
       OperatorMeta om = portMeta.getOperatorMeta();
       if (om.outputStreams.containsKey(portMeta)) {
@@ -508,6 +511,10 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public StreamMeta addSink(Operator.InputPort<?> port)
     {
+      if (port instanceof ProxyInputPort) {
+        proxySinks.add(port);
+        return this;
+      }
       InputPortMeta portMeta = assertGetPortMeta(port);
       OperatorMeta om = portMeta.getOperatorWrapper();
       String portName = portMeta.getPortName();
@@ -771,12 +778,40 @@ public class LogicalPlan implements Serializable, DAG
         removeOperator(persistOpMeta.getOperator());
       }
     }
+
+    private OutputPort<?> proxySource = null;
+    private List<InputPort<?>> proxySinks = new ArrayList<>();
+
+    /**
+     * Go over each Proxy port and find out the actual port connected to the ProxyPort
+     * and update StreamMeta.
+     */
+    private void resolvePorts()
+    {
+      if (proxySource != null && proxySource instanceof ProxyOutputPort) {
+        OutputPort<?> outputPort = proxySource;
+        while (outputPort instanceof ProxyOutputPort) {
+          outputPort = ((ProxyOutputPort<?>)outputPort).get();
+        }
+        setSource(outputPort);
+      }
+
+      for (InputPort<?> inputPort : proxySinks) {
+        while (inputPort instanceof ProxyInputPort) {
+          inputPort = ((ProxyInputPort<?>)inputPort).get();
+        }
+        addSink(inputPort);
+      }
+
+      proxySource = null;
+      proxySinks.clear();
+    }
   }
 
   /**
    * Operator meta object.
    */
-  public final class OperatorMeta implements DAG.OperatorMeta, Serializable
+  public class OperatorMeta implements DAG.OperatorMeta, Serializable
   {
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<>();
@@ -789,7 +824,7 @@ public class LogicalPlan implements Serializable, DAG
     private final LogicalOperatorStatus status;
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
-    private transient Operator operator;
+    private transient GenericOperator operator;
     private MetricAggregatorMeta metricAggregatorMeta;
     private String moduleName;  // Name of the module which has this operator. null if this is a top level operator.
 
@@ -799,13 +834,14 @@ public class LogicalPlan implements Serializable, DAG
      *  other value => represents the root oio node for this node
      */
     private transient Integer oioRoot = null;
+    private ClassUtils genricOperator;
 
-    private OperatorMeta(String name, Operator operator)
+    private OperatorMeta(String name, GenericOperator operator)
     {
       this(name, operator, new DefaultAttributeMap());
     }
 
-    private OperatorMeta(String name, Operator operator, Attribute.AttributeMap attributeMap)
+    private OperatorMeta(String name, GenericOperator operator, Attribute.AttributeMap attributeMap)
     {
       LOG.debug("Initializing {} as {}", name, operator.getClass().getName());
       this.operatorAnnotation = operator.getClass().getAnnotation(OperatorAnnotation.class);
@@ -858,7 +894,7 @@ public class LogicalPlan implements Serializable, DAG
       input.defaultReadObject();
       // TODO: not working because - we don't have the storage agent in parent attribuet map
       //operator = (Operator)getValue2(OperatorContext.STORAGE_AGENT).load(id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
-      operator = (Operator)FSStorageAgent.retrieve(input);
+      operator = (GenericOperator)FSStorageAgent.retrieve(input);
     }
 
     @Override
@@ -1000,6 +1036,7 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
 
+
     private class PortMapping implements Operators.OperatorDescriptor
     {
       private final Map<Operator.InputPort<?>, InputPortMeta> inPortMap = new HashMap<>();
@@ -1113,6 +1150,11 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public Operator getOperator()
     {
+      return (Operator)operator;
+    }
+
+    public GenericOperator getGenericOperator()
+    {
       return operator;
     }
 
@@ -1198,88 +1240,26 @@ public class LogicalPlan implements Serializable, DAG
   /**
    * Module meta object.
    */
-  public final class ModuleMeta implements DAG.ModuleMeta, Serializable
+  public final class ModuleMeta extends OperatorMeta implements Serializable
   {
-    private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<>();
-    private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<>();
-    private final Attribute.AttributeMap attributes;
-    @NotNull
-    private String name;
-    private transient Module module;
     private ModuleMeta parent;
     private LogicalPlan dag = null;
     private transient String fullName;
+    //type-casted reference to the module.
+    private transient Module module;
+    private transient boolean flattened = false;
 
     private ModuleMeta(String name, Module module)
     {
-      LOG.debug("Initializing {} as {}", name, module.getClass().getName());
-      this.name = name;
+      super(name, module);
       this.module = module;
-      this.attributes = new DefaultAttributeMap();
+      LOG.debug("Initializing {} as {}", name, module.getClass().getName());
       this.dag = new LogicalPlan();
-    }
-
-    @Override
-    public String getName()
-    {
-      return name;
-    }
-
-    @Override
-    public Module getModule()
-    {
-      return module;
-    }
-
-    @Override
-    public Attribute.AttributeMap getAttributes()
-    {
-      return attributes;
-    }
-
-    @Override
-    public <T> T getValue(Attribute<T> key)
-    {
-      return attributes.get(key);
-    }
-
-    @Override
-    public void setCounters(Object counters)
-    {
-
-    }
-
-    @Override
-    public void sendMetrics(Collection<String> metricNames)
-    {
-
-    }
-
-    public LinkedHashMap<InputPortMeta, StreamMeta> getInputStreams()
-    {
-      return inputStreams;
-    }
-
-    public LinkedHashMap<OutputPortMeta, StreamMeta> getOutputStreams()
-    {
-      return outputStreams;
     }
 
     public LogicalPlan getDag()
     {
       return dag;
-    }
-
-    private void writeObject(ObjectOutputStream out) throws IOException
-    {
-      out.defaultWriteObject();
-      FSStorageAgent.store(out, module);
-    }
-
-    private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException
-    {
-      input.defaultReadObject();
-      module = (Module)FSStorageAgent.retrieve(input);
     }
 
     /**
@@ -1291,6 +1271,10 @@ public class LogicalPlan implements Serializable, DAG
      */
     public void flattenModule(LogicalPlan parentDAG, Configuration conf)
     {
+      if (flattened) {
+        return;
+      }
+
       module.populateDAG(dag, conf);
       for (ModuleMeta subModuleMeta : dag.getAllModules()) {
         subModuleMeta.setParent(this);
@@ -1298,6 +1282,7 @@ public class LogicalPlan implements Serializable, DAG
       }
       dag.applyStreamLinks();
       parentDAG.addDAGToCurrentDAG(this);
+      flattened = true;
     }
 
     /**
@@ -1317,9 +1302,9 @@ public class LogicalPlan implements Serializable, DAG
       }
 
       if (parent == null) {
-        fullName = name;
+        fullName = getName();
       } else {
-        fullName = parent.getFullName() + MODULE_NAMESPACE_SEPARATOR + name;
+        fullName = parent.getFullName() + MODULE_NAMESPACE_SEPARATOR + getName();
       }
       return fullName;
     }
@@ -1401,53 +1386,25 @@ public class LogicalPlan implements Serializable, DAG
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {
     StreamMeta s = addStream(id);
-    id = s.id;
-    ArrayListMultimap<OutputPort<?>, InputPort<?>> streamMap = ArrayListMultimap.create();
-    if (!(source instanceof ProxyOutputPort)) {
-      s.setSource(source);
-    }
+    s.setSource(source);
     for (Operator.InputPort<?> sink : sinks) {
-      if (source instanceof ProxyOutputPort || sink instanceof ProxyInputPort) {
-        streamMap.put(source, sink);
-        streamLinks.put(id, streamMap);
-      } else {
-        if (s.getSource() == null) {
-          s.setSource(source);
-        }
-        s.addSink(sink);
-      }
+      s.addSink(sink);
     }
     return s;
   }
 
   /**
-   * This will be called once the Logical Dag is expanded, and the proxy input and proxy output ports are populated with
-   * the actual ports that they refer to This method adds sources and sinks for the StreamMeta objects which were left
-   * empty in the addStream call.
+   * This will be called once the Logical Dag is expanded, and proxy input and proxy output ports are populated
+   * with actual ports they refer to.
    */
   public void applyStreamLinks()
   {
-    for (String id : streamLinks.keySet()) {
-      StreamMeta s = getStream(id);
-      for (Map.Entry<Operator.OutputPort<?>, Operator.InputPort<?>> pair : streamLinks.get(id).entries()) {
-        if (s.getSource() == null) {
-          Operator.OutputPort<?> outputPort = pair.getKey();
-          while (outputPort instanceof ProxyOutputPort) {
-            outputPort = ((ProxyOutputPort<?>)outputPort).get();
-          }
-          s.setSource(outputPort);
-        }
-
-        Operator.InputPort<?> inputPort = pair.getValue();
-        while (inputPort instanceof ProxyInputPort) {
-          inputPort = ((ProxyInputPort<?>)inputPort).get();
-        }
-        s.addSink(inputPort);
-      }
+    for (StreamMeta smeta : streams.values()) {
+      smeta.resolvePorts();
     }
   }
 
-  @SuppressWarnings({ "unchecked", "rawtypes" })
+  @SuppressWarnings({"unchecked", "rawtypes"})
   private void addDAGToCurrentDAG(ModuleMeta moduleMeta)
   {
     LogicalPlan subDag = moduleMeta.getDag();
@@ -1594,12 +1551,6 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public ModuleMeta getModuleMeta(String moduleName)
-  {
-    return this.modules.get(moduleName);
-  }
-
-  @Override
   public OperatorMeta getMeta(Operator operator)
   {
     // TODO: cache mapping
@@ -1609,17 +1560,6 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     throw new IllegalArgumentException("Operator not associated with the DAG: " + operator);
-  }
-
-  @Override
-  public ModuleMeta getMeta(Module module)
-  {
-    for (ModuleMeta m : getAllModules()) {
-      if (m.module == module) {
-        return m;
-      }
-    }
-    throw new IllegalArgumentException("Module not associated with the DAG: " + module);
   }
 
   public int getMaxContainerCount()

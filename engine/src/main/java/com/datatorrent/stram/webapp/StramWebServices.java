@@ -828,7 +828,7 @@ public class StramWebServices
       if (logicalModule == null) {
         throw new NotFoundException();
       }
-      operatorProperties = LogicalPlanConfiguration.getObjectProperties(logicalModule.getModule());
+      operatorProperties = LogicalPlanConfiguration.getObjectProperties(logicalModule.getOperator());
     } else {
       operatorProperties = LogicalPlanConfiguration.getObjectProperties(logicalOperator.getOperator());
     }
