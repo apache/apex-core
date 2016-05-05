@@ -389,7 +389,7 @@ public abstract class StramTestSupport
 
   public static boolean isInTravis()
   {
-    return "1".equals(System.getenv("TRAVIS"));
+    return "true".equals(System.getProperty("travis"));
   }
 
   public static class MemoryStorageAgent implements StorageAgent, Serializable
