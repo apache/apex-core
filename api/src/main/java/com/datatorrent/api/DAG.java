@@ -159,14 +159,6 @@ public interface DAG extends DAGContext, Serializable
     public OutputPortMeta getMeta(Operator.OutputPort<?> port);
   }
 
-  @InterfaceStability.Evolving
-  interface ModuleMeta extends Serializable, Context
-  {
-    String getName();
-
-    Module getModule();
-  }
-
   /**
    * Add new instance of operator under given name to the DAG.
    * The operator class must have a default constructor.
@@ -272,15 +264,17 @@ public interface DAG extends DAGContext, Serializable
    */
   public abstract OperatorMeta getOperatorMeta(String operatorId);
 
-  @InterfaceStability.Evolving
-  ModuleMeta getModuleMeta(String moduleId);
-
   /**
    * <p>getMeta.</p>
    */
   public abstract OperatorMeta getMeta(Operator operator);
 
-  @InterfaceStability.Evolving
-  ModuleMeta getMeta(Module module);
+  /**
+   * Marker interface for the Node in the DAG. Any object which can be added as a Node in the DAG
+   * needs to implement this interface.
+   */
+  interface GenericOperator
+  {
 
+  }
 }

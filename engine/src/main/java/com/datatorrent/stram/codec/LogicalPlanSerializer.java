@@ -362,7 +362,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     Map<String, Object> moduleDetailMap = new HashMap<>();
     ArrayList<String> operatorArray = new ArrayList<>();
     moduleDetailMap.put("name", moduleMeta.getName());
-    moduleDetailMap.put("className", moduleMeta.getModule().getClass().getName());
+    moduleDetailMap.put("className", moduleMeta.getGenericOperator().getClass().getName());
 
     moduleDetailMap.put("operators", operatorArray);
     for (OperatorMeta operatorMeta : moduleMeta.getDag().getAllOperators()) {

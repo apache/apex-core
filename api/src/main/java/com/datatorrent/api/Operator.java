@@ -20,6 +20,7 @@ package com.datatorrent.api;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.GenericOperator;
 
 /**
  * <p>
@@ -27,7 +28,7 @@ import com.datatorrent.api.Context.PortContext;
  *
  * @since 0.3.2
  */
-public interface Operator extends Component<OperatorContext>
+public interface Operator extends Component<OperatorContext>, GenericOperator
 {
   /**
    * One can set attribute on an Operator to indicate the mode in which it processes Tuples.

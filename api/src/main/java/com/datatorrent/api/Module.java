@@ -22,6 +22,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.GenericOperator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
@@ -36,7 +37,7 @@ import com.datatorrent.api.Operator.Unifier;
  * @since 3.3.0
  */
 @InterfaceStability.Evolving
-public interface Module
+public interface Module extends GenericOperator
 {
   void populateDAG(DAG dag, Configuration conf);
 

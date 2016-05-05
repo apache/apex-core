@@ -69,6 +69,8 @@ import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAG.GenericOperator;
+import com.datatorrent.api.Module;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.StringCodec;
@@ -2111,28 +2113,28 @@ public class LogicalPlanConfiguration
 
     Map<String, OperatorConf> operators = appConf.getChildren(StramElement.OPERATOR);
 
-    Map<OperatorConf, Operator> nodeMap = Maps.newHashMapWithExpectedSize(operators.size());
+    Map<OperatorConf, GenericOperator> nodeMap = Maps.newHashMapWithExpectedSize(operators.size());
     // add all operators first
     for (Map.Entry<String, OperatorConf> nodeConfEntry : operators.entrySet()) {
       OperatorConf nodeConf = nodeConfEntry.getValue();
       if (!WILDCARD.equals(nodeConf.id)) {
-        Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(), Operator.class);
+        Class<? extends GenericOperator> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(), GenericOperator.class);
         String optJson = nodeConf.getProperties().get(nodeClass.getName());
-        Operator nd = null;
+        GenericOperator operator = null;
         try {
           if (optJson != null) {
             // if there is a special key which is the class name, it means the operator is serialized in json format
             ObjectMapper mapper = ObjectMapperFactory.getOperatorValueDeserializer();
-            nd = mapper.readValue("{\"" + nodeClass.getName() + "\":" + optJson + "}", nodeClass);
-            dag.addOperator(nodeConfEntry.getKey(), nd);
+            operator = mapper.readValue("{\"" + nodeClass.getName() + "\":" + optJson + "}", nodeClass);
+            addOperator(dag, nodeConfEntry.getKey(), operator);
           } else {
-            nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
+            operator = addOperator(dag, nodeConfEntry.getKey(), nodeClass);
           }
-          setOperatorProperties(nd, nodeConf.getProperties());
+          setOperatorProperties(operator, nodeConf.getProperties());
         } catch (IOException e) {
           throw new IllegalArgumentException("Error setting operator properties " + e.getMessage(), e);
         }
-        nodeMap.put(nodeConf, nd);
+        nodeMap.put(nodeConf, operator);
       }
     }
 
@@ -2157,7 +2159,7 @@ public class LogicalPlanConfiguration
             portName = e.getKey();
           }
         }
-        Operator sourceDecl = nodeMap.get(streamConf.sourceNode);
+        GenericOperator sourceDecl = nodeMap.get(streamConf.sourceNode);
         Operators.PortMappingDescriptor sourcePortMap = new Operators.PortMappingDescriptor();
         Operators.describe(sourceDecl, sourcePortMap);
         sd.setSource(sourcePortMap.outputPorts.get(portName).component);
@@ -2174,7 +2176,7 @@ public class LogicalPlanConfiguration
             portName = e.getKey();
           }
         }
-        Operator targetDecl = nodeMap.get(targetNode);
+        GenericOperator targetDecl = nodeMap.get(targetNode);
         Operators.PortMappingDescriptor targetPortMap = new Operators.PortMappingDescriptor();
         Operators.describe(targetDecl, targetPortMap);
         sd.addSink(targetPortMap.inputPorts.get(portName).component);
@@ -2185,6 +2187,27 @@ public class LogicalPlanConfiguration
       }
     }
 
+  }
+
+  private GenericOperator addOperator(LogicalPlan dag, String name, GenericOperator operator)
+  {
+    if (operator instanceof Module) {
+      dag.addModule(name, (Module)operator);
+    } else if (operator instanceof Operator) {
+      dag.addOperator(name, (Operator)operator);
+    }
+    return operator;
+  }
+
+
+  private GenericOperator addOperator(LogicalPlan dag, String name, Class<?> clazz)
+  {
+    if (Module.class.isAssignableFrom(clazz)) {
+      return dag.addModule(name, (Class<Module>)clazz);
+    } else if (Operator.class.isAssignableFrom(clazz)) {
+      return dag.addOperator(name, (Class<Operator>)clazz);
+    }
+    return null;
   }
 
   /**
@@ -2323,12 +2346,7 @@ public class LogicalPlanConfiguration
 
   private PropertyArgs getPropertyArgs(OperatorMeta om)
   {
-    return new PropertyArgs(om.getName(), om.getOperator().getClass().getName());
-  }
-
-  private PropertyArgs getPropertyArgs(ModuleMeta mm)
-  {
-    return new PropertyArgs(mm.getName(), mm.getModule().getClass().getName());
+    return new PropertyArgs(om.getName(), om.getGenericOperator().getClass().getName());
   }
 
   /**
@@ -2361,33 +2379,13 @@ public class LogicalPlanConfiguration
    * @param properties
    * @return Operator
    */
-  public static Operator setOperatorProperties(Operator operator, Map<String, String> properties)
+  public static GenericOperator setOperatorProperties(GenericOperator operator, Map<String, String> properties)
   {
     try {
       // populate custom opProps
       BeanUtils.populate(operator, properties);
       return operator;
     } catch (IllegalAccessException | InvocationTargetException e) {
-      throw new IllegalArgumentException("Error setting operator properties", e);
-    }
-  }
-
-  /**
-   * Generic helper function to inject properties on the object.
-   *
-   * @param obj
-   * @param properties
-   * @param <T>
-   * @return
-   */
-  public static <T> T setObjectProperties(T obj, Map<String, String> properties)
-  {
-    try {
-      BeanUtils.populate(obj, properties);
-      return obj;
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Error setting operator properties", e);
-    } catch (InvocationTargetException e) {
       throw new IllegalArgumentException("Error setting operator properties", e);
     }
   }
@@ -2421,7 +2419,7 @@ public class LogicalPlanConfiguration
     for (OperatorMeta ow : dag.getAllOperators()) {
       List<OperatorConf> opConfs = getMatchingChildConf(appConfs, ow.getName(), StramElement.OPERATOR);
       Map<String, String> opProps = getProperties(getPropertyArgs(ow), opConfs, applicationName);
-      setOperatorProperties(ow.getOperator(), opProps);
+      setOperatorProperties(ow.getGenericOperator(), opProps);
     }
   }
 
@@ -2502,7 +2500,7 @@ public class LogicalPlanConfiguration
     for (final ModuleMeta mw : dag.getAllModules()) {
       List<OperatorConf> opConfs = getMatchingChildConf(appConfs, mw.getName(), StramElement.OPERATOR);
       Map<String, String> opProps = getProperties(getPropertyArgs(mw), opConfs, appName);
-      setObjectProperties(mw.getModule(), opProps);
+      setOperatorProperties(mw.getGenericOperator(), opProps);
     }
   }
 
