@@ -26,6 +26,8 @@ import com.datatorrent.api.Context.StramHTTPAuthentication;
 
 /**
  *
+ *
+ * @since 3.4.0
  */
 public class SecurityUtils
 {

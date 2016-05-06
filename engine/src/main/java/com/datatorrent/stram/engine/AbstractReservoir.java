@@ -44,6 +44,8 @@ import static java.lang.Thread.sleep;
  * Abstract Sweepable Reservoir implementation. Implements all methods of {@link SweepableReservoir} except
  * {@link SweepableReservoir#sweep}. Classes that extend {@link AbstractReservoir} must implement
  * {@link BlockingQueue} interface.
+ *
+ * @since 3.4.0
  */
 public abstract class AbstractReservoir implements SweepableReservoir, BlockingQueue<Object>
 {
