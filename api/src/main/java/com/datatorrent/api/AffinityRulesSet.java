@@ -23,6 +23,8 @@ import java.util.Collection;
 
 /**
  * Wrapper class for containing set of Affinity rules specified for application
+ *
+ * @since 3.4.0
  */
 public class AffinityRulesSet implements Serializable
 {

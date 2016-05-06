@@ -1,6 +1,81 @@
 Apex Changelog
 ========================================================================================================================
 
+Version 3.4.0 - 2016-05-09
+------------------------------------------------------------------------------------------------------------------------
+
+### Sub-task
+* [APEXCORE-254] - Introduce Abstract and Forwarding Reservoir classes
+* [APEXCORE-269] - Provide concrete implementation of AbstractReservoir based on SpscArrayQueue
+* [APEXCORE-365] - Buffer server handling for tuple length that exceeds data list block size
+* [APEXCORE-369] - Fix timeout in AbstractReservoirTest.performanceTest
+* [APEXCORE-402] - SpscArrayQueue to notify publishing thread on not full condition
+
+### Bug
+* [APEXCORE-130] - Throwing A Runtime Exception In Setup Causes The Operator To Block
+* [APEXCORE-201] - Reported latency is wrong when a downstream operator is behind more than 1000 windows
+* [APEXCORE-326] - Iteration causes problems when there are multiple streams between two operators
+* [APEXCORE-335] - StramLocalCluster should teardown StreaminContainerManager after run is complete
+* [APEXCORE-349] - Application/operator/port attributes should be returned using string codec in REST service
+* [APEXCORE-350] - STRAM's REST service sometimes returns duplicate and conflicting Content-Type headers
+* [APEXCORE-352] - Temp directories/files not created in temp directory specified by system property java.io.tmpdir
+* [APEXCORE-353] - Buffer server may stop processing data
+* [APEXCORE-355] - CLI list-*-attributes command name change
+* [APEXCORE-362] - NPE in StreamingContainerManager
+* [APEXCORE-363] - NPE in StreamingContainerManager
+* [APEXCORE-374] - Block with positive reference count is found during buffer server purge
+* [APEXCORE-375] - Container killed because of Out of Sequence tuple error.
+* [APEXCORE-376] - CLI command 'dump-properties-file' does not work when connected to an app
+* [APEXCORE-385] - Temp directories/files not always cleaned up when launching applications
+* [APEXCORE-391] - AsyncFSStorageAgent creates tmp directory unnecessarily
+* [APEXCORE-393] - Reset failure count when consecutive failed node is removed from blacklist
+* [APEXCORE-397] - Allow configurability of stram web services authentication
+* [APEXCORE-398] - Ack may not be delivered from buffer server to it's client
+* [APEXCORE-403] - DelayOperator unit test fails intermittently
+* [APEXCORE-413] - Collision between Sink.getCount() and SweepableReservoir.getCount()
+* [APEXCORE-415] - Input Operator double checkpoint
+* [APEXCORE-421] - Double Checkpointing May Happen In Input Node On Shutdown
+* [APEXCORE-422] - Checkstyle rule related to allowSamelineParameterizedAnnotation suppression
+* [APEXCORE-434] - ClassCastException when making webservice calls to STRAM in secure mode
+* [APEXCORE-436] - Update log4j.properties in archetype test resources to set debug level for org.apache.apex
+* [APEXCORE-439] - After dynamic repartition application appears blocked
+* [APEXCORE-444] - 401 authentication errors when making webservice calls to STRAM in secure mode
+* [APEXCORE-445] - Race condition in AsynFSStorageAgent.save()
+
+### Improvement
+* [APEXCORE-92] - Blacklist problem nodes from future container requests
+* [APEXCORE-107] - Support adding module to application using property file API.
+* [APEXCORE-304] - Ability to add jars to classpath in populateDAG
+* [APEXCORE-328] - CLI tests should not rely on default maven repository or mvn being on the PATH
+* [APEXCORE-330] - Ability to obtain a thread dump from a container
+* [APEXCORE-358] - Make RPC timeout configurable
+* [APEXCORE-380] - Idle time sleep time should increase from 0 to a configurable max value
+* [APEXCORE-383] - Time to sleep while reservoirs are full should increase from 0 to a configurable max value
+* [APEXCORE-384] - For smaller InlineStream port queue size use ArrayBlockingQueueReservoir as default
+* [APEXCORE-399] - Need better debug information in stram web service filter initializer
+* [APEXCORE-400] - Create documentation for security
+* [APEXCORE-401] - Create a separate artifact for checkstyle and other common configurations
+* [APEXCORE-407] - Adaptive SPIN_MILLIS for input operators
+* [APEXCORE-409] - Document json application format
+* [APEXCORE-419] - When operator is blocked, print out a warning instead of debug
+* [APEXCORE-447] - Document: update AutoMetrics with AppDataTracker link
+
+### New Feature
+* [APEXCORE-10] - Enable non-affinity of operators per node (not containers)
+* [APEXCORE-359] - Add clean-app-directories command to CLI to clean up data of terminated apps
+* [APEXCORE-411] - Restart app without specifying app package
+
+### Task
+* [APEXCORE-293] - Add core and malhar documentation to project web site
+* [APEXCORE-319] - Document backward compatibility guidelines
+* [APEXCORE-340] - Rename dtcli script to apex
+* [APEXCORE-345] - Upgrade to 0.7.0 japicmp
+* [APEXCORE-381] - Upgrade async-http-client dependency version because of security issue
+* [APEXCORE-410] - Upgrade to netlet 1.2.1
+* [APEXCORE-423] - Fix style violations in Apex Core
+* [APEXCORE-446] - Add source jar in the shaded-ning build
+
+
 Version 3.3.0-incubating - 2016-02-08
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -66,6 +141,7 @@ Version 3.3.0-incubating - 2016-02-08
 * [APEXCORE-302] - Update NOTICE copyright year
 * [APEXCORE-308] - Implement findbugs plugin reporting
 * [APEXCORE-317] - Run performance benchmark for the Apex Core 3.3.0 release
+
 
 Version 3.2.0-incubating - 2015-10-23
 ------------------------------------------------------------------------------------------------------------------------

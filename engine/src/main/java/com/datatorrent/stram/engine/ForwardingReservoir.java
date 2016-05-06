@@ -21,6 +21,9 @@ package com.datatorrent.stram.engine;
 import com.datatorrent.api.Sink;
 import com.datatorrent.stram.tuple.Tuple;
 
+/**
+ * @since 3.4.0
+ */
 public class ForwardingReservoir implements SweepableReservoir
 {
   public static ForwardingReservoir newReservoir(final String id, final int capacity)

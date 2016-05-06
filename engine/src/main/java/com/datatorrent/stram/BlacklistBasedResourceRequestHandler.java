@@ -41,6 +41,8 @@ import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
  * Host specific container requests are not allocated on Cloudera as captured in
  * Jira Yarn-1412 (https://issues.apache.org/jira/browse/YARN-1412) 
  * To handle such requests, we blacklist all the other nodes before issueing node request.
+ *
+ * @since 3.4.0
  */
 public class BlacklistBasedResourceRequestHandler extends ResourceRequestHandler
 {

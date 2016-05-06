@@ -39,6 +39,8 @@ import com.datatorrent.api.DAG.Locality;
  * operators should not be allocated on the same node. The rule can be either
  * strict or relaxed.
  *
+ *
+ * @since 3.4.0
  */
 public class AffinityRule implements Serializable
 {
