@@ -27,7 +27,7 @@ mvn install
 ``` 
 at the top level. You can then use the command line interface (CLI) from the build directory:
 ```
-./engine/src/main/scripts/dtcli
+./engine/src/main/scripts/apex
 ```
 Type help to list available commands. 
 

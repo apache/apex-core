@@ -121,7 +121,7 @@
             <exclude>misc/ide-templates/**</exclude>
           </excludes>
           <mapping>
-            <dtcli>SCRIPT_STYLE</dtcli>
+            <apex>SCRIPT_STYLE</apex>
           </mapping>
         </configuration>
         <executions>
