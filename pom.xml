@@ -30,7 +30,7 @@
 
   <groupId>org.apache.apex</groupId>
   <artifactId>apex</artifactId>
-  <version>3.4.0-SNAPSHOT</version>
+  <version>3.4.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Apex</name>
@@ -63,7 +63,7 @@
     <jersey.version>1.9</jersey.version>
     <!-- do not change jetty version as later versions have problems with DefaultServlet -->
     <jetty.version>8.1.10.v20130312</jetty.version>
-    <project.old.version>3.3.0-incubating</project.old.version>
+    <project.old.version>3.4.0</project.old.version>
     <license.skip>true</license.skip>
     <findbugs.xmlOutput>true</findbugs.xmlOutput>
     <findbugs.failOnError>false</findbugs.failOnError>
@@ -387,7 +387,7 @@
               <breakBuildBasedOnSemanticVersioning>true</breakBuildBasedOnSemanticVersioning>
               <onlyBinaryIncompatible>false</onlyBinaryIncompatible>
               <includeSynthetic>false</includeSynthetic>
-              <ignoreMissingClasses>true</ignoreMissingClasses>
+              <ignoreMissingClasses>false</ignoreMissingClasses>
               <excludes>
                 <exclude>@org.apache.hadoop.classification.InterfaceStability$Evolving</exclude>
                 <exclude>@org.apache.hadoop.classification.InterfaceStability$Unstable</exclude>
