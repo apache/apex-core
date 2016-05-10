@@ -93,6 +93,7 @@ import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.WebResource;
 
 import com.datatorrent.api.Context;
+import com.datatorrent.api.DAG.GenericOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.StramClient;
@@ -2963,7 +2964,7 @@ public class ApexCli
       String[] newArgs = new String[args.length - 1];
       System.arraycopy(args, 1, newArgs, 0, args.length - 1);
       GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(newArgs);
-      String parentName = commandLineInfo.parent != null ? commandLineInfo.parent : Operator.class.getName();
+      String parentName = commandLineInfo.parent != null ? commandLineInfo.parent : GenericOperator.class.getName();
       String files = expandCommaSeparatedFiles(commandLineInfo.args[0]);
       if (files == null) {
         throw new CliException("File " + commandLineInfo.args[0] + " is not found");

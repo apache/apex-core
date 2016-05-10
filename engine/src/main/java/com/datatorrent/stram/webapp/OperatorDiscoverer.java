@@ -68,6 +68,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import com.datatorrent.api.DAG.GenericOperator;
+import com.datatorrent.api.Module;
 import com.datatorrent.api.Operator;
 import com.datatorrent.stram.util.ObjectMapperFactory;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
@@ -116,6 +118,22 @@ public class OperatorDiscoverer
     boolean omitFromUI;
   }
 
+  enum GenericOperatorType
+  {
+    OPERATOR("operator"), MODULE("module");
+    private final String type;
+
+    private GenericOperatorType(String type)
+    {
+      this.type = type;
+    }
+
+    public String getType()
+    {
+      return type;
+    }
+  }
+  
   enum MethodTagType
   {
     USE_SCHEMA("@useSchema"),
@@ -301,9 +319,9 @@ public class OperatorDiscoverer
   public void addDefaultValue(String className, JSONObject oper) throws Exception
   {
     ObjectMapper defaultValueMapper = ObjectMapperFactory.getOperatorValueSerializer();
-    Class<? extends Operator> clazz = (Class<? extends Operator>)classLoader.loadClass(className);
+    Class<? extends GenericOperator> clazz = (Class<? extends GenericOperator>)classLoader.loadClass(className);
     if (clazz != null) {
-      Operator operIns = clazz.newInstance();
+      GenericOperator operIns = clazz.newInstance();
       String s = defaultValueMapper.writeValueAsString(operIns);
       oper.put("defaultValue", new JSONObject(s).get(className));
     }
@@ -405,9 +423,9 @@ public class OperatorDiscoverer
       loadOperatorClass();
     }
     if (parent == null) {
-      parent = Operator.class.getName();
+      parent = GenericOperator.class.getName();
     } else {
-      if (!typeGraph.isAncestor(Operator.class.getName(), parent)) {
+      if (!typeGraph.isAncestor(GenericOperator.class.getName(), parent)) {
         throw new IllegalArgumentException("Argument must be a subclass of Operator class");
       }
     }
@@ -422,7 +440,7 @@ public class OperatorDiscoverer
       }
     });
 
-    if (searchTerm == null && parent.equals(Operator.class.getName())) {
+    if (searchTerm == null && parent.equals(GenericOperator.class.getName())) {
       return filteredClass;
     }
 
@@ -432,7 +450,7 @@ public class OperatorDiscoverer
 
     Set<String> result = new HashSet<>();
     for (String clazz : filteredClass) {
-      if (parent.equals(Operator.class.getName()) || typeGraph.isAncestor(parent, clazz)) {
+      if (parent.equals(GenericOperator.class.getName()) || typeGraph.isAncestor(parent, clazz)) {
         if (searchTerm == null) {
           result.add(clazz);
         } else {
@@ -526,6 +544,16 @@ public class OperatorDiscoverer
         response.put(PORT_TYPE_INFO_KEY, portTypeInfo);
         response.put("inputPorts", inputPorts);
         response.put("outputPorts", outputPorts);
+        String type = null;
+        Class<?> genericOperator = classLoader.loadClass(clazz);
+        if (Module.class.isAssignableFrom(genericOperator)) {
+          type = GenericOperatorType.MODULE.getType();
+        } else if (Operator.class.isAssignableFrom(genericOperator)) {
+          type = GenericOperatorType.OPERATOR.getType();
+        }
+        if (type != null) {
+          response.put("type", type);
+        }
 
         OperatorClassInfo oci = classInfo.get(clazz);
 
