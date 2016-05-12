@@ -6,43 +6,16 @@ Applications built on Apex run as native YARN applications on Hadoop. The securi
 Kerberos Authentication
 -----------------------
 
-Kerberos is a ticket based authentication system that provides authentication in a distributed environment where authentication is needed between multiple users, hosts and services. It is the de-facto authentication mechanism supported in Hadoop. To use Kerberos authentication, the Hadoop installation must first be configured for secure mode with Kerberos. Please refer to the administration guide of your Hadoop distribution on how to do that. Once Hadoop is configured, there is some configuration needed on Apex side as well.
+Kerberos is a ticket based authentication system that provides authentication in a distributed environment where authentication is needed between multiple users, hosts and services. It is the de-facto authentication mechanism supported in Hadoop. To use Kerberos authentication, the Hadoop installation must first be configured for secure mode with Kerberos. Please refer to the administration guide of your Hadoop distribution on how to do that. Once Hadoop is configured, some configuration is needed on the Apex side as well.
 
 Configuring security
 ---------------------
 
-There is Hadoop configuration and CLI configuration. Hadoop configuration may be optional.
-
-###Hadoop Configuration
-
-An Apex application uses delegation tokens to authenticate with the ResourceManager (YARN) and NameNode (HDFS) and these tokens are issued by those servers respectively. Since the application is long-running,
-the tokens should be valid for the lifetime of the application. Hadoop has a configuration setting for the maximum lifetime of the tokens and they should be set to cover the lifetime of the application. There are separate settings for ResourceManager and NameNode delegation
-tokens.
-
-The ResourceManager delegation token max lifetime is specified in `yarn-site.xml` and can be specified as follows for example for a lifetime of 1 year
-
-```xml
-<property>
-  <name>yarn.resourcemanager.delegation.token.max-lifetime</name>
-  <value>31536000000</value>
-</property>
-```
-
-The NameNode delegation token max lifetime is specified in
-hdfs-site.xml and can be specified as follows for example for a lifetime of 1 year
-
-```xml
-<property>
-   <name>dfs.namenode.delegation.token.max-lifetime</name>
-   <value>31536000000</value>
- </property>
-```
+The Apex command line interface (CLI) program, `apex`, is used to launch applications on the Hadoop cluster along with performing various other operations and administrative tasks on the applications. In a secure cluster additional configuration is needed for the CLI program `apex`.
 
 ###CLI Configuration
 
-The Apex command line interface is used to launch
-applications along with performing various other operations and administrative tasks on the applications.  When Kerberos security is enabled in Hadoop, a Kerberos ticket granting ticket (TGT) or the Kerberos credentials of the user are needed by the CLI program `apex` to authenticate with Hadoop for any operation. Kerberos credentials are composed of a principal and either a _keytab_ or a password. For security and operational reasons only keytabs are supported in Hadoop and by extension in Apex platform. When user credentials are specified, all operations including launching
-application are performed as that user.
+  When Kerberos security is enabled in Hadoop, a Kerberos ticket granting ticket (TGT) or the Kerberos credentials of the user are needed by the CLI program `apex` to authenticate with Hadoop for any operation. Kerberos credentials are composed of a principal and either a _keytab_ or a password. For security and operational reasons only keytabs are supported in Hadoop and by extension in Apex platform. When user credentials are specified, all operations including launching application are performed as that user.
 
 #### Using kinit
 
@@ -101,6 +74,74 @@ To specify the security option for an application the following configuration ca
 The security option value can be `ENABLED`, `FOLLOW_HADOOP_AUTH`, `FOLLOW_HADOOP_HTTP_AUTH` or `DISABLE` for the four options above respectively.
 
 The subsequent sections talk about how security works in Apex. This information is not needed by users but is intended for the inquisitive techical audience who want to know how security works.
+
+### Token Refresh
+
+Apex applications, at runtime, use delegation tokens to authenticate with Hadoop services when communicating with them as described in the security architecture section below. The delegation tokens are originally issued by these Hadoop services and have an expiry time period which is typically 7 days. The tokens become invalid beyond this time and the applications will no longer be able to communicate with the Hadoop services. For long running applications this presents a problem.
+
+To solve this problem one of the two approaches can be used. The first approach is to change the Hadoop configuration itself to extend the token expiry time period. This may not be possible in all environments as it requires a change in the security policy as the tokens will now be valid for a longer period of time and the change also requires administrator privileges to Hadoop. The second approach is to use a feature available in apex to auto-refresh the tokens before they expire. Both the approaches are detailed below and the users can choose the one that works best for them.
+
+####Hadoop configuration approach
+
+An Apex application uses delegation tokens to authenticate with Hadoop services, Resource Manager (YARN) and Name Node (HDFS), and these tokens are issued by those services respectively. Since the application is long-running, the tokens can expire while the application is still running. Hadoop uses configuration settings for the maximum lifetime of these tokens. 
+
+There are separate settings for ResourceManager and NameNode delegation tokens. In this approach the user increases the values of these settings to cover the lifetime of the application. Once these settings are changed, the YARN and HDFS services would have to be restarted. The values in these settings are of type `long` and has an upper limit so applications cannot run forever. This limitation is not present with the next approach described below.
+
+The Resource Manager delegation token max lifetime is specified in `yarn-site.xml` and can be specified as follows for a lifetime of 1 year as an example
+
+```xml
+<property>
+  <name>yarn.resourcemanager.delegation.token.max-lifetime</name>
+  <value>31536000000</value>
+</property>
+```
+
+The Name Node delegation token max lifetime is specified in
+hdfs-site.xml and can be specified as follows for a lifetime of 1 year as an example
+
+```xml
+<property>
+   <name>dfs.namenode.delegation.token.max-lifetime</name>
+   <value>31536000000</value>
+ </property>
+```
+
+####Auto-refresh approach
+
+In this approach the application, in anticipation of a token expiring, obtains a new token to replace the current one. It keeps repeating the process whenever a token is close to expiry so that the application can continue to run indefinitely.
+
+This requires the application having access to a keytab file at runtime because obtaining a new token requires a keytab. The keytab file should be present in HDFS so that the application can access it at runtime. The user can provide a HDFS location for the keytab file using a setting otherwise the keytab file specified for the `apex` CLI program above will be copied from the local filesystem into HDFS before the application is started and made available to the application. There are other optional settings available to configure the behavior of this feature. All the settings are described below.
+
+The location of the keytab can be specified by using the following setting in `dt-site.xml`. If it is not specified then the file specified in `dt.authentication.keytab` is copied into HDFS and used.
+
+```xml
+<property>
+        <name>dt.authentication.store.keytab</name>
+        <value>hdfs-path-to-keytab-file</value>
+</property>
+```
+The expiry period of the Resource Manager and Name Node tokens needs to be known so that the application can renew them before they expire. These are automatically obtained using the `yarn.resourcemanager.delegation.token.max-lifetime` and `dfs.namenode.delegation.token.max-lifetime` properties from the hadoop configuration files. Sometimes however these properties are not available or kept up-to-date on the nodes running the applications. If that is the case then the following properties can be used to specify the expiry period, the values are in milliseconds. The example below shows how to specify these with values of 7 days.
+
+```xml
+<property>
+        <name>dt.resourcemanager.delegation.token.max-lifetime</name>
+        <value>604800000</value>
+</property>
+
+<property>
+        <name>dt.namenode.delegation.token.max-lifetime</name>
+        <value>604800000</value>
+</property>
+```
+
+As explained earlier new tokens are obtained before the old ones expire. How early the new tokens are obtained before expiry is controlled by a setting. This setting is specified as a factor of the token expiration with a value between 0.0 and 1.0. The default value is `0.7`. This factor is multipled with the expiration time to determine when to refresh the tokens. This setting can be changed by the user and the following example shows how this can be done
+
+```xml
+<property>
+        <name>dt.authentication.token.refresh.factor</name>
+        <value>0.7</value>
+</property>
+```
 
 Security architecture
 ----------------------
