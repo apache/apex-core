@@ -302,12 +302,7 @@ public class StramClientUtils
 
     public InetSocketAddress getRMHAAddress(String rmId)
     {
-      YarnConfiguration yarnConf;
-      if (conf instanceof YarnConfiguration) {
-        yarnConf = (YarnConfiguration)conf;
-      } else {
-        yarnConf = new YarnConfiguration(conf);
-      }
+      YarnConfiguration yarnConf = StramClientUtils.getYarnConfiguration(conf);
       yarnConf.set(ConfigUtils.RM_HA_ID, rmId);
       InetSocketAddress socketAddr = yarnConf.getSocketAddr(YarnConfiguration.RM_ADDRESS, YarnConfiguration.DEFAULT_RM_ADDRESS, YarnConfiguration.DEFAULT_RM_PORT);
       yarnConf.unset(ConfigUtils.RM_HA_ID);
@@ -731,20 +726,51 @@ public class StramClientUtils
     return null;
   }
 
+  /**
+   * Return a YarnConfiguration instance from a Configuration instance
+   * @param conf The configuration instance
+   * @return The YarnConfiguration instance
+   */
+  private static YarnConfiguration getYarnConfiguration(Configuration conf)
+  {
+    YarnConfiguration yarnConf;
+    if (conf instanceof YarnConfiguration) {
+      yarnConf = (YarnConfiguration)conf;
+    } else {
+      yarnConf = new YarnConfiguration(conf);
+    }
+    return yarnConf;
+  }
+
   public static InetSocketAddress getRMWebAddress(Configuration conf, String rmId)
   {
     boolean sslEnabled = conf.getBoolean(CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_KEY, CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_DEFAULT);
     return getRMWebAddress(conf, sslEnabled, rmId);
   }
 
+  /**
+   * Get the RM webapp address. The configuration that is passed in should not be used by other threads while this
+   * method is executing.
+   * @param conf The configuration
+   * @param sslEnabled Whether SSL is enabled or not
+   * @param rmId If HA is enabled the resource manager id
+   * @return The webapp socket address
+   */
   public static InetSocketAddress getRMWebAddress(Configuration conf, boolean sslEnabled, String rmId)
   {
-    rmId = (rmId == null) ? "" : ("." + rmId);
+    boolean isHA = (rmId != null);
+    if (isHA) {
+      conf = getYarnConfiguration(conf);
+      conf.set(ConfigUtils.RM_HA_ID, rmId);
+    }
     InetSocketAddress address;
     if (sslEnabled) {
-      address = conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS + rmId, YarnConfiguration.DEFAULT_RM_WEBAPP_HTTPS_ADDRESS, YarnConfiguration.DEFAULT_RM_WEBAPP_HTTPS_PORT);
+      address = conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS, YarnConfiguration.DEFAULT_RM_WEBAPP_HTTPS_ADDRESS, YarnConfiguration.DEFAULT_RM_WEBAPP_HTTPS_PORT);
     } else {
-      address = conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_ADDRESS + rmId, YarnConfiguration.DEFAULT_RM_WEBAPP_ADDRESS, YarnConfiguration.DEFAULT_RM_WEBAPP_PORT);
+      address = conf.getSocketAddr(YarnConfiguration.RM_WEBAPP_ADDRESS, YarnConfiguration.DEFAULT_RM_WEBAPP_ADDRESS, YarnConfiguration.DEFAULT_RM_WEBAPP_PORT);
+    }
+    if (isHA) {
+      conf.unset(ConfigUtils.RM_HA_ID);
     }
     LOG.info("rm webapp address setting {}", address);
     LOG.debug("rm setting sources {}", conf.getPropertySources(YarnConfiguration.RM_WEBAPP_ADDRESS));
