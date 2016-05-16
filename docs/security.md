@@ -74,6 +74,32 @@ The snippet below shows the how the credentials can be specified in the configur
 
 The property `dt.authentication.principal` specifies the Kerberos user principal and `dt.authentication.keytab` specifies the absolute path to the keytab file for the user.
 
+### Web Services security
+
+Alongside every Apex application is an application master process running called Streaming Container Manager (STRAM). STRAM manages the application by handling the various control aspects of the application such as orchestrating the execution of the application on the cluster, playing a key role in scalability and fault tolerance, providing application insight by collecting statistics among other functionality.
+
+STRAM provides a web service interface to introspect the state of the application and its various components and to make dynamic changes to the applications. Some examples of supported functionality are getting resource usage and partition information of various operators, getting operator statistics and changing properties of running operators.
+
+Access to the web services can be secured to prevent unauthorized access. By default it is automatically enabled in Hadoop secure mode environments and not enabled in non-secure environments. How the security actually works is described in `Security architecture` section below.
+
+There are additional options available for finer grained control on enabling it. This can be configured on a per-application basis using an application attribute. It can also be enabled or disabled based on Hadoop security configuration. The following security options are available
+
+* Enable - Enable Authentication
+* Follow Hadoop Authentication - Enable authentication if secure mode is enabled in Hadoop, the default
+* Follow Hadoop HTTP Authentication - Enable authentication only if HTTP authentication is enabled in Hadoop and not just secure mode.
+* Disable - Disable Authentication
+
+To specify the security option for an application the following configuration can be specified in the `dt-site.xml` file
+
+```xml
+<property>
+        <name>dt.application.name.attr.STRAM_HTTP_AUTHENTICATION</name>
+        <value>security-option</value>
+</property>
+```
+
+The security option value can be `ENABLED`, `FOLLOW_HADOOP_AUTH`, `FOLLOW_HADOOP_HTTP_AUTH` or `DISABLE` for the four options above respectively.
+
 The subsequent sections talk about how security works in Apex. This information is not needed by users but is intended for the inquisitive techical audience who want to know how security works.
 
 Security architecture
@@ -142,7 +168,15 @@ When operators are running there will be effective processing rate differences b
 
 Like STRAM, streaming containers also need to communicate with NameNode to use HDFS persistence for reasons such as saving the state of the operators. In secure mode they also use NameNode delegation tokens for authentication. These tokens are also seeded by STRAM for the streaming containers.
 
+#### Stram Web Services
+
+Clients connect to STRAM and make web service requests to obtain operational information about running applications. When security is enabled we want this connection to also be authenticated. In this mode the client passes a web service token in the request and STRAM checks this token. If the token is valid, then the request is processed else it is denied.
+
+How does the client get the web service token in the first place? The client will have to first connect to STRAM via the Resource Manager Web Services Proxy which is a service run by Hadoop to proxy requests to application web services. This connection is authenticated by the proxy service using a protocol called SPNEGO when secure mode is enabled. SPNEGO is Kerberos over HTTP and the client also needs to support it. If the authentication is successful the proxy forwards the request to STRAM. STRAM in processing the request generates and sends back a web service token similar to a delegation token. This token is then used by the client in subsequent requests it makes directly to STRAM and STRAM is able to validate it since it generated the token in the first place.
+
+![](images/security/image03.png)
+
 Conclusion
 -----------
 
-We looked at the different security requirements for distributed applications when they run in a secure Hadoop environment and looked at how Apex solves this.
+We looked at the different security configuration options that are available in Apex, saw the different security requirements for distributed applications in a secure Hadoop environment in detail and looked at how the various security mechanisms in Apex solves this.
