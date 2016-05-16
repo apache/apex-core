@@ -104,7 +104,18 @@ public class StramClientUtilsTest
   @Test
   public void testRMWebAddress() throws UnknownHostException
   {
-    Configuration conf = new Configuration(false);
+    Configuration conf = new YarnConfiguration(new Configuration(false))
+    {
+      @Override
+      public InetSocketAddress getSocketAddr(String name, String defaultAddress, int defaultPort)
+      {
+        String rmId = get(ConfigUtils.RM_HA_ID);
+        if (rmId != null) {
+          name = name + "." + rmId;
+        }
+        return super.getSocketAddr(name, defaultAddress, defaultPort);
+      }
+    };
 
     // basic test
     conf.setBoolean(CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_KEY, false);
