@@ -228,6 +228,7 @@ public class AbstractReservoirTest
   }
 
   @Test
+  @Ignore
   @Parameters(method = "performanceTestParameters")
   public void performanceTest(final AbstractReservoir reservoir, final long expectedTime)
   {
