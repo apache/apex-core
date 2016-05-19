@@ -52,6 +52,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.tools.ant.DirectoryScanner;
@@ -559,6 +560,32 @@ public class StramAppLauncher
     return cl;
   }
 
+  private void setTokenRefreshKeytab(LogicalPlan dag, Configuration conf) throws IOException
+  {
+    String keytabPath;
+    if ((keytabPath = conf.get(StramClientUtils.KEY_TAB_FILE)) == null) {
+      String keytab;
+      if ((keytab = StramUserLogin.getKeytab()) == null) {
+        keytab = conf.get(StramUserLogin.DT_AUTH_KEYTAB);
+      }
+      if (keytab != null) {
+        Path localKeyTabPath = new Path(keytab);
+        try (FileSystem fs = StramClientUtils.newFileSystemInstance(conf)) {
+          Path destPath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), localKeyTabPath.getName());
+          if (!fs.exists(destPath)) {
+            fs.copyFromLocalFile(false, false, localKeyTabPath, destPath);
+          }
+          keytabPath = destPath.toString();
+        }
+      }
+    }
+    if (keytabPath != null) {
+      dag.setAttribute(LogicalPlan.KEY_TAB_FILE, keytabPath);
+    } else {
+      LOG.warn("No keytab specified for refreshing tokens, application may not be able to run indefinitely");
+    }
+  }
+
   /**
    * Submit application to the cluster and return the app id.
    * Sets the context class loader for application dependencies.
@@ -577,17 +604,9 @@ public class StramAppLauncher
     dag.setAttribute(LogicalPlan.HDFS_TOKEN_LIFE_TIME, hdfsTokenMaxLifeTime);
     long rmTokenMaxLifeTime = conf.getLong(StramClientUtils.DT_RM_TOKEN_MAX_LIFE_TIME, conf.getLong(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_KEY, YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT));
     dag.setAttribute(LogicalPlan.RM_TOKEN_LIFE_TIME, rmTokenMaxLifeTime);
-    if (conf.get(StramClientUtils.KEY_TAB_FILE) != null) {
-      dag.setAttribute(LogicalPlan.KEY_TAB_FILE, conf.get(StramClientUtils.KEY_TAB_FILE));
-    } else if (conf.get(StramUserLogin.DT_AUTH_KEYTAB) != null) {
-      Path localKeyTabPath = new Path(conf.get(StramUserLogin.DT_AUTH_KEYTAB));
-      try (FileSystem fs = StramClientUtils.newFileSystemInstance(conf)) {
-        Path destPath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), localKeyTabPath.getName());
-        if (!fs.exists(destPath)) {
-          fs.copyFromLocalFile(false, false, localKeyTabPath, destPath);
-        }
-        dag.setAttribute(LogicalPlan.KEY_TAB_FILE, destPath.toString());
-      }
+    // TODO:- Need to see if other token refresh attributes are needed if security is not enabled
+    if (UserGroupInformation.isSecurityEnabled()) {
+      setTokenRefreshKeytab(dag, conf);
     }
     String tokenRefreshFactor = conf.get(StramClientUtils.TOKEN_ANTICIPATORY_REFRESH_FACTOR);
     if (tokenRefreshFactor != null && tokenRefreshFactor.trim().length() > 0) {
