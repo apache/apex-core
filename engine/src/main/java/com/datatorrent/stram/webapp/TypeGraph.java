@@ -66,6 +66,7 @@ import com.google.common.primitives.Primitives;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.DAG.GenericOperator;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Module;
 import com.datatorrent.api.Operator;
 import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.webapp.asm.ClassNodeType;
@@ -347,7 +348,7 @@ public class TypeGraph
     return typeGraph.size();
   }
 
-  public Set<String> getAllDTInstantiableOperators()
+  public Set<String> getAllDTInstantiableGenericOperators()
   {
     TypeGraphVertex tgv = typeGraph.get(GenericOperator.class.getName());
     if (tgv == null) {
@@ -355,7 +356,8 @@ public class TypeGraph
     }
     Set<String> result = new TreeSet<>();
     for (TypeGraphVertex node : tgv.allInstantiableDescendants) {
-      if ((isAncestor(InputOperator.class.getName(), node.typeName) || !getAllInputPorts(node).isEmpty())) {
+      if ((isAncestor(InputOperator.class.getName(), node.typeName) || isAncestor(Module.class.getName(), node.typeName)
+          || !getAllInputPorts(node).isEmpty())) {
         result.add(node.typeName);
       }
     }

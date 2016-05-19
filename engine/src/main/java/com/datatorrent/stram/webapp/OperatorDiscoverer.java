@@ -309,10 +309,10 @@ public class OperatorDiscoverer
     classLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
   }
 
-  private void loadOperatorClass()
+  private void loadGenericOperatorClasses()
   {
     buildTypeGraph();
-    operatorClassNames =  typeGraph.getAllDTInstantiableOperators();
+    operatorClassNames =  typeGraph.getAllDTInstantiableGenericOperators();
   }
 
   @SuppressWarnings("unchecked")
@@ -420,7 +420,7 @@ public class OperatorDiscoverer
   public Set<String> getOperatorClasses(String parent, String searchTerm) throws ClassNotFoundException
   {
     if (CollectionUtils.isEmpty(operatorClassNames)) {
-      loadOperatorClass();
+      loadGenericOperatorClasses();
     }
     if (parent == null) {
       parent = GenericOperator.class.getName();
@@ -481,7 +481,7 @@ public class OperatorDiscoverer
   public Class<? extends Operator> getOperatorClass(String className) throws ClassNotFoundException
   {
     if (CollectionUtils.isEmpty(operatorClassNames)) {
-      loadOperatorClass();
+      loadGenericOperatorClasses();
     }
 
     Class<?> clazz = classLoader.loadClass(className);
