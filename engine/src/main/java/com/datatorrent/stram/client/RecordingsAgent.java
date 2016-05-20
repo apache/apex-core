@@ -273,7 +273,7 @@ public final class RecordingsAgent extends FSPartFileAgent
         }
       }
     } catch (IOException ex) {
-      LOG.warn("Got exception when getting recording info", ex);
+      LOG.warn("Cannot get recording info for app id {}: {}", appId, ex);
       return result;
     }
 
@@ -316,7 +316,7 @@ public final class RecordingsAgent extends FSPartFileAgent
         }
       }
     } catch (IOException ex) {
-      LOG.warn("Got exception when getting recording info", ex);
+      LOG.warn("Cannot get recording info for app id {}: {}", appId, ex);
       return result;
     }
 
@@ -431,7 +431,7 @@ public final class RecordingsAgent extends FSPartFileAgent
         range.high = prevHiWindowId;
       }
     } catch (Exception ex) {
-      LOG.warn("Got exception when getting recording info", ex);
+      LOG.warn("Cannot get recording info for app id {}: {}", appId, ex);
       return null;
     } finally {
       IOUtils.closeQuietly(ifbr);
@@ -543,7 +543,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
 
     } catch (Exception ex) {
-      LOG.warn("Got exception when getting tuples info", ex);
+      LOG.warn("Cannot get recording tuple info for app id {}: {}", appId, ex);
       return null;
     }
 
@@ -640,7 +640,7 @@ public final class RecordingsAgent extends FSPartFileAgent
           }
       );
     } catch (Exception ex) {
-      LOG.error("Exception caught", ex);
+      LOG.error("Cannot start recording: ", ex);
       return null;
     }
   }
@@ -668,7 +668,7 @@ public final class RecordingsAgent extends FSPartFileAgent
           }
       );
     } catch (Exception ex) {
-      LOG.error("Exception caught", ex);
+      LOG.error("Cannot stop recording: ", ex);
       return null;
     }
   }
