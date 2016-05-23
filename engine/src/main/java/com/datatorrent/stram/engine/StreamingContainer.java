@@ -699,7 +699,7 @@ public class StreamingContainer extends YarnContainerMain
         rsp = umbilical.processHeartbeat(msg);
 
         if (rsp.stackTraceRequired) {
-          stackTrace = StramUtils.getStackTrace().toString();
+          stackTrace = StramUtils.getStackTrace2().toString();
         } else {
           stackTrace = null;
         }

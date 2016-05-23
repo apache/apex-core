@@ -19,6 +19,7 @@
 package com.datatorrent.stram;
 
 
+import java.io.IOException;
 import java.util.Map;
 
 import org.codehaus.jettison.json.JSONArray;
@@ -31,6 +32,7 @@ import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.log4j.DTLoggerFactory;
 
 import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.stram.util.StreamGobbler;
 
 /**
  *
@@ -129,6 +131,39 @@ public abstract class StramUtils
     } catch (JSONException e) {
       throw new RuntimeException(e);
     }
+
+    return jsonObject;
+  }
+
+  public static JSONObject getStackTrace2() throws JSONException
+  {
+
+    String result = "hello";
+    try {
+
+      String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+      Long processId = Long.parseLong(processName.split("@")[0]);
+
+      String cmd = "jstack " + processId;
+
+      Runtime rt = Runtime.getRuntime();
+      Process process = rt.exec(cmd);
+
+      StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream());
+
+      outputGobbler.start();
+
+      process.waitFor();
+
+      result = outputGobbler.getContent();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    JSONObject jsonObject = new JSONObject();
+    jsonObject.put("result", result);
 
     return jsonObject;
   }
