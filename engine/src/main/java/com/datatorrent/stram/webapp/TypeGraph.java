@@ -817,7 +817,7 @@ public class TypeGraph
       for (CompactFieldNode field : fields) {
         TypeGraphVertex fieldVertex = typeGraph.get(field.getDescription());
 
-        if (isAncestor(portVertex, fieldVertex)) {
+        if (isAncestor(portVertex, fieldVertex) && !isNodeInList(ports, field)) {
           ports.add(field);
         }
       }
@@ -825,6 +825,16 @@ public class TypeGraph
     for (TypeGraphVertex ancestor : tgv.ancestors) {
       getAllPortsWithAncestor(portVertex, ancestor, ports);
     }
+  }
+
+  private static boolean isNodeInList(List<CompactFieldNode> list, CompactFieldNode vertex)
+  {
+    for (CompactFieldNode node: list) {
+      if (node.getName().equals(vertex.getName())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void addClassPropertiesAndPorts(String clazzName, JSONObject desc) throws JSONException
@@ -948,7 +958,7 @@ public class TypeGraph
     if (fields != null) {
       for (CompactFieldNode field : fields) {
         TypeGraphVertex fieldVertex = typeGraph.get(field.getDescription());
-        if (isAncestor(portVertex, fieldVertex)) {
+        if (isAncestor(portVertex, fieldVertex) && !isNodeInList(ports, field)) {
           ports.add(field);
         }
       }

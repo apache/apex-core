@@ -164,7 +164,7 @@ public class OperatorDiscoveryTest
 
   public static class SubSubClassGeneric<T extends Long> extends SubClassGeneric<T>
   {
-
+    public final transient DefaultOutputPort<T> output1 = new DefaultOutputPort<>();
   }
 
   public static class CircleType<E extends Comparator<E>>
@@ -241,11 +241,11 @@ public class OperatorDiscoveryTest
 
     // Validate port types
     JSONObject portType = (JSONObject)portTypes.get(0);
-    Assert.assertEquals(portType.get("name"), "input");
+    Assert.assertEquals(portType.get("name"), "output1");
     Assert.assertEquals(portType.get("typeLiteral"), "T");
     Assert.assertEquals(portType.get("type"), "long");
 
-    portType = (JSONObject)portTypes.get(2);
+    portType = (JSONObject)portTypes.get(3);
     Assert.assertEquals(portType.get("name"), "input2");
     Assert.assertEquals(portType.get("type"), "java.util.Map");
     JSONArray typeArgs = portType.getJSONArray("typeArgs");
@@ -261,7 +261,7 @@ public class OperatorDiscoveryTest
     Assert.assertEquals(debug + "type " + wildcardType, "class " + Number.class.getName(),
         wildcardType.getJSONArray("typeArgs").getJSONObject(1).getJSONObject("typeBounds").getJSONArray("upper").get(0));
 
-    portType = (JSONObject)portTypes.get(3);
+    portType = (JSONObject)portTypes.get(4);
     Assert.assertEquals(portType.get("name"), "output");
     Assert.assertEquals(portType.get("type"), "java.lang.String");
 
