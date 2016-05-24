@@ -8,6 +8,6 @@ NetBeans supports importing settings bundled in a zip.
 3. Select the language as Java in the Language dropdown.
 4. Export the current settings for backup.
 5. Click on the 'Import' button which is at the bottom-left corner.
-6. In the Select Options To Import dialog box that opens select the `.settings/apex-style.zip` as the import source.
+6. In the Select Options To Import dialog box that opens select the `settings/apex-style.zip` as the import source.
 7. Only formatting options are included which will be selected by default so click on OK.
 8. In the Import Confirmation dialog click on OK which will restart NetBeans.
