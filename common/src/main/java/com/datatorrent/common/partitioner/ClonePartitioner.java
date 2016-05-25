@@ -41,15 +41,17 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner;
 
 /**
- * This is a simple partitioner which creates partitionCount number of clones of an operator.
+ * This is a simple partitioner, which replicates data across all partitions of an operator
  *
  * @param <T> The type of the operator
  * @since 2.0.0
  */
-public class StatelessPartitioner<T extends Operator> implements Partitioner<T>, Serializable
+public class ClonePartitioner<T extends Operator> implements Partitioner<T>, Serializable
 {
-  private static final Logger logger = LoggerFactory.getLogger(StatelessPartitioner.class);
-  private static final long serialVersionUID = 201411071710L;
+  private static final Logger logger = LoggerFactory.getLogger(ClonePartitioner.class);
+  
+  //TODO How is this generated?
+  private static final long serialVersionUID = 201462371710L;
   /**
    * The number of partitions for the default partitioner to create.
    */
@@ -59,7 +61,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
   /**
    * This creates a partitioner which creates only one partition.
    */
-  public StatelessPartitioner()
+  public ClonePartitioner()
   {
   }
 
@@ -67,7 +69,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
    * This constructor is used to create the partitioner from a property.
    * @param value A string which is an integer of the number of partitions to create
    */
-  public StatelessPartitioner(String value)
+  public ClonePartitioner(String value)
   {
     this(Integer.parseInt(value));
   }
@@ -76,13 +78,13 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
    * This creates a partitioner which creates partitonCount partitions.
    * @param partitionCount The number of partitions to create.
    */
-  public StatelessPartitioner(int partitionCount)
+  public ClonePartitioner(int partitionCount)
   {
     this.partitionCount = partitionCount;
   }
 
   /**
-   * This method sets the number of partitions for the StatelessPartitioner to create.
+   * This method sets the number of partitions for the ClonePartitioner to create.
    * @param partitionCount The number of partitions to create.
    */
   public void setPartitionCount(int partitionCount)
@@ -91,7 +93,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
   }
 
   /**
-   * This method gets the number of partitions for the StatelessPartitioner to create.
+   * This method gets the number of partitions for the ClonePartitioner to create.
    * @return The number of partitions to create.
    */
   public int getPartitionCount()
@@ -120,6 +122,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
       // partition the stream that was first connected in the DAG and send full data to remaining input ports
       // this gives control over which stream to partition under default partitioning to the DAG writer
       List<InputPort<?>> inputPortList = context.getInputPorts();
+
       if (inputPortList != null && !inputPortList.isEmpty()) {
         DefaultPartition.splitPartitionKeysByPowerOf2(newPartitions, inputPortList.iterator().next());
       }
