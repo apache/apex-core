@@ -173,49 +173,7 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
         super.clear();
       }
     }
-  }
 
-  /**
-   * Assign all partitions keys to each partition in a list of partitions and port of the logical operator.
-   * <p>
-   * The incoming stream will be partitioned by n keys, with n the nearest power of 2 greater or equal to the
-   * number of partition instances provided. If the number of instances does not align with a power of 2, some of the
-   * partitions will be assigned 2 keys. This logic is used for default partitioning and can be used to implement
-   * {@link Partitioner}.
-   *
-   * @param <T>        Type of the partitionable object
-   * @param partitions
-   * @param inputPort
-   */
-  public static <T> void replicatePartitionKeys(Collection<Partition<T>> partitions, InputPort<?> inputPort)
-  {
-    if (partitions.isEmpty()) {
-      throw new IllegalArgumentException("partitions collection cannot be empty");
-    }
-
-    int partitionBits = (Integer.numberOfLeadingZeros(0) - Integer.numberOfLeadingZeros(partitions.size() - 1));
-    int partitionMask = 0;
-    if (partitionBits > 0) {
-      partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
-    }
-
-    Iterator<Partition<T>> iterator = partitions.iterator();
-    for (int i = 0; i <= partitionMask; i++) {
-      Partition<?> p;
-      if (iterator.hasNext()) {
-        p = iterator.next();
-      } else {
-        iterator = partitions.iterator();
-        p = iterator.next();
-      }
-
-      PartitionKeys pks = p.getPartitionKeys().get(inputPort);
-      if (pks == null) {
-        p.getPartitionKeys().put(inputPort, new PartitionKeys(partitionMask, Sets.newHashSet(i)));
-      } else {
-        pks.partitions.add(i);
-      }
-    }
   }
 
   /**
@@ -230,7 +188,7 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
    * @param partitions
    * @param inputPort
    */
-  public static <T> void splitPartitionKeysByPowerOf2(Collection<Partition<T>> partitions, InputPort<?> inputPort)
+  public static <T> void assignPartitionKeys(Collection<Partition<T>> partitions, InputPort<?> inputPort)
   {
     if (partitions.isEmpty()) {
       throw new IllegalArgumentException("partitions collection cannot be empty");

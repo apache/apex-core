@@ -121,7 +121,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
       // this gives control over which stream to partition under default partitioning to the DAG writer
       List<InputPort<?>> inputPortList = context.getInputPorts();
       if (inputPortList != null && !inputPortList.isEmpty()) {
-        DefaultPartition.splitPartitionKeysByPowerOf2(newPartitions, inputPortList.iterator().next());
+        DefaultPartition.assignPartitionKeys(newPartitions, inputPortList.iterator().next());
       }
     } else {
       // define partitions is being called again
