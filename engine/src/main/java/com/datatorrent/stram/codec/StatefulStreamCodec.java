@@ -16,10 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.datatorrent.stram.codec;
 
 import com.datatorrent.api.StreamCodec;
