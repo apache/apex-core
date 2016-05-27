@@ -604,7 +604,7 @@ public class StreamingContainerManagerTest
     public static final int[] partitions = new int[]{0, 1, 2};
 
     @Override
-    public int getCodeFromPartition(Object o)
+    public int getPartition(Object o)
     {
       if (o instanceof Tuple) {
         throw new UnsupportedOperationException("should not be called with control tuple");

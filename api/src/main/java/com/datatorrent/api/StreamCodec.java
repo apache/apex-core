@@ -66,6 +66,6 @@ public interface StreamCodec<T>
    * @param o object for which the partition has to be determined
    * @return A code that can be used to assign the object to a particular partition
    */
-  int getCodeFromPartition(T o);
+  int getPartition(T o);
 
 }

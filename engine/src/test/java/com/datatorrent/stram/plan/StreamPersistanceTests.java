@@ -531,7 +531,7 @@ public class StreamPersistanceTests
     }
 
     @Override
-    public int getCodeFromPartition(Object o)
+    public int getPartition(Object o)
     {
       if ((Integer)o % number == 0) {
         return 1;
@@ -773,7 +773,7 @@ public class StreamPersistanceTests
     }
 
     @Override
-    public int getCodeFromPartition(Object o)
+    public int getPartition(Object o)
     {
       return (int)o;// & 0x03;
     }

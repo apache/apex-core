@@ -1244,7 +1244,7 @@ public class StreamCodecTest
   {
 
     @Override
-    public int getCodeFromPartition(Object o)
+    public int getPartition(Object o)
     {
       return o.hashCode() / 2;
     }
@@ -1254,7 +1254,7 @@ public class StreamCodecTest
   {
 
     @Override
-    public int getCodeFromPartition(Object o)
+    public int getPartition(Object o)
     {
       return o.hashCode() / 3;
     }

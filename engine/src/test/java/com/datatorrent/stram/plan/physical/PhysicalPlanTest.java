@@ -140,7 +140,7 @@ public class PhysicalPlanTest
     private static final long serialVersionUID = 201410301656L;
 
     @Override
-    public int getCodeFromPartition(Object o)
+    public int getPartition(Object o)
     {
       return 0;
     }

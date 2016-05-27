@@ -85,7 +85,7 @@ public class DefaultKryoStreamCodec<T> extends SerializableObject implements Str
   }
 
   @Override
-  public int getCodeFromPartition(T t)
+  public int getPartition(T t)
   {
     return t.hashCode();
   }

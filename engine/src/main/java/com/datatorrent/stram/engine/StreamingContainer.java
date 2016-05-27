@@ -1637,7 +1637,7 @@ public class StreamingContainer extends YarnContainerMain
     }
 
     @Override
-    public int getCodeFromPartition(Object o)
+    public int getPartition(Object o)
     {
       return o.hashCode();
     }

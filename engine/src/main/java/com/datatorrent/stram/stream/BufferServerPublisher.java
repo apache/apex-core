@@ -112,7 +112,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
       }
     } else {
       if (statefulSerde == null) {
-        array = PayloadTuple.getSerializedTuple(serde.getCodeFromPartition(payload), serde.toByteArray(payload));
+        array = PayloadTuple.getSerializedTuple(serde.getPartition(payload), serde.toByteArray(payload));
       } else {
         DataStatePair dsp = statefulSerde.toDataStatePair(payload);
         /*
@@ -131,7 +131,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
         /*
          * Now that the state if any has been sent, we can proceed with the actual data we want to send.
          */
-        array = PayloadTuple.getSerializedTuple(statefulSerde.getCodeFromPartition(payload), dsp.data);
+        array = PayloadTuple.getSerializedTuple(statefulSerde.getPartition(payload), dsp.data);
       }
     }
 

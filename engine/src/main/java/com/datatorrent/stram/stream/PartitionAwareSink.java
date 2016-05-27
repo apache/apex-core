@@ -71,7 +71,7 @@ public class PartitionAwareSink<T> implements Sink<T>
   protected boolean canSendToOutput(T payload)
   {
     for (Range<Integer> r : partitions) {
-      if (r.contains(serde.getCodeFromPartition(payload))) {
+      if (r.contains(serde.getPartition(payload))) {
         return true;
       }
     }
