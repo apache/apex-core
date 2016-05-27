@@ -60,13 +60,12 @@ public interface StreamCodec<T>
   Slice toByteArray(T o);
 
   /**
-   * Get the partition on the object to be delivered to the downstream
-   * so that it can be sent to appropriate downstream node if the load
-   * balancing per partition is in effect.
+   * Generate a code (e.g. hashCode) based on the object. This code is then used to deliver the object to
+   * an appropriate downstream node if partition-based load balancing is in effect.
    *
    * @param o object for which the partition has to be determined
-   * @return partition for the object
+   * @return A code that can be used to assign the object to a particular partition
    */
-  int getPartition(T o);
+  int getCodeFromPartition(T o);
 
 }

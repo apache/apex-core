@@ -873,7 +873,7 @@ public class LogicalPlanTest
     }
 
     @Override
-    public int getPartition(Object o)
+    public int getCodeFromPartition(Object o)
     {
       return o.hashCode() / 2;
     }

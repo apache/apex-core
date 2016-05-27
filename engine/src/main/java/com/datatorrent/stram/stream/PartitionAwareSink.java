@@ -20,6 +20,8 @@ package com.datatorrent.stram.stream;
 
 import java.util.Set;
 
+import org.apache.commons.lang3.Range;
+
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.stram.tuple.Tuple;
@@ -33,24 +35,21 @@ import com.datatorrent.stram.tuple.Tuple;
 public class PartitionAwareSink<T> implements Sink<T>
 {
   private final StreamCodec<T> serde;
-  private final Set<Integer> partitions;
-  private final int mask;
+  private final Set<Range<Integer>> partitions;
   private volatile Sink<T> output;
   private int count;
 
   /**
    *
-   * @param serde
-   * @param partitions
-   * @param mask
+   * @param serde - The stream codec
+   * @param partitions - A set of ranges that define the object code values which this sink is responsible for.
    * @param output
    */
-  public PartitionAwareSink(StreamCodec<T> serde, Set<Integer> partitions, int mask, Sink<T> output)
+  public PartitionAwareSink(StreamCodec<T> serde, Set<Range<Integer>> partitions, Sink<T> output)
   {
     this.serde = serde;
     this.partitions = partitions;
     this.output = output;
-    this.mask = mask;
   }
 
   /**
@@ -71,7 +70,13 @@ public class PartitionAwareSink<T> implements Sink<T>
 
   protected boolean canSendToOutput(T payload)
   {
-    return partitions.contains(serde.getPartition(payload) & mask);
+    for (Range<Integer> r : partitions) {
+      if (r.contains(serde.getCodeFromPartition(payload))) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   @Override

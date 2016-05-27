@@ -101,7 +101,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
   }
 
   @Override
-  public int getPartition(T o)
+  public int getCodeFromPartition(T o)
   {
     return o.hashCode();
   }

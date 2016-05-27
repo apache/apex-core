@@ -62,9 +62,9 @@ public class StreamCodecWrapperForPersistance<T> implements StreamCodec<T>, Seri
   }
 
   @Override
-  public int getPartition(T o)
+  public int getCodeFromPartition(T o)
   {
-    return getSpecifiedStreamCodec().getPartition(o);
+    return getSpecifiedStreamCodec().getCodeFromPartition(o);
   }
 
   public boolean shouldCaptureEvent(T o)
@@ -74,9 +74,7 @@ public class StreamCodecWrapperForPersistance<T> implements StreamCodec<T>, Seri
       Collection<PartitionKeys> partitionKeysList = entry.getValue();
 
       for (PartitionKeys keys : partitionKeysList) {
-        if ( keys.partitions != null && keys.partitions.contains(keys.mask & codec.getPartition(o))) {
-          // Then at least one of the partitions is getting this event
-          // So send the event to persist operator
+        if (keys.contains(codec.getCodeFromPartition(o))) {
           return true;
         }
       }

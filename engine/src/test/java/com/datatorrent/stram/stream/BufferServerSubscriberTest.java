@@ -61,7 +61,7 @@ public class BufferServerSubscriberTest
       }
 
       @Override
-      public int getPartition(Object o)
+      public int getCodeFromPartition(Object o)
       {
         return 0;
       }
@@ -110,7 +110,7 @@ public class BufferServerSubscriberTest
     int i = 0;
     while (i++ < 10) {
       Slice fragment = myserde.toByteArray(new byte[]{(byte)i});
-      byte[] buffer = PayloadTuple.getSerializedTuple(myserde.getPartition(i), fragment);
+      byte[] buffer = PayloadTuple.getSerializedTuple(myserde.getCodeFromPartition(i), fragment);
       bss.onMessage(buffer, 0, buffer.length);
     }
 

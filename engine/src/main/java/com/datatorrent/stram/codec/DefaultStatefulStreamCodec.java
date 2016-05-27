@@ -132,7 +132,7 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
   }
 
   @Override
-  public int getPartition(T o)
+  public int getCodeFromPartition(T o)
   {
     return o.hashCode();
   }

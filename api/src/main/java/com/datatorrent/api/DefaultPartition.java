@@ -20,10 +20,11 @@ package com.datatorrent.api;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
-import com.google.common.collect.Sets;
+import org.apache.commons.lang3.Range;
 
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
@@ -113,19 +114,14 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
         return false;
       }
 
-      if (collection1.mask != collection2.mask) {
-        return false;
-      }
-
       if (collection1.partitions.size() != collection2.partitions.size()) {
         return false;
       }
 
-      for (Integer bb: collection1.partitions) {
-        if (!collection2.partitions.contains(bb)) {
-          return false;
-        }
+      if (!collection1.equals(collection2)) {
+        return false;
       }
+
       return true;
     }
 
@@ -179,42 +175,36 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
   /**
    * Assign partitions keys for the given list of partitions and port of the logical operator.
    * <p>
-   * The incoming stream will be partitioned by n keys, with n the nearest power of 2 greater or equal to the
-   * number of partition instances provided. If the number of instances does not align with a power of 2, some of the
-   * partitions will be assigned 2 keys. This logic is used for default partitioning and can be used to implement
-   * {@link Partitioner}.
+   * The incoming stream will be evenly partitioned such that an equal quantity of keys are sent to each
+   * partition (assuming the code generated from each incoming key is evenly distributed).
+   * This logic is used for default partitioning and can be used to implement {@link Partitioner}.
    *
    * @param <T>        Type of the partitionable object
    * @param partitions
    * @param inputPort
    */
-  public static <T> void assignPartitionKeys(Collection<Partition<T>> partitions, InputPort<?> inputPort)
+  public static <T> void evenlyPartitionKeys(Collection<Partition<T>> partitions, InputPort<?> inputPort)
   {
     if (partitions.isEmpty()) {
       throw new IllegalArgumentException("partitions collection cannot be empty");
     }
 
-    int partitionBits = (Integer.numberOfLeadingZeros(0) - Integer.numberOfLeadingZeros(partitions.size() - 1));
-    int partitionMask = 0;
-    if (partitionBits > 0) {
-      partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
-    }
+    int numPartitions = partitions.size();
+    int partitionSize = (Integer.MAX_VALUE / numPartitions);
 
-    Iterator<Partition<T>> iterator = partitions.iterator();
-    for (int i = 0; i <= partitionMask; i++) {
-      Partition<?> p;
-      if (iterator.hasNext()) {
-        p = iterator.next();
-      } else {
-        iterator = partitions.iterator();
-        p = iterator.next();
-      }
+    // Evenly split the keyspace into a set of partitions and assign each partition set to each port
+    for (Partition<T> p : partitions) {
+      for (int i = 0; i < numPartitions; i++) {
+        Range<Integer> acceptableRange = Range.between(i * partitionSize, (i + 1) * partitionSize - 1);
+        PartitionKeys pks = p.getPartitionKeys().get(inputPort);
 
-      PartitionKeys pks = p.getPartitionKeys().get(inputPort);
-      if (pks == null) {
-        p.getPartitionKeys().put(inputPort, new PartitionKeys(partitionMask, Sets.newHashSet(i)));
-      } else {
-        pks.partitions.add(i);
+        if (pks == null) {
+          Set<Range<Integer>> set = new HashSet<>();
+          set.add(acceptableRange);
+          p.getPartitionKeys().put(inputPort, new PartitionKeys(set));
+        } else {
+          pks.partitions.add(acceptableRange);
+        }
       }
     }
   }

@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang3.Range;
 
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap;
@@ -103,18 +104,16 @@ public class StreamContext extends DefaultAttributeMap implements Context
   private String sinkId;
   private long finishedWindowId;
   private int mask;
-  private Set<Integer> partitions;
+  private Set<Range<Integer>> partitions;
   private String id;
   private String portId;
 
   /**
-   *
-   * @param mask
+   * Update the stream context with the set of partition ranges
    * @param partitionKeys
    */
-  public void setPartitions(int mask, Set<Integer> partitionKeys)
+  public void setPartitions(Set<Range<Integer>> partitionKeys)
   {
-    this.mask = mask;
     this.partitions = partitionKeys == null ? null : Collections.unmodifiableSet(partitionKeys);
   }
 
@@ -132,7 +131,7 @@ public class StreamContext extends DefaultAttributeMap implements Context
    * @return Collection<Integer>
    */
   @SuppressWarnings("ReturnOfCollectionOrArrayField")
-  public Collection<Integer> getPartitions()
+  public Collection<Range<Integer>> getPartitions()
   {
     return partitions;
   }
