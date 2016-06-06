@@ -356,7 +356,7 @@ public class StramAgent extends FSAgent
       }
       url += WebServices.PATH;
     } catch (Exception ex) {
-      LOG.error("Caught exception when retrieving web services info", ex);
+      LOG.error("Cannot retrieve web services info", ex);
       return null;
     } finally {
       yarnClient.stop();
@@ -418,7 +418,7 @@ public class StramAgent extends FSAgent
       }
       return new StramWebServicesInfo(appMasterUrl, version, appPath, user, secToken, permissionsInfo);
     } catch (Exception ex) {
-      LOG.warn("Caught exception when retrieving web service info for app {}", appId, ex);
+      LOG.warn("Cannot retrieve web service info for app {}", appId, ex);
       return null;
     }
   }

@@ -125,7 +125,7 @@ public final class EventsAgent extends FSPartFileAgent
         totalNumEvents += indexLine.numEvents;
       }
     } catch (Exception ex) {
-      LOG.warn("Got exception when reading events", ex);
+      LOG.warn("Cannot read events for {}: {}", appId, ex);
       return result;
     }
     long offset = 0;
@@ -145,7 +145,7 @@ public final class EventsAgent extends FSPartFileAgent
         offset = 0;
         lastProcessPartFile = partFile.first;
       } catch (Exception ex) {
-        LOG.warn("Got exception when reading events", ex);
+        LOG.warn("Cannot read events for {}: {}", appId, ex);
       }
 
     }
@@ -214,7 +214,7 @@ public final class EventsAgent extends FSPartFileAgent
         IOUtils.closeQuietly(partBr);
       }
     } catch (Exception ex) {
-      LOG.warn("Got exception when reading events", ex);
+      LOG.warn("Cannot read events for {}: {}", appId, ex);
     }
 
     return result;
@@ -239,7 +239,7 @@ public final class EventsAgent extends FSPartFileAgent
           offset--;
         } else if (limit-- > 0) {
           ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
-          ev.id = Long.valueOf((String)ev.data.get("id"));
+          ev.id = Long.valueOf(ev.data.get("id"));
           ev.data.remove("id");
           result.add(ev);
         }
