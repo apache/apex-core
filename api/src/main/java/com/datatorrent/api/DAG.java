@@ -236,9 +236,20 @@ public interface DAG extends DAGContext, Serializable
   public abstract <T> void setAttribute(Attribute<T> key, T value);
 
   /**
-   * <p>setAttribute.</p>
+   * @Deprecated
+   * Use {@link #setOperatorAttribute} instead
    */
+  @Deprecated
   public abstract <T> void setAttribute(Operator operator, Attribute<T> key, T value);
+
+  /**
+   * Set an attribute for an operator.
+   * @param <T> Value type of the attribute.
+   * @param operator The Operator for which the attribute is being set.
+   * @param key The attribute which needs to be tuned.
+   * @param value The new value of the attribute.
+   */
+  public abstract <T> void setOperatorAttribute(Operator operator, Attribute<T> key, T value);
 
   /**
    * <p>setOutputPortAttribute.</p>

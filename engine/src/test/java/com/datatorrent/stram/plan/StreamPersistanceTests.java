@@ -950,8 +950,8 @@ public class StreamPersistanceTests
     AscendingNumbersOperator ascend = dag.addOperator("ascend", new AscendingNumbersOperator());
 
     final TestReceiverOperator console = dag.addOperator("console", new TestReceiverOperator());
-    dag.setAttribute(console, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<TestReceiverOperator>(2));
-    dag.setAttribute(console, Context.OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
+    dag.setOperatorAttribute(console, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<TestReceiverOperator>(2));
+    dag.setOperatorAttribute(console, Context.OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
 
     final PartitionedTestPersistanceOperator console1 = new PartitionedTestPersistanceOperator();
 

@@ -182,13 +182,13 @@ public class StatsTest
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(workingDir, null));
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     TestInputStatsListener testInputStatsListener = new TestInputStatsListener();
-    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{testInputStatsListener}));
+    dag.setOperatorAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{testInputStatsListener}));
     testOper.setMaxTuples(tupleCount);
     testOper.setEmitInterval(0);
 
     TestCollector collector = dag.addOperator("Collector", new TestCollector());
     TestCollectorStatsListener testCollectorStatsListener = new TestCollectorStatsListener();
-    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{testCollectorStatsListener}));
+    dag.setOperatorAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{testCollectorStatsListener}));
     dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(null);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
@@ -241,7 +241,7 @@ public class StatsTest
 
     TestCollector collector = dag.addOperator("Collector", new TestCollector());
     if (statsListener != null) {
-      dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{statsListener}));
+      dag.setOperatorAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{statsListener}));
     }
 
     dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(locality);

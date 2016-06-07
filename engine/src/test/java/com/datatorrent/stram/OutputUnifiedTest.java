@@ -68,7 +68,7 @@ public class OutputUnifiedTest
     GenericTestOperator op1 = new GenericTestOperator();
     dag.addOperator("op1", op1);
 
-    dag.setAttribute(op1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
+    dag.setOperatorAttribute(op1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
 
     TestOutputOperator op2 = new TestOutputOperator();
     dag.addOperator("op2", op2);
@@ -97,12 +97,12 @@ public class OutputUnifiedTest
     GenericTestOperator op1 = new GenericTestOperator();
     dag.addOperator("op1", op1);
 
-    dag.setAttribute(op1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
+    dag.setOperatorAttribute(op1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
 
     TestOutputOperator op2 = new TestOutputOperator();
     dag.addOperator("op2", op2);
 
-    dag.setAttribute(op2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setOperatorAttribute(op2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
 
     dag.addStream("s1", i1.output, op1.inport1);
     dag.addStream("s2", op1.outport1, op2.inport);
@@ -125,7 +125,7 @@ public class OutputUnifiedTest
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
 
-    dag.setAttribute(i1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setOperatorAttribute(i1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
 
     GenericTestOperator op1 = new GenericTestOperator();
     dag.addOperator("op1", op1);

@@ -122,7 +122,7 @@ public class DelayOperatorTest
     opC = dag.addOperator("C", GenericTestOperator.class);
     opD = dag.addOperator("D", GenericTestOperator.class);
     opDelay = dag.addOperator("opDelay", DefaultDelayOperator.class);
-    dag.setAttribute(opDelay, Context.OperatorContext.APPLICATION_WINDOW_COUNT, 2);
+    dag.setOperatorAttribute(opDelay, Context.OperatorContext.APPLICATION_WINDOW_COUNT, 2);
     dag.addStream("BtoC", opB.outport1, opC.inport1);
     dag.addStream("CtoD", opC.outport1, opD.inport1);
     dag.addStream("CtoDelay", opC.outport2, opDelay.input);

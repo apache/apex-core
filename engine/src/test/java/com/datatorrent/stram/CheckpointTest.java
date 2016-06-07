@@ -139,7 +139,7 @@ public class CheckpointTest
     MockInputOperator o1 = dag.addOperator("o1", new MockInputOperator());
 
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
-    dag.setAttribute(o2, OperatorContext.STATELESS, true);
+    dag.setOperatorAttribute(o2, OperatorContext.STATELESS, true);
 
     dag.addStream("o1.outport", o1.outport, o2.inport1).setLocality(Locality.CONTAINER_LOCAL);
 
@@ -433,7 +433,7 @@ public class CheckpointTest
     dag.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
-    dag.setAttribute(o1, OperatorContext.TIMEOUT_WINDOW_COUNT, 2);
+    dag.setOperatorAttribute(o1, OperatorContext.TIMEOUT_WINDOW_COUNT, 2);
 
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
 
@@ -495,7 +495,7 @@ public class CheckpointTest
     MockInputOperator o1 = dag.addOperator("o1", new MockInputOperator());
 
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
-    dag.setAttribute(o2, OperatorContext.STATELESS, true);
+    dag.setOperatorAttribute(o2, OperatorContext.STATELESS, true);
 
     dag.addStream("o1.outport", o1.outport, o2.inport1);
 

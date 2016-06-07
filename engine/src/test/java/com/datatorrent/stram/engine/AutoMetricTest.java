@@ -204,7 +204,7 @@ public class AutoMetricTest
 
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     TestStatsListener sl = new TestStatsListener();
-    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)sl));
+    dag.setOperatorAttribute(testOper, OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)sl));
 
     GenericTestOperator collector = dag.addOperator("Collector", new GenericTestOperator());
     dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(Locality.CONTAINER_LOCAL);
@@ -249,7 +249,7 @@ public class AutoMetricTest
 
     OperatorWithMetrics o1 = dag.addOperator("o1", OperatorWithMetrics.class);
     MockAggregator aggregator = new MockAggregator(latch);
-    dag.setAttribute(o1, Context.OperatorContext.METRICS_AGGREGATOR, aggregator);
+    dag.setOperatorAttribute(o1, Context.OperatorContext.METRICS_AGGREGATOR, aggregator);
 
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
 
@@ -277,10 +277,10 @@ public class AutoMetricTest
 
     OperatorWithMetrics o1 = dag.addOperator("o1", OperatorWithMetrics.class);
     MockAggregator aggregator = new MockAggregator(latch);
-    dag.setAttribute(o1, Context.OperatorContext.METRICS_AGGREGATOR, aggregator);
+    dag.setOperatorAttribute(o1, Context.OperatorContext.METRICS_AGGREGATOR, aggregator);
 
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
-    dag.setAttribute(o1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<TestGeneratorInputOperator>(2));
+    dag.setOperatorAttribute(o1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<TestGeneratorInputOperator>(2));
 
     dag.addStream("TestTuples", inputOperator.outport, o1.inport1);
 
@@ -428,7 +428,7 @@ public class AutoMetricTest
 
     OperatorWithMetricMethod o1 = dag.addOperator("o1", OperatorWithMetricMethod.class);
     MockAggregator aggregator = new MockAggregator(latch);
-    dag.setAttribute(o1, Context.OperatorContext.METRICS_AGGREGATOR, aggregator);
+    dag.setOperatorAttribute(o1, Context.OperatorContext.METRICS_AGGREGATOR, aggregator);
 
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
 

@@ -196,11 +196,11 @@ public class OiOStreamTest
     plan.addStream("OiOout1", intermediateOperator2.output, outputOperator.input).setLocality(Locality.THREAD_LOCAL);
     plan.addStream("OiOout2", intermediateOperator4.output, outputOperator.input2).setLocality(Locality.THREAD_LOCAL);
 
-    plan.setAttribute(inputOperator, OperatorContext.VCORES, 1);
-    plan.setAttribute(intermediateOperator1, OperatorContext.VCORES, 1);
-    plan.setAttribute(intermediateOperator2, OperatorContext.VCORES, 2);
-    plan.setAttribute(intermediateOperator3, OperatorContext.VCORES, 3);
-    plan.setAttribute(intermediateOperator4, OperatorContext.VCORES, 5);
+    plan.setOperatorAttribute(inputOperator, OperatorContext.VCORES, 1);
+    plan.setOperatorAttribute(intermediateOperator1, OperatorContext.VCORES, 1);
+    plan.setOperatorAttribute(intermediateOperator2, OperatorContext.VCORES, 2);
+    plan.setOperatorAttribute(intermediateOperator3, OperatorContext.VCORES, 3);
+    plan.setOperatorAttribute(intermediateOperator4, OperatorContext.VCORES, 5);
     plan.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
 
     try {

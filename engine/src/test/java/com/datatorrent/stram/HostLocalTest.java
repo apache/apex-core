@@ -114,10 +114,10 @@ public class HostLocalTest
 
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
-    dag.setAttribute(o1,OperatorContext.MEMORY_MB,256);
+    dag.setOperatorAttribute(o1,OperatorContext.MEMORY_MB,256);
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
-    dag.setAttribute(partitioned,OperatorContext.MEMORY_MB,256);
+    dag.setOperatorAttribute(partitioned,OperatorContext.MEMORY_MB,256);
     dag.getMeta(partitioned).getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
 
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.NODE_LOCAL);
@@ -158,8 +158,8 @@ public class HostLocalTest
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.THREAD_LOCAL);
-    dag.setAttribute(o1,OperatorContext.MEMORY_MB,256);
-    dag.setAttribute(partitioned,OperatorContext.MEMORY_MB,256);
+    dag.setOperatorAttribute(o1,OperatorContext.MEMORY_MB,256);
+    dag.setOperatorAttribute(partitioned,OperatorContext.MEMORY_MB,256);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
 
@@ -196,8 +196,8 @@ public class HostLocalTest
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.CONTAINER_LOCAL);
-    dag.setAttribute(o1, OperatorContext.MEMORY_MB, 256);
-    dag.setAttribute(partitioned,OperatorContext.MEMORY_MB,256);
+    dag.setOperatorAttribute(o1, OperatorContext.MEMORY_MB, 256);
+    dag.setOperatorAttribute(partitioned,OperatorContext.MEMORY_MB,256);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
 
@@ -232,9 +232,9 @@ public class HostLocalTest
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.CONTAINER_LOCAL);
-    dag.setAttribute(o1,OperatorContext.MEMORY_MB,256);
-    dag.setAttribute(o1,OperatorContext.VCORES,1);
-    dag.setAttribute(partitioned,OperatorContext.VCORES,1);
+    dag.setOperatorAttribute(o1,OperatorContext.MEMORY_MB,256);
+    dag.setOperatorAttribute(o1,OperatorContext.VCORES,1);
+    dag.setOperatorAttribute(partitioned,OperatorContext.VCORES,1);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
 
@@ -272,9 +272,9 @@ public class HostLocalTest
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.CONTAINER_LOCAL);
-    dag.setAttribute(o1, OperatorContext.MEMORY_MB, 256);
-    dag.setAttribute(o1, OperatorContext.VCORES, 2);
-    dag.setAttribute(partitioned, OperatorContext.VCORES, 1);
+    dag.setOperatorAttribute(o1, OperatorContext.MEMORY_MB, 256);
+    dag.setOperatorAttribute(o1, OperatorContext.VCORES, 2);
+    dag.setOperatorAttribute(partitioned, OperatorContext.VCORES, 1);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
 

@@ -70,7 +70,7 @@ public class AffinityRulesTest
     dag.addStream("stream1", o1.outport, o2.inport1);
     dag.addStream("stream2", o2.outport1, o3.inport1);
 
-    dag.setAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(5));
+    dag.setOperatorAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(5));
 
     AffinityRulesSet ruleSet = new AffinityRulesSet();
     // Valid case:
@@ -137,10 +137,10 @@ public class AffinityRulesTest
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("O1", GenericTestOperator.class);
-    dag.setAttribute(o1, OperatorContext.MEMORY_MB, 256);
+    dag.setOperatorAttribute(o1, OperatorContext.MEMORY_MB, 256);
 
     GenericTestOperator o2 = dag.addOperator("O2", GenericTestOperator.class);
-    dag.setAttribute(o2, OperatorContext.MEMORY_MB, 256);
+    dag.setOperatorAttribute(o2, OperatorContext.MEMORY_MB, 256);
 
     dag.getMeta(o1).getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
     AffinityRulesSet ruleSet = new AffinityRulesSet();

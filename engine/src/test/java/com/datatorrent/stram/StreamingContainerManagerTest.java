@@ -273,7 +273,7 @@ public class StreamingContainerManagerTest
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
     node2.setPartitionCount(3);
-    dag.setAttribute(node2, OperatorContext.SPIN_MILLIS, 10); /* this should not affect anything materially */
+    dag.setOperatorAttribute(node2, OperatorContext.SPIN_MILLIS, 10); /* this should not affect anything materially */
     dag.setOutputPortAttribute(node2.outport1, PortContext.QUEUE_CAPACITY, 1111);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
     dag.setInputPortAttribute(node3.inport1, PortContext.QUEUE_CAPACITY, 2222);
@@ -515,7 +515,7 @@ public class StreamingContainerManagerTest
   public void testProcessHeartbeat() throws Exception
   {
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
-    dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
+    dag.setOperatorAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
@@ -722,7 +722,7 @@ public class StreamingContainerManagerTest
     dag.addStream("stream1", o1.outport1, o2.inport1);
     dag.addStream("stream2", o2.outport1, o3.inport1);
 
-    dag.setAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setOperatorAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
     StreamingContainerManager scm = new StreamingContainerManager(dag);
 
     PhysicalPlan physicalPlan = scm.getPhysicalPlan();
@@ -810,7 +810,7 @@ public class StreamingContainerManagerTest
   {
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
-    dag.setAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setOperatorAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
     dag.addStream("o1Output1", o1.outport, o2.inport1).setLocality(locality);
 
     int maxContainers = 5;

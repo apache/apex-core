@@ -1476,6 +1476,12 @@ public class LogicalPlan implements Serializable, DAG
   @Override
   public <T> void setAttribute(Operator operator, Attribute<T> key, T value)
   {
+    setOperatorAttribute(operator, key, value);
+  }
+
+  @Override
+  public <T> void setOperatorAttribute(Operator operator, Attribute<T> key, T value)
+  {
     this.getMeta(operator).attributes.put(key, value);
   }
 

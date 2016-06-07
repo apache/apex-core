@@ -226,7 +226,7 @@ public class StreamCodecTest
   {
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
-    dag.setAttribute(node2, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
+    dag.setOperatorAttribute(node2, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
     TestStreamCodec serDe = new TestStreamCodec();
     dag.setInputPortAttribute(node2.inport1, Context.PortContext.STREAM_CODEC, serDe);
 
@@ -273,9 +273,9 @@ public class StreamCodecTest
   public void testMxNPartitioningStreamCodec()
   {
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
-    dag.setAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setOperatorAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
-    dag.setAttribute(node2, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
+    dag.setOperatorAttribute(node2, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
     TestStreamCodec serDe = new TestStreamCodec();
     dag.setInputPortAttribute(node2.inport1, Context.PortContext.STREAM_CODEC, serDe);
 
@@ -337,7 +337,7 @@ public class StreamCodecTest
   public void testParallelPartitioningStreamCodec()
   {
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
-    dag.setAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setOperatorAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
     dag.setInputPortAttribute(node2.inport1, Context.PortContext.PARTITION_PARALLEL, true);
     TestStreamCodec serDe = new TestStreamCodec();
@@ -478,7 +478,7 @@ public class StreamCodecTest
   {
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
-    dag.setAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setOperatorAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
     TestStreamCodec serDe = new TestStreamCodec();
     dag.setInputPortAttribute(node2.inport1, Context.PortContext.STREAM_CODEC, serDe);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
@@ -609,7 +609,7 @@ public class StreamCodecTest
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
-    dag.setAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setOperatorAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
     TestStreamCodec serDe = new TestStreamCodec();
     dag.setInputPortAttribute(node2.inport1, Context.PortContext.STREAM_CODEC, serDe);
     TestStreamCodec2 serDe2 = new TestStreamCodec2();
@@ -690,13 +690,13 @@ public class StreamCodecTest
   public void testMxNMultipleStreamCodecs()
   {
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
-    dag.setAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setOperatorAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
-    dag.setAttribute(node2, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
+    dag.setOperatorAttribute(node2, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
     TestStreamCodec serDe = new TestStreamCodec();
     dag.setInputPortAttribute(node2.inport1, Context.PortContext.STREAM_CODEC, serDe);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
-    dag.setAttribute(node3, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
+    dag.setOperatorAttribute(node3, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
     TestStreamCodec serDe2 = new TestStreamCodec();
     dag.setInputPortAttribute(node3.inport1, Context.PortContext.STREAM_CODEC, serDe2);
 
@@ -873,7 +873,7 @@ public class StreamCodecTest
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
-    dag.setAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
+    dag.setOperatorAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
     dag.setOutputPortAttribute(node1.outport1, Context.PortContext.UNIFIER_LIMIT, 2);
     TestStreamCodec serDe = new TestStreamCodec();
     dag.setInputPortAttribute(node2.inport1, Context.PortContext.STREAM_CODEC, serDe);
@@ -955,16 +955,16 @@ public class StreamCodecTest
   public void testDynamicPartitioningStreamCodec()
   {
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
-    dag.setAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
-    dag.setAttribute(node1, Context.OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
+    dag.setOperatorAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setOperatorAttribute(node1, Context.OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
-    dag.setAttribute(node2, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
-    dag.setAttribute(node2, Context.OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
+    dag.setOperatorAttribute(node2, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
+    dag.setOperatorAttribute(node2, Context.OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
     TestStreamCodec serDe = new TestStreamCodec();
     dag.setInputPortAttribute(node2.inport1, Context.PortContext.STREAM_CODEC, serDe);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
-    dag.setAttribute(node3, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
-    dag.setAttribute(node3, Context.OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
+    dag.setOperatorAttribute(node3, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
+    dag.setOperatorAttribute(node3, Context.OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
     TestStreamCodec serDe2 = new TestStreamCodec();
     dag.setInputPortAttribute(node3.inport1, Context.PortContext.STREAM_CODEC, serDe2);
 

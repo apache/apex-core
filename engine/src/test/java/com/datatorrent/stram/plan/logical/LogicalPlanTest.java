@@ -474,7 +474,7 @@ public class LogicalPlanTest
     dag.addStream("Connection", input.outport, operator.input1);
 
 
-    dag.setAttribute(operator, OperatorContext.PARTITIONER, new StatelessPartitioner<TestOperatorAnnotationOperator>(2));
+    dag.setOperatorAttribute(operator, OperatorContext.PARTITIONER, new StatelessPartitioner<TestOperatorAnnotationOperator>(2));
 
     try {
       dag.validate();
@@ -483,7 +483,7 @@ public class LogicalPlanTest
       Assert.assertEquals("", "Operator " + dag.getMeta(operator).getName() + " provides partitioning capabilities but the annotation on the operator class declares it non partitionable!", e.getMessage());
     }
 
-    dag.setAttribute(operator, OperatorContext.PARTITIONER, null);
+    dag.setOperatorAttribute(operator, OperatorContext.PARTITIONER, null);
     dag.setInputPortAttribute(operator.input1, PortContext.PARTITION_PARALLEL, true);
 
     try {
@@ -545,13 +545,13 @@ public class LogicalPlanTest
     TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
 
     GenericTestOperator amoOper = dag.addOperator("amoOper", GenericTestOperator.class);
-    dag.setAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
+    dag.setOperatorAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
 
     dag.addStream("input1.outport", input1.outport, amoOper.inport1);
     dag.addStream("input2.outport", input2.outport, amoOper.inport2);
 
     GenericTestOperator outputOper = dag.addOperator("outputOper", GenericTestOperator.class);
-    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_LEAST_ONCE);
+    dag.setOperatorAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_LEAST_ONCE);
     dag.addStream("aloOper.outport1", amoOper.outport1, outputOper.inport1);
 
     try {
@@ -560,7 +560,7 @@ public class LogicalPlanTest
     } catch (ValidationException ve) {
       Assert.assertEquals("", ve.getMessage(), "Processing mode outputOper/AT_LEAST_ONCE not valid for source amoOper/AT_MOST_ONCE");
     }
-    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, null);
+    dag.setOperatorAttribute(outputOper, OperatorContext.PROCESSING_MODE, null);
     dag.validate();
 
     OperatorMeta outputOperOm = dag.getMeta(outputOper);
@@ -577,7 +577,7 @@ public class LogicalPlanTest
     TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
 
     GenericTestOperator amoOper = dag.addOperator("amoOper", GenericTestOperator.class);
-    dag.setAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.EXACTLY_ONCE);
+    dag.setOperatorAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.EXACTLY_ONCE);
 
     dag.addStream("input1.outport", input1.outport, amoOper.inport1);
     dag.addStream("input2.outport", input2.outport, amoOper.inport2);
@@ -592,7 +592,7 @@ public class LogicalPlanTest
       Assert.assertEquals("", ve.getMessage(), "Processing mode for outputOper should be AT_MOST_ONCE for source amoOper/EXACTLY_ONCE");
     }
 
-    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_LEAST_ONCE);
+    dag.setOperatorAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_LEAST_ONCE);
 
     try {
       dag.validate();
@@ -602,7 +602,7 @@ public class LogicalPlanTest
     }
 
     // AT_MOST_ONCE is valid
-    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
+    dag.setOperatorAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
     dag.validate();
   }
 
@@ -803,7 +803,7 @@ public class LogicalPlanTest
     // Operator attribute not serializable test
     dag = new LogicalPlan();
     TestGeneratorInputOperator operator = dag.addOperator("TestOperator", TestGeneratorInputOperator.class);
-    dag.setAttribute(operator, attr, new TestAttributeValue());
+    dag.setOperatorAttribute(operator, attr, new TestAttributeValue());
     try {
       dag.validate();
       Assert.fail("Setting not serializable attribute should throw exception");
@@ -961,22 +961,22 @@ public class LogicalPlanTest
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
     dag.addStream("Stream1", input1.outport, x.inport1);
-    dag.setAttribute(x, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
-    dag.setAttribute(x, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
+    dag.setOperatorAttribute(x, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
+    dag.setOperatorAttribute(x, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
     dag.validate();
 
     TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
     CheckpointableWithinAppWindowOperator y = dag.addOperator("y", new CheckpointableWithinAppWindowOperator());
     dag.addStream("Stream2", input2.outport, y.inport1);
-    dag.setAttribute(y, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
-    dag.setAttribute(y, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
+    dag.setOperatorAttribute(y, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
+    dag.setOperatorAttribute(y, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
     dag.validate();
 
     TestGeneratorInputOperator input3 = dag.addOperator("input3", TestGeneratorInputOperator.class);
     NotCheckpointableWithinAppWindowOperator z = dag.addOperator("z", new NotCheckpointableWithinAppWindowOperator());
     dag.addStream("Stream3", input3.outport, z.inport1);
-    dag.setAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
-    dag.setAttribute(z, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
+    dag.setOperatorAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
+    dag.setOperatorAttribute(z, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
     try {
       dag.validate();
       Assert.fail("should fail because chekpoint window count is not a factor of application window count");
@@ -984,10 +984,10 @@ public class LogicalPlanTest
       // expected
     }
 
-    dag.setAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 30);
+    dag.setOperatorAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 30);
     dag.validate();
 
-    dag.setAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 45);
+    dag.setOperatorAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 45);
     try {
       dag.validate();
       Assert.fail("should fail because chekpoint window count is not a factor of application window count");

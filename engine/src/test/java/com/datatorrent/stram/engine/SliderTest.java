@@ -147,8 +147,8 @@ public class SliderTest
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 100);
     Input input = dag.addOperator("Input", new Input());
     Sum sum = dag.addOperator("Sum", new Sum());
-    dag.setAttribute(sum, OperatorContext.APPLICATION_WINDOW_COUNT, applicationWindowCount);
-    dag.setAttribute(sum, OperatorContext.SLIDE_BY_WINDOW_COUNT, slideByWindowCount);
+    dag.setOperatorAttribute(sum, OperatorContext.APPLICATION_WINDOW_COUNT, applicationWindowCount);
+    dag.setOperatorAttribute(sum, OperatorContext.SLIDE_BY_WINDOW_COUNT, slideByWindowCount);
     Validator validate = dag.addOperator("validator", new Validator());
     Validator.numbersValidated = 0;
     validate.numberOfIntegers = applicationWindowCount;
