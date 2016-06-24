@@ -18,7 +18,8 @@
  */
 package com.datatorrent.stram;
 
-
+import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 import org.codehaus.jettison.json.JSONArray;
@@ -28,10 +29,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.client.api.YarnClient;
+import org.apache.hadoop.yarn.exceptions.YarnException;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
+import com.datatorrent.api.Attribute;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.util.LoggerUtil;
 
@@ -146,6 +152,21 @@ public abstract class StramUtils
     }
 
     return jsonObject;
+  }
+
+
+  public static <T> T getValueWithDefault(Attribute.AttributeMap map, Attribute<T> key)
+  {
+    T value = map.get(key);
+    if (value == null) {
+      value = key.defaultValue;
+    }
+    return value;
+  }
+
+  public static List<ApplicationReport> getApexApplicationList(YarnClient yarnClient) throws IOException, YarnException
+  {
+    return yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE, StramClient.YARN_APPLICATION_TYPE_DEPRECATED));
   }
 
 }

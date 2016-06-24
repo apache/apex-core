@@ -89,14 +89,13 @@ import org.apache.log4j.Level;
 import org.apache.tools.ant.DirectoryScanner;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.WebResource;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG.GenericOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.client.AppPackage;
 import com.datatorrent.stram.client.AppPackage.AppInfo;
 import com.datatorrent.stram.client.ConfigPackage;
@@ -1593,7 +1592,7 @@ public class ApexCli
   private List<ApplicationReport> getApplicationList()
   {
     try {
-      return yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE, StramClient.YARN_APPLICATION_TYPE_DEPRECATED));
+      return StramUtils.getApexApplicationList(yarnClient);
     } catch (Exception e) {
       throw new CliException("Error getting application list from resource manager", e);
     }
