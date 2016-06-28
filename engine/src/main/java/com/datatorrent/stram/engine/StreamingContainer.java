@@ -769,7 +769,15 @@ public class StreamingContainer extends YarnContainerMain
     }
 
     if (rsp.committedWindowId != lastCommittedWindowId) {
+
       lastCommittedWindowId = rsp.committedWindowId;
+
+      if (bufferServer != null) {
+        //  One Window before the committed Window is kept in the Buffer Server, for historical reasons.
+        // Jira for that issue is APEXCORE-479
+        bufferServer.purge(lastCommittedWindowId - 1);
+      }
+
       OperatorRequest nr = null;
       for (Entry<Integer, Node<?>> e : nodes.entrySet()) {
         final Thread thread = e.getValue().context.getThread();

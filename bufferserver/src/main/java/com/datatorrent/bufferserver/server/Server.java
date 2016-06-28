@@ -26,7 +26,6 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -169,7 +168,7 @@ public class Server implements ServerListener
     return identity;
   }
 
-  private final HashMap<String, DataList> publisherBuffers = new HashMap<String, DataList>();
+  private final ConcurrentHashMap<String, DataList> publisherBuffers = new ConcurrentHashMap<>(1, 0.75f, 1);
   private final ConcurrentHashMap<String, LogicalNode> subscriberGroups = new ConcurrentHashMap<String, LogicalNode>();
   private final ConcurrentHashMap<String, AbstractLengthPrependerClient> publisherChannels = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, AbstractLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<>();
@@ -185,7 +184,7 @@ public class Server implements ServerListener
     if (dl == null) {
       message = ("Invalid identifier '" + request.getIdentifier() + "'").getBytes();
     } else {
-      dl.purge(request.getBaseSeconds(), request.getWindowId());
+      dl.purge((long)request.getBaseSeconds() << 32 | request.getWindowId());
       message = ("Request sent for processing: " + request).getBytes();
     }
 
@@ -196,6 +195,13 @@ public class Server implements ServerListener
     } else {
       logger.error("Failed to deliver purge ack message. {} send buffers are full.", ctx);
       throw new RuntimeException("Failed to deliver purge ack message. " + ctx + "send buffers are full.");
+    }
+  }
+
+  public void purge(long windowId)
+  {
+    for (DataList dataList: publisherBuffers.values()) {
+      dataList.purge(windowId);
     }
   }
 

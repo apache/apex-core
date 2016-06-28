@@ -176,21 +176,20 @@ public class DataList
     numberOfInMemBlockPermits.set(MAX_COUNT_OF_INMEM_BLOCKS - 1);
   }
 
-  public void purge(final int baseSeconds, final int windowId)
+  public void purge(final long windowId)
   {
-    final long longWindowId = (long)baseSeconds << 32 | windowId;
     logger.debug("Purging {} from window ID {} to window ID {}", this, Codec.getStringWindowId(first.starting_window),
-        Codec.getStringWindowId(longWindowId));
+        Codec.getStringWindowId(windowId));
 
     int numberOfInMemBlockPurged = 0;
     synchronized (this) {
-      for (Block prev = null, temp = first; temp != null && temp.starting_window <= longWindowId;
+      for (Block prev = null, temp = first; temp != null && temp.starting_window <= windowId;
           prev = temp, temp = temp.next) {
-        if (temp.ending_window > longWindowId || temp == last) {
+        if (temp.ending_window > windowId || temp == last) {
           if (prev != null) {
             first = temp;
           }
-          first.purge(longWindowId);
+          first.purge(windowId);
           break;
         }
         temp.discard(false);
