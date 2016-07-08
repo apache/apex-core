@@ -1998,7 +1998,7 @@ public class StreamingContainerManager implements PlanContext
           // visit all downstream operators of the group
           ctx.visited.add(groupOper);
           groupOpers.add(groupOper);
-          pendingDeploy |= operator.getState() == PTOperator.State.PENDING_DEPLOY;
+          pendingDeploy |= groupOper.getState() == PTOperator.State.PENDING_DEPLOY;
         }
       }
       // highest common checkpoint
