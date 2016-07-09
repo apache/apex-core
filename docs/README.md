@@ -19,31 +19,3 @@ For additional details see [writing your docs](http://www.mkdocs.org/user-guide/
 ## Site Configuration
 
 Guides on applying site-wide [configuration](http://www.mkdocs.org/user-guide/configuration/) and [themeing](http://www.mkdocs.org/user-guide/styling-your-docs/) are available on the MkDocs site.
-
-## Deployment
-
-
-Deployment is done in two steps.  First all documentation is statically generatd into HTML files and then it is deployed to the apex website.  For more details on how conversion to HTML works see [MkDocs documentation](http://www.mkdocs.org/).
-
-1.  Go to release branch of the repository and execute the following command to build the docs.  **Note**: Until [mkdocs #859](https://github.com/mkdocs/mkdocs/issues/859) is resolved and available for download, use mkdocs built against [master](https://github.com/mkdocs/mkdocs).
-
-```bash
-# set project version
-APEX_VERSION=3.3
-
-# build docs under site foolder
-mkdocs build --clean
-
-# copy docs from site into target folder on apex-site
-cd ../apex-site
-git checkout asf-site
-rm -rf docs/apex-${APEX_VERSION}
-cp -r ../apex-core/site docs/apex-${APEX_VERSION}
-# Set this to be latest available docs version
-cd docs && ln -nsf apex-${APEX_VERSION} apex
-git add -A
-git commit -m "Adding apex-${APEX_VERSION} documentation"
-git push
-```
-
-2.  Go to [apex-site repository](https://github.com/apache/apex-site#contributing) and add the new link to the [docs.md](https://github.com/apache/apex-site/blob/master/src/md/docs.md) and follow committer steps to commit and push these changes, and deploy the site.
