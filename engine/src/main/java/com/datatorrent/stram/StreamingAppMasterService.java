@@ -105,6 +105,7 @@ import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
+import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.util.SecurityUtils;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
@@ -614,7 +615,11 @@ public class StreamingAppMasterService extends CompositeService
       }
       WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(config).start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
-      this.appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
+      appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
+
+      if (ConfigUtils.isSSLEnabled(config)) {
+        appMasterTrackingUrl = "https://" + appMasterTrackingUrl;
+      }
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);
     } catch (Exception e) {
       LOG.error("Webapps failed to start. Ignoring for now:", e);

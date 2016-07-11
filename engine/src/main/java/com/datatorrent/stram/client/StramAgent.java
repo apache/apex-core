@@ -204,7 +204,14 @@ public class StramAgent extends FSAgent
     if (info != null) {
       //ws = wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(info.version).path("stram");
       // the filter should convert to the right version
-      ub = UriBuilder.fromUri("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(WebServices.VERSION).path("stram");
+      String url;
+      if (!info.appMasterTrackingUrl.startsWith("http://")
+          && !info.appMasterTrackingUrl.startsWith("https://")) {
+        url = "http://" + info.appMasterTrackingUrl;
+      } else {
+        url = info.appMasterTrackingUrl;
+      }
+      ub = UriBuilder.fromUri(url).path(WebServices.PATH).path(WebServices.VERSION).path("stram");
       WebServicesVersionConversion.Converter versionConverter = WebServicesVersionConversion.getConverter(info.version);
       if (versionConverter != null) {
         VersionConversionFilter versionConversionFilter = new VersionConversionFilter(versionConverter);
