@@ -167,6 +167,7 @@
           <systemPropertyVariables>
             <maven.home>${maven.home}</maven.home>
             <maven.multiModuleProjectDirectory>${maven.home}</maven.multiModuleProjectDirectory>
+            <apex.version>${project.version}</apex.version>
           </systemPropertyVariables>
         </configuration>
       </plugin>
