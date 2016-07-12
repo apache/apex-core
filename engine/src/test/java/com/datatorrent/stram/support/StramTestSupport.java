@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -156,8 +157,15 @@ public abstract class StramTestSupport
    */
   public static File createAppPackageFile()
   {
-    Assert.assertEquals(0, mavenCli.doMain(new String[] {"clean", "package", "-DskipTests"},
-        workingDirectory, System.out, System.err));
+    final String version = System.getProperty("apex.version");
+    final List<String> params = new LinkedList<>();
+    params.add("clean");
+    params.add("package");
+    params.add("-DskipTests");
+    if (version != null && version.length() > 0) {
+      params.add("-Dapex.version=" + version);
+    }
+    Assert.assertEquals(0, mavenCli.doMain(params.toArray(new String[params.size()]), workingDirectory, System.out, System.err));
     return new File(workingDirectory, "target/mydtapp-1.0-SNAPSHOT.apa");
   }
 
