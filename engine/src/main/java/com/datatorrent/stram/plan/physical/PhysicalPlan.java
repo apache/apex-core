@@ -73,6 +73,7 @@ import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -463,6 +464,19 @@ public class PhysicalPlan implements Serializable
       }
     }
 
+    for (PTContainer ptContainer: containers) {
+      if (ptContainer.getOperators().size() > 1) {
+        for (PTOperator operator: ptContainer.getOperators()) {
+          for (PTInput ptInput: operator.getInputs()) {
+            if (ptInput.source.source.getOperatorMeta().getOperator() instanceof DefaultUnifier) {
+              if (ptInput.source.source.container == operator.container) {
+                ptInput.locality = Locality.THREAD_LOCAL;
+              }
+            }
+          }
+        }
+      }
+    }
     
     for (PTContainer container : containers) {
       updateContainerMemoryWithBufferServer(container);

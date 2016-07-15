@@ -85,6 +85,7 @@ public class PTOperator implements java.io.Serializable
     private static final long serialVersionUID = 201312112033L;
 
     public final LogicalPlan.StreamMeta logicalStream;
+    public Locality locality;
     public final PTOperator target;
     public final PartitionKeys partitions;
     public final PTOutput source;
