@@ -895,8 +895,10 @@ public class PhysicalPlan implements Serializable
         addedPartitions.add(newPartition);
       } else {
         // check whether mapping was changed
+        int currentPartitionsSize = mainPC.currentPartitions.size();
         for (DefaultPartition<Operator> pi : mainPC.currentPartitions) {
-          if (pi == newPartition && pi.isModified()) {
+          if (pi == newPartition && (pi.isModified() ||
+              (currentPartitionsSize == 1 && mainPC.newPartitions.size() != 1))) {
             // existing partition changed (operator or partition keys)
             // remove/add to update subscribers and state
             mainPC.currentPartitionMap.put(newPartition, op);
