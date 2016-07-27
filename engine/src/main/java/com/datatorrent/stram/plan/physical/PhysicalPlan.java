@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -962,8 +963,11 @@ public class PhysicalPlan implements Serializable
       mainPC.operatorIdToPartition.put(p.getId(), newPartition);
     }
 
+    // Get the deepest down stream mapping
+    PMapping downStreamMapping = currentMapping;
     // process parallel partition changes
     for (Map.Entry<PMapping, RepartitionContext> e : partitionContexts.entrySet()) {
+      downStreamMapping = e.getKey();
       if (e.getValue() == null) {
         // no partitioner, add required operators
         for (int i = 0; i < addedPartitions.size(); i++) {
@@ -1027,6 +1031,32 @@ public class PhysicalPlan implements Serializable
       }
     }
 
+    // If the unifier is not present at initial launch, then there is possible of changes in existing partition
+    // mappings.
+    if (mainPC.currentPartitions.size() == 1) {
+      for (Map.Entry<OutputPortMeta, StreamMeta> opm : downStreamMapping.logicalOperator.getOutputStreams().entrySet()) {
+        StreamMapping ug = downStreamMapping.outputStreams.get(opm.getKey());
+        if (ug == null) {
+          continue;
+        }
+        // Existing stream mapping
+        for (PTOperator op: downStreamMapping.partitions) {
+          for (PTOutput out: op.outputs) {
+            if (out.logicalStream != opm.getValue() || CollectionUtils.isEmpty(out.sinks)) {
+              continue;
+            }
+            for (PTInput sinkIn: out.sinks) {
+              ArrayList<PTInput> cowInputs = Lists.newArrayList(sinkIn.target.inputs);
+              cowInputs.remove(sinkIn);
+              sinkIn.target.inputs = cowInputs;
+            }
+            out.sinks.clear();
+            this.undeployOpers.add(op);
+            this.deployOpers.add(op);
+          }
+        }
+      }
+    }
     updateStreamMappings(currentMapping);
     for (PMapping pp : partitionContexts.keySet()) {
       updateStreamMappings(pp);
@@ -1135,7 +1165,6 @@ public class PhysicalPlan implements Serializable
 
     //make sure all the new operators are included in deploy operator list
     this.deployOpers.addAll(this.newOpers.keySet());
-
     ctx.deploy(releaseContainers, this.undeployOpers, newContainers, deployOperators);
     this.newOpers.clear();
     this.deployOpers.clear();
