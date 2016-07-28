@@ -143,6 +143,34 @@ As explained earlier new tokens are obtained before the old ones expire. How ear
 </property>
 ```
 
+### Impersonation
+
+The CLI program `apex` supports Hadoop proxy user impersonation, in allowing applications to be launched and other operations to be performed as a different user than the one specified by the Kerberos credentials. The Kerberos credentials are still used for authentication. This is useful in scenarios where a system using `apex` has to support multiple users but only has a single set of Kerberos credentials, those of a system user.
+
+####Usage
+
+To use this feature, the following environment variable should be set to the user name of the user being impersonated, before running `apex` and the operations will be performed as that user. For example, if launching an application, the application will run as the specified user and not as the user specified by the Kerberos credentials.
+
+```
+HADOOP_USER_NAME=<username>
+```
+
+####Hadoop Configuration
+
+For this feature to work, additional configuration settings are needed in Hadoop. These settings would allow a specified user, such as a system user, to impersonate other users. The example snippet below shows these settings. In this example, the specified user can impersonate users belonging to any group and can do so running from any host. Note that the user specified here is different from the user specified above in usage, there it is the user that is being impersonated and here it is the impersonating user such as a system user.
+
+```xml
+<property>
+  <name>hadoop.proxyuser.<username>.groups</name>
+  <value>*</value>
+</property>
+
+<property>
+  <name>hadoop.proxyuser.<username>.hosts</name>
+  <value>*</value>
+</property>
+```
+
 Security architecture
 ----------------------
 
