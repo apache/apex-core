@@ -21,16 +21,20 @@ package com.datatorrent.stram.engine;
 import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 
+import javax.validation.constraints.NotNull;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Attribute.AttributeMap;
+import com.google.common.base.Preconditions;
+
 import com.datatorrent.api.Context;
 import com.datatorrent.api.StatsListener.OperatorRequest;
 import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 
 /**
@@ -43,7 +47,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
 {
   private Thread thread;
   private long lastProcessedWindowId;
-  private final int id;
+  private final OperatorDeployInfo operatorDeployInfo;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<ContainerStats.OperatorStats>(1024);
   private final CircularBuffer<OperatorRequest> requests = new CircularBuffer<OperatorRequest>(1024);
@@ -80,22 +84,30 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
 
   /**
    *
-   * @param id the value of id
-   * @param attributes the value of attributes
+   * @param operatorDeployInfo operator deploy info
    * @param parentContext
    */
-  public OperatorContext(int id, AttributeMap attributes, Context parentContext)
+  public OperatorContext(@NotNull OperatorDeployInfo operatorDeployInfo, Context parentContext)
   {
-    super(attributes, parentContext);
+    super(operatorDeployInfo instanceof OperatorDeployInfo.UnifierDeployInfo ?
+        ((OperatorDeployInfo.UnifierDeployInfo)operatorDeployInfo).operatorAttributes : operatorDeployInfo.contextAttributes,
+        parentContext);
+
     this.lastProcessedWindowId = Stateless.WINDOW_ID;
-    this.id = id;
+    this.operatorDeployInfo = Preconditions.checkNotNull(operatorDeployInfo, "operator deploy info");
     this.stateless = super.getValue(OperatorContext.STATELESS);
   }
 
   @Override
   public int getId()
   {
-    return id;
+    return operatorDeployInfo.id;
+  }
+
+  @Override
+  public String getName()
+  {
+    return operatorDeployInfo.name;
   }
 
   @Override

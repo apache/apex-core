@@ -83,7 +83,8 @@ public class AtMostOnceTest extends ProcessingModeTests
     map.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 0);
     map.put(OperatorContext.PROCESSING_MODE, processingMode);
 
-    final GenericNode node = new GenericNode(new MultiInputOperator(), new com.datatorrent.stram.engine.OperatorContext(1, map, null));
+    final GenericNode node = new GenericNode(new MultiInputOperator(),
+        OperatorContextTest.getTestOperatorContext(1, "input", map, null));
     AbstractReservoir reservoir1 = AbstractReservoir.newReservoir("input1", 1024);
     AbstractReservoir reservoir2 = AbstractReservoir.newReservoir("input1", 1024);
     node.connectInputPort("input1", reservoir1);
