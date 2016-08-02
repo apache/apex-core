@@ -25,6 +25,7 @@
     <apex.apppackage.maxversion>1.9999.9999</apex.apppackage.maxversion>
     <apex.appconf.classpath>classpath/*</apex.appconf.classpath>
     <apex.appconf.files>files/*</apex.appconf.files>
+    <apex.appconf.app>app/*</apex.appconf.app>
   </properties>
 
   <build>

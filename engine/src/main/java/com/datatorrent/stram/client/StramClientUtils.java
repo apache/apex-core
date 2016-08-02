@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.fs.FileSystem;
@@ -841,6 +842,30 @@ public class StramClientUtils
       }
     }
     return result;
+  }
+
+  public static AppPackage.AppInfo jsonFileToAppInfo(File file, Configuration config)
+  {
+    AppPackage.AppInfo appInfo = null;
+
+    try {
+      StramAppLauncher.AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+      StramAppLauncher stramAppLauncher = new StramAppLauncher(file.getName(), config);
+      stramAppLauncher.loadDependencies();
+      appInfo = new AppPackage.AppInfo(appFactory.getName(), file.getName(), "json");
+      appInfo.displayName = appFactory.getDisplayName();
+      try {
+        appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
+        appInfo.dag.validate();
+      } catch (Exception ex) {
+        appInfo.error = ex.getMessage();
+        appInfo.errorStackTrace = ExceptionUtils.getStackTrace(ex);
+      }
+    } catch (Exception ex) {
+      LOG.error("Caught exceptions trying to process {}", file.getName(), ex);
+    }
+
+    return appInfo;
   }
 
 }

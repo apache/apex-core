@@ -49,6 +49,7 @@ import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
 import net.lingala.zip4j.model.ZipParameters;
 
+
 /**
  * <p>
  * AppPackage class.</p>
@@ -159,7 +160,7 @@ public class AppPackage extends JarFile
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
     extractToDirectory(directory, file);
     if (processAppDirectory) {
-      processAppDirectory(new File(directory, "app"));
+      processAppDirectory(false);
     }
     File confDirectory = new File(directory, "conf");
     if (confDirectory.exists()) {
@@ -318,8 +319,11 @@ public class AppPackage extends JarFile
     return Collections.unmodifiableMap(defaultProperties);
   }
 
-  private void processAppDirectory(File dir)
+  public void processAppDirectory(boolean skipJars)
   {
+    File dir = new File(directory, "app");
+    applications.clear();
+
     Configuration config = new Configuration();
 
     List<String> absClassPath = new ArrayList<>(classPath);
@@ -333,7 +337,7 @@ public class AppPackage extends JarFile
     File[] files = dir.listFiles();
     for (File entry : files) {
 
-      if (entry.getName().endsWith(".jar")) {
+      if (entry.getName().endsWith(".jar") && !skipJars) {
         appJars.add(entry.getName());
         try {
           StramAppLauncher stramAppLauncher = new StramAppLauncher(entry, config);
@@ -371,23 +375,12 @@ public class AppPackage extends JarFile
     for (File entry : files) {
       if (entry.getName().endsWith(".json")) {
         appJsonFiles.add(entry.getName());
-        try {
-          AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(entry);
-          StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
-          stramAppLauncher.loadDependencies();
-          AppInfo appInfo = new AppInfo(appFactory.getName(), entry.getName(), "json");
-          appInfo.displayName = appFactory.getDisplayName();
-          try {
-            appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
-            appInfo.dag.validate();
-          } catch (Exception ex) {
-            appInfo.error = ex.getMessage();
-            appInfo.errorStackTrace = ExceptionUtils.getStackTrace(ex);
-          }
+        AppInfo appInfo = StramClientUtils.jsonFileToAppInfo(entry, config);
+
+        if (appInfo != null) {
           applications.add(appInfo);
-        } catch (Exception ex) {
-          LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
         }
+
       } else if (entry.getName().endsWith(".properties")) {
         appPropertiesFiles.add(entry.getName());
         try {

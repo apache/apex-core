@@ -185,6 +185,9 @@ public class ApexCli
   private String kerberosPrincipal;
   private String kerberosKeyTab;
 
+  private static String CONFIG_EXCLUSIVE = "exclusive";
+  private static String CONFIG_INCLUSIVE = "inclusive";
+
   private static class FileLineReader extends ConsoleReader
   {
     private final BufferedReader br;
@@ -978,7 +981,7 @@ public class ApexCli
     return null;
   }
 
-  private static class CliException extends RuntimeException
+  static class CliException extends RuntimeException
   {
     private static final long serialVersionUID = 1L;
 
@@ -3453,7 +3456,7 @@ public class ApexCli
       matchAppName = commandLineInfo.args[1];
     }
 
-    List<AppInfo> applications = new ArrayList<>(ap.getApplications());
+    List<AppInfo> applications = getAppsFromPackageAndConfig(ap, cp, commandLineInfo.useConfigApps);
 
     if (matchAppName != null) {
       Iterator<AppInfo> it = applications.iterator();
@@ -3639,7 +3642,9 @@ public class ApexCli
   DTConfiguration getLaunchAppPackageProperties(AppPackage ap, ConfigPackage cp, LaunchCommandLineInfo commandLineInfo, String appName) throws Exception
   {
     DTConfiguration launchProperties = new DTConfiguration();
-    List<AppInfo> applications = ap.getApplications();
+
+    List<AppInfo> applications = getAppsFromPackageAndConfig(ap, cp, commandLineInfo.useConfigApps);
+
     AppInfo selectedApp = null;
     for (AppInfo app : applications) {
       if (app.name.equals(appName)) {
@@ -3713,6 +3718,52 @@ public class ApexCli
 
     //StramClientUtils.evalProperties(launchProperties);
     return launchProperties;
+  }
+
+  private List<AppInfo> getAppsFromPackageAndConfig(AppPackage ap, ConfigPackage cp, String configApps)
+  {
+    if (cp == null || configApps == null || !(configApps.equals(CONFIG_INCLUSIVE) || configApps.equals(CONFIG_EXCLUSIVE))) {
+      return ap.getApplications();
+    }
+
+    File src = new File(cp.tempDirectory(), "app");
+    File dest = new File(ap.tempDirectory(), "app");
+
+    if (!src.exists()) {
+      return ap.getApplications();
+    }
+
+    if (configApps.equals(CONFIG_EXCLUSIVE)) {
+
+      for (File file : dest.listFiles()) {
+
+        if (file.getName().endsWith(".json")) {
+          FileUtils.deleteQuietly(new File(dest, file.getName()));
+        }
+      }
+    } else {
+      for (File file : src.listFiles()) {
+        FileUtils.deleteQuietly(new File(dest, file.getName()));
+      }
+    }
+
+    for (File file : src.listFiles()) {
+      try {
+        FileUtils.moveFileToDirectory(file, dest, true);
+      } catch (IOException e) {
+        LOG.warn("Application from the config file {} failed while processing.", file.getName());
+      }
+    }
+
+    try {
+      FileUtils.deleteDirectory(src);
+    } catch (IOException e) {
+      LOG.warn("Failed to delete the Config Apps folder");
+    }
+
+    ap.processAppDirectory(configApps.equals(CONFIG_EXCLUSIVE));
+
+    return ap.getApplications();
   }
 
   private class GetAppPackageOperatorsCommand implements Command
@@ -3850,6 +3901,7 @@ public class ApexCli
     final Option exactMatch = add(new Option("exactMatch", "Only consider applications with exact app name"));
     final Option queue = add(OptionBuilder.withArgName("queue name").hasArg().withDescription("Specify the queue to launch the application").create("queue"));
     final Option force = add(new Option("force", "Force launch the application. Do not check for compatibility"));
+    final Option useConfigApps = add(OptionBuilder.withArgName("inclusive or exclusive").hasArg().withDescription("\"inclusive\" - merge the apps in config and app package. \"exclusive\" - only show config package apps.").create("useConfigApps"));
 
     private Option add(Option opt)
     {
@@ -3890,6 +3942,8 @@ public class ApexCli
     result.origAppId = line.getOptionValue(LAUNCH_OPTIONS.originalAppID.getOpt());
     result.exactMatch = line.hasOption("exactMatch");
     result.force = line.hasOption("force");
+    result.useConfigApps = line.getOptionValue(LAUNCH_OPTIONS.useConfigApps.getOpt());
+
     return result;
   }
 
@@ -3908,6 +3962,7 @@ public class ApexCli
     boolean exactMatch;
     boolean force;
     String[] args;
+    String useConfigApps;
   }
 
   @SuppressWarnings("static-access")
