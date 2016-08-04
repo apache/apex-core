@@ -35,7 +35,7 @@ import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.engine.AbstractReservoir;
 import com.datatorrent.stram.engine.GenericNode;
 import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.OperatorContextTest;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
 import com.datatorrent.stram.support.StramTestSupport;
@@ -56,12 +56,14 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
 
     final PassThroughNode<Object> operator1 = new PassThroughNode<Object>();
-    final GenericNode node1 = new GenericNode(operator1, new OperatorContext(1, new DefaultAttributeMap(), null));
+    final GenericNode node1 = new GenericNode(operator1, OperatorContextTest.getTestOperatorContext(1, "operator1",
+        new DefaultAttributeMap(), null));
     node1.setId(1);
     operator1.setup(node1.context);
 
     final PassThroughNode<Object> operator2 = new PassThroughNode<Object>();
-    final GenericNode node2 = new GenericNode(operator2, new OperatorContext(2, new DefaultAttributeMap(), null));
+    final GenericNode node2 = new GenericNode(operator2, OperatorContextTest.getTestOperatorContext(2, "operator2",
+        new DefaultAttributeMap(), null));
     node2.setId(2);
     operator2.setup(node2.context);
 

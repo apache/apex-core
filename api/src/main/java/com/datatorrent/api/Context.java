@@ -328,6 +328,12 @@ public interface Context
      */
     int getWindowsFromCheckpoint();
 
+    /**
+     * Returns the name of the operator.
+     * @return name of the operator
+     */
+    String getName();
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(OperatorContext.class);
   }
