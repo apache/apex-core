@@ -69,7 +69,7 @@ public class InputNodeTest
     dam.put(OperatorContext.APPLICATION_WINDOW_COUNT, 10);
     dam.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 10);
 
-    final InputNode in = new InputNode(tio, new com.datatorrent.stram.engine.OperatorContext(0, dam, null));
+    final InputNode in = new InputNode(tio, new com.datatorrent.stram.engine.OperatorContext(0, "operator", dam, null));
     in.setId(1);
 
     TestSink testSink = new TestSink();
