@@ -265,7 +265,9 @@ public class StreamingContainerAgent
           if (!publishers.contains(sourceOutput)) {
             throw new AssertionError("Source not deployed for container local stream " + sourceOutput + " " + in);
           }
-          if (streamMeta.getLocality() == Locality.THREAD_LOCAL) {
+
+          if (streamMeta.getLocality() == Locality.THREAD_LOCAL || in.locality == Locality.THREAD_LOCAL) {
+
             inputInfo.locality = Locality.THREAD_LOCAL;
             ndi.type = OperatorType.OIO;
           } else {
