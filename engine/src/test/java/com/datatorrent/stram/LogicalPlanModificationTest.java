@@ -237,8 +237,8 @@ public class LogicalPlanModificationTest
     Assert.assertTrue("operators " + dag.getAllOperators(), dag.getAllOperators().containsAll(Sets.newHashSet(o1Meta, o3Meta)));
 
     try {
-      plan.getOperators(o2Meta);
-      Assert.fail("removed from physical plan: " + o2Meta);
+      List<PTOperator> operators = plan.getOperators(o2Meta);
+      Assert.assertNull("removed from physical plan " + o2Meta, operators);
     } catch (Exception e) {
       // all good
     }

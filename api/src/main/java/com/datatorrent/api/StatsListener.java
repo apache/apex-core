@@ -25,7 +25,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
+import java.util.concurrent.FutureTask;
 
+import com.datatorrent.api.DAG.DAGChangeSet;
 import com.datatorrent.api.Stats.OperatorStats;
 
 
@@ -113,6 +115,55 @@ public interface StatsListener
     long getLatencyMA();
 
     List<OperatorResponse> getOperatorResponse();
+  }
+
+  /**
+   * An interface to the DAG. Stats listener can get information about
+   * operator or other elements in the DAG through this interface. currerntly
+   * we only provide method to extract the operator name based on the physical
+   * id of the operator. In future more methods can be added.
+   *
+   */
+  interface StatsListenerContext
+  {
+    /**
+     * Return name of the operator given its id. Returns null if operator not found
+     * in the DAG.
+     * @param id Operator id
+     * @return name of the operator.
+     */
+    String getOperatorName(int id);
+
+    /**
+     * Create an instance of DAGChangeSet, which will be used by statsListener to submit
+     * dag modifications through {@link StatsListenerContext#submitDagChange(com.datatorrent.api.DAG.DAGChangeSet)}
+     * @return
+     */
+    DAGChangeSet createDAG();
+
+    /**
+     * Submit DAG modification request to the engine. After successful validation of
+     * new DAG, a future object is returned. StatListeners can use this future object
+     * to check the state of request. {@link FutureTask#get()} will throw an exception
+     * if any exception is thrown while DAG modifications.
+     *
+     * If an existing DAG modification is pending, then null is returned. in this case
+     * statsListener can submit the request again on next invocation.
+     *
+     * @param dagchanges The new modifications to logical dag.
+     * @return Future object to check state of the request.
+     */
+    FutureTask<Object> submitDagChange(DAGChangeSet dagchanges) throws IOException, ClassNotFoundException;
+  }
+
+  /**
+   * If StatsListener implements ContextAwareStatsListener interface, then engine will
+   * provide a reference to StatsListenerContext using which listener can examine
+   * current state of the DAG.
+   */
+  interface ContextAwareStatsListener
+  {
+    void setContext(StatsListenerContext context);
   }
 
   public class Response implements Serializable

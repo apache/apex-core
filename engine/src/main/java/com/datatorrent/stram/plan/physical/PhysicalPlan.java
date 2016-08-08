@@ -18,6 +18,8 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -36,6 +38,7 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -56,6 +59,7 @@ import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.DAGChangeSet;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultPartition;
 import com.datatorrent.api.Operator;
@@ -64,7 +68,9 @@ import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StatsListener.ContextAwareStatsListener;
 import com.datatorrent.api.StatsListener.OperatorRequest;
+import com.datatorrent.api.StatsListener.StatsListenerContext;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.Stateless;
@@ -80,6 +86,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorPair;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
+import com.datatorrent.stram.plan.logical.mod.DAGChangeSetImpl;
 import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
@@ -137,6 +144,10 @@ public class PhysicalPlan implements Serializable
 
   private final AtomicInteger strCodecIdSequence = new AtomicInteger();
   private final Map<StreamCodec<?>, Integer> streamCodecIdentifiers = Maps.newHashMap();
+  private StatsListenerContext statsListenerContext = new StatsListenerContextImpl();
+
+  /* pending dag change request */
+  private transient DAGChangeSet pendingDagChangeRequest = null;
 
   private PTContainer getContainer(int index)
   {
@@ -188,9 +199,11 @@ public class PhysicalPlan implements Serializable
     void writeJournal(Recoverable operation);
 
     void addOperatorRequest(PTOperator oper, StramToNodeRequest request);
+
+    FutureTask<Object> addDagChangeRequests(DAGChangeSet dag);
   }
 
-  private static class StatsListenerProxy implements StatsListener, Serializable
+  private static class StatsListenerProxy implements StatsListener, Serializable, ContextAwareStatsListener
   {
     private static final long serialVersionUID = 201312112033L;
     private final OperatorMeta om;
@@ -204,6 +217,14 @@ public class PhysicalPlan implements Serializable
     public Response processStats(BatchedOperatorStats stats)
     {
       return ((StatsListener)om.getOperator()).processStats(stats);
+    }
+
+    @Override
+    public void setContext(StatsListenerContext context)
+    {
+      if (om.getOperator() instanceof ContextAwareStatsListener) {
+        ((ContextAwareStatsListener)om.getOperator()).setContext(context);
+      }
     }
   }
 
@@ -776,6 +797,14 @@ public class PhysicalPlan implements Serializable
         m.statsHandlers = new ArrayList<>(1);
       }
       m.statsHandlers.add(new StatsListenerProxy(m.logicalOperator));
+    }
+
+    if (m.statsHandlers != null) {
+      for (StatsListener listener : m.statsHandlers) {
+        if (listener instanceof StatsListener.ContextAwareStatsListener) {
+          ((StatsListener.ContextAwareStatsListener)(listener)).setContext(statsListenerContext);
+        }
+      }
     }
 
     // create operator instance per partition
@@ -1522,11 +1551,22 @@ public class PhysicalPlan implements Serializable
    */
   public List<PTOperator> getOperators(OperatorMeta logicalOperator)
   {
+    /* During dynamic plan change, operators are added in logical plan first and then
+       physical plan is changed. There is a race, when REST api try to get information
+       about an operator which is not yet added in physical plan causes
+       NullPointerException here. null return value is handled at caller appropriately.
+     */
+    if (this.logicalToPTOperator.get(logicalOperator) == null) {
+      return null;
+    }
     return this.logicalToPTOperator.get(logicalOperator).partitions;
   }
 
   public Collection<PTOperator> getAllOperators(OperatorMeta logicalOperator)
   {
+    if (this.logicalToPTOperator.get(logicalOperator) == null) {
+      return null;
+    }
     return this.logicalToPTOperator.get(logicalOperator).getAllOperators();
   }
 
@@ -1534,7 +1574,10 @@ public class PhysicalPlan implements Serializable
   {
     List<PTOperator> operators = new ArrayList<>();
     for (OperatorMeta opMeta : dag.getLeafOperators()) {
-      operators.addAll(getAllOperators(opMeta));
+      Collection<PTOperator> allOpers = getAllOperators(opMeta);
+      if (allOpers != null) {
+        operators.addAll(getAllOperators(opMeta));
+      }
     }
     return operators;
   }
@@ -1674,7 +1717,33 @@ public class PhysicalPlan implements Serializable
     } else {
       initPartitioning(pnodes, 0);
     }
+    updateUpstreamsOutputMappings(om, null);
     updateStreamMappings(pnodes);
+  }
+
+  /**
+   * Update stream mapping for upstram opeartor. In case of dynamic dag modification, if a
+   * new operator is connected to output port of existing operator we will need to fix the
+   * existing operators output ports.
+   * @param om
+   * @param ipm
+   */
+  private void updateUpstreamsOutputMappings(OperatorMeta om, InputPortMeta ipm)
+  {
+    for (Map.Entry<InputPortMeta, StreamMeta> entry : om.getInputStreams().entrySet()) {
+      if (ipm == null || entry.getKey() == ipm) {
+        for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : entry.getValue().getSource().getOperatorMeta().getOutputStreams().entrySet()) {
+          PMapping sourceOpers = this.logicalToPTOperator.get(outputEntry.getKey().getOperatorMeta());
+          if (sourceOpers != null && sourceOpers.partitions != null) {
+            for (PTOperator oper : sourceOpers.partitions) {
+              setupOutput(sourceOpers, oper, outputEntry); // idempotent
+              undeployOpers.add(oper);
+              deployOpers.add(oper);
+            }
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -1896,6 +1965,89 @@ public class PhysicalPlan implements Serializable
     {
       cmd.execute(operator,operatorId,windowId);
       return null;
+    }
+  }
+
+  @VisibleForTesting
+  public LogicalPlan cloneLogicalPlan() throws IOException, ClassNotFoundException
+  {
+    LogicalPlan lp = getLogicalPlan();
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    LogicalPlan.write(lp, bos);
+    bos.flush();
+    ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+    lp = LogicalPlan.read(bis);
+    return lp;
+  }
+
+
+  public void clearPendingChangeRequest()
+  {
+    pendingDagChangeRequest = null;
+  }
+
+  /**
+   * A interface object for the statsListener to access the DAG, it provides methods
+   * to get information about operators in the DAG.
+   */
+  private class StatsListenerContextImpl implements StatsListenerContext, Serializable
+  {
+
+    @Override
+    public String getOperatorName(int id)
+    {
+      PTOperator operator = getAllOperators().get(id);
+      if (operator != null) {
+        return operator.getName();
+      }
+      return null;
+    }
+
+    @Override
+    public DAGChangeSet createDAG()
+    {
+      return new DAGChangeSetImpl();
+    }
+
+    @Override
+    public FutureTask<Object> submitDagChange(DAGChangeSet dagChanges) throws IOException, ClassNotFoundException
+    {
+      if (pendingDagChangeRequest != null) {
+        return null;
+      }
+
+      /**
+       * do a logical plan modification/validation checks before actual plan is submitted
+       * */
+      LogicalPlan lp = cloneLogicalPlan();
+      PlanModifier pm = new PlanModifier(lp);
+      pm.applyDagChangeSet(dagChanges);
+      lp.validate();
+
+      synchronized (PhysicalPlan.this) {
+
+        if (pendingDagChangeRequest != null) {
+          return null;
+        }
+
+        pendingDagChangeRequest = dagChanges;
+        return ctx.addDagChangeRequests(dagChanges);
+      }
+    }
+  }
+
+  public void setContextAfterDAGRecovery()
+  {
+    statsListenerContext = new StatsListenerContextImpl();
+    for (PMapping m : logicalToPTOperator.values()) {
+      if (m.statsHandlers != null) {
+        for (StatsListener listener : m.statsHandlers) {
+          LOG.info("setting context for the statlistener {}", m.logicalOperator.getName());
+          if (listener instanceof StatsListener.ContextAwareStatsListener) {
+            ((StatsListener.ContextAwareStatsListener)(listener)).setContext(statsListenerContext);
+          }
+        }
+      }
     }
   }
 }

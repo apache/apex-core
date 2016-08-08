@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,6 +56,7 @@ import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StatsListener.ContextAwareStatsListener;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
@@ -62,11 +64,14 @@ import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.stram.engine.GenericNodeTest;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.InputOperatorTest;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.mod.DAGChangeSetImpl;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.LoadIndicator;
@@ -1623,7 +1628,6 @@ public class PhysicalPlanTest
 
     LogicalPlan dag = new LogicalPlan();
 
-    //TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     PartitioningTestOperator o1 = dag.addOperator("o1", PartitioningTestOperator.class);
     o1.partitionKeys = new Integer[] {0,1,2,3};
     o1.setPartitionCount(o1.partitionKeys.length);
@@ -1725,7 +1729,6 @@ public class PhysicalPlanTest
 
     LogicalPlan dag = new LogicalPlan();
 
-    //TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     PartitioningTestOperator o1 = dag.addOperator("o1", PartitioningTestOperator.class);
     o1.partitionKeys = new Integer[]{0, 1, 2, 3};
     o1.setPartitionCount(3);
@@ -2244,4 +2247,160 @@ public class PhysicalPlanTest
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 7, plan.getContainers().size());
   }
+
+  static class ContextHoldingStatsListener implements StatsListener, ContextAwareStatsListener
+  {
+    private StatsListenerContext context;
+
+    @Override
+    public void setContext(StatsListenerContext context)
+    {
+      this.context = context;
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return null;
+    }
+
+    public StatsListenerContext getContext()
+    {
+      return context;
+    }
+  }
+
+  /**
+   * Check if custom stat listener has context object set.
+   */
+  @Test
+  public void testStatsListenerContextWithListner()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    StatsListenerOperator op = dag.addOperator("o1", new StatsListenerOperator());
+    OperatorMeta ometa = dag.getOperatorMeta("o1");
+    List<StatsListener> listeners = new ArrayList<>();
+    listeners.add(new ContextHoldingStatsListener());
+    ometa.getAttributes().put(com.datatorrent.stram.engine.OperatorContext.STATS_LISTENERS, listeners);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    Assert.assertNotNull(op.getContext());
+
+    for (PTOperator operator : plan.getAllOperators(ometa)) {
+      for (StatsListener listener: operator.statsListeners) {
+        if (listener instanceof ContextHoldingStatsListener) {
+          Assert.assertNotNull(((ContextHoldingStatsListener)listener).getContext());
+        }
+      }
+    }
+  }
+
+  static class StatsListenerOperator extends GenericNodeTest.GenericOperator implements StatsListener, ContextAwareStatsListener
+  {
+    StatsListener.StatsListenerContext context;
+
+    @Override
+    public void setContext(StatsListener.StatsListenerContext context)
+    {
+      this.context = context;
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return null;
+    }
+
+    public StatsListenerContext getContext()
+    {
+      return context;
+    }
+  }
+
+  /**
+   * Test if operator extends StatsListener and ContextAwareStatsListner
+   * then setContext method on it gets called.
+   */
+  @Test
+  public void testStatsListenerContextWithOperator()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    StatsListenerOperator operator = dag.addOperator("o1", new StatsListenerOperator());
+    OperatorMeta ometa = dag.getOperatorMeta("o1");
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    Assert.assertNotNull(operator.getContext());
+  }
+
+  @Test
+  public void addNewDisconnectedLogicalPlan()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    GenericTestOperator o1 = dag.addOperator("o1", new GenericTestOperator());
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new TestPlanContext());
+
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    Assert.assertEquals("number of operators in physical plan", 1, plan.getAllOperators().size());
+    Assert.assertEquals("new operators to deploy stage 1 ", 1, ctx.deploy.size());
+
+    DAGChangeSetImpl newDag = new DAGChangeSetImpl();
+    GenericTestOperator o2 = newDag.addOperator("o2", new GenericTestOperator());
+    GenericTestOperator o3 = newDag.addOperator("o3", new GenericTestOperator());
+    GenericTestOperator o4 = newDag.addOperator("o4", new GenericTestOperator());
+    GenericTestOperator o5 = newDag.addOperator("o5", new GenericTestOperator());
+
+    newDag.addStream("s1", o2.outport1, o3.inport1);
+    newDag.addStream("s2", o3.outport1, o4.inport1);
+    newDag.addStream("s3", o4.outport1, o5.inport1);
+
+    PlanModifier pm = new PlanModifier(plan);
+    pm.applyDagChangeSet(newDag);
+
+    Assert.assertEquals("new operators in the Dag is ", 5, plan.getAllOperators().size());
+    Assert.assertEquals("number of deploy operators ", 4, ctx.deploy.size());
+  }
+
+  @Test
+  public void extendLogicalPlan() throws IOException, ClassNotFoundException
+  {
+    LogicalPlan dag = new LogicalPlan();
+    InputOperatorTest.EvenOddIntegerGeneratorInputOperator o1 = dag.addOperator("o1", new InputOperatorTest.EvenOddIntegerGeneratorInputOperator());
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new TestPlanContext());
+    dag.validate();
+
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    Assert.assertEquals("number of operators in physical plan", 1, plan.getAllOperators().size());
+    Assert.assertEquals("new operators to deploy stage 1 ", 1, ctx.deploy.size());
+
+    DAGChangeSetImpl newDag = new DAGChangeSetImpl();
+    GenericTestOperator o2 = newDag.addOperator("o2", new GenericTestOperator());
+    GenericTestOperator o3 = newDag.addOperator("o3", new GenericTestOperator());
+    newDag.addStream("s1", "o1", "even", o2.inport1);
+    newDag.addStream("s2", o2.outport1, o3.inport1);
+
+    PlanModifier pm = new PlanModifier(plan);
+    pm.applyDagChangeSet(newDag);
+    plan.getLogicalPlan().validate();
+
+    Assert.assertEquals("new operators in the Dag is ", 3, plan.getAllOperators().size());
+    Assert.assertEquals("number of deploy operators ", 3, ctx.deploy.size());
+
+    DAGChangeSetImpl removeSet = new DAGChangeSetImpl();
+    for (String s : new String[]{"s2", "s1"}) {
+      removeSet.removeStream(s);
+    }
+    for (String opr : new String[]{"o2", "o3"}) {
+      removeSet.removeOperator(opr);
+    }
+
+    pm = new PlanModifier(plan);
+    pm.applyDagChangeSet(removeSet);
+    plan.getLogicalPlan().validate();
+    Assert.assertEquals("Number of operators in Dag ", 1, plan.getLogicalPlan().getAllOperators().size());
+  }
+
 }
