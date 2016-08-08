@@ -255,7 +255,7 @@ public class PTOperator implements java.io.Serializable
   Checkpoint recoveryCheckpoint;
   public int failureCount = 0;
   public int loadIndicator = 0;
-  public List<? extends StatsListener> statsListeners;
+  public List<? extends StatsListener.StatsListenerWithContext> statsListeners;
   public final OperatorStatus stats;
 
   final Map<Locality, HostOperatorSet> groupings = Maps.newHashMapWithExpectedSize(3);

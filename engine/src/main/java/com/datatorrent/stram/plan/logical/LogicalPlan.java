@@ -1017,7 +1017,7 @@ public class LogicalPlan implements Serializable, DAG
      *
      * @param operatorMeta copy attribute from this OperatorMeta to the object.
      */
-    private void copyAttributesFrom(OperatorMeta operatorMeta)
+    public void copyAttributesFrom(OperatorMeta operatorMeta)
     {
       if (operator != operatorMeta.getOperator()) {
         throw new IllegalArgumentException("Operator meta is not for the same operator ");
@@ -2396,4 +2396,51 @@ public class LogicalPlan implements Serializable, DAG
     return result;
   }
 
+  /**
+   * Return operators from input to leaf operators. If an operator is at position x
+   * in output list, then all the operator which are connected to input ports of
+   * this operator are located at index less than x.
+   *
+   * @return List of operators from input to leaf operators.
+   */
+  public List<LogicalPlan.OperatorMeta> getOperatorsInOrder()
+  {
+    List<LogicalPlan.OperatorMeta> operators = new ArrayList<>();
+    Set<LogicalPlan.OperatorMeta> added = new HashSet<>();
+
+    Stack<LogicalPlan.OperatorMeta> pendingNodes = new Stack<>();
+
+    for (LogicalPlan.OperatorMeta n : getAllOperators()) {
+      pendingNodes.push(n);
+    }
+
+    while (!pendingNodes.isEmpty()) {
+      LogicalPlan.OperatorMeta n = pendingNodes.pop();
+
+      if (added.contains(n)) {
+        // already processed as upstream dependency
+        continue;
+      }
+
+      boolean upstreamDeployed = true;
+
+      for (Map.Entry<LogicalPlan.InputPortMeta, LogicalPlan.StreamMeta> entry : n.getInputStreams().entrySet()) {
+        LogicalPlan.StreamMeta s = entry.getValue();
+        boolean delay = entry.getKey().getValue(IS_CONNECTED_TO_DELAY_OPERATOR);
+        // skip delay sources since it's going to be handled as downstream
+        if (!delay && s.getSource() != null && !added.contains(s.getSource().getOperatorMeta())) {
+          pendingNodes.push(n);
+          pendingNodes.push(s.getSource().getOperatorMeta());
+          upstreamDeployed = false;
+          break;
+        }
+      }
+
+      if (upstreamDeployed) {
+        added.add(n);
+        operators.add(n);
+      }
+    }
+    return operators;
+  }
 }

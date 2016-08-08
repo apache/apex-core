@@ -18,8 +18,6 @@
  */
 package com.datatorrent.stram;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -66,6 +64,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -103,6 +102,7 @@ import com.datatorrent.api.AutoMetric;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -2994,13 +2994,7 @@ public class StreamingContainerManager implements PlanContext
     {
       // clone logical plan, for dry run and validation
       LOG.info("Begin plan changes: {}", requests);
-      LogicalPlan lp = plan.getLogicalPlan();
-      ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      LogicalPlan.write(lp, bos);
-      bos.flush();
-      ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
-      lp = LogicalPlan.read(bis);
-
+      LogicalPlan lp = (LogicalPlan)SerializationUtils.clone(plan.getLogicalPlan());
       PlanModifier pm = new PlanModifier(lp);
       for (LogicalPlanRequest request : requests) {
         LOG.debug("Dry run plan change: {}", request);
@@ -3275,13 +3269,40 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  @VisibleForTesting
-  protected Collection<Pair<Long, Map<String, Object>>> getLogicalMetrics(String operatorName)
+  private class ChangeDAGRunnable implements Callable<Object>
   {
-    if (logicalMetrics.get(operatorName) != null) {
-      return Collections.unmodifiableCollection(logicalMetrics.get(operatorName));
+    private final transient DAG request;
+
+    public ChangeDAGRunnable(DAG changes)
+    {
+      request = changes;
     }
-    return null;
+
+    @Override
+    public Object call() throws Exception
+    {
+      if (request == null) {
+        return null;
+      }
+
+      try {
+        LOG.info("Starting logical plan change ");
+        LogicalPlan lp = (LogicalPlan)SerializationUtils.clone(plan.getLogicalPlan());
+        PlanModifier pm = new PlanModifier(lp);
+        pm.applyDagChangeSet(request);
+        lp.validate();
+
+        LOG.info("Validated logical plan, now making actual change");
+        pm = new PlanModifier(plan);
+        pm.applyDagChangeSet(request);
+        LOG.info("plan change done");
+        return null;
+      } finally {
+        /* At a time only one request can be active, once request is processed with or without error,
+         * clear the pendingDagChangeRequest so that new request can be submitted from the StatsListenerContext. */
+        plan.setPendingDagChangeRequest(null);
+      }
+    }
   }
 
   @VisibleForTesting
@@ -3290,4 +3311,10 @@ public class StreamingContainerManager implements PlanContext
     return latestLogicalCounters.get(operatorName);
   }
 
+  public FutureTask<Object> addDagChangeRequests(DAG dag)
+  {
+    FutureTask<Object> future = new FutureTask<>(new ChangeDAGRunnable(dag));
+    dispatch(future);
+    return future;
+  }
 }

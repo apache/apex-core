@@ -48,6 +48,7 @@ import com.datatorrent.api.DefaultPartition;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StatsListener.StatsListenerWithContext;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
@@ -209,13 +210,19 @@ public class PartitioningTest
     Assert.assertEquals("merged tuples " + pmerged, Sets.newHashSet(testData[0]), Sets.newHashSet(tuples));
   }
 
-  public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
+  public static class PartitionLoadWatch implements StatsListenerWithContext, java.io.Serializable
   {
     private static final long serialVersionUID = 1L;
     private static final ThreadLocal<Map<Integer, Integer>> loadIndicators = new ThreadLocal<>();
 
     @Override
-    public Response processStats(BatchedOperatorStats status)
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return processStats(stats, null);
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats status, StatsListenerContext context)
     {
       Response hbr = null;
       Map<Integer, Integer> m = loadIndicators.get();

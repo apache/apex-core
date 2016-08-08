@@ -55,6 +55,7 @@ public class InputOperatorTest
     public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>();
     private final transient CircularBuffer<Integer> evenBuffer = new CircularBuffer<Integer>(1024);
     private final transient CircularBuffer<Integer> oddBuffer = new CircularBuffer<Integer>(1024);
+
     private volatile Thread dataGeneratorThread;
 
     @Override
