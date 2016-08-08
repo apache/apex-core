@@ -55,6 +55,7 @@ import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StatsListener.ContextAwareStatsListener;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
@@ -62,6 +63,7 @@ import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.stram.engine.GenericNodeTest;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
@@ -2225,5 +2227,91 @@ public class PhysicalPlanTest
     dag.addStream("o2.outport1", o2.outport1, o3.inport1);
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 8, plan.getContainers().size());
+  }
+
+  static class ContextHoldingStatsListener implements StatsListener, ContextAwareStatsListener
+  {
+    private StatsListenerContext context;
+
+    @Override
+    public void setContext(StatsListenerContext context)
+    {
+      this.context = context;
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return null;
+    }
+
+    public StatsListenerContext getContext()
+    {
+      return context;
+    }
+  }
+
+  /**
+   * Check if custom stat listener has context object set.
+   */
+  @Test
+  public void testStatsListenerContextWithListner()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    StatsListenerOperator op = dag.addOperator("o1", new StatsListenerOperator());
+    OperatorMeta ometa = dag.getOperatorMeta("o1");
+    List<StatsListener> listeners = new ArrayList<>();
+    listeners.add(new ContextHoldingStatsListener());
+    ometa.getAttributes().put(com.datatorrent.stram.engine.OperatorContext.STATS_LISTENERS, listeners);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    Assert.assertNotNull(op.getContext());
+
+    for (PTOperator operator : plan.getAllOperators(ometa)) {
+      for (StatsListener listener: operator.statsListeners) {
+        if (listener instanceof ContextHoldingStatsListener) {
+          Assert.assertNotNull(((ContextHoldingStatsListener)listener).getContext());
+        }
+      }
+    }
+  }
+
+  static class StatsListenerOperator extends GenericNodeTest.GenericOperator implements StatsListener, ContextAwareStatsListener
+  {
+    StatsListener.StatsListenerContext context;
+
+    @Override
+    public void setContext(StatsListener.StatsListenerContext context)
+    {
+      this.context = context;
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return null;
+    }
+
+    public StatsListenerContext getContext()
+    {
+      return context;
+    }
+  }
+
+  /**
+   * Test if operator extends StatsListener and ContextAwareStatsListner
+   * then setContext method on it gets called.
+   */
+  @Test
+  public void testStatsListenerContextWithOperator()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    StatsListenerOperator operator = dag.addOperator("o1", new StatsListenerOperator());
+    OperatorMeta ometa = dag.getOperatorMeta("o1");
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    Assert.assertNotNull(operator.getContext());
   }
 }
