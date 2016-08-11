@@ -435,7 +435,7 @@ public class PhysicalPlan implements Serializable
     updatePartitionsInfoForPersistOperator(dag);
 
     Map<PTOperator, PTContainer> operatorContainerMap = new HashMap<>();
-    
+
     // assign operators to containers
     int groupCount = 0;
     Set<PTOperator> deployOperators = Sets.newHashSet();
@@ -463,7 +463,7 @@ public class PhysicalPlan implements Serializable
       }
     }
 
-    
+
     for (PTContainer container : containers) {
       updateContainerMemoryWithBufferServer(container);
       container.setRequiredVCores(getVCores(container.getOperators()));
@@ -490,7 +490,7 @@ public class PhysicalPlan implements Serializable
         LOG.debug("Container with operators [{}] has anti affinity with [{}]", StringUtils.join(containerOperators, ","), StringUtils.join(antiOperators, ","));
       }
     }
-    
+
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
       initCheckpoint(operEntry.getKey(), operEntry.getValue(), Checkpoint.INITIAL_CHECKPOINT);
     }
@@ -1135,7 +1135,6 @@ public class PhysicalPlan implements Serializable
 
     //make sure all the new operators are included in deploy operator list
     this.deployOpers.addAll(this.newOpers.keySet());
-
     ctx.deploy(releaseContainers, this.undeployOpers, newContainers, deployOperators);
     this.newOpers.clear();
     this.deployOpers.clear();
