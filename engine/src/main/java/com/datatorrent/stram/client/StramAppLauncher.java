@@ -93,6 +93,8 @@ public class StramAppLauncher
   public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
   public static final String ORIGINAL_APP_ID = "tmpOriginalAppId";
   public static final String QUEUE_NAME = "queueName";
+  public static final String SAVEPOINT = "tmpSavePoint";
+
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
   private File jarFile;
@@ -261,21 +263,33 @@ public class StramAppLauncher
     init();
   }
 
-  public String getMvnBuildClasspathOutput()
-  {
-    return mvnBuildClasspathOutput.toString();
-  }
-
   private void init() throws Exception
   {
     String originalAppId = propertiesBuilder.conf.get(ORIGINAL_APP_ID);
-    if (originalAppId == null) {
-      throw new AssertionError("Need original app id if launching without apa or appjar");
+
+    if (originalAppId != null) {
+      initWithAppId(originalAppId);
+    } else {
+
+      String savePoint = propertiesBuilder.conf.get(SAVEPOINT);
+
+      if (savePoint == null) {
+        throw new AssertionError("Need original app id or SavePoint if launching without apa or appjar");
+      }
+
+      initWithSavePoint(savePoint);
     }
-    Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
-    Path origAppPath = new Path(appsBasePath, originalAppId);
+  }
+
+  private void initWithSavePoint(String savePoint) throws Exception
+  {
+    initHelper(new Path(savePoint));
+  }
+
+  private void initHelper(Path storedState) throws Exception
+  {
     StringWriter writer = new StringWriter();
-    try (FSDataInputStream in = fs.open(new Path(origAppPath, "meta.json"))) {
+    try (FSDataInputStream in = fs.open(new Path(storedState, "meta.json"))) {
       IOUtils.copy(in, writer);
     }
     JSONObject metaJson = new JSONObject(writer.toString());
@@ -289,7 +303,7 @@ public class StramAppLauncher
       originalLibJars = attributes.getString(Context.DAGContext.LIBRARY_JARS.getSimpleName());
       recoveryAppName = attributes.getString(Context.DAGContext.APPLICATION_NAME.getSimpleName());
     } catch (JSONException ex) {
-      recoveryAppName = "Recovery App From " + originalAppId;
+      recoveryAppName = "Recovering App from the savePoint " + storedState;
     }
 
     LinkedHashSet<URL> clUrls = new LinkedHashSet<>();
@@ -308,6 +322,19 @@ public class StramAppLauncher
     }
 
     this.launchDependencies = clUrls;
+  }
+
+  public String getMvnBuildClasspathOutput()
+  {
+    return mvnBuildClasspathOutput.toString();
+  }
+
+  private void initWithAppId(String originalAppId) throws Exception
+  {
+    Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
+    Path origAppPath = new Path(appsBasePath, originalAppId);
+
+    initHelper(origAppPath);
   }
 
   private void init(String tmpName) throws Exception
@@ -631,6 +658,7 @@ public class StramAppLauncher
       client.setFiles(conf.get(FILES_CONF_KEY_NAME));
       client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
       client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));
+      client.setSavePoint(conf.get(SAVEPOINT));
       client.setQueueName(conf.get(QUEUE_NAME));
       client.startApplication();
       return client.getApplicationReport().getApplicationId();

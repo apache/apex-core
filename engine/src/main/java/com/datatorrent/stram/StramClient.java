@@ -120,6 +120,13 @@ public class StramClient
   private String files;
   private LinkedHashSet<String> resources;
 
+  public void setSavePoint(String savePoint)
+  {
+    this.savePoint = savePoint;
+  }
+
+  private String savePoint;
+
   // platform dependencies that are not part of Hadoop and need to be deployed,
   // entry below will cause containing jar file from client to be copied to cluster
   private static final Class<?>[] DATATORRENT_CLASSES = new Class<?>[]{
@@ -263,7 +270,7 @@ public class StramClient
     return csv.toString();
   }
 
-  public void copyInitialState(Path origAppDir) throws IOException
+  public void copyInitialState(Path origAppDir, boolean savePoint) throws IOException
   {
     // locate previous snapshot
     String newAppDir = this.dag.assertAppPath();
@@ -295,20 +302,31 @@ public class StramClient
 
     // copy sub directories that are not present in target
     FileStatus[] lFiles = fs.listStatus(origAppDir);
-    for (FileStatus f : lFiles) {
-      if (f.isDirectory()) {
-        String targetPath = f.getPath().toString().replace(origAppDir.toString(), newAppDir);
-        if (!fs.exists(new Path(targetPath))) {
-          LOG.debug("Copying {} to {}", f.getPath(), targetPath);
-          FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
-          //FSUtil.copy(fs, f, fs, new Path(targetPath), false, false, conf);
-        } else {
-          LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
-          //FSUtil.setPermission(fs, new Path(targetPath), new FsPermission((short)0777));
+
+    if (savePoint) {
+      for (FileStatus f : lFiles) {
+        if (f.isDirectory() && !fs.exists(new Path(newAppDir, f.getPath().getName()))) {
+          FileUtil.copy(fs, f.getPath(), fs, new Path(newAppDir), false, false, conf);
+        }
+      }
+    } else {
+      for (FileStatus f : lFiles) {
+        if (f.isDirectory()) {
+
+          String targetPath = f.getPath().toString().replace(origAppDir.toString(), newAppDir);
+
+          if (!fs.exists(new Path(targetPath))) {
+            LOG.debug("Copying {} to {}", f.getPath(), targetPath);
+            FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
+            //FSUtil.copy(fs, f, fs, new Path(targetPath), false, false, conf);
+            //
+          } else {
+            LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
+            //FSUtil.setPermission(fs, new Path(targetPath), new FsPermission((short)0777));
+          }
         }
       }
     }
-
   }
 
   /**
@@ -496,7 +514,12 @@ public class StramClient
       if (originalAppId != null) {
         Path origAppPath = new Path(appsBasePath, this.originalAppId);
         LOG.info("Restart from {}", origAppPath);
-        copyInitialState(origAppPath);
+        copyInitialState(origAppPath, false);
+      }
+
+      if (savePoint != null) {
+        LOG.info("Restart from the SavePoint{}", savePoint);
+        copyInitialState(new Path(savePoint), true);
       }
 
       // push logical plan to DFS location

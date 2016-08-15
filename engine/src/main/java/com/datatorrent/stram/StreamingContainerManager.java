@@ -3104,9 +3104,6 @@ public class StreamingContainerManager implements PlanContext
       LogicalPlan lp = physicalPlan.getLogicalPlan();
       String appId = newApp.getValue(LogicalPlan.APPLICATION_ID);
       String oldAppId = lp.getValue(LogicalPlan.APPLICATION_ID);
-      if (oldAppId == null) {
-        throw new AssertionError("Missing original application id");
-      }
 
       lp.setAttribute(LogicalPlan.APPLICATION_ID, appId);
       lp.setAttribute(LogicalPlan.APPLICATION_PATH, newApp.assertAppPath());
@@ -3115,19 +3112,22 @@ public class StreamingContainerManager implements PlanContext
 
       this.finals = new FinalVars(finals, lp);
       StorageAgent sa = lp.getValue(OperatorContext.STORAGE_AGENT);
-      if (sa instanceof AsyncFSStorageAgent) {
-        // replace the default storage agent, if present
-        AsyncFSStorageAgent fssa = (AsyncFSStorageAgent)sa;
-        if (fssa.path.contains(oldAppId)) {
-          fssa = new AsyncFSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
-          lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
-        }
-      } else if (sa instanceof FSStorageAgent) {
-        // replace the default storage agent, if present
-        FSStorageAgent fssa = (FSStorageAgent)sa;
-        if (fssa.path.contains(oldAppId)) {
-          fssa = new FSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
-          lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
+
+      if (oldAppId != null) {
+        if (sa instanceof AsyncFSStorageAgent) {
+          // replace the default storage agent, if present
+          AsyncFSStorageAgent fssa = (AsyncFSStorageAgent)sa;
+          if (fssa.path.contains(oldAppId)) {
+            fssa = new AsyncFSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
+            lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
+          }
+        } else if (sa instanceof FSStorageAgent) {
+          // replace the default storage agent, if present
+          FSStorageAgent fssa = (FSStorageAgent)sa;
+          if (fssa.path.contains(oldAppId)) {
+            fssa = new FSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
+            lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
+          }
         }
       }
     }
