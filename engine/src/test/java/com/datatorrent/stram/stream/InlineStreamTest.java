@@ -56,12 +56,14 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
 
     final PassThroughNode<Object> operator1 = new PassThroughNode<Object>();
-    final GenericNode node1 = new GenericNode(operator1, new OperatorContext(1, new DefaultAttributeMap(), null));
+    final GenericNode node1 = new GenericNode(operator1, new OperatorContext(1, "operator1", new DefaultAttributeMap(),
+        null));
     node1.setId(1);
     operator1.setup(node1.context);
 
     final PassThroughNode<Object> operator2 = new PassThroughNode<Object>();
-    final GenericNode node2 = new GenericNode(operator2, new OperatorContext(2, new DefaultAttributeMap(), null));
+    final GenericNode node2 = new GenericNode(operator2, new OperatorContext(2, "operator2", new DefaultAttributeMap(),
+        null));
     node2.setId(2);
     operator2.setup(node2.context);
 
