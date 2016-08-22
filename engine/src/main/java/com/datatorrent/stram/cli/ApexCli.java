@@ -3456,7 +3456,7 @@ public class ApexCli
       matchAppName = commandLineInfo.args[1];
     }
 
-    List<AppInfo> applications = getAppsFromPackageAndConfig(ap, cp, commandLineInfo.useConfigApps);
+    List<AppInfo> applications = new ArrayList<>(getAppsFromPackageAndConfig(ap, cp, commandLineInfo.useConfigApps));
 
     if (matchAppName != null) {
       Iterator<AppInfo> it = applications.iterator();

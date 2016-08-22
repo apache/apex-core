@@ -20,7 +20,9 @@ package com.datatorrent.stram.client;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.codehaus.jettison.json.JSONException;
@@ -90,11 +92,20 @@ public class AppPackageTest
     Assert.assertEquals(System.getProperty("apex.version", "3.4.0"), json.getString("dtEngineVersion"));
     Assert.assertEquals("lib/*.jar", json.getJSONArray("classPath").getString(0));
 
-    JSONObject application = json.getJSONArray("applications").getJSONObject(0);
-    Assert.assertEquals("MyFirstApplication", application.getString("name"));
-    Assert.assertEquals("mydtapp-1.0-SNAPSHOT.jar", application.getString("file"));
+    JSONObject application1 = json.getJSONArray("applications").getJSONObject(0);
+    JSONObject application2 = json.getJSONArray("applications").getJSONObject(1);
 
-    JSONObject dag = application.getJSONObject("dag");
+    Map<String, JSONObject> apps = new HashMap<>();
+
+    apps.put(application1.getString("name"), application1);
+    apps.put(application2.getString("name"), application2);
+
+    Assert.assertEquals(true, apps.containsKey("MyFirstApplication"));
+    Assert.assertEquals(true, apps.containsKey("MySecondApplication"));
+
+    Assert.assertEquals("mydtapp-1.0-SNAPSHOT.jar", apps.get("MyFirstApplication").getString("file"));
+
+    JSONObject dag = apps.get("MyFirstApplication").getJSONObject("dag");
     Assert.assertTrue("There is at least one stream", dag.getJSONArray("streams").length() >= 1);
     Assert.assertEquals("There are two operator", 2, dag.getJSONArray("operators").length());
 

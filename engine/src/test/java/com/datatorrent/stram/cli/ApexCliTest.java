@@ -150,7 +150,7 @@ public class ApexCliTest
     ApexCli.LaunchCommandLineInfo commandLineInfo = ApexCli
         .getLaunchCommandLineInfo(new String[]{"-exactMatch", "-conf", configFile.getAbsolutePath(), appFile.getAbsolutePath(), "MyFirstApplication"});
 
-    commandLineInfo.args = new String[] {"MyFirstApplication"};
+    commandLineInfo.args = new String[] {"testApp", "MyFirstApplication"};
 
     String[] args = cli.getLaunchAppPackageArgs(ap, cp, commandLineInfo, null);
     commandLineInfo = ApexCli.getLaunchCommandLineInfo(args);
