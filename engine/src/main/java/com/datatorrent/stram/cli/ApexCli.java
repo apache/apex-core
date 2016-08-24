@@ -1591,7 +1591,7 @@ public class ApexCli
   private List<ApplicationReport> getApplicationList()
   {
     try {
-      return yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
+      return yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_DEPRECATED, StramClient.YARN_APPLICATION_TYPE));
     } catch (Exception e) {
       throw new CliException("Error getting application list from resource manager", e);
     }

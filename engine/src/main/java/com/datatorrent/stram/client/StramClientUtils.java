@@ -711,7 +711,7 @@ public class StramClientUtils
 
   public static ApplicationReport getStartedAppInstanceByName(YarnClient clientRMService, String appName, String user, String excludeAppId) throws YarnException, IOException
   {
-    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE), EnumSet.of(YarnApplicationState.RUNNING,
+    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_DEPRECATED, StramClient.YARN_APPLICATION_TYPE), EnumSet.of(YarnApplicationState.RUNNING,
         YarnApplicationState.ACCEPTED,
         YarnApplicationState.NEW,
         YarnApplicationState.NEW_SAVING,
@@ -822,7 +822,7 @@ public class StramClientUtils
       throws IOException, YarnException
   {
     List<ApplicationReport> result = new ArrayList<>();
-    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE),
+    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_DEPRECATED, StramClient.YARN_APPLICATION_TYPE),
         EnumSet.of(YarnApplicationState.FAILED, YarnApplicationState.FINISHED, YarnApplicationState.KILLED));
     Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
     for (ApplicationReport ar : applications) {

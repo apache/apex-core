@@ -94,7 +94,9 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 public class StramClient
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
-  public static final String YARN_APPLICATION_TYPE = "DataTorrent";
+  public static final String YARN_APPLICATION_TYPE_DEPRECATED = "DataTorrent";
+  public static final String YARN_APPLICATION_TYPE = "ApacheApex";
+
   public static final String LIB_JARS_SEP = ",";
 
   // Configuration
@@ -114,7 +116,7 @@ public class StramClient
   private long clientTimeout = 600000;
   private String originalAppId;
   private String queueName;
-  private String applicationType = YARN_APPLICATION_TYPE;
+  private String applicationType = YARN_APPLICATION_TYPE_DEPRECATED;
   private String archives;
   private String files;
   private LinkedHashSet<String> resources;
@@ -320,7 +322,7 @@ public class StramClient
   {
     Class<?>[] defaultClasses;
 
-    if (applicationType.equals(YARN_APPLICATION_TYPE)) {
+    if (applicationType.equals(YARN_APPLICATION_TYPE_DEPRECATED)) {
       //TODO restrict the security check to only check if security is enabled for webservices.
       if (UserGroupInformation.isSecurityEnabled()) {
         defaultClasses = DATATORRENT_SECURITY_CLASSES;
@@ -385,7 +387,7 @@ public class StramClient
     // set the application name
     appContext.setApplicationName(dag.getValue(LogicalPlan.APPLICATION_NAME));
     appContext.setApplicationType(this.applicationType);
-    if (YARN_APPLICATION_TYPE.equals(this.applicationType)) {
+    if (YARN_APPLICATION_TYPE_DEPRECATED.equals(this.applicationType)) {
       //appContext.setMaxAppAttempts(1); // no retries until Stram is HA
     }
 
