@@ -506,7 +506,7 @@ public class StramWebServices
     init();
 
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
-      return StramUtils.getStackTrace();
+      return StramUtils.getStackTrace2();
     }
 
     StreamingContainerAgent sca = dagManager.getContainerAgent(containerId);
