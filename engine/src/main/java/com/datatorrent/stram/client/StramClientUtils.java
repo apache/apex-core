@@ -75,7 +75,6 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
-import org.apache.log4j.DTLoggerFactory;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -83,6 +82,7 @@ import com.google.common.collect.Sets;
 
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.util.ConfigValidator;
@@ -414,7 +414,7 @@ public class StramClientUtils
     }
 
     //Validate loggers-level settings
-    String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
+    String loggersLevel = conf.get(StramUtils.DT_LOGGERS_LEVEL);
     if (loggersLevel != null) {
       String[] targets = loggersLevel.split(",");
       Preconditions.checkArgument(targets.length > 0, "zero loggers level");

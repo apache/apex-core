@@ -53,7 +53,6 @@ import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.log4j.DTLoggerFactory;
 import org.apache.log4j.LogManager;
 
 import com.datatorrent.api.Attribute;
@@ -118,6 +117,7 @@ import com.datatorrent.stram.stream.MuxStream;
 import com.datatorrent.stram.stream.OiOStream;
 import com.datatorrent.stram.stream.PartitionAwareSink;
 import com.datatorrent.stram.stream.PartitionAwareSinkForPersistence;
+import com.datatorrent.stram.util.LoggerUtil;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
@@ -1623,7 +1623,7 @@ public class StreamingContainer extends YarnContainerMain
   private void handleChangeLoggersRequest(StramToNodeChangeLoggersRequest request)
   {
     logger.debug("handle change logger request");
-    DTLoggerFactory.getInstance().changeLoggersLevel(request.getTargetChanges());
+    LoggerUtil.changeLoggersLevel(request.getTargetChanges());
   }
 
   private final StreamCodec<Object> nonSerializingStreamCodec = new StreamCodec<Object>()

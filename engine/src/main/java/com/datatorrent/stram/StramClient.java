@@ -69,7 +69,6 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
-import org.apache.log4j.DTLoggerFactory;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
@@ -570,9 +569,9 @@ public class StramClient
         vargs.add("-Dlog4j.debug=true");
       }
 
-      String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
+      String loggersLevel = conf.get(StramUtils.DT_LOGGERS_LEVEL);
       if (loggersLevel != null) {
-        vargs.add(String.format("-D%s=%s", DTLoggerFactory.DT_LOGGERS_LEVEL, loggersLevel));
+        vargs.add(String.format("-D%s=%s", StramUtils.DT_LOGGERS_LEVEL, loggersLevel));
       }
       vargs.add(StreamingAppMaster.class.getName());
       vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
