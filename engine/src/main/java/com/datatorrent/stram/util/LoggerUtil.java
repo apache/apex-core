@@ -16,95 +16,202 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.log4j;
+package com.datatorrent.stram.util;
 
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
+import org.apache.log4j.Appender;
+import org.apache.log4j.Category;
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
+import org.apache.log4j.spi.DefaultRepositorySelector;
+import org.apache.log4j.spi.HierarchyEventListener;
 import org.apache.log4j.spi.LoggerFactory;
 import org.apache.log4j.spi.LoggerRepository;
-import org.apache.log4j.spi.RepositorySelector;
 
 import com.google.common.base.Function;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
-/**
- * An implementation of {@link LoggerFactory}
- *
- * @since 1.0.2
- */
-public class DTLoggerFactory implements LoggerFactory
+public class LoggerUtil
 {
-  public static final String DT_LOGGERS_LEVEL = "dt.loggers.level";
 
-  private static DTLoggerFactory SINGLETON;
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(LoggerUtil.class);
 
-  public static synchronized DTLoggerFactory getInstance()
+  private static final Map<String, Level> patternLevel = Maps.newHashMap();
+  private static final Map<String, Pattern> patterns = Maps.newHashMap();
+  private static final Function<Level, String> levelToString = new Function<Level, String>()
   {
-    if (SINGLETON == null) {
-      SINGLETON = new DTLoggerFactory();
-    }
-    return SINGLETON;
-  }
-
-  private final ConcurrentMap<String, Logger> loggerMap;
-  private final Map<String, Level> patternLevel;
-
-  public ImmutableMap<String, String> getPatternLevels()
-  {
-    return ImmutableMap.copyOf(Maps.transformValues(patternLevel, new Function<Level, String>()
+    @Override
+    public String apply(@Nullable Level input)
     {
-      @Override
-      public String apply(Level input)
+      return input == null ? "" : input.toString();
+    }
+  };
+
+  private static class DelegatingLoggerRepository implements LoggerRepository
+  {
+    private static class DefaultLoggerFactory implements LoggerFactory
+    {
+      private static class DefaultLogger extends Logger
       {
-        return input == null ? "" : input.toString();
-      }
-    }));
-  }
-
-  private final Map<String, Pattern> patterns;
-  private boolean initialized = false;
-
-  private DTLoggerFactory()
-  {
-    loggerMap = Maps.newConcurrentMap();
-    patternLevel = Maps.newHashMap();
-    patterns = Maps.newHashMap();
-  }
-
-  public synchronized void initialize()
-  {
-    if (!initialized) {
-      LOG.debug("initializing DT Logger Factory");
-      new RepositorySelectorImpl().initialize();
-      String loggersLevel = System.getProperty(DT_LOGGERS_LEVEL);
-      if (!Strings.isNullOrEmpty(loggersLevel)) {
-        Map<String, String> targetChanges = Maps.newHashMap();
-        String[] targets = loggersLevel.split(",");
-        for (String target : targets) {
-          String[] parts = target.split(":");
-          targetChanges.put(parts[0], parts[1]);
+        public DefaultLogger(String name)
+        {
+          super(name);
         }
-        changeLoggersLevel(targetChanges);
       }
-      initialized = true;
-    } else {
-      LOG.warn("DT Logger Factory already initialized.");
+
+      @Override
+      public Logger makeNewLoggerInstance(String name)
+      {
+        Logger logger = new DefaultLogger(name);
+        Level level = getLevelFor(name);
+        if (level != null) {
+          logger.setLevel(level);
+        }
+        return logger;
+      }
+    }
+
+    private final LoggerFactory loggerFactory = new DefaultLoggerFactory();
+    private final LoggerRepository loggerRepository;
+
+    private DelegatingLoggerRepository(LoggerRepository loggerRepository)
+    {
+      this.loggerRepository = loggerRepository;
+    }
+
+    @Override
+    public void addHierarchyEventListener(HierarchyEventListener listener)
+    {
+      loggerRepository.addHierarchyEventListener(listener);
+    }
+
+    @Override
+    public boolean isDisabled(int level)
+    {
+      return loggerRepository.isDisabled(level);
+    }
+
+    @Override
+    public void setThreshold(Level level)
+    {
+      loggerRepository.setThreshold(level);
+    }
+
+    @Override
+    public void setThreshold(String val)
+    {
+      loggerRepository.setThreshold(val);
+    }
+
+    @Override
+    public void emitNoAppenderWarning(Category cat)
+    {
+      loggerRepository.emitNoAppenderWarning(cat);
+    }
+
+    @Override
+    public Level getThreshold()
+    {
+      return loggerRepository.getThreshold();
+    }
+
+    @Override
+    public Logger getLogger(String name)
+    {
+      return loggerRepository.getLogger(name, loggerFactory);
+    }
+
+    @Override
+    public Logger getLogger(String name, LoggerFactory factory)
+    {
+      return loggerRepository.getLogger(name, factory);
+    }
+
+    @Override
+    public Logger getRootLogger()
+    {
+      return loggerRepository.getRootLogger();
+    }
+
+    @Override
+    public Logger exists(String name)
+    {
+      return loggerRepository.exists(name);
+    }
+
+    @Override
+    public void shutdown()
+    {
+      loggerRepository.shutdown();
+    }
+
+    @Override
+    public Enumeration<Logger> getCurrentLoggers()
+    {
+      return loggerRepository.getCurrentLoggers();
+    }
+
+    @Override
+    public Enumeration<Logger> getCurrentCategories()
+    {
+      return loggerRepository.getCurrentCategories();
+    }
+
+    @Override
+    public void fireAddAppenderEvent(Category logger, Appender appender)
+    {
+      loggerRepository.fireAddAppenderEvent(logger, appender);
+    }
+
+    @Override
+    public void resetConfiguration()
+    {
+      loggerRepository.resetConfiguration();
     }
   }
 
-  public synchronized void changeLoggersLevel(@Nonnull Map<String, String> targetChanges)
+  static {
+    logger.debug("initializing LoggerUtil");
+    LogManager.setRepositorySelector(new DefaultRepositorySelector(new DelegatingLoggerRepository(LogManager.getLoggerRepository())), null);
+  }
+
+  private static synchronized Level getLevelFor(String name)
   {
-    /*remove existing patterns which are subsets of new patterns. for eg. if x.y.z.* will be removed if
-    there is x.y.* in the target changes.
-    */
+    if (patternLevel.isEmpty()) {
+      return null;
+    }
+    String longestPatternKey = null;
+    for (String patternKey : patternLevel.keySet()) {
+      Pattern pattern = patterns.get(patternKey);
+      if (pattern.matcher(name).matches() && (longestPatternKey == null || longestPatternKey.length() < patternKey.length())) {
+        longestPatternKey = patternKey;
+      }
+    }
+    if (longestPatternKey != null) {
+      return patternLevel.get(longestPatternKey);
+    }
+    return null;
+  }
+
+  public static ImmutableMap<String, String> getPatternLevels()
+  {
+    return ImmutableMap.copyOf(Maps.transformValues(patternLevel, levelToString));
+  }
+
+  public static synchronized void changeLoggersLevel(@Nonnull Map<String, String> targetChanges)
+  {
+    /* remove existing patterns which are subsets of new patterns. for eg. if x.y.z.* will be removed if
+     *  there is x.y.* in the target changes.
+     */
     for (Map.Entry<String, String> changeEntry : targetChanges.entrySet()) {
       Iterator<Map.Entry<String, Pattern>> patternsIterator = patterns.entrySet().iterator();
       while ((patternsIterator.hasNext())) {
@@ -146,44 +253,14 @@ public class DTLoggerFactory implements LoggerFactory
         Level oldLevel = classLogger.getLevel();
         Level newLevel = getLevelFor(classLogger.getName());
         if (newLevel != null && (oldLevel == null || !newLevel.equals(oldLevel))) {
-          LOG.info("changing level of " + classLogger.getName() + " to " + newLevel);
+          logger.info("changing level of {} to {}", classLogger.getName(), newLevel);
           classLogger.setLevel(newLevel);
         }
       }
     }
   }
 
-  @Override
-  public Logger makeNewLoggerInstance(String name)
-  {
-    Logger newInstance = new Logger(name);
-    Level level = getLevelFor(name);
-    if (level != null) {
-      newInstance.setLevel(level);
-    }
-    loggerMap.put(name, newInstance);
-    return newInstance;
-  }
-
-  private synchronized Level getLevelFor(String name)
-  {
-    if (patternLevel.isEmpty()) {
-      return null;
-    }
-    String longestPatternKey = null;
-    for (String partternKey : patternLevel.keySet()) {
-      Pattern pattern = patterns.get(partternKey);
-      if (pattern.matcher(name).matches() && (longestPatternKey == null || longestPatternKey.length() < partternKey.length())) {
-        longestPatternKey = partternKey;
-      }
-    }
-    if (longestPatternKey != null) {
-      return patternLevel.get(longestPatternKey);
-    }
-    return null;
-  }
-
-  public synchronized ImmutableMap<String, String> getClassesMatching(@Nonnull String searchKey)
+  public static synchronized ImmutableMap<String, String> getClassesMatching(@Nonnull String searchKey)
   {
     Pattern searchPattern = Pattern.compile(searchKey);
     Map<String, String> matchedClasses = Maps.newHashMap();
@@ -198,55 +275,4 @@ public class DTLoggerFactory implements LoggerFactory
     }
     return ImmutableMap.copyOf(matchedClasses);
   }
-
-  private static class RepositorySelectorImpl implements RepositorySelector
-  {
-
-    private boolean initialized;
-    private Logger guard;
-    private Hierarchy hierarchy;
-
-    private RepositorySelectorImpl()
-    {
-      initialized = false;
-    }
-
-    private void initialize()
-    {
-      if (!initialized) {
-        LOG.debug("initializing logger repository selector impl");
-        guard = LogManager.getRootLogger();
-        LogManager.setRepositorySelector(this, guard);
-        hierarchy = new LoggerRepositoryImpl(guard);
-        initialized = true;
-      }
-    }
-
-    @Override
-    public LoggerRepository getLoggerRepository()
-    {
-      return hierarchy;
-    }
-  }
-
-  private static class LoggerRepositoryImpl extends Hierarchy
-  {
-    /**
-     * Create a new logger hierarchy.
-     *
-     * @param root The root of the new hierarchy.
-     */
-    private LoggerRepositoryImpl(Logger root)
-    {
-      super(root);
-    }
-
-    @Override
-    public Logger getLogger(String name)
-    {
-      return super.getLogger(name, DTLoggerFactory.getInstance());
-    }
-  }
-
-  private static final Logger LOG = LogManager.getLogger(DTLoggerFactory.class);
 }
