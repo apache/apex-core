@@ -616,11 +616,12 @@ public class StreamingContainer extends YarnContainerMain
       Token<?> token = iter.next();
       logger.debug("token: {}", token);
     }
+    String principal = containerContext.getValue(LogicalPlan.PRINCIPAL);
     String hdfsKeyTabFile = containerContext.getValue(LogicalPlan.KEY_TAB_FILE);
     while (!exitHeartbeatLoop) {
 
       if (UserGroupInformation.isSecurityEnabled() && System.currentTimeMillis() >= expiryTime && hdfsKeyTabFile != null) {
-        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, FileUtils.getTempDirectoryPath(), containerId, conf, hdfsKeyTabFile, credentials, null, false);
+        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, FileUtils.getTempDirectoryPath(), containerId, conf, principal, hdfsKeyTabFile, credentials, null, false);
       }
       synchronized (this.heartbeatTrigger) {
         try {
