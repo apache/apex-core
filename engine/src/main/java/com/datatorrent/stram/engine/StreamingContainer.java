@@ -24,7 +24,6 @@ import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
@@ -155,8 +154,8 @@ public class StreamingContainer extends YarnContainerMain
    */
   private long firstWindowMillis;
   private int windowWidthMillis;
-  private InetSocketAddress bufferServerAddress;
-  private com.datatorrent.bufferserver.server.Server bufferServer;
+  protected InetSocketAddress bufferServerAddress;
+  protected com.datatorrent.bufferserver.server.Server bufferServer;
   private int checkpointWindowCount;
   private boolean fastPublisherSubscriber;
   private StreamingContainerContext containerContext;
@@ -230,9 +229,8 @@ public class StreamingContainer extends YarnContainerMain
         if (ctx.getValue(Context.DAGContext.BUFFER_SPOOLING)) {
           bufferServer.setSpoolStorage(new DiskStorage());
         }
-        SocketAddress bindAddr = bufferServer.run(eventloop);
-        logger.debug("Buffer server started: {}", bindAddr);
-        this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress)bindAddr));
+        bufferServerAddress = NetUtils.getConnectAddress(bufferServer.run(eventloop));
+        logger.debug("Buffer server started: {}", bufferServerAddress);
       }
     } catch (IOException ex) {
       logger.warn("deploy request failed due to {}", ex);
