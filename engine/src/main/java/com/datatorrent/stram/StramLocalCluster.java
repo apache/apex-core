@@ -23,7 +23,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +36,6 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.ProtocolSignature;
-import org.apache.hadoop.net.NetUtils;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode.Controller;
@@ -69,6 +67,8 @@ public class StramLocalCluster implements Runnable, Controller
   private static final Logger LOG = LoggerFactory.getLogger(StramLocalCluster.class);
   // assumes execution as unit test
   private static File CLUSTER_WORK_DIR = new File("target", StramLocalCluster.class.getName());
+  private static final String LOCALHOST_PROPERTY_KEY = "org.apache.apex.stram.StramLocalCluster.hostname";
+  private static final String LOCALHOST = System.getProperty(LOCALHOST_PROPERTY_KEY, "localhost");
   protected final StreamingContainerManager dnmgr;
   private final UmbilicalProtocolLocalImpl umbilical;
   private InetSocketAddress bufferServerAddress;
@@ -169,19 +169,23 @@ public class StramLocalCluster implements Runnable, Controller
       this.windowGenerator = winGen;
     }
 
-    public static void run(StreamingContainer stramChild, StreamingContainerContext ctx) throws Exception
+    public void run(StreamingContainerContext ctx) throws Exception
     {
       LOG.debug("Got context: " + ctx);
-      stramChild.setup(ctx);
+      setup(ctx);
+      if (bufferServerAddress != null && !bufferServerAddress.getAddress().isLoopbackAddress()) {
+        bufferServerAddress = InetSocketAddress.createUnresolved(LOCALHOST, bufferServerAddress.getPort());
+      }
+
       boolean hasError = true;
       try {
         // main thread enters heartbeat loop
-        stramChild.heartbeatLoop();
+        heartbeatLoop();
         hasError = false;
       } finally {
         // teardown
         try {
-          stramChild.teardown();
+          teardown();
         } catch (Exception e) {
           if (!hasError) {
             throw e;
@@ -247,7 +251,7 @@ public class StramLocalCluster implements Runnable, Controller
       }
       this.child = new LocalStreamingContainer(containerId, umbilical, wingen);
       ContainerResource cr = new ContainerResource(cdr.container.getResourceRequestPriority(), containerId, "localhost", cdr.container.getRequiredMemoryMB(), cdr.container.getRequiredVCores(), null);
-      StreamingContainerAgent sca = dnmgr.assignContainer(cr, perContainerBufferServer ? null : NetUtils.getConnectAddress(bufferServerAddress));
+      StreamingContainerAgent sca = dnmgr.assignContainer(cr, perContainerBufferServer ? null : bufferServerAddress);
       if (sca != null) {
         Thread launchThread = new Thread(this, containerId);
         launchThread.start();
@@ -261,7 +265,7 @@ public class StramLocalCluster implements Runnable, Controller
     {
       try {
         StreamingContainerContext ctx = umbilical.getInitContext(containerId);
-        LocalStreamingContainer.run(child, ctx);
+        child.run(ctx);
       } catch (Exception e) {
         LOG.error("Container {} failed", containerId, e);
         throw new RuntimeException(e);
@@ -303,8 +307,7 @@ public class StramLocalCluster implements Runnable, Controller
       StreamingContainer.eventloop.start();
       bufferServer = new Server(0, 1024 * 1024,8);
       bufferServer.setSpoolStorage(new DiskStorage());
-      SocketAddress bindAddr = bufferServer.run(StreamingContainer.eventloop);
-      this.bufferServerAddress = ((InetSocketAddress)bindAddr);
+      bufferServerAddress = InetSocketAddress.createUnresolved(LOCALHOST, bufferServer.run(StreamingContainer.eventloop).getPort());
       LOG.info("Buffer server started: {}", bufferServerAddress);
     }
   }
