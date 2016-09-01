@@ -42,9 +42,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.security.StramUserLogin;
 
 import static org.powermock.api.mockito.PowerMockito.method;
-import static org.powermock.api.mockito.PowerMockito.spy;
 import static org.powermock.api.mockito.PowerMockito.suppress;
-import static org.powermock.api.mockito.PowerMockito.when;
 
 /**
  * StramAppLauncher Test
@@ -52,12 +50,18 @@ import static org.powermock.api.mockito.PowerMockito.when;
 @RunWith(Enclosed.class)
 public class StramAppLauncherTest
 {
-  @PrepareForTest({StramAppLauncher.class, StramUserLogin.class})
+
+  private static final String SET_TOKEN_REFRESH_CREDENTIALS_METHOD = "setTokenRefreshCredentials";
+
+  @PrepareForTest({StramAppLauncher.class})
   @PowerMockIgnore({"javax.xml.*", "org.w3c.*", "org.apache.hadoop.*", "org.apache.log4j.*"})
   public static class RefreshTokenTests
   {
     File workspace;
     File sourceKeytab;
+    File dfsDir;
+
+    static final String principal = "username/group@domain";
 
     @Rule
     public PowerMockRule rule = new PowerMockRule();
@@ -77,6 +81,7 @@ public class StramAppLauncherTest
         } catch (IOException e) {
           throw new RuntimeException(e);
         }
+        dfsDir = new File(workspace, "dst");
         suppress(method(StramAppLauncher.class, "init"));
       }
 
@@ -92,17 +97,24 @@ public class StramAppLauncherTest
     public void testGetTokenRefreshKeytab() throws Exception
     {
       Configuration conf = new Configuration(false);
-      conf.set(StramClientUtils.KEY_TAB_FILE, sourceKeytab.getPath());
+      File storeKeytab = new File(dfsDir, "keytab2");
+      conf.set(StramClientUtils.KEY_TAB_FILE, storeKeytab.getPath());
+      StramUserLogin.authenticate(principal, sourceKeytab.getPath());
       LogicalPlan dag = applyTokenRefreshKeytab(FileSystem.newInstance(conf), conf);
-      Assert.assertEquals("Token refresh keytab path", sourceKeytab.getPath(), dag.getValue(LogicalPlan.KEY_TAB_FILE));
+      Assert.assertEquals("Token refresh principal", principal, dag.getValue(LogicalPlan.PRINCIPAL));
+      Assert.assertEquals("Token refresh keytab path", storeKeytab.getPath(), dag.getValue(LogicalPlan.KEY_TAB_FILE));
     }
 
     @Test
     public void testUserLoginTokenRefreshKeytab() throws Exception
     {
       Configuration conf = new Configuration(false);
+      /*
       spy(StramUserLogin.class);
+      when(StramUserLogin.getPrincipal()).thenReturn(principal);
       when(StramUserLogin.getKeytab()).thenReturn(sourceKeytab.getPath());
+      */
+      StramUserLogin.authenticate(principal, sourceKeytab.getPath());
       testDFSTokenPath(conf);
     }
 
@@ -110,25 +122,27 @@ public class StramAppLauncherTest
     public void testAuthPropTokenRefreshKeytab() throws Exception
     {
       Configuration conf = new Configuration(false);
+      conf.set(StramUserLogin.DT_AUTH_PRINCIPAL, principal);
       conf.set(StramUserLogin.DT_AUTH_KEYTAB, sourceKeytab.getPath());
+      StramUserLogin.authenticate(conf);
       testDFSTokenPath(conf);
     }
 
     private void testDFSTokenPath(Configuration conf) throws Exception
     {
       FileSystem fs = FileSystem.newInstance(conf);
-      File dfsDir = new File(workspace, "dst");
       conf.set(StramClientUtils.DT_DFS_ROOT_DIR, dfsDir.getAbsolutePath());
       LogicalPlan dag = applyTokenRefreshKeytab(fs, conf);
+      Assert.assertEquals("Token refresh principal", principal, dag.getValue(LogicalPlan.PRINCIPAL));
       Assert.assertEquals("Token refresh keytab path", new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(),
-          new File(dfsDir, "keytab").getAbsolutePath()).toString(), dag.getValue(LogicalPlan.KEY_TAB_FILE));
+          new File(dfsDir, sourceKeytab.getName()).getAbsolutePath()).toString(), dag.getValue(LogicalPlan.KEY_TAB_FILE));
     }
 
     private LogicalPlan applyTokenRefreshKeytab(FileSystem fs, Configuration conf) throws Exception
     {
       LogicalPlan dag = new LogicalPlan();
       StramAppLauncher appLauncher = new StramAppLauncher(fs, conf);
-      Whitebox.invokeMethod(appLauncher, "setTokenRefreshKeytab", dag, conf);
+      Whitebox.invokeMethod(appLauncher, SET_TOKEN_REFRESH_CREDENTIALS_METHOD, dag, conf);
       return dag;
     }
   }

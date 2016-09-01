@@ -676,6 +676,7 @@ public class StreamingAppMasterService extends CompositeService
     long tokenLifeTime = (long)(dag.getValue(LogicalPlan.TOKEN_REFRESH_ANTICIPATORY_FACTOR) * Math.min(dag.getValue(LogicalPlan.HDFS_TOKEN_LIFE_TIME), dag.getValue(LogicalPlan.RM_TOKEN_LIFE_TIME)));
     long expiryTime = System.currentTimeMillis() + tokenLifeTime;
     LOG.debug(" expiry token time {}", tokenLifeTime);
+    String principal = dag.getValue(LogicalPlan.PRINCIPAL);
     String hdfsKeyTabFile = dag.getValue(LogicalPlan.KEY_TAB_FILE);
 
     // Register self with ResourceManager
@@ -753,7 +754,7 @@ public class StreamingAppMasterService extends CompositeService
 
       if (UserGroupInformation.isSecurityEnabled() && currentTimeMillis >= expiryTime && hdfsKeyTabFile != null) {
         String applicationId = appAttemptID.getApplicationId().toString();
-        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, FileUtils.getTempDirectoryPath(), applicationId, conf, hdfsKeyTabFile, credentials, rmAddress, true);
+        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, FileUtils.getTempDirectoryPath(), applicationId, conf, principal, hdfsKeyTabFile, credentials, rmAddress, true);
       }
 
       if (currentTimeMillis > nodeReportUpdateTime) {
