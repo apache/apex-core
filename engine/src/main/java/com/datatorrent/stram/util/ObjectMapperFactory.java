@@ -57,7 +57,7 @@ public class ObjectMapperFactory
   }
 
   public static ObjectMapper getOperatorValueDeserializer()
-  {    
+  {
     ObjectMapper returnVal = new ObjectMapper();
     returnVal.setVisibilityChecker(new VC());
     returnVal.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);

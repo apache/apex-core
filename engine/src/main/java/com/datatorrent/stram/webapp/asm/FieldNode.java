@@ -30,14 +30,14 @@ import org.apache.xbean.asm5.signature.SignatureReader;
 public class FieldNode extends org.apache.xbean.asm5.tree.FieldNode
 {
   public ClassSignatureVisitor typeVariableSignatureNode;
- 
+
   public FieldSignatureVisitor signatureNode;
 
   public FieldNode(int access, String name, String desc, String signature, Object value)
   {
     super(Opcodes.ASM5, access, name, desc, signature, value);
   }
-  
+
   @Override
   public void visitEnd()
   {
@@ -48,5 +48,5 @@ public class FieldNode extends org.apache.xbean.asm5.tree.FieldNode
     signatureNode.typeV.addAll(typeVariableSignatureNode.typeV);
     reader.accept(signatureNode);
   }
- 
+
 }

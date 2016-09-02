@@ -29,7 +29,7 @@ import org.apache.xbean.asm5.Opcodes;
  */
 public class CompactClassNode
 {
-  
+
   private int access;
 
   private String name;

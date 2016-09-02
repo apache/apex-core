@@ -88,7 +88,7 @@ public class ApexCliTest
   public static void finished()
   {
     try {
-      
+
       StramTestSupport.removeAppPackageFile();
       FileUtils.forceDelete(configFile);
       testFolder.delete();

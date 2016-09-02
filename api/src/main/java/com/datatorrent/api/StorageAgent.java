@@ -81,15 +81,14 @@ public interface StorageAgent
 
   /**
    * Interface to pass application attributes to storage agent
-   * 
    *
    */
   public interface ApplicationAwareStorageAgent extends StorageAgent
   {
-   
+
     /**
      * Passes attributes of application to storage agent
-     * 
+     *
      * @param map attributes of application
      */
     public void setApplicationAttributes(AttributeMap map);

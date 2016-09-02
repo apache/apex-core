@@ -25,17 +25,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.codehaus.jettison.json.JSONException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * <p>Abstract FSPartFileAgent class.</p>
  *
  * @since 0.9.0
  */
-public abstract class FSPartFileAgent 
+public abstract class FSPartFileAgent
 {
-  private static final Logger LOG = LoggerFactory.getLogger(FSPartFileAgent.class);
   private final Map<String, String> lastIndexLines = new HashMap<>();
   protected final StramAgent stramAgent;
 

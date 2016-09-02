@@ -46,7 +46,7 @@ public abstract class StramEvent
   {
     return id;
   }
-  
+
   public long getTimestamp()
   {
     return timestamp;

@@ -1849,7 +1849,7 @@ public class LogicalPlan implements Serializable, DAG
    * validation for affinity rules validates following:
    *  1. The operator names specified in affinity rule are part of the dag
    *  2. Affinity rules do not conflict with anti-affinity rules directly or indirectly
-   *  3. Anti-affinity rules do not conflict with Stream Locality 
+   *  3. Anti-affinity rules do not conflict with Stream Locality
    *  4. Anti-affinity rules do not conflict with host-locality attribute
    *  5. Affinity rule between non stream operators does not have Thread_Local locality
    *  6. Affinity rules do not conflict with host-locality attribute
@@ -1927,7 +1927,7 @@ public class LogicalPlan implements Serializable, DAG
         combineSets(nodeAffinities, pair);
       }
     }
-    
+
 
     for (StreamMeta stream : getAllStreams()) {
       String source = stream.source.getOperatorMeta().getName();

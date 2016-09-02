@@ -29,7 +29,7 @@ import java.util.Collection;
 public class AffinityRulesSet implements Serializable
 {
   private Collection<AffinityRule> affinityRules;
-  
+
   private static final long serialVersionUID = -8393974533796177171L;
 
   public Collection<AffinityRule> getAffinityRules()

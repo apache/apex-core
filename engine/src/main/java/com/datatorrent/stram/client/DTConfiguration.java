@@ -275,7 +275,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     map.remove(key);
   }
 
-  public ValueEntry setInternal(String key, String value) 
+  public ValueEntry setInternal(String key, String value)
   {
     ValueEntry valueEntry;
     if (map.containsKey(key)) {

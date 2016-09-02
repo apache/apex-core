@@ -92,6 +92,7 @@ public class OperatorDiscoveryTest
 
     public final transient DefaultInputPort<T> input1 = new DefaultInputPort<T>()
     {
+      @Override
       public void process(T tuple)
       {
         // Do nothing
@@ -100,6 +101,7 @@ public class OperatorDiscoveryTest
 
     public final transient DefaultInputPort<Map<?, ? extends String>> input2 = new DefaultInputPort<Map<?, ? extends String>>()
     {
+      @Override
       public void process(Map<?, ? extends String> tuple)
       {
         // Do nothing
@@ -111,6 +113,7 @@ public class OperatorDiscoveryTest
 
     public final transient DefaultOutputPort<Double> output1 = new DefaultOutputPort<Double>();
 
+    @Override
     public String getName()
     {
       return "abc";
@@ -519,7 +522,7 @@ public class OperatorDiscoveryTest
 
 
     StramTestSupport.createAppPackageFile();
-    
+
     String[] classFilePath = getClassFileInClasspath();
 
     String[]cPaths = Lists.asList("src/test/resources/testAppPackage/mydtapp/target/mydtapp-1.0-SNAPSHOT.jar", classFilePath).toArray(new String[]{});

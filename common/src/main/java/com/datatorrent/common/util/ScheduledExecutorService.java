@@ -25,9 +25,9 @@ package com.datatorrent.common.util;
  */
 public interface ScheduledExecutorService extends java.util.concurrent.ScheduledExecutorService
 {
-    /**
-     * 
-     * @return long
-     */
+  /**
+   *
+   * @return long
+   */
   public long getCurrentTimeMillis();
 }

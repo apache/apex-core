@@ -31,7 +31,7 @@ public class MethodNode extends org.apache.xbean.asm5.tree.MethodNode
 {
 
   public ClassSignatureVisitor typeVariableSignatureNode;
- 
+
   public MethodSignatureVisitor signatureNode;
 
 
@@ -39,7 +39,7 @@ public class MethodNode extends org.apache.xbean.asm5.tree.MethodNode
   {
     super(Opcodes.ASM5, access, name, desc, signature, exceptions);
   }
-  
+
   @Override
   public void visitEnd()
   {
@@ -51,8 +51,8 @@ public class MethodNode extends org.apache.xbean.asm5.tree.MethodNode
     signatureNode.typeV.addAll(typeVariableSignatureNode.typeV);
     reader.accept(signatureNode);
   }
-  
-  
-  
+
+
+
 
 }
