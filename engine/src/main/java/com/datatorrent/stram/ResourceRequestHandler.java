@@ -153,11 +153,9 @@ public class ResourceRequestHandler
    */
   public void updateNodeReports(List<NodeReport> nodeReports)
   {
-    // LOG.debug("Got {} updated node reports.", nodeReports.size());
     for (NodeReport nr : nodeReports) {
-      StringBuilder sb = new StringBuilder();
-      sb.append("rackName=").append(nr.getRackName()).append(",nodeid=").append(nr.getNodeId()).append(",numContainers=").append(nr.getNumContainers()).append(",capability=").append(nr.getCapability()).append("used=").append(nr.getUsed()).append("state=").append(nr.getNodeState());
-      LOG.info("Node report: " + sb);
+
+      LOG.debug("Node report: rackName={}, nodeid={}, numContainers={}, capability={}, used={}, state={}", nr.getRackName(), nr.getNodeId(), nr.getNumContainers(), nr.getCapability(), nr.getUsed(), nr.getNodeState());
       nodeReportMap.put(nr.getNodeId().getHost(), nr);
       nodeToRack.put(nr.getNodeId().getHost(), nr.getRackName());
     }
