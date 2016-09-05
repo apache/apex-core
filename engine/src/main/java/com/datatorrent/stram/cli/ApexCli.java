@@ -123,6 +123,7 @@ import com.datatorrent.stram.plan.logical.requests.SetPortAttributeRequest;
 import com.datatorrent.stram.plan.logical.requests.SetStreamAttributeRequest;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.JSONSerializationProvider;
+import com.datatorrent.stram.util.SecurityUtils;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
@@ -1131,6 +1132,7 @@ public class ApexCli
   public void init() throws IOException
   {
     conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
+    SecurityUtils.init(conf);
     fs = StramClientUtils.newFileSystemInstance(conf);
     stramAgent = new StramAgent(fs, conf);
 

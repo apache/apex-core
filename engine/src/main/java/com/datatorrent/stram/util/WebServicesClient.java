@@ -30,10 +30,13 @@ import org.slf4j.LoggerFactory;
 import org.apache.http.auth.AuthSchemeProvider;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
+import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.config.AuthSchemes;
 import org.apache.http.config.Lookup;
 import org.apache.http.config.RegistryBuilder;
+import org.apache.http.impl.auth.BasicSchemeFactory;
+import org.apache.http.impl.auth.KerberosSchemeFactory;
 import org.apache.http.impl.auth.SPNegoSchemeFactory;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.BasicCredentialsProvider;
@@ -49,6 +52,8 @@ import com.sun.jersey.api.client.config.DefaultClientConfig;
 import com.sun.jersey.api.client.filter.ClientFilter;
 import com.sun.jersey.client.apache4.ApacheHttpClient4Handler;
 
+import com.datatorrent.stram.security.AuthScheme;
+
 /**
  * <p>WebServicesClient class.</p>
  *
@@ -61,6 +66,8 @@ public class WebServicesClient
 
   private static final PoolingHttpClientConnectionManager connectionManager;
   private static final CredentialsProvider credentialsProvider;
+  private static final RegistryBuilder<AuthSchemeProvider> registryBuilder;
+  private static Lookup<AuthSchemeProvider> authRegistry;
   private static final int DEFAULT_CONNECT_TIMEOUT = 10000;
   private static final int DEFAULT_READ_TIMEOUT = 10000;
 
@@ -68,27 +75,55 @@ public class WebServicesClient
 
   private final Set<ClientFilter> clientFilters = new HashSet<>();
 
+  private static final Credentials DEFAULT_TOKEN_CREDENTIALS = new Credentials()
+  {
+    @Override
+    public Principal getUserPrincipal()
+    {
+      return null;
+    }
+
+    @Override
+    public String getPassword()
+    {
+      return null;
+    }
+  };
+
   static {
     connectionManager = new PoolingHttpClientConnectionManager();
     connectionManager.setMaxTotal(200);
     connectionManager.setDefaultMaxPerRoute(5);
+    registryBuilder = RegistryBuilder.<AuthSchemeProvider>create();
     credentialsProvider = new BasicCredentialsProvider();
-    credentialsProvider.setCredentials(AuthScope.ANY, new Credentials()
-    {
+    // By default add SPNEGO so that it works even if auth is not explictly configured like before, in future
+    // move it to auth setup below
+    registryBuilder.register(AuthSchemes.SPNEGO, new SPNegoSchemeFactory(true));
+    credentialsProvider.setCredentials(AuthScope.ANY, DEFAULT_TOKEN_CREDENTIALS);
+    authRegistry = registryBuilder.build();
+  }
 
-      @Override
-      public Principal getUserPrincipal()
-      {
-        return null;
-      }
+  public static void initAuth(ConfigProvider configuration)
+  {
+    // Adding BASIC auth
+    AuthScheme scheme = AuthScheme.BASIC;
+    String username = configuration.getProperty(scheme, "username");
+    String password = configuration.getProperty(scheme, "password");
+    if ((username != null) && (password != null)) {
+      LOG.info("Setting up scheme {}", scheme);
+      registryBuilder.register(AuthSchemes.BASIC, new BasicSchemeFactory());
+      AuthScope authScope = new AuthScope(AuthScope.ANY_HOST, AuthScope.ANY_PORT, AuthScope.ANY_REALM, AuthSchemes.BASIC);
+      Credentials credentials = new UsernamePasswordCredentials(username, password);
+      credentialsProvider.setCredentials(authScope, credentials);
+    } else if ((username != null) || (password != null)) {
+      LOG.warn("Not setting up scheme {}, missing credentials {}", scheme, (username == null) ? "username" : "password");
+    }
 
-      @Override
-      public String getPassword()
-      {
-        return null;
-      }
+    // Adding kerberos standard auth
+    registryBuilder.register(AuthSchemes.KERBEROS, new KerberosSchemeFactory());
+    credentialsProvider.setCredentials(AuthScope.ANY, DEFAULT_TOKEN_CREDENTIALS);
 
-    });
+    authRegistry = registryBuilder.build();
   }
 
   public WebServicesClient()
@@ -105,10 +140,7 @@ public class WebServicesClient
       HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
       httpClientBuilder.setConnectionManager(connectionManager);
       httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-      Lookup<AuthSchemeProvider> authProviders = RegistryBuilder.<AuthSchemeProvider>create()
-          .register(AuthSchemes.SPNEGO, new SPNegoSchemeFactory(true))
-          .build();
-      httpClientBuilder.setDefaultAuthSchemeRegistry(authProviders);
+      httpClientBuilder.setDefaultAuthSchemeRegistry(authRegistry);
       ApacheHttpClient4Handler httpClientHandler = new ApacheHttpClient4Handler(httpClientBuilder.build(), new BasicCookieStore(), false);
       client = new Client(httpClientHandler, config);
     } else {
@@ -181,6 +213,11 @@ public class WebServicesClient
         return handler.process(wr, listener);
       }
     });
+  }
+
+  public interface ConfigProvider
+  {
+    String getProperty(AuthScheme scheme, String name);
   }
 
   /**

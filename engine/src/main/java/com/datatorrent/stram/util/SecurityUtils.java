@@ -23,6 +23,8 @@ import org.apache.hadoop.security.UserGroupInformation;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.StramHTTPAuthentication;
+import com.datatorrent.stram.security.AuthScheme;
+import com.datatorrent.stram.security.StramUserLogin;
 
 /**
  *
@@ -43,15 +45,20 @@ public class SecurityUtils
     hadoopWebSecurityEnabled = stramWebSecurityEnabled = UserGroupInformation.isSecurityEnabled();
   }
 
+  public static void init(Configuration configuration)
+  {
+    init(configuration, null);
+  }
+
   public static void init(Configuration configuration, StramHTTPAuthentication stramHTTPAuth)
   {
     hadoopWebSecurityEnabled = false;
     String authValue = configuration.get(HADOOP_HTTP_AUTH_PROP);
     if ((authValue != null) && !authValue.equals(HADOOP_HTTP_AUTH_VALUE_SIMPLE)) {
       hadoopWebSecurityEnabled = true;
+      initAuth(configuration);
     }
     // Stram http auth may not be specified and is null but still set a default
-    boolean authDefault = false;
     if (stramHTTPAuth != null) {
       if (stramHTTPAuth == Context.StramHTTPAuthentication.FOLLOW_HADOOP_HTTP_AUTH) {
         stramWebSecurityEnabled = hadoopWebSecurityEnabled;
@@ -63,6 +70,22 @@ public class SecurityUtils
         stramWebSecurityEnabled = false;
       }
     }
+  }
+
+  private static void initAuth(final Configuration configuration)
+  {
+    // Authentication scheme is not unambiguously known because in Hadoop authentication, authentication type can be
+    // specified as an implementation class, furthermore authentication types like SASL wrap other mechanisms like BASIC
+    // or SPNEGO underneath and the wrapped scheme is not known till the authentication negotiation process
+    WebServicesClient.initAuth(new WebServicesClient.ConfigProvider()
+    {
+      @Override
+      public String getProperty(AuthScheme scheme, String name)
+      {
+        StringBuilder propNamesb = new StringBuilder(StramUserLogin.DT_AUTH_PREFIX).append(scheme.getName()).append(".").append(name);
+        return configuration.get(propNamesb.toString());
+      }
+    });
   }
 
   public static boolean isHadoopWebSecurityEnabled()

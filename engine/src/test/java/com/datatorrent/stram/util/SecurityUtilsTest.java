@@ -24,6 +24,7 @@ import org.junit.Test;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.Context;
+import com.datatorrent.stram.security.AuthScheme;
 
 /**
  *
@@ -34,10 +35,28 @@ public class SecurityUtilsTest
   public void testStramWebSecurity()
   {
     checkWebSecurity(false, false);
-    Configuration conf = new Configuration();
+    Configuration conf = setupConfiguration(null);
     checkSecurityConfiguration(conf, new boolean[][]{{false, false}, {false, true}, {false, false}, {false, false}, {false, false}});
-    conf.set(SecurityUtils.HADOOP_HTTP_AUTH_PROP, "kerberos");
+    conf = setupConfiguration(AuthScheme.SPNEGO);
     checkSecurityConfiguration(conf, new boolean[][]{{true, false}, {true, true}, {true, false}, {true, false}, {true, true}});
+  }
+
+  @Test
+  public void testInitAuth() throws NoSuchFieldException, IllegalAccessException
+  {
+    Configuration conf = setupConfiguration(AuthScheme.BASIC);
+    SecurityUtils.init(conf);
+    WebServicesClientTest.checkUserCredentials("testuser", "testpass");
+  }
+
+  private Configuration setupConfiguration(AuthScheme authScheme)
+  {
+    Configuration conf = new Configuration();
+    if (authScheme != null) {
+      conf.set(SecurityUtils.HADOOP_HTTP_AUTH_PROP, authScheme.getName());
+      conf.addResource("security/dt-site-" + authScheme.getName() + ".xml");
+    }
+    return conf;
   }
 
   private void checkSecurityConfiguration(Configuration conf, boolean[][] securityConf)
