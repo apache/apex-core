@@ -1189,7 +1189,6 @@ public class StreamCodecTest
   private OperatorDeployInfo getOperatorDeployInfo(PTOperator operator, String id, StreamingContainerManager scm)
   {
     String containerId = operator.getContainer().getExternalId();
-    System.out.println("Container id " + containerId);
 
     List<OperatorDeployInfo> cdi = StreamingContainerManagerTest.getDeployInfo(scm.getContainerAgent(containerId));
 

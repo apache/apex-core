@@ -215,8 +215,6 @@ public class LogicalPlanTest
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     LogicalPlan.write(dag, bos);
 
-    // System.out.println("serialized size: " + bos.toByteArray().length);
-
     ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
     LogicalPlan dagClone = LogicalPlan.read(bis);
     Assert.assertNotNull(dagClone);
@@ -355,9 +353,6 @@ public class LogicalPlanTest
     Validator validator = factory.getValidator();
     Set<ConstraintViolation<ValidationTestOperator>> constraintViolations =
         validator.validate(bean);
-    //for (ConstraintViolation<ValidationTestOperator> cv : constraintViolations) {
-    //  System.out.println("validation error: " + cv);
-    //}
     Assert.assertEquals("" + constraintViolations,1, constraintViolations.size());
     ConstraintViolation<ValidationTestOperator> cv = constraintViolations.iterator().next();
     Assert.assertEquals("", bean.intField1, cv.getInvalidValue());
