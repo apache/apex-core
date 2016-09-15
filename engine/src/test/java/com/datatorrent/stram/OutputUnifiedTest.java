@@ -155,7 +155,6 @@ public class OutputUnifiedTest
     for (PTOperator ptOperator : ptOperators) {
       PTContainer container = ptOperator.getContainer();
       StreamingContainerAgent agent = scm.getContainerAgent("container" + container.getId());
-      System.out.println("Opsize " + container.getOperators().size());
       List<OperatorDeployInfo> deployInfoList = agent.getDeployInfoList(container.getOperators());
       Assert.assertEquals("Deploy info size", 1, deployInfoList.size());
       Assert.assertEquals("Is output unified", deployInfoList.get(0).outputs.get(0).getAttributes().get(PortContext.IS_OUTPUT_UNIFIED), result);
