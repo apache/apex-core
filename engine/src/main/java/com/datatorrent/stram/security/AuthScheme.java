@@ -27,7 +27,7 @@ package com.datatorrent.stram.security;
  */
 public enum AuthScheme
 {
-  BASIC("basic"), SPNEGO("kerberos"), KERBEROS("kerberos-standard");
+  BASIC("basic"), DIGEST("digest"), SPNEGO("kerberos"), KERBEROS("kerberos-standard");
 
   String name;
 
