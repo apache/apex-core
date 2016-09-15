@@ -172,7 +172,7 @@ public class StramLocalCluster implements Runnable, Controller
 
     public void run(StreamingContainerContext ctx) throws Exception
     {
-      LOG.debug("Got context: " + ctx);
+      LOG.debug("container {} context {}", getContainerId(), ctx);
       setup(ctx);
       if (bufferServerAddress != null && !bufferServerAddress.getAddress().isLoopbackAddress()) {
         bufferServerAddress = InetSocketAddress.createUnresolved(LOCALHOST, bufferServerAddress.getPort());
@@ -242,10 +242,8 @@ public class StramLocalCluster implements Runnable, Controller
     final String containerId;
     final LocalStreamingContainer child;
 
-    Thread launchThread;
-
     @SuppressWarnings("CallToThreadStartDuringObjectConstruction")
-    private LocalStreamingContainerLauncher(ContainerStartRequest cdr)
+    private LocalStreamingContainerLauncher(ContainerStartRequest cdr, List<Thread> containerThreads)
     {
       this.containerId = "container-" + containerSeq++;
       WindowGenerator wingen = null;
@@ -256,10 +254,10 @@ public class StramLocalCluster implements Runnable, Controller
       ContainerResource cr = new ContainerResource(cdr.container.getResourceRequestPriority(), containerId, "localhost", cdr.container.getRequiredMemoryMB(), cdr.container.getRequiredVCores(), null);
       StreamingContainerAgent sca = dnmgr.assignContainer(cr, perContainerBufferServer ? null : bufferServerAddress);
       if (sca != null) {
-        launchThread = new Thread(this, containerId);
-        launchThread.start();
         childContainers.put(containerId, child);
-        LOG.info("Started container {}", containerId);
+        Thread launchThread = new Thread(this, containerId);
+        containerThreads.add(launchThread);
+        launchThread.start();
       }
     }
 
@@ -268,10 +266,10 @@ public class StramLocalCluster implements Runnable, Controller
     {
       try {
         StreamingContainerContext ctx = umbilical.getInitContext(containerId);
+        LOG.info("Started container {}", containerId);
         child.run(ctx);
-      } catch (Exception e) {
-        LOG.error("Container {} failed", containerId, e);
-        throw new RuntimeException(e);
+      } catch (Exception | Error e) {
+        LOG.error("Fatal {} in container {}", e instanceof Error ? "error" : "exception", containerId, e);
       } finally {
         childContainers.remove(containerId);
         LOG.info("Container {} terminating.", containerId);
@@ -440,7 +438,7 @@ public class StramLocalCluster implements Runnable, Controller
   public void run(long runMillis)
   {
     long endMillis = System.currentTimeMillis() + runMillis;
-    List<Thread> containerThreads = new LinkedList<Thread>();
+    List<Thread> containerThreads = new LinkedList<>();
 
     while (!appDone) {
 
@@ -462,10 +460,7 @@ public class StramLocalCluster implements Runnable, Controller
       while (!dnmgr.containerStartRequests.isEmpty()) {
         ContainerStartRequest cdr = dnmgr.containerStartRequests.poll();
         if (cdr != null) {
-          LocalStreamingContainerLauncher launcher = new LocalStreamingContainerLauncher(cdr);
-          if (launcher.launchThread != null) {
-            containerThreads.add(launcher.launchThread);
-          }
+          new LocalStreamingContainerLauncher(cdr, containerThreads);
         }
       }
 
