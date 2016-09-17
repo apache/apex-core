@@ -297,8 +297,14 @@
     <dependency>
       <groupId>commons-beanutils</groupId>
       <artifactId>commons-beanutils</artifactId>
-      <version>1.8.3</version>
+      <version>1.9.2</version>
       <type>jar</type>
+      <exclusions>
+        <exclusion>
+          <artifactId>commons-collections</artifactId>
+          <groupId>commons-collections</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <!-- We need this direct dependency because without this, it throws method not found exception on Amazon EMR version of hadoop 2.4.
