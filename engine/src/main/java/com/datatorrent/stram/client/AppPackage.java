@@ -159,9 +159,7 @@ public class AppPackage extends JarFile
     }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
     extractToDirectory(directory, file);
-    if (processAppDirectory) {
-      processAppDirectory(false);
-    }
+
     File confDirectory = new File(directory, "conf");
     if (confDirectory.exists()) {
       processConfDirectory(confDirectory);
@@ -174,13 +172,18 @@ public class AppPackage extends JarFile
     }
 
     if (processAppDirectory) {
-      for (AppInfo app : applications) {
-        app.requiredProperties.addAll(requiredProperties);
-        app.defaultProperties.putAll(defaultProperties);
-        File appPropertiesXml = new File(directory, "META-INF/properties-" + app.name + ".xml");
-        if (appPropertiesXml.exists()) {
-          processPropertiesXml(appPropertiesXml, app);
-        }
+      processAppDirectory(false);
+    }
+  }
+
+  private void processAppProperties()
+  {
+    for (AppInfo app : applications) {
+      app.requiredProperties.addAll(requiredProperties);
+      app.defaultProperties.putAll(defaultProperties);
+      File appPropertiesXml = new File(directory, "META-INF/properties-" + app.name + ".xml");
+      if (appPropertiesXml.exists()) {
+        processPropertiesXml(appPropertiesXml, app);
       }
     }
   }
@@ -404,6 +407,8 @@ public class AppPackage extends JarFile
         LOG.warn("Ignoring file {} with unknown extension in app directory", entry.getName());
       }
     }
+
+    processAppProperties();
   }
 
   private void processConfDirectory(File dir)

@@ -206,6 +206,22 @@ public class ApexCliTest
   }
 
   @Test
+  public void testLaunchAppPackagePrecedenceWithConfigPackageApps() throws Exception
+  {
+    // set launch command options
+    ApexCli.LaunchCommandLineInfo commandLineInfo = ApexCli
+        .getLaunchCommandLineInfo(new String[]{"-D", "dt.test.1=launch-define", "-apconf", "my-app-conf1.xml", "-conf", configFile.getAbsolutePath(), "-useConfigApps", "exclusive"});
+    // process and look at launch config
+
+    DTConfiguration props = cli.getLaunchAppPackageProperties(ap, cp, commandLineInfo, "testApp");
+    Assert.assertEquals("launch-define", props.get("dt.test.1"));
+    Assert.assertEquals("config-package", props.get("dt.test.2"));
+    Assert.assertEquals("app-package-config", props.get("dt.test.3"));
+    Assert.assertEquals("user-home-config", props.get("dt.test.4"));
+    Assert.assertEquals("package-default", props.get("dt.test.5"));
+  }
+
+  @Test
   public void testAppFromOnlyConfigPackage() throws Exception
   {
     ApexCli.LaunchCommandLineInfo commandLineInfo = ApexCli
