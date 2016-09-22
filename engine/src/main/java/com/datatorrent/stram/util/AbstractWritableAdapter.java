@@ -22,7 +22,13 @@ import java.io.*;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.io.Writable;
 
 /**
@@ -33,6 +39,7 @@ import org.apache.hadoop.io.Writable;
 public abstract class AbstractWritableAdapter implements Writable, Serializable
 {
   private static final long serialVersionUID = 201306061421L;
+  private static final Logger logger = LoggerFactory.getLogger(AbstractWritableAdapter.class);
 
   @Override
   public void readFields(DataInput arg0) throws IOException
@@ -56,6 +63,9 @@ public abstract class AbstractWritableAdapter implements Writable, Serializable
       ois.close();
     }
     catch (Exception e) {
+      final Path path = Files.createTempFile("apex-rpc-raw-dump-", ".ser");
+      logger.error("Failed to de-serialize {}. Writing raw data to {}.", this.getClass().getName(), path, e);
+      Files.write(path, bytes);
       throw new IOException(e);
     }
   }
