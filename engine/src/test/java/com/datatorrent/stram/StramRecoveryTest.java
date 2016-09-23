@@ -433,7 +433,7 @@ public class StramRecoveryTest
     StramClient sc = new StramClient(new Configuration(), dag);
     try {
       sc.start();
-      sc.copyInitialState(new Path(appPath1));
+      sc.copyInitialState(new Path(appPath1), false);
     } finally {
       sc.stop();
     }
