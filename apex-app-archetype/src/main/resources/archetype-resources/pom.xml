@@ -57,7 +57,30 @@
            </execution>
          </executions>
        </plugin>
-
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>1.4.1</version>
+        <executions>
+          <execution>
+            <id>enforce-provided-dependencies</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <bannedDependencies>
+                  <excludes>
+                    <exclude>org.apache.hadoop:*:*:*:runtime</exclude>
+                    <exclude>org.apache.apex:apex-*:*:*:runtime</exclude>
+                  </excludes>
+                  <message>Found (transitive) dependencies that should be excluded or not scope "runtime" to remain excluded from the application package. See https://issues.apache.org/jira/browse/APEXCORE-540</message>
+                </bannedDependencies>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
        <plugin>
          <artifactId>maven-assembly-plugin</artifactId>
          <executions>
@@ -237,7 +260,7 @@
     <dependency>
       <groupId>org.apache.apex</groupId>
       <artifactId>malhar-library</artifactId>
-      <version>3.4.0</version>
+      <version>3.5.0</version>
       <!-- 
            If you know that your application does not need transitive dependencies pulled in by malhar-library,
            uncomment the following to reduce the size of your app package.
