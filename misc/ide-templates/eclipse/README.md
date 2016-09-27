@@ -15,3 +15,7 @@ For Eclipse there are 2 configuration files
 2. Go to Java | Code Style | Organize Imports and click on 'Import'.
 3. In the Load Import Order from File dialog box that opens select `.settings/apex-importorder.importorder`.
 4. Apply the changes.
+
+##Trailing whitespace
+Apex checkstyle enforces no trailing whitespace. You can have Eclipse automatically remove trailing whitespace:
+http://stackoverflow.com/questions/1043433/how-to-auto-remove-trailing-whitespace-in-eclipse/2618521#2618521
