@@ -293,7 +293,7 @@ public class StreamMapping implements java.io.Serializable
               }
             }
           }
-          if (!separateUnifiers && ((pks == null || pks.mask == 0) || lastSingle)) {
+          if (!separateUnifiers && lastSingle) {
             if (finalUnifier == null) {
               finalUnifier = createUnifier(streamMeta, plan);
             }
@@ -328,7 +328,7 @@ public class StreamMapping implements java.io.Serializable
             }
             // add new inputs
             for (PTOutput out : doperUnifierSources) {
-              addInput(unifier, out, pks);
+              addInput(unifier, out, (pks == null) || (pks.mask == 0) ? null : pks);
             }
           }
         } else {

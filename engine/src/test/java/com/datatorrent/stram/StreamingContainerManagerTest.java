@@ -266,7 +266,7 @@ public class StreamingContainerManagerTest
     //
     //            ,---> node2----,
     //            |              |
-    //    node1---+---> node2----+--->unifier--->node3
+    //    node1---+---> node2----+---> unifier | node3
     //            |              |
     //            '---> node2----'
     //
@@ -288,7 +288,7 @@ public class StreamingContainerManagerTest
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
 
-    Assert.assertEquals("number containers", 6, plan.getContainers().size());
+    Assert.assertEquals("number containers", 5, plan.getContainers().size());
     List<StreamingContainerAgent> containerAgents = Lists.newArrayList();
     for (int i = 0; i < plan.getContainers().size(); i++) {
       containerAgents.add(assignContainer(dnm, "container" + (i + 1)));
@@ -321,11 +321,8 @@ public class StreamingContainerManagerTest
       Assert.assertEquals("number stream codecs for " + nidi, 1, nidi.streamCodecs.size());
     }
 
-    // unifier
-    List<PTOperator> o2Unifiers = plan.getMergeOperators(dag.getMeta(node2));
-    Assert.assertEquals("number unifiers", 1, o2Unifiers.size());
-    List<OperatorDeployInfo> cUnifier = getDeployInfo(dnm.getContainerAgent(o2Unifiers.get(0).getContainer().getExternalId()));
-    Assert.assertEquals("number operators " + cUnifier, 1, cUnifier.size());
+    List<OperatorDeployInfo> cUnifier = getDeployInfo(dnm.getContainerAgent(plan.getOperators(dag.getMeta(node3)).get(0).getContainer().getExternalId()));
+    Assert.assertEquals("number operators " + cUnifier, 2, cUnifier.size());
 
     OperatorDeployInfo mergeNodeDI = getNodeDeployInfo(cUnifier, dag.getMeta(node2).getMeta(node2.outport1).getUnifierMeta());
     Assert.assertNotNull("unifier for " + node2, mergeNodeDI);
@@ -361,7 +358,7 @@ public class StreamingContainerManagerTest
     // node3 container
     c = plan.getOperators(dag.getMeta(node3)).get(0).getContainer();
     List<OperatorDeployInfo> cmerge = getDeployInfo(dnm.getContainerAgent(c.getExternalId()));
-    Assert.assertEquals("number operators " + cmerge, 1, cmerge.size());
+    Assert.assertEquals("number operators " + cmerge, 2, cmerge.size());
 
     OperatorDeployInfo node3DI = getNodeDeployInfo(cmerge,  dag.getMeta(node3));
     Assert.assertNotNull(dag.getMeta(node3) + " assigned", node3DI);
@@ -764,15 +761,12 @@ public class StreamingContainerManagerTest
     PTOperator o3p1 = physicalPlan.getOperators(dag.getMeta(o3)).get(0);
     MockContainer mc4 = mockContainers.get(o3p1.getContainer());
     MockOperatorStats o3p1mos = mc4.stats(o3p1.getId());
+
+    MockOperatorStats unifierp1mos = mc4.stats(o3p1.upstreamMerge.values().iterator().next().getId());
+    unifierp1mos.currentWindowId(1).checkpointWindowId(1).deployState(DeployState.ACTIVE);
+
     o3p1mos.currentWindowId(1).checkpointWindowId(1).deployState(DeployState.ACTIVE);
     mc4.sendHeartbeat();
-
-    // unifier
-    PTOperator unifier = physicalPlan.getMergeOperators(dag.getMeta(o2)).get(0);
-    MockContainer mc5 = mockContainers.get(unifier.getContainer());
-    MockOperatorStats unifierp1mos = mc5.stats(unifier.getId());
-    unifierp1mos.currentWindowId(1).checkpointWindowId(1).deployState(DeployState.ACTIVE);
-    mc5.sendHeartbeat();
 
     o1p1mos.currentWindowId(2).deployState(DeployState.SHUTDOWN);
     mc1.sendHeartbeat();
@@ -781,7 +775,7 @@ public class StreamingContainerManagerTest
     scm.monitorHeartbeat(); // committedWindowId updated in next cycle
     Assert.assertEquals("committedWindowId", 1, scm.getCommittedWindowId());
     scm.processEvents();
-    Assert.assertEquals("containers at committedWindowId=1", 5, physicalPlan.getContainers().size());
+    Assert.assertEquals("containers at committedWindowId=1", 4, physicalPlan.getContainers().size());
 
     // checkpoint window 2
     o1p1mos.checkpointWindowId(2);
@@ -794,10 +788,10 @@ public class StreamingContainerManagerTest
     o2p2mos.currentWindowId(2).checkpointWindowId(2);
     o3p1mos.currentWindowId(2).checkpointWindowId(2);
     unifierp1mos.currentWindowId(2).checkpointWindowId(2);
+
     mc2.sendHeartbeat();
     mc3.sendHeartbeat();
     mc4.sendHeartbeat();
-    mc5.sendHeartbeat();
     scm.monitorHeartbeat();
 
     // Operators are shutdown when both operators reach window Id 2

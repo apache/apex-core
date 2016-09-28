@@ -298,7 +298,7 @@ public class PartitioningTest
     for (PTOperator oper : partitions) {
       containers.add(oper.getContainer());
     }
-    Assert.assertTrue("Number of containers are 5", 5 == lc.dnmgr.getPhysicalPlan().getContainers().size());
+    Assert.assertTrue("Number of containers are 4", 4 == lc.dnmgr.getPhysicalPlan().getContainers().size());
 
     PTOperator splitPartition = partitions.get(0);
     PartitionLoadWatch.put(splitPartition, 1);

@@ -79,7 +79,7 @@ public class OutputUnifiedTest
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan physicalPlan = scm.getPhysicalPlan();
     List<PTContainer> containers = physicalPlan.getContainers();
-    Assert.assertEquals("Number of containers", 6, containers.size());
+    Assert.assertEquals("Number of containers", 5, containers.size());
 
     assignContainers(scm, containers);
 
@@ -141,7 +141,7 @@ public class OutputUnifiedTest
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan physicalPlan = scm.getPhysicalPlan();
     List<PTContainer> containers = physicalPlan.getContainers();
-    Assert.assertEquals("Number of containers", 6, containers.size());
+    Assert.assertEquals("Number of containers", 5, containers.size());
 
     assignContainers(scm, containers);
 

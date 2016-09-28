@@ -413,8 +413,7 @@ public class StreamCodecTest
           List<OperatorDeployInfo.OutputDeployInfo> otdis = odi.outputs;
           for (OperatorDeployInfo.OutputDeployInfo otdi : otdis) {
             String id = operator.getName() + " " + otdi.portName;
-            Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 1);
-            checkPresentStreamCodec(n3meta, node3.inport1, otdi.streamCodecs, id, plan);
+            Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 0);
           }
         }
       }
@@ -494,7 +493,7 @@ public class StreamCodecTest
     PhysicalPlan plan = dnm.getPhysicalPlan();
 
     List<PTContainer> containers = plan.getContainers();
-    Assert.assertEquals("number containers", 5, containers.size());
+    Assert.assertEquals("number containers", 4, containers.size());
 
     for (int i = 0; i < containers.size(); ++i) {
       StreamingContainerManagerTest.assignContainer(dnm, "container" + (i + 1));
@@ -537,12 +536,12 @@ public class StreamCodecTest
             String id = operator.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
             checkPresentStreamCodec(n2meta, node2.inport1, idi.streamCodecs, id, plan);
+            checkPresentStreamCodec(n3meta, node3.inport1, idi.streamCodecs, id, plan);
           }
           List<OperatorDeployInfo.OutputDeployInfo> otdis = odi.outputs;
           for (OperatorDeployInfo.OutputDeployInfo otdi : otdis) {
             String id = operator.getName() + " " + otdi.portName;
-            Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 1);
-            checkPresentStreamCodec(n2meta, node2.inport1, otdi.streamCodecs, id, plan);
+            Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 0);
           }
         }
       }
