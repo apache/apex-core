@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
@@ -450,6 +451,12 @@ public class StreamingContainerAgent
     ci.state = container.getState().name();
     ci.jvmName = this.jvmName;
     ci.numOperators = container.getOperators().size();
+    ci.operators = new TreeMap<>();
+
+    for (PTOperator ptOperator : container.getOperators()) {
+      ci.operators.put(ptOperator.getId(), ptOperator.getName());
+    }
+
     ci.memoryMBAllocated = container.getAllocatedMemoryMB();
     ci.lastHeartbeat = lastHeartbeatMillis;
     ci.memoryMBFree = this.memoryMBFree;

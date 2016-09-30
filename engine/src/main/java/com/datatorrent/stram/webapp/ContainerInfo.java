@@ -18,6 +18,8 @@
  */
 package com.datatorrent.stram.webapp;
 
+import java.util.Map;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -43,6 +45,7 @@ public class ContainerInfo
   public long lastHeartbeat;
   @RecordField(type = "stats")
   public int numOperators;
+  public Map<Integer, String> operators;
   @RecordField(type = "meta")
   public int memoryMBAllocated;
   @RecordField(type = "stats")
