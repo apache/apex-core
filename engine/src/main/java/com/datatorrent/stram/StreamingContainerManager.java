@@ -276,7 +276,7 @@ public class StreamingContainerManager implements PlanContext
 
   private final long startTime = System.currentTimeMillis();
 
-  private static class EndWindowStats
+  static class EndWindowStats
   {
     long emitTimestamp = -1;
     HashMap<String, Long> dequeueTimestamps = new HashMap<>(); // input port name to end window dequeue time
@@ -816,20 +816,27 @@ public class StreamingContainerManager implements PlanContext
 
   private void calculateEndWindowStats()
   {
+    Map<Integer, PTOperator> allOperators = plan.getAllOperators();
+
+    UpdateOperatorLatencyContext ctx = new UpdateOperatorLatencyContext(rpcLatencies, endWindowStatsOperatorMap);
+
+    for (PTOperator operator : allOperators.values()) {
+      updateOperatorLatency(operator, ctx);
+    }
+
     if (!endWindowStatsOperatorMap.isEmpty()) {
-      Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
 
       if (endWindowStatsOperatorMap.size() > this.vars.maxWindowsBehindForStats) {
         LOG.warn("Some operators are behind for more than {} windows! Trimming the end window stats map", this.vars.maxWindowsBehindForStats);
         while (endWindowStatsOperatorMap.size() > this.vars.maxWindowsBehindForStats) {
           LOG.debug("Removing incomplete end window stats for window id {}. Collected operator set: {}. Complete set: {}",
               endWindowStatsOperatorMap.firstKey(),
-              endWindowStatsOperatorMap.get(endWindowStatsOperatorMap.firstKey()).keySet(), allCurrentOperators);
+              endWindowStatsOperatorMap.get(endWindowStatsOperatorMap.firstKey()).keySet(), allOperators.keySet());
           endWindowStatsOperatorMap.remove(endWindowStatsOperatorMap.firstKey());
         }
       }
       //logicalMetrics.clear();
-      int numOperators = allCurrentOperators.size();
+      int numOperators = allOperators.size();
       Long windowId = endWindowStatsOperatorMap.firstKey();
       while (windowId != null) {
         Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(windowId);
@@ -838,7 +845,7 @@ public class StreamingContainerManager implements PlanContext
         aggregateMetrics(windowId, endWindowStatsMap);
         criticalPathInfo = findCriticalPath();
 
-        if (allCurrentOperators.containsAll(endWindowStatsOperators)) {
+        if (allOperators.keySet().containsAll(endWindowStatsOperators)) {
           if (endWindowStatsMap.size() < numOperators) {
             if (windowId < completeEndWindowStatsWindowId) {
               LOG.debug("Disregarding stale end window stats for window {}", windowId);
@@ -1704,45 +1711,6 @@ public class StreamingContainerManager implements PlanContext
             }
             endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
 
-            if (!oper.getInputs().isEmpty()) {
-              long latency = Long.MAX_VALUE;
-              long adjustedEndWindowEmitTimestamp = endWindowStats.emitTimestamp;
-              MovingAverageLong rpcLatency = rpcLatencies.get(oper.getContainer().getExternalId());
-              if (rpcLatency != null) {
-                adjustedEndWindowEmitTimestamp += rpcLatency.getAvg();
-              }
-              PTOperator slowestUpstream = null;
-              for (PTInput input : oper.getInputs()) {
-                PTOperator upstreamOp = input.source.source;
-                if (upstreamOp.getOperatorMeta().getOperator() instanceof Operator.DelayOperator) {
-                  continue;
-                }
-                EndWindowStats ews = endWindowStatsMap.get(upstreamOp.getId());
-                long portLatency;
-                if (ews == null) {
-                  // This is when the operator is likely to be behind too many windows. We need to give an estimate for
-                  // latency at this point, by looking at the number of windows behind
-                  int widthMillis = plan.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS);
-                  portLatency = (upstreamOp.stats.currentWindowId.get() - oper.stats.currentWindowId.get()) * widthMillis;
-                } else {
-                  MovingAverageLong upstreamRPCLatency = rpcLatencies.get(upstreamOp.getContainer().getExternalId());
-                  portLatency = adjustedEndWindowEmitTimestamp - ews.emitTimestamp;
-                  if (upstreamRPCLatency != null) {
-                    portLatency -= upstreamRPCLatency.getAvg();
-                  }
-                }
-                if (portLatency < 0) {
-                  portLatency = 0;
-                }
-                if (latency > portLatency) {
-                  latency = portLatency;
-                  slowestUpstream = upstreamOp;
-                }
-              }
-              status.latencyMA.add(latency);
-              slowestUpstreamOp.put(oper, slowestUpstream);
-            }
-
             Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
             int numOperators = plan.getAllOperators().size();
             if (allCurrentOperators.containsAll(endWindowStatsMap.keySet()) && endWindowStatsMap.size() == numOperators) {
@@ -1826,6 +1794,106 @@ public class StreamingContainerManager implements PlanContext
     sca.stackTraceRequested = false;
 
     return rsp;
+  }
+
+  static class UpdateOperatorLatencyContext
+  {
+    Map<String, MovingAverageLong> rpcLatencies;
+    Map<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap;
+
+    UpdateOperatorLatencyContext()
+    {
+    }
+
+    UpdateOperatorLatencyContext(Map<String, MovingAverageLong> rpcLatencies, Map<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap)
+    {
+      this.rpcLatencies = rpcLatencies;
+      this.endWindowStatsOperatorMap = endWindowStatsOperatorMap;
+    }
+
+    long getRPCLatency(PTOperator oper)
+    {
+      MovingAverageLong rpcLatency = rpcLatencies.get(oper.getContainer().getExternalId());
+      return rpcLatency == null ? 0 : rpcLatency.getAvg();
+    }
+
+    boolean endWindowStatsExists(long windowId)
+    {
+      return endWindowStatsOperatorMap.containsKey(windowId);
+    }
+
+    long getEndWindowEmitTimestamp(long windowId, PTOperator oper)
+    {
+      Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(windowId);
+      if (endWindowStatsMap == null) {
+        return -1;
+      }
+      EndWindowStats ews = endWindowStatsMap.get(oper.getId());
+      if (ews == null) {
+        return -1;
+      }
+      return ews.emitTimestamp;
+    }
+  }
+
+  public long updateOperatorLatency(PTOperator oper, UpdateOperatorLatencyContext ctx)
+  {
+    if (!oper.getInputs().isEmpty()) {
+      OperatorStatus status = oper.stats;
+      long latency = Long.MAX_VALUE;
+      PTOperator slowestUpstream = null;
+      int windowWidthMillis = plan.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS);
+      int heartbeatTimeoutMillis = plan.getLogicalPlan().getValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS);
+      long currentWindowId = status.currentWindowId.get();
+      if (!ctx.endWindowStatsExists(currentWindowId)) {
+        // the end window stats for the current window id is not available, estimate latency by looking at upstream window id
+        for (PTInput input : oper.getInputs()) {
+          PTOperator upstreamOp = input.source.source;
+          if (upstreamOp.getOperatorMeta().getOperator() instanceof Operator.DelayOperator) {
+            continue;
+          }
+          if (upstreamOp.stats.currentWindowId.get() > oper.stats.currentWindowId.get()) {
+            long portLatency = WindowGenerator
+                .compareWindowId(upstreamOp.stats.currentWindowId.get(), oper.stats.currentWindowId.get(), windowWidthMillis) * windowWidthMillis;
+            if (latency > portLatency) {
+              latency = portLatency;
+              slowestUpstream = upstreamOp;
+            }
+          }
+        }
+      } else {
+        long endWindowEmitTime = ctx.getEndWindowEmitTimestamp(currentWindowId, oper);
+        long adjustedEndWindowEmitTimestamp = endWindowEmitTime + ctx.getRPCLatency(oper);
+        for (PTInput input : oper.getInputs()) {
+          PTOperator upstreamOp = input.source.source;
+          if (upstreamOp.getOperatorMeta().getOperator() instanceof Operator.DelayOperator) {
+            continue;
+          }
+          long upstreamEndWindowEmitTime = ctx.getEndWindowEmitTimestamp(currentWindowId, upstreamOp);
+          if (upstreamEndWindowEmitTime < 0) {
+            continue;
+          }
+          long portLatency = adjustedEndWindowEmitTimestamp - (upstreamEndWindowEmitTime + ctx.getRPCLatency(upstreamOp));
+          if (portLatency < 0) {
+            portLatency = 0;
+          }
+          long latencyFromWindowsBehind = WindowGenerator.compareWindowId(upstreamOp.stats.currentWindowId.get(), oper.stats.currentWindowId.get(), windowWidthMillis) * windowWidthMillis;
+          if (latencyFromWindowsBehind > portLatency && latencyFromWindowsBehind > heartbeatTimeoutMillis) {
+            portLatency = latencyFromWindowsBehind;
+          }
+          if (latency > portLatency) {
+            latency = portLatency;
+            slowestUpstream = upstreamOp;
+          }
+        }
+      }
+      if (slowestUpstream != null) {
+        status.latencyMA.add(latency);
+        slowestUpstreamOp.put(oper, slowestUpstream);
+        return latency;
+      }
+    }
+    return 0;
   }
 
   private ContainerHeartbeatResponse getHeartbeatResponse(StreamingContainerAgent sca)
