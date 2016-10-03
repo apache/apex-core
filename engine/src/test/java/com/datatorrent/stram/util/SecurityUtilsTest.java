@@ -34,7 +34,6 @@ public class SecurityUtilsTest
   @Test
   public void testStramWebSecurity()
   {
-    checkWebSecurity(false, false);
     Configuration conf = setupConfiguration(null);
     checkSecurityConfiguration(conf, new boolean[][]{{false, false}, {false, true}, {false, false}, {false, false}, {false, false}});
     conf = setupConfiguration(AuthScheme.SPNEGO);
@@ -42,11 +41,22 @@ public class SecurityUtilsTest
   }
 
   @Test
-  public void testInitAuth() throws NoSuchFieldException, IllegalAccessException
+  public void testBasicAuth() throws NoSuchFieldException, IllegalAccessException
   {
-    Configuration conf = setupConfiguration(AuthScheme.BASIC);
+    testAuthScheme(AuthScheme.BASIC);
+  }
+
+  @Test
+  public void testDigestAuth() throws NoSuchFieldException, IllegalAccessException
+  {
+    testAuthScheme(AuthScheme.DIGEST);
+  }
+
+  private void testAuthScheme(AuthScheme authScheme) throws NoSuchFieldException, IllegalAccessException
+  {
+    Configuration conf = setupConfiguration(authScheme);
     SecurityUtils.init(conf);
-    WebServicesClientTest.checkUserCredentials("testuser", "testpass");
+    WebServicesClientTest.checkUserCredentials("testuser", "testpass", authScheme);
   }
 
   private Configuration setupConfiguration(AuthScheme authScheme)
@@ -62,7 +72,7 @@ public class SecurityUtilsTest
   private void checkSecurityConfiguration(Configuration conf, boolean[][] securityConf)
   {
     Assert.assertEquals("Number variations", 5, securityConf.length);
-    SecurityUtils.init(conf, null);
+    SecurityUtils.init(conf);
     checkWebSecurity(securityConf[0][0], securityConf[0][1]);
     SecurityUtils.init(conf, Context.StramHTTPAuthentication.ENABLE);
     checkWebSecurity(securityConf[1][0], securityConf[1][1]);
@@ -77,6 +87,6 @@ public class SecurityUtilsTest
   private void checkWebSecurity(boolean hadoopWebSecurity, boolean stramWebSecurity)
   {
     Assert.assertEquals("Hadoop web security", hadoopWebSecurity, SecurityUtils.isHadoopWebSecurityEnabled());
-    Assert.assertEquals("Hadoop web security", stramWebSecurity, SecurityUtils.isStramWebSecurityEnabled());
+    Assert.assertEquals("Stram web security", stramWebSecurity, SecurityUtils.isStramWebSecurityEnabled());
   }
 }

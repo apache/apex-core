@@ -36,6 +36,7 @@ import org.apache.http.client.config.AuthSchemes;
 import org.apache.http.config.Lookup;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.impl.auth.BasicSchemeFactory;
+import org.apache.http.impl.auth.DigestSchemeFactory;
 import org.apache.http.impl.auth.KerberosSchemeFactory;
 import org.apache.http.impl.auth.SPNegoSchemeFactory;
 import org.apache.http.impl.client.BasicCookieStore;
@@ -98,32 +99,40 @@ public class WebServicesClient
     credentialsProvider = new BasicCredentialsProvider();
     // By default add SPNEGO so that it works even if auth is not explictly configured like before, in future
     // move it to auth setup below
-    registryBuilder.register(AuthSchemes.SPNEGO, new SPNegoSchemeFactory(true));
-    credentialsProvider.setCredentials(AuthScope.ANY, DEFAULT_TOKEN_CREDENTIALS);
+    setupHttpAuthScheme(AuthSchemes.SPNEGO, new SPNegoSchemeFactory(true), AuthScope.ANY, DEFAULT_TOKEN_CREDENTIALS);
     authRegistry = registryBuilder.build();
   }
 
   public static void initAuth(ConfigProvider configuration)
   {
-    // Adding BASIC auth
-    AuthScheme scheme = AuthScheme.BASIC;
+    // Setting up BASIC and DIGEST auth
+    setupUserPassAuthScheme(AuthScheme.BASIC, AuthSchemes.BASIC, new BasicSchemeFactory(), configuration);
+    setupUserPassAuthScheme(AuthScheme.DIGEST, AuthSchemes.DIGEST, new DigestSchemeFactory(), configuration);
+
+    // Adding kerberos standard auth
+    setupHttpAuthScheme(AuthSchemes.KERBEROS, new KerberosSchemeFactory(), AuthScope.ANY, DEFAULT_TOKEN_CREDENTIALS);
+
+    authRegistry = registryBuilder.build();
+  }
+
+  private static void setupUserPassAuthScheme(AuthScheme scheme, String httpScheme, AuthSchemeProvider provider, ConfigProvider configuration)
+  {
     String username = configuration.getProperty(scheme, "username");
     String password = configuration.getProperty(scheme, "password");
     if ((username != null) && (password != null)) {
       LOG.info("Setting up scheme {}", scheme);
-      registryBuilder.register(AuthSchemes.BASIC, new BasicSchemeFactory());
-      AuthScope authScope = new AuthScope(AuthScope.ANY_HOST, AuthScope.ANY_PORT, AuthScope.ANY_REALM, AuthSchemes.BASIC);
+      AuthScope authScope = new AuthScope(AuthScope.ANY_HOST, AuthScope.ANY_PORT, AuthScope.ANY_REALM, httpScheme);
       Credentials credentials = new UsernamePasswordCredentials(username, password);
-      credentialsProvider.setCredentials(authScope, credentials);
+      setupHttpAuthScheme(httpScheme, provider, authScope, credentials);
     } else if ((username != null) || (password != null)) {
       LOG.warn("Not setting up scheme {}, missing credentials {}", scheme, (username == null) ? "username" : "password");
     }
+  }
 
-    // Adding kerberos standard auth
-    registryBuilder.register(AuthSchemes.KERBEROS, new KerberosSchemeFactory());
-    credentialsProvider.setCredentials(AuthScope.ANY, DEFAULT_TOKEN_CREDENTIALS);
-
-    authRegistry = registryBuilder.build();
+  private static void setupHttpAuthScheme(String httpScheme, AuthSchemeProvider provider, AuthScope authScope, Credentials credentials)
+  {
+    registryBuilder.register(httpScheme, provider);
+    credentialsProvider.setCredentials(authScope, credentials);
   }
 
   public WebServicesClient()

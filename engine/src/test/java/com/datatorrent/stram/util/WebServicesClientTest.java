@@ -29,6 +29,8 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.config.AuthSchemes;
 
+import com.datatorrent.stram.security.AuthScheme;
+
 /**
  *
  */
@@ -45,11 +47,17 @@ public class WebServicesClientTest
     Assert.assertTrue("Filter present", webServicesClient.isFilterPresent(clientFilter));
   }
 
-  public static void checkUserCredentials(String username, String password) throws NoSuchFieldException,
+  public static void checkUserCredentials(String username, String password, AuthScheme authScheme) throws NoSuchFieldException,
       IllegalAccessException
   {
     CredentialsProvider provider = getCredentialsProvider();
-    AuthScope authScope = new AuthScope(AuthScope.ANY_HOST, AuthScope.ANY_PORT, AuthScope.ANY_REALM, AuthSchemes.BASIC);
+    String httpScheme = AuthScope.ANY_SCHEME;
+    if (authScheme == AuthScheme.BASIC) {
+      httpScheme = AuthSchemes.BASIC;
+    } else if (authScheme == AuthScheme.DIGEST) {
+      httpScheme = AuthSchemes.DIGEST;
+    }
+    AuthScope authScope = new AuthScope(AuthScope.ANY_HOST, AuthScope.ANY_PORT, AuthScope.ANY_REALM, httpScheme);
     Credentials credentials = provider.getCredentials(authScope);
     Assert.assertNotNull("Credentials", credentials);
     Assert.assertTrue("Credentials type is user", UsernamePasswordCredentials.class.isAssignableFrom(credentials.getClass()));
