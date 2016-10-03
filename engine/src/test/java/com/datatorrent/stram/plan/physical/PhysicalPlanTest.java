@@ -710,11 +710,13 @@ public class PhysicalPlanTest
     Assert.assertEquals("unifier activation checkpoint " + o1Meta, 3, o1NewUnifiers.get(0).recoveryCheckpoint.windowId);
   }
 
-  private void setActivationCheckpoint(PTOperator oper, long windowId)
+  public static void setActivationCheckpoint(PTOperator oper, long windowId)
   {
     try {
       oper.operatorMeta.getValue(OperatorContext.STORAGE_AGENT).save(oper.operatorMeta.getOperator(), oper.id, windowId);
-      oper.setRecoveryCheckpoint(new Checkpoint(3, 0, 0));
+      Checkpoint cp = new Checkpoint(windowId, 0, 0);
+      oper.setRecoveryCheckpoint(cp);
+      oper.checkpoints.add(cp);
     } catch (Exception e) {
       Assert.fail(e.toString());
     }

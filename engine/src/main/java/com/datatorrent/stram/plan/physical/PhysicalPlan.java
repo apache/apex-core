@@ -781,7 +781,7 @@ public class PhysicalPlan implements Serializable
     // create operator instance per partition
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());
     for (Partition<Operator> partition : partitions) {
-      PTOperator p = addPTOperator(m, partition, Checkpoint.INITIAL_CHECKPOINT);
+      PTOperator p = addPTOperator(m, partition, null);
       operatorIdToPartition.put(p.getId(), partition);
     }
 
@@ -1268,10 +1268,11 @@ public class PhysicalPlan implements Serializable
       Checkpoint activationCheckpoint = Checkpoint.INITIAL_CHECKPOINT;
       for (PTInput input : oper.inputs) {
         PTOperator sourceOper = input.source.source;
+        Checkpoint checkpoint = sourceOper.recoveryCheckpoint;
         if (sourceOper.checkpoints.isEmpty()) {
-          getActivationCheckpoint(sourceOper);
+          checkpoint = getActivationCheckpoint(sourceOper);
         }
-        activationCheckpoint = Checkpoint.max(activationCheckpoint, sourceOper.recoveryCheckpoint);
+        activationCheckpoint = Checkpoint.max(activationCheckpoint, checkpoint);
       }
       return activationCheckpoint;
     }
