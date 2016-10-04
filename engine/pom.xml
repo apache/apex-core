@@ -181,8 +181,8 @@
       <version>0.5</version>
       <exclusions>
         <exclusion>
-          <artifactId>commons-beanutils-core</artifactId>
           <groupId>commons-beanutils</groupId>
+          <artifactId>commons-beanutils-core</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -217,12 +217,12 @@
           <artifactId>jackson-core-asl</artifactId>
         </exclusion>
         <exclusion>
-          <artifactId>jackson-jaxrs</artifactId>
           <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-jaxrs</artifactId>
         </exclusion>
         <exclusion>
-          <artifactId>jackson-xc</artifactId>
           <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-xc</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -234,8 +234,8 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <artifactId>jackson-mapper-asl</artifactId>
       <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-mapper-asl</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
@@ -268,12 +268,12 @@
           <artifactId>jackson-mapper-asl</artifactId>
         </exclusion>
         <exclusion>
-          <artifactId>commons-beanutils</artifactId>
           <groupId>commons-beanutils</groupId>
+          <artifactId>commons-beanutils</artifactId>
         </exclusion>
         <exclusion>
-          <artifactId>commons-beanutils-core</artifactId>
           <groupId>commons-beanutils</groupId>
+          <artifactId>commons-beanutils-core</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -301,8 +301,8 @@
       <type>jar</type>
       <exclusions>
         <exclusion>
-          <artifactId>commons-collections</artifactId>
           <groupId>commons-collections</groupId>
+          <artifactId>commons-collections</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -387,6 +387,21 @@
       <artifactId>powermock-classloading-xstream</artifactId>
       <version>1.6.5</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.sun.jersey.jersey-test-framework</groupId>
+      <artifactId>jersey-test-framework-grizzly2</artifactId>
+      <version>1.9</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <!-- This is to prevent javax.servlet artifact to be pulled in
+           as a transitive dependency during the unit tests since this
+           conflicts with org.eclipse.jetty:jetty-servlet. -->
+      <groupId>javax.servlet</groupId>
+      <artifactId>servlet-api</artifactId>
+      <version>2.5</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
   <profiles>

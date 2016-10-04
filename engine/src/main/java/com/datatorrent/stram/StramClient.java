@@ -124,7 +124,7 @@ public class StramClient
 
   // platform dependencies that are not part of Hadoop and need to be deployed,
   // entry below will cause containing jar file from client to be copied to cluster
-  private static final Class<?>[] DATATORRENT_CLASSES = new Class<?>[]{
+  private static final Class<?>[] APEX_CLASSES = new Class<?>[]{
       com.datatorrent.netlet.util.Slice.class,
       com.datatorrent.netlet.EventLoop.class,
       com.datatorrent.bufferserver.server.Server.class,
@@ -145,18 +145,14 @@ public class StramClient
       org.apache.http.message.BasicHeaderValueParser.class,
       com.esotericsoftware.minlog.Log.class,
       org.apache.xbean.asm5.tree.ClassNode.class,
-      // The jersey client inclusion is only for Hadoop-2.2 and should be removed when we upgrade our Hadoop
-      // dependency version since Hadoop-2.3 onwards has jersey client bundled
-      com.sun.jersey.api.client.ClientHandler.class,
-      com.sun.jersey.client.apache4.ApacheHttpClient4Handler.class,
       org.jctools.queues.SpscArrayQueue.class
   };
 
-  private static final Class<?>[] DATATORRENT_SECURITY_SPECIFIC_CLASSES = new Class<?>[]{
+  private static final Class<?>[] APEX_SECURITY_SPECIFIC_CLASSES = new Class<?>[]{
   };
 
-  private static final Class<?>[] DATATORRENT_SECURITY_CLASSES =
-      (Class<?>[])ArrayUtils.addAll(DATATORRENT_CLASSES, DATATORRENT_SECURITY_SPECIFIC_CLASSES);
+  private static final Class<?>[] APEX_SECURITY_CLASSES =
+      (Class<?>[])ArrayUtils.addAll(APEX_CLASSES, APEX_SECURITY_SPECIFIC_CLASSES);
 
   public StramClient(Configuration conf, LogicalPlan dag) throws Exception
   {
@@ -326,9 +322,9 @@ public class StramClient
     if (applicationType.equals(YARN_APPLICATION_TYPE)) {
       //TODO restrict the security check to only check if security is enabled for webservices.
       if (UserGroupInformation.isSecurityEnabled()) {
-        defaultClasses = DATATORRENT_SECURITY_CLASSES;
+        defaultClasses = APEX_SECURITY_CLASSES;
       } else {
-        defaultClasses = DATATORRENT_CLASSES;
+        defaultClasses = APEX_CLASSES;
       }
     } else {
       throw new IllegalStateException(applicationType + " is not a valid application type.");
