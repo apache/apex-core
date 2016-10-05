@@ -15,7 +15,7 @@ The Apex command line interface (CLI) program, `apex`, is used to launch applica
 
 ###CLI Configuration
 
-  When Kerberos security is enabled in Hadoop, a Kerberos ticket granting ticket (TGT) or the Kerberos credentials of the user are needed by the CLI program `apex` to authenticate with Hadoop for any operation. Kerberos credentials are composed of a principal and either a _keytab_ or a password. For security and operational reasons only keytabs are supported in Hadoop and by extension in Apex platform. When user credentials are specified, all operations including launching application are performed as that user.
+When Kerberos security is enabled in Hadoop, a Kerberos ticket granting ticket (TGT) or the Kerberos credentials of the user are needed by the CLI program `apex` to authenticate with Hadoop for any operation. Kerberos credentials are composed of a principal and either a _keytab_ or a password. For security and operational reasons only keytabs are supported in Hadoop and by extension in Apex platform. When user credentials are specified, all operations including launching application are performed as that user.
 
 #### Using kinit
 
@@ -49,7 +49,7 @@ The property `dt.authentication.principal` specifies the Kerberos user principal
 
 ### Web Services security
 
-Alongside every Apex application is an application master process running called Streaming Container Manager (STRAM). STRAM manages the application by handling the various control aspects of the application such as orchestrating the execution of the application on the cluster, playing a key role in scalability and fault tolerance, providing application insight by collecting statistics among other functionality.
+Alongside every Apex application, there is an application master process called Streaming Container Manager (STRAM) running. STRAM manages the application by handling the various control aspects of the application such as orchestrating the execution of the application on the cluster, playing a key role in scalability and fault tolerance, providing application insight by collecting statistics among other functionality.
 
 STRAM provides a web service interface to introspect the state of the application and its various components and to make dynamic changes to the applications. Some examples of supported functionality are getting resource usage and partition information of various operators, getting operator statistics and changing properties of running operators.
 
@@ -74,6 +74,42 @@ To specify the security option for an application the following configuration ca
 The security option value can be `ENABLED`, `FOLLOW_HADOOP_AUTH`, `FOLLOW_HADOOP_HTTP_AUTH` or `DISABLE` for the four options above respectively.
 
 The subsequent sections talk about how security works in Apex. This information is not needed by users but is intended for the inquisitive techical audience who want to know how security works.
+
+#### CLI setup
+
+The CLI program `apex` connects to the web service endpoint of the STRAM for a running application to query for information or to make changes to it. In order to do that, it has to first connect to the YARN proxy web service and get the necessary connection information and credentials to connect to STRAM. The proxy web service may have security enabled and in that case, the CLI program `apex` would first need to authenticate with the service before it can get any information.
+
+Hadoop allows a lot of flexibility in the kind of security to use for the proxy. It allows the user to plug-in their own authentication provider. The authentication provider is specified as a JAVA class name. It also comes bundled with a provider for Kerberos SPNEGO authentication. Some distributions also include a provider for BASIC authentication via SASL.
+
+The CLI `apex`, has built-in functionality for Kerberos SPNEGO, BASIC and DIGEST authentication mechanisms. Because of the way the authentication provider is configured for the proxy on the Hadoop side, there is no reliable way to determine before hand what kind of authentication is being used. Only at runtime, when the CLI connects to the proxy web service will it know the type of authentication that the service is using. For this reason, `apex` allows the user to configure credentials for multiple authentication mechanisms it supports and will pick the one that matches what the service expects.
+
+If the authentication mechanism is Kerberos SPNEGO, the properties listed in the [Using Kerberos credentials](#using-kerberos-credentials) section for general communication with Hadoop above are sufficient. No additional properties are needed.
+
+For BASIC authentication, the credentials can be specified using the following properties
+
+```xml
+<property>
+        <name>dt.authentication.basic.username</name>
+        <value>username</value>
+</property>
+<property>
+        <name>dt.authentication.basic.password</name>
+        <value>password</value>
+</property>
+```
+
+For DIGEST authentication, the credentials can be specified using the following properties
+
+```xml
+<property>
+        <name>dt.authentication.digest.username</name>
+        <value>username</value>
+</property>
+<property>
+        <name>dt.authentication.digest.password</name>
+        <value>password</value>
+</property>
+```
 
 ### Token Refresh
 
