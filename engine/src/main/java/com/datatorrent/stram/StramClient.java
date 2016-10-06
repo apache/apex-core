@@ -27,9 +27,11 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,6 +123,7 @@ public class StramClient
   private String archives;
   private String files;
   private LinkedHashSet<String> resources;
+  private Set<String> tags = new HashSet<>();
 
   // platform dependencies that are not part of Hadoop and need to be deployed,
   // entry below will cause containing jar file from client to be copied to cluster
@@ -605,6 +608,9 @@ public class StramClient
       // Set the queue to which this application is to be submitted in the RM
       appContext.setQueue(queueName);
 
+      // set the application tags
+      appContext.setApplicationTags(tags);
+
       // Submit the application to the applications manager
       // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
       // Ignore the response as either a valid response object is returned on success
@@ -684,6 +690,11 @@ public class StramClient
   public void setQueueName(String queueName)
   {
     this.queueName = queueName;
+  }
+
+  public void addTag(String tag)
+  {
+    this.tags.add(tag);
   }
 
   public void setResources(LinkedHashSet<String> resources)

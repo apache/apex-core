@@ -88,11 +88,12 @@ import com.datatorrent.stram.security.StramUserLogin;
 public class StramAppLauncher
 {
   public static final String CLASSPATH_RESOLVERS_KEY_NAME = StreamingApplication.DT_PREFIX + "classpath.resolvers";
-  public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
-  public static final String FILES_CONF_KEY_NAME = "tmpfiles";
-  public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
-  public static final String ORIGINAL_APP_ID = "tmpOriginalAppId";
-  public static final String QUEUE_NAME = "queueName";
+  public static final String LIBJARS_CONF_KEY_NAME = "_apex.libjars";
+  public static final String FILES_CONF_KEY_NAME = "_apex.files";
+  public static final String ARCHIVES_CONF_KEY_NAME = "_apex.archives";
+  public static final String ORIGINAL_APP_ID = "_apex.originalAppId";
+  public static final String QUEUE_NAME = "_apex.queueName";
+  public static final String TAGS = "_apex.tags";
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
   private File jarFile;
@@ -630,6 +631,12 @@ public class StramAppLauncher
       client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
       client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));
       client.setQueueName(conf.get(QUEUE_NAME));
+      String tags = conf.get(TAGS);
+      if (tags != null) {
+        for (String tag : tags.split(",")) {
+          client.addTag(tag.trim());
+        }
+      }
       client.startApplication();
       return client.getApplicationReport().getApplicationId();
     } finally {

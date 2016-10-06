@@ -1854,6 +1854,9 @@ public class ApexCli
             config.set(StramAppLauncher.ORIGINAL_APP_ID, commandLineInfo.origAppId);
           }
           config.set(StramAppLauncher.QUEUE_NAME, commandLineInfo.queue != null ? commandLineInfo.queue : "default");
+          if (commandLineInfo.tags != null) {
+            config.set(StramAppLauncher.TAGS, commandLineInfo.tags);
+          }
         } catch (Exception ex) {
           throw new CliException("Error opening the config XML file: " + configFile, ex);
         }
@@ -2184,6 +2187,11 @@ public class ApexCli
           jsonObj.put("state", ar.getYarnApplicationState().name());
           jsonObj.put("trackingUrl", ar.getTrackingUrl());
           jsonObj.put("finalStatus", ar.getFinalApplicationStatus());
+          JSONArray tags = new JSONArray();
+          for (String tag : ar.getApplicationTags()) {
+            tags.put(tag);
+          }
+          jsonObj.put("tags", tags);
 
           totalCnt++;
           if (ar.getYarnApplicationState() == YarnApplicationState.RUNNING) {
@@ -3371,6 +3379,11 @@ public class ApexCli
       response.put("state", appReport.getYarnApplicationState().name());
       response.put("trackingUrl", appReport.getTrackingUrl());
       response.put("finalStatus", appReport.getFinalApplicationStatus());
+      JSONArray tags = new JSONArray();
+      for (String tag : appReport.getApplicationTags()) {
+        tags.put(tag);
+      }
+      response.put("tags", tags);
       printJson(response);
     }
 
@@ -3630,6 +3643,10 @@ public class ApexCli
     if (commandLineInfo.queue != null) {
       launchArgs.add("-queue");
       launchArgs.add(commandLineInfo.queue);
+    }
+    if (commandLineInfo.tags != null) {
+      launchArgs.add("-tags");
+      launchArgs.add(commandLineInfo.tags);
     }
     launchArgs.add(appFile);
     if (!appFile.endsWith(".json") && !appFile.endsWith(".properties")) {
@@ -3902,6 +3919,7 @@ public class ApexCli
     final Option originalAppID = add(OptionBuilder.withArgName("application id").hasArg().withDescription("Specify original application identifier for restart.").create("originalAppId"));
     final Option exactMatch = add(new Option("exactMatch", "Only consider applications with exact app name"));
     final Option queue = add(OptionBuilder.withArgName("queue name").hasArg().withDescription("Specify the queue to launch the application").create("queue"));
+    final Option tags = add(OptionBuilder.withArgName("comma separated tags").hasArg().withDescription("Specify the tags for the application").create("tags"));
     final Option force = add(new Option("force", "Force launch the application. Do not check for compatibility"));
     final Option useConfigApps = add(OptionBuilder.withArgName("inclusive or exclusive").hasArg().withDescription("\"inclusive\" - merge the apps in config and app package. \"exclusive\" - only show config package apps.").create("useConfigApps"));
 
@@ -3940,6 +3958,7 @@ public class ApexCli
     result.archives = line.getOptionValue(LAUNCH_OPTIONS.archives.getOpt());
     result.files = line.getOptionValue(LAUNCH_OPTIONS.files.getOpt());
     result.queue = line.getOptionValue(LAUNCH_OPTIONS.queue.getOpt());
+    result.tags = line.getOptionValue(LAUNCH_OPTIONS.tags.getOpt());
     result.args = line.getArgs();
     result.origAppId = line.getOptionValue(LAUNCH_OPTIONS.originalAppID.getOpt());
     result.exactMatch = line.hasOption("exactMatch");
@@ -3959,6 +3978,7 @@ public class ApexCli
     String libjars;
     String files;
     String queue;
+    String tags;
     String archives;
     String origAppId;
     boolean exactMatch;
