@@ -160,7 +160,7 @@ public class GenericRequestTuple extends RequestTuple
   public String toString()
   {
     return getClass().getSimpleName() + "{" + "version=" + version + ", identifier=" + identifier + ", windowId=" +
-        Codec.getStringWindowId((long)baseSeconds | windowId) + '}';
+        Codec.getStringWindowId((long)baseSeconds << 32 | windowId) + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(GenericRequestTuple.class);
