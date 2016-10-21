@@ -23,8 +23,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -37,7 +37,6 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.ProtocolSignature;
-import org.apache.hadoop.net.NetUtils;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode.Controller;
@@ -69,6 +68,8 @@ public class StramLocalCluster implements Runnable, Controller
   private static final Logger LOG = LoggerFactory.getLogger(StramLocalCluster.class);
   // assumes execution as unit test
   private static File CLUSTER_WORK_DIR = new File("target", StramLocalCluster.class.getName());
+  private static final String LOCALHOST_PROPERTY_KEY = "org.apache.apex.stram.StramLocalCluster.hostname";
+  private static final String LOCALHOST = System.getProperty(LOCALHOST_PROPERTY_KEY, "localhost");
   protected final StreamingContainerManager dnmgr;
   private final UmbilicalProtocolLocalImpl umbilical;
   private InetSocketAddress bufferServerAddress;
@@ -169,19 +170,23 @@ public class StramLocalCluster implements Runnable, Controller
       this.windowGenerator = winGen;
     }
 
-    public static void run(StreamingContainer stramChild, StreamingContainerContext ctx) throws Exception
+    public void run(StreamingContainerContext ctx) throws Exception
     {
-      LOG.debug("Got context: " + ctx);
-      stramChild.setup(ctx);
+      LOG.debug("container {} context {}", getContainerId(), ctx);
+      setup(ctx);
+      if (bufferServerAddress != null && !bufferServerAddress.getAddress().isLoopbackAddress()) {
+        bufferServerAddress = InetSocketAddress.createUnresolved(LOCALHOST, bufferServerAddress.getPort());
+      }
+
       boolean hasError = true;
       try {
         // main thread enters heartbeat loop
-        stramChild.heartbeatLoop();
+        heartbeatLoop();
         hasError = false;
       } finally {
         // teardown
         try {
-          stramChild.teardown();
+          teardown();
         } catch (Exception e) {
           if (!hasError) {
             throw e;
@@ -232,13 +237,13 @@ public class StramLocalCluster implements Runnable, Controller
   /**
    * Starts the child "container" as thread.
    */
-  private class LocalStramChildLauncher implements Runnable
+  private class LocalStreamingContainerLauncher implements Runnable
   {
     final String containerId;
     final LocalStreamingContainer child;
 
     @SuppressWarnings("CallToThreadStartDuringObjectConstruction")
-    private LocalStramChildLauncher(ContainerStartRequest cdr)
+    private LocalStreamingContainerLauncher(ContainerStartRequest cdr, List<Thread> containerThreads)
     {
       this.containerId = "container-" + containerSeq++;
       WindowGenerator wingen = null;
@@ -247,12 +252,12 @@ public class StramLocalCluster implements Runnable, Controller
       }
       this.child = new LocalStreamingContainer(containerId, umbilical, wingen);
       ContainerResource cr = new ContainerResource(cdr.container.getResourceRequestPriority(), containerId, "localhost", cdr.container.getRequiredMemoryMB(), cdr.container.getRequiredVCores(), null);
-      StreamingContainerAgent sca = dnmgr.assignContainer(cr, perContainerBufferServer ? null : NetUtils.getConnectAddress(bufferServerAddress));
+      StreamingContainerAgent sca = dnmgr.assignContainer(cr, perContainerBufferServer ? null : bufferServerAddress);
       if (sca != null) {
-        Thread launchThread = new Thread(this, containerId);
-        launchThread.start();
         childContainers.put(containerId, child);
-        LOG.info("Started container {}", containerId);
+        Thread launchThread = new Thread(this, containerId);
+        containerThreads.add(launchThread);
+        launchThread.start();
       }
     }
 
@@ -261,10 +266,10 @@ public class StramLocalCluster implements Runnable, Controller
     {
       try {
         StreamingContainerContext ctx = umbilical.getInitContext(containerId);
-        LocalStreamingContainer.run(child, ctx);
-      } catch (Exception e) {
-        LOG.error("Container {} failed", containerId, e);
-        throw new RuntimeException(e);
+        LOG.info("Started container {}", containerId);
+        child.run(ctx);
+      } catch (Exception | Error e) {
+        LOG.error("Fatal {} in container {}", e instanceof Error ? "error" : "exception", containerId, e);
       } finally {
         childContainers.remove(containerId);
         LOG.info("Container {} terminating.", containerId);
@@ -303,8 +308,7 @@ public class StramLocalCluster implements Runnable, Controller
       StreamingContainer.eventloop.start();
       bufferServer = new Server(0, 1024 * 1024,8);
       bufferServer.setSpoolStorage(new DiskStorage());
-      SocketAddress bindAddr = bufferServer.run(StreamingContainer.eventloop);
-      this.bufferServerAddress = ((InetSocketAddress)bindAddr);
+      bufferServerAddress = InetSocketAddress.createUnresolved(LOCALHOST, bufferServer.run(StreamingContainer.eventloop).getPort());
       LOG.info("Buffer server started: {}", bufferServerAddress);
     }
   }
@@ -434,6 +438,7 @@ public class StramLocalCluster implements Runnable, Controller
   public void run(long runMillis)
   {
     long endMillis = System.currentTimeMillis() + runMillis;
+    List<Thread> containerThreads = new LinkedList<>();
 
     while (!appDone) {
 
@@ -455,7 +460,7 @@ public class StramLocalCluster implements Runnable, Controller
       while (!dnmgr.containerStartRequests.isEmpty()) {
         ContainerStartRequest cdr = dnmgr.containerStartRequests.poll();
         if (cdr != null) {
-          new LocalStramChildLauncher(cdr);
+          new LocalStreamingContainerLauncher(cdr, containerThreads);
         }
       }
 
@@ -497,6 +502,14 @@ public class StramLocalCluster implements Runnable, Controller
     for (LocalStreamingContainer lsc: childContainers.values()) {
       injectShutdown.put(lsc.getContainerId(), lsc);
       lsc.triggerHeartbeat();
+    }
+
+    for (Thread thread: containerThreads) {
+      try {
+        thread.join(1000);
+      } catch (InterruptedException e) {
+        LOG.warn("Container thread didn't finish {}", thread.getName());
+      }
     }
 
     dnmgr.teardown();

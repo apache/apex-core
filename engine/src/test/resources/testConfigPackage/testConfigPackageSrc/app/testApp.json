@@ -1,0 +1,53 @@
+{
+  "displayName":"testApp",
+  "attributes":{
+
+  },
+  "operators":[
+    {
+      "name":"Operator 1",
+      "attributes":{
+
+      },
+      "class":"org.apache.apex.test.DevNull",
+      "ports":[
+        {
+          "name":"inputPort",
+          "attributes":{
+
+          }
+        }
+      ]
+    },
+    {
+      "name":"Operator 2",
+      "attributes":{
+
+      },
+      "class":"org.apache.apex.test.RandomGen",
+      "ports":[
+        {
+          "name":"out",
+          "attributes":{
+
+          }
+        }
+      ]
+    }
+  ],
+  "streams":[
+    {
+      "name":"Stream 1",
+      "sinks":[
+        {
+          "operatorName":"Operator 1",
+          "portName":"inputPort"
+        }
+      ],
+      "source":{
+        "operatorName":"Operator 2",
+        "portName":"out"
+      }
+    }
+  ]
+}

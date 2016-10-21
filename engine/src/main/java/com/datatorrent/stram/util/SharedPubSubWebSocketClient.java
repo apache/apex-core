@@ -57,7 +57,7 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
 
   }
 
-  public SharedPubSubWebSocketClient(URI uri, long timeoutMillis) 
+  public SharedPubSubWebSocketClient(URI uri, long timeoutMillis)
   {
     this.setUri(uri);
     lastConnectTryTime = System.currentTimeMillis();

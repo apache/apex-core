@@ -37,9 +37,9 @@ import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 /**
  * Handles creating container requests and issuing node-specific container
  * requests by blacklisting (specifically for cloudera)
- * 
+ *
  * Host specific container requests are not allocated on Cloudera as captured in
- * Jira Yarn-1412 (https://issues.apache.org/jira/browse/YARN-1412) 
+ * Jira Yarn-1412 (https://issues.apache.org/jira/browse/YARN-1412)
  * To handle such requests, we blacklist all the other nodes before issueing node request.
  *
  * @since 3.4.0
@@ -51,6 +51,7 @@ public class BlacklistBasedResourceRequestHandler extends ResourceRequestHandler
   HashMap<String, List<ContainerRequest>> hostSpecificRequestsMap = new HashMap<>();
   List<String> blacklistedNodesForHostSpecificRequests = null;
 
+  @Override
   public void reissueContainerRequests(AMRMClient<ContainerRequest> amRmClient, Map<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> requestedResources, int loopCounter, ResourceRequestHandler resourceRequestor, List<ContainerRequest> containerRequests, List<ContainerRequest> removedContainerRequests)
   {
     // Issue all host specific requests first
@@ -113,6 +114,7 @@ public class BlacklistBasedResourceRequestHandler extends ResourceRequestHandler
     }
   }
 
+  @Override
   public void addContainerRequest(Map<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> requestedResources, int loopCounter, List<ContainerRequest> containerRequests, StreamingContainerAgent.ContainerStartRequest csr, ContainerRequest cr)
   {
     if (cr.getNodes() != null && !cr.getNodes().isEmpty()) {

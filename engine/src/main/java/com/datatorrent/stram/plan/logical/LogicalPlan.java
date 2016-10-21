@@ -157,6 +157,7 @@ public class LogicalPlan implements Serializable, DAG
   public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<>(false);
   public static Attribute<Long> HDFS_TOKEN_LIFE_TIME = new Attribute<>(604800000L);
   public static Attribute<Long> RM_TOKEN_LIFE_TIME = new Attribute<>(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT);
+  public static Attribute<String> PRINCIPAL = new Attribute<String>(null, new StringCodec.String2String());
   public static Attribute<String> KEY_TAB_FILE = new Attribute<>((String)null, new StringCodec.String2String());
   public static Attribute<Double> TOKEN_REFRESH_ANTICIPATORY_FACTOR = new Attribute<>(0.7);
   /**
@@ -1848,7 +1849,7 @@ public class LogicalPlan implements Serializable, DAG
    * validation for affinity rules validates following:
    *  1. The operator names specified in affinity rule are part of the dag
    *  2. Affinity rules do not conflict with anti-affinity rules directly or indirectly
-   *  3. Anti-affinity rules do not conflict with Stream Locality 
+   *  3. Anti-affinity rules do not conflict with Stream Locality
    *  4. Anti-affinity rules do not conflict with host-locality attribute
    *  5. Affinity rule between non stream operators does not have Thread_Local locality
    *  6. Affinity rules do not conflict with host-locality attribute
@@ -1926,7 +1927,7 @@ public class LogicalPlan implements Serializable, DAG
         combineSets(nodeAffinities, pair);
       }
     }
-    
+
 
     for (StreamMeta stream : getAllStreams()) {
       String source = stream.source.getOperatorMeta().getName();

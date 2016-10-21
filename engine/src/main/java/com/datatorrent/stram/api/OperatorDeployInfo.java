@@ -52,6 +52,12 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
   }
 
   @Override
+  public String getName()
+  {
+    return name;
+  }
+
+  @Override
   public AttributeMap getAttributes()
   {
     return contextAttributes;

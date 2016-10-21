@@ -133,7 +133,7 @@ public class OperatorDiscoverer
       return type;
     }
   }
-  
+
   enum MethodTagType
   {
     USE_SCHEMA("@useSchema"),

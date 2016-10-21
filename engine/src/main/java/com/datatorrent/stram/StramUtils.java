@@ -28,9 +28,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
-import org.apache.log4j.DTLoggerFactory;
+
+import com.google.common.base.Strings;
+import com.google.common.collect.Maps;
 
 import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.stram.util.LoggerUtil;
 
 /**
  *
@@ -42,6 +45,7 @@ import com.datatorrent.api.StreamingApplication;
 public abstract class StramUtils
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramUtils.class);
+  public static final String DT_LOGGERS_LEVEL = "dt.loggers.level";
 
   public static <T> Class<? extends T> classForName(String className, Class<T> superClass)
   {
@@ -85,7 +89,18 @@ public abstract class StramUtils
           }
         }
       }
-      DTLoggerFactory.getInstance().initialize();
+
+      String loggersLevel = System.getProperty(DT_LOGGERS_LEVEL);
+      if (!Strings.isNullOrEmpty(loggersLevel)) {
+        Map<String, String> targetChanges = Maps.newHashMap();
+        String[] targets = loggersLevel.split(",");
+        for (String target : targets) {
+          String[] parts = target.split(":");
+          targetChanges.put(parts[0], parts[1]);
+        }
+        LoggerUtil.changeLoggersLevel(targetChanges);
+      }
+
     }
   }
 

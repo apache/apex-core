@@ -19,6 +19,10 @@
       <directory>${basedir}/src/main/resources/files</directory>
       <outputDirectory>/files</outputDirectory>
     </fileSet>
+    <fileSet>
+      <directory>${basedir}/src/main/resources/app</directory>
+      <outputDirectory>/app</outputDirectory>
+    </fileSet>
   </fileSets>
 
 </assembly>

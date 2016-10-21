@@ -22,8 +22,10 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -35,7 +37,7 @@ import com.datatorrent.stram.client.ConfigPackage;
 import com.datatorrent.stram.client.DTConfiguration;
 import com.datatorrent.stram.support.StramTestSupport;
 
-import static com.datatorrent.stram.support.StramTestSupport.setEnv;
+import jline.console.ConsoleReader;
 
 /**
  *
@@ -52,33 +54,31 @@ public class ApexCliTest
   private static File appFile;
   private static File configFile;
 
-
-  private static AppPackage ap;
-  private static ConfigPackage cp;
+  private AppPackage ap;
+  private ConfigPackage cp;
   static TemporaryFolder testFolder = new TemporaryFolder();
-  static ApexCli cli = new ApexCli();
+  ApexCli cli;
 
   static Map<String, String> env = new HashMap<String, String>();
   static String userHome;
 
   @BeforeClass
-  public static void starting()
+  public static void createPackages()
   {
+    userHome = System.getProperty("user.home");
+    String newHome = System.getProperty("user.dir") + "/target";
     try {
-      userHome = System.getProperty("user.home");
-      String newHome = System.getProperty("user.dir") + "/target";
+
       FileUtils.forceMkdir(new File(newHome + "/.dt"));
       FileUtils.copyFile(new File(System.getProperty("user.dir") + "/src/test/resources/testAppPackage/dt-site.xml"), new File(newHome + "/.dt/dt-site.xml"));
       env.put("HOME", newHome);
-      setEnv(env);
-
-      cli.init();
+      StramTestSupport.setEnv(env);
       // Set up jar file to use with constructor
       testFolder.create();
+
       appFile = StramTestSupport.createAppPackageFile();
       configFile = StramTestSupport.createConfigPackageFile(new File(testFolder.getRoot(), configJarPath));
-      ap = new AppPackage(appFile, true);
-      cp = new ConfigPackage(configFile);
+
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -88,8 +88,6 @@ public class ApexCliTest
   public static void finished()
   {
     try {
-      env.put("HOME", userHome);
-      setEnv(env);
 
       StramTestSupport.removeAppPackageFile();
       FileUtils.forceDelete(configFile);
@@ -97,6 +95,29 @@ public class ApexCliTest
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Before
+  public void startingTest()
+  {
+    try {
+
+      cli = new ApexCli();
+      cli.init();
+
+      ap = new AppPackage(appFile, true);
+      cp = new ConfigPackage(configFile);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @After
+  public void finishedTest()
+  {
+    ap = null;
+    cp = null;
+    cli = null;
   }
 
   @Test
@@ -128,6 +149,9 @@ public class ApexCliTest
   {
     ApexCli.LaunchCommandLineInfo commandLineInfo = ApexCli
         .getLaunchCommandLineInfo(new String[]{"-exactMatch", "-conf", configFile.getAbsolutePath(), appFile.getAbsolutePath(), "MyFirstApplication"});
+
+    commandLineInfo.args = new String[] {"testApp", "MyFirstApplication"};
+
     String[] args = cli.getLaunchAppPackageArgs(ap, cp, commandLineInfo, null);
     commandLineInfo = ApexCli.getLaunchCommandLineInfo(args);
     StringBuilder sb = new StringBuilder();
@@ -179,5 +203,59 @@ public class ApexCliTest
     Assert.assertEquals("user-home-config", props.get("dt.test.4"));
     Assert.assertEquals("app-default", props.get("dt.test.5"));
     Assert.assertEquals("package-default", props.get("dt.test.6"));
+  }
+
+  @Test
+  public void testLaunchAppPackagePrecedenceWithConfigPackageApps() throws Exception
+  {
+    // set launch command options
+    ApexCli.LaunchCommandLineInfo commandLineInfo = ApexCli
+        .getLaunchCommandLineInfo(new String[]{"-D", "dt.test.1=launch-define", "-apconf", "my-app-conf1.xml", "-conf", configFile.getAbsolutePath(), "-useConfigApps", "exclusive"});
+    // process and look at launch config
+
+    DTConfiguration props = cli.getLaunchAppPackageProperties(ap, cp, commandLineInfo, "testApp");
+    Assert.assertEquals("launch-define", props.get("dt.test.1"));
+    Assert.assertEquals("config-package", props.get("dt.test.2"));
+    Assert.assertEquals("app-package-config", props.get("dt.test.3"));
+    Assert.assertEquals("user-home-config", props.get("dt.test.4"));
+    Assert.assertEquals("package-default", props.get("dt.test.5"));
+  }
+
+  @Test
+  public void testAppFromOnlyConfigPackage() throws Exception
+  {
+    ApexCli.LaunchCommandLineInfo commandLineInfo = ApexCli
+        .getLaunchCommandLineInfo(new String[]{"-conf", configFile.getAbsolutePath(), appFile.getAbsolutePath(), "-useConfigApps", "exclusive"});
+
+    ApexCli apexCli = new ApexCli();
+    apexCli.init();
+
+    Assert.assertEquals("configApps", "exclusive", commandLineInfo.useConfigApps);
+
+    apexCli.getLaunchAppPackageArgs(ap, cp, commandLineInfo, new ConsoleReader());
+
+    Assert.assertEquals(ap.getApplications().size(), 1);
+    Assert.assertEquals(ap.getApplications().get(0).displayName, "testApp");
+    Assert.assertEquals(ap.getApplications().get(0).type, "json");
+  }
+
+  @Test
+  public void testMergeAppFromConfigAndAppPackage() throws Exception
+  {
+    ApexCli.LaunchCommandLineInfo commandLineInfo = ApexCli
+        .getLaunchCommandLineInfo(new String[]{"-conf", configFile.getAbsolutePath(), appFile.getAbsolutePath(), "-useConfigApps", "inclusive"});
+
+    Assert.assertEquals("configApps", "inclusive", commandLineInfo.useConfigApps);
+
+    ApexCli apexCli = new ApexCli();
+    apexCli.init();
+
+    try {
+      apexCli.getLaunchAppPackageArgs(ap, cp, commandLineInfo, new ConsoleReader());
+    } catch (ApexCli.CliException cliException) {
+      return;
+    }
+
+    Assert.fail("Cli failed throw multiple apps exception.");
   }
 }

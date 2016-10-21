@@ -19,6 +19,7 @@
 package com.datatorrent.stram.plan.physical;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -281,7 +282,18 @@ public class StreamMapping implements java.io.Serializable
             (sourceSingleFinal != null ? sourceSingleFinal.booleanValue() : PortContext.UNIFIER_SINGLE_FINAL.defaultValue);
 
         if (upstream.size() > 1) {
-          if (!separateUnifiers && ((pks == null || pks.mask == 0) || lastSingle)) {
+          // detach downstream from upstream operator for the case where no unifier existed previously
+          for (PTOutput source : upstream) {
+            Iterator<PTInput> sinks = source.sinks.iterator();
+            while (sinks.hasNext()) {
+              PTInput sink = sinks.next();
+              if (sink.target == doperEntry.first) {
+                doperEntry.first.inputs.remove(sink);
+                sinks.remove();
+              }
+            }
+          }
+          if (!separateUnifiers && lastSingle) {
             if (finalUnifier == null) {
               finalUnifier = createUnifier(streamMeta, plan);
             }
@@ -316,7 +328,7 @@ public class StreamMapping implements java.io.Serializable
             }
             // add new inputs
             for (PTOutput out : doperUnifierSources) {
-              addInput(unifier, out, pks);
+              addInput(unifier, out, (pks == null) || (pks.mask == 0) ? null : pks);
             }
           }
         } else {

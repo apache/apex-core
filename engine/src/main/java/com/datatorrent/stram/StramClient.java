@@ -27,9 +27,11 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +71,6 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
-import org.apache.log4j.DTLoggerFactory;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
@@ -95,7 +96,10 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 public class StramClient
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
-  public static final String YARN_APPLICATION_TYPE = "DataTorrent";
+  public static final String YARN_APPLICATION_TYPE = "ApacheApex";
+  @Deprecated
+  public static final String YARN_APPLICATION_TYPE_DEPRECATED = "DataTorrent";
+
   public static final String LIB_JARS_SEP = ",";
 
   // Configuration
@@ -119,10 +123,11 @@ public class StramClient
   private String archives;
   private String files;
   private LinkedHashSet<String> resources;
+  private Set<String> tags = new HashSet<>();
 
   // platform dependencies that are not part of Hadoop and need to be deployed,
   // entry below will cause containing jar file from client to be copied to cluster
-  private static final Class<?>[] DATATORRENT_CLASSES = new Class<?>[]{
+  private static final Class<?>[] APEX_CLASSES = new Class<?>[]{
       com.datatorrent.netlet.util.Slice.class,
       com.datatorrent.netlet.EventLoop.class,
       com.datatorrent.bufferserver.server.Server.class,
@@ -143,18 +148,14 @@ public class StramClient
       org.apache.http.message.BasicHeaderValueParser.class,
       com.esotericsoftware.minlog.Log.class,
       org.apache.xbean.asm5.tree.ClassNode.class,
-      // The jersey client inclusion is only for Hadoop-2.2 and should be removed when we upgrade our Hadoop
-      // dependency version since Hadoop-2.3 onwards has jersey client bundled
-      com.sun.jersey.api.client.ClientHandler.class,
-      com.sun.jersey.client.apache4.ApacheHttpClient4Handler.class,
       org.jctools.queues.SpscArrayQueue.class
   };
 
-  private static final Class<?>[] DATATORRENT_SECURITY_SPECIFIC_CLASSES = new Class<?>[]{
+  private static final Class<?>[] APEX_SECURITY_SPECIFIC_CLASSES = new Class<?>[]{
   };
 
-  private static final Class<?>[] DATATORRENT_SECURITY_CLASSES =
-      (Class<?>[])ArrayUtils.addAll(DATATORRENT_CLASSES, DATATORRENT_SECURITY_SPECIFIC_CLASSES);
+  private static final Class<?>[] APEX_SECURITY_CLASSES =
+      (Class<?>[])ArrayUtils.addAll(APEX_CLASSES, APEX_SECURITY_SPECIFIC_CLASSES);
 
   public StramClient(Configuration conf, LogicalPlan dag) throws Exception
   {
@@ -324,9 +325,9 @@ public class StramClient
     if (applicationType.equals(YARN_APPLICATION_TYPE)) {
       //TODO restrict the security check to only check if security is enabled for webservices.
       if (UserGroupInformation.isSecurityEnabled()) {
-        defaultClasses = DATATORRENT_SECURITY_CLASSES;
+        defaultClasses = APEX_SECURITY_CLASSES;
       } else {
-        defaultClasses = DATATORRENT_CLASSES;
+        defaultClasses = APEX_CLASSES;
       }
     } else {
       throw new IllegalStateException(applicationType + " is not a valid application type.");
@@ -467,7 +468,7 @@ public class StramClient
       if (agent != null && agent instanceof StorageAgent.ApplicationAwareStorageAgent) {
         ((StorageAgent.ApplicationAwareStorageAgent)agent).setApplicationAttributes(dag.getAttributes());
       }
-      
+
       if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) { /* which would be the most likely case */
         Path checkpointPath = new Path(appPath, LogicalPlan.SUBDIR_CHECKPOINTS);
         // use conf client side to pickup any proxy settings from dt-site.xml
@@ -570,9 +571,9 @@ public class StramClient
         vargs.add("-Dlog4j.debug=true");
       }
 
-      String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
+      String loggersLevel = conf.get(StramUtils.DT_LOGGERS_LEVEL);
       if (loggersLevel != null) {
-        vargs.add(String.format("-D%s=%s", DTLoggerFactory.DT_LOGGERS_LEVEL, loggersLevel));
+        vargs.add(String.format("-D%s=%s", StramUtils.DT_LOGGERS_LEVEL, loggersLevel));
       }
       vargs.add(StreamingAppMaster.class.getName());
       vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
@@ -606,6 +607,9 @@ public class StramClient
       appContext.setPriority(pri);
       // Set the queue to which this application is to be submitted in the RM
       appContext.setQueue(queueName);
+
+      // set the application tags
+      appContext.setApplicationTags(tags);
 
       // Submit the application to the applications manager
       // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
@@ -686,6 +690,11 @@ public class StramClient
   public void setQueueName(String queueName)
   {
     this.queueName = queueName;
+  }
+
+  public void addTag(String tag)
+  {
+    this.tags.add(tag);
   }
 
   public void setResources(LinkedHashSet<String> resources)

@@ -52,6 +52,7 @@ import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.plan.physical.PhysicalPlanTest;
 import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
@@ -408,4 +409,37 @@ public class LogicalPlanModificationTest
     testExecutionManager(new AsyncFSStorageAgent(testMeta.getPath(), null));
   }
 
+  @Test
+  public void testNewOperatorRecoveryWindowIds()
+  {
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+
+    TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    ctx.deploy.clear();
+    ctx.undeploy.clear();
+
+    LogicalPlan.OperatorMeta o1Meta = dag.getMeta(o1);
+    List<PTOperator> o1Partitions = plan.getOperators(o1Meta);
+    PhysicalPlanTest.setActivationCheckpoint(o1Partitions.get(0), 10);
+
+    PlanModifier pm = new PlanModifier(plan);
+    GenericTestOperator o2 = new GenericTestOperator();
+    GenericTestOperator o3 = new GenericTestOperator();
+    pm.addOperator("o2", o2);
+    pm.addOperator("o3", o3);
+    pm.addStream("s1", o1.outport1, o2.inport2);
+    pm.addStream("s2", o2.outport1, o3.inport1);
+
+    pm.applyChanges(ctx);
+
+    LogicalPlan.OperatorMeta o2Meta = plan.getLogicalPlan().getMeta(o2);
+    List<PTOperator> o2Partitions = plan.getOperators(o2Meta);
+    Assert.assertEquals("o2 activation checkpoint " + o2Meta, 10, o2Partitions.get(0).getRecoveryCheckpoint().windowId);
+
+    LogicalPlan.OperatorMeta o3Meta = plan.getLogicalPlan().getMeta(o3);
+    List<PTOperator> o3Partitions = plan.getOperators(o3Meta);
+    Assert.assertEquals("o3 activation checkpoint " + o2Meta, 10, o3Partitions.get(0).getRecoveryCheckpoint().windowId);
+  }
 }

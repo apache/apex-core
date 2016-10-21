@@ -46,13 +46,13 @@ public class CompactUtil
     CompactClassNode ccn = new CompactClassNode();
     ccn.setAccess(cn.access);
     ccn.setDefaultConstructor(compactMethodNode(ASMUtil.getPublicDefaultConstructor(cn)));
-    
+
     List<CompactMethodNode> cmns = new LinkedList<>();
     for (MethodNode mn : ASMUtil.getPublicGetter(cn)) {
       cmns.add(compactMethodNode(mn));
     }
     ccn.setGetterMethods(cmns);
-    
+
     cmns = new LinkedList<>();
     for (MethodNode mn : ASMUtil.getPublicSetter(cn)) {
       cmns.add(compactMethodNode(mn));
@@ -61,7 +61,7 @@ public class CompactUtil
 
     ccn.setPorts(new LinkedList<CompactFieldNode>());
     ccn.setName(cn.name);
-    
+
     List<CompactClassNode> ccns = new LinkedList<>();
     for (Object icn : cn.innerClasses) {
       CompactClassNode inner = new CompactClassNode();
@@ -76,8 +76,8 @@ public class CompactUtil
     if (cn instanceof ClassNodeType) {
       ccn.setCsv(((ClassNodeType)cn).csv);
     }
-    
-    
+
+
 //    if(!CollectionUtils.isEmpty(cn.innerClasses)){
 //      ccn.setInnerClasses(Lists.transform(cn.innerClasses, new Function<InnerClassNode, CompactClassNode>(){
 //
@@ -87,7 +87,7 @@ public class CompactUtil
 //          input.
 //          return null;
 //        }
-//        
+//
 //      }));
 //    }
     return ccn;

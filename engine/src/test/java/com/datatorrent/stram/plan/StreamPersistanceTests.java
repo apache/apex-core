@@ -828,8 +828,7 @@ public class StreamPersistanceTests
     @Override
     public void partitioned(Map partitions)
     {
-      // TODO Auto-generated method stub
-      System.out.println("Dynamic partitioning done....");
+      logger.debug("Dynamic partitioning done....");
     }
   }
 

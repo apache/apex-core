@@ -26,7 +26,7 @@ package com.datatorrent.stram.webapp.asm;
 public class CompactMethodNode
 {
   private MethodSignatureVisitor methodSignatureNode;
-  
+
   private String name;
 
   public String getName()
@@ -48,6 +48,6 @@ public class CompactMethodNode
   {
     this.methodSignatureNode = methodSignatureNode;
   }
-  
+
 
 }

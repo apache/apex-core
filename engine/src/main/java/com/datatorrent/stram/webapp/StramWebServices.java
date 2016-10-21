@@ -70,7 +70,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.apache.log4j.DTLoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
@@ -93,6 +92,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigValidator;
 import com.datatorrent.stram.util.JSONSerializationProvider;
+import com.datatorrent.stram.util.LoggerUtil;
 
 /**
  *
@@ -966,7 +966,7 @@ public class StramWebServices
       if (!targetChanges.isEmpty()) {
         dagManager.setLoggersLevel(Collections.unmodifiableMap(targetChanges));
         //Changing the levels on Stram after sending the message to all containers.
-        DTLoggerFactory.getInstance().changeLoggersLevel(targetChanges);
+        LoggerUtil.changeLoggersLevel(targetChanges);
       }
     } catch (JSONException ex) {
       throw new RuntimeException(ex);
@@ -984,7 +984,7 @@ public class StramWebServices
     JSONArray loggersArray = new JSONArray();
     try {
       if (pattern != null) {
-        Map<String, String> matches = DTLoggerFactory.getInstance().getClassesMatching(pattern);
+        Map<String, String> matches = LoggerUtil.getClassesMatching(pattern);
         for (Map.Entry<String, String> match : matches.entrySet()) {
           JSONObject node = new JSONObject();
           node.put("name", match.getKey());
@@ -1007,7 +1007,7 @@ public class StramWebServices
     init();
     JSONObject response = new JSONObject();
     JSONArray levelsArray = new JSONArray();
-    Map<String, String> currentLevels = DTLoggerFactory.getInstance().getPatternLevels();
+    Map<String, String> currentLevels = LoggerUtil.getPatternLevels();
     for (Map.Entry<String, String> lvl : currentLevels.entrySet()) {
       JSONObject node = new JSONObject();
       node.put("target", lvl.getKey());

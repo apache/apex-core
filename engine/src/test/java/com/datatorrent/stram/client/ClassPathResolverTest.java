@@ -78,7 +78,7 @@ public class ClassPathResolverTest
     ClassPathResolvers.JarFileContext jfc = new ClassPathResolvers.JarFileContext(jarFile, new StringWriter());
 
     ClassPathResolvers cpr = new ClassPathResolvers();
-    String baseDir = System.getProperty("user.home") + "/.m2/repository";
+    String baseDir = System.getProperty("localRepository", System.getProperty("user.home") + "/.m2/repository");
     List<ClassPathResolvers.Resolver> resolvers = cpr.createResolvers(ClassPathResolvers.SCHEME_MANIFEST + ":" + baseDir);
 
     Assert.assertEquals(1, resolvers.size());

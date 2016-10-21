@@ -54,7 +54,7 @@ public class StramToNodeStartRecordingRequest extends StreamingContainerUmbilica
   {
     this.id = id;
   }
-  
+
   private static final long serialVersionUID = 201405271034L;
 
 }

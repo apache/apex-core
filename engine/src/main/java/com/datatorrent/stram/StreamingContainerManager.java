@@ -2171,32 +2171,6 @@ public class StreamingContainerManager implements PlanContext
         };
         poolExecutor.submit(r);
       }
-      // delete stream state when using buffer server
-      for (PTOperator.PTOutput out : operator.getOutputs()) {
-        if (!out.isDownStreamInline()) {
-          if (operator.getContainer().bufferServerAddress == null) {
-            // address should be null only for a new container, in which case there should not be a purge request
-            // TODO: logging added to find out how we got here
-            LOG.warn("purge request w/o buffer server address source {} container {} checkpoints {}",
-                out, operator.getContainer(), operator.checkpoints);
-            continue;
-          }
-
-          for (InputPortMeta ipm : out.logicalStream.getSinks()) {
-            StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(ipm);
-            Integer codecId = plan.getStreamCodecIdentifier(streamCodecInfo);
-            // following needs to match the concat logic in StreamingContainer
-            String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName).concat(Component.CONCAT_SEPARATOR).concat(codecId.toString());
-            // delete everything from buffer server prior to new checkpoint
-            BufferServerController bsc = getBufferServerClient(operator);
-            try {
-              bsc.purge(null, sourceIdentifier, operator.checkpoints.getFirst().windowId - 1);
-            } catch (RuntimeException re) {
-              LOG.warn("Failed to purge {} {}", bsc.addr, sourceIdentifier, re);
-            }
-          }
-        }
-      }
     }
     purgeCheckpoints.clear();
   }

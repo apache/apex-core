@@ -65,7 +65,6 @@ public class StablePriorityQueueTest
   @Test
   public void testElement()
   {
-    System.out.println("element");
     StablePriorityQueue<Integer> instance = new StablePriorityQueue<Integer>(1);
     Integer i = 10;
     instance.add(i);
@@ -79,7 +78,6 @@ public class StablePriorityQueueTest
   @Test
   public void testOffer()
   {
-    System.out.println("offer");
     StablePriorityQueue<Integer> instance = new StablePriorityQueue<Integer>(1);
     Integer i = 10;
     assertTrue(instance.offer(i));

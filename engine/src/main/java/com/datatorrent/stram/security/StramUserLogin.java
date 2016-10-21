@@ -49,7 +49,7 @@ public class StramUserLogin
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramUserLogin.class);
   public static final String DT_AUTH_PREFIX = StreamingApplication.DT_PREFIX + "authentication.";
-  private static final String DT_AUTH_PRINCIPAL = DT_AUTH_PREFIX + "principal";
+  public static final String DT_AUTH_PRINCIPAL = DT_AUTH_PREFIX + "principal";
   public static final String DT_AUTH_KEYTAB = DT_AUTH_PREFIX + "keytab";
   private static String principal;
   private static String keytab;
@@ -57,10 +57,15 @@ public class StramUserLogin
   public static void attemptAuthentication(Configuration conf) throws IOException
   {
     if (UserGroupInformation.isSecurityEnabled()) {
-      String userPrincipal = conf.get(DT_AUTH_PRINCIPAL);
-      String userKeytab = conf.get(DT_AUTH_KEYTAB);
-      authenticate(userPrincipal, userKeytab);
+      authenticate(conf);
     }
+  }
+
+  public static void authenticate(Configuration conf) throws IOException
+  {
+    String userPrincipal = conf.get(DT_AUTH_PRINCIPAL);
+    String userKeytab = conf.get(DT_AUTH_KEYTAB);
+    authenticate(userPrincipal, userKeytab);
   }
 
   public static void authenticate(String principal, String keytab) throws IOException
@@ -79,7 +84,7 @@ public class StramUserLogin
     }
   }
 
-  public static long refreshTokens(long tokenLifeTime, String destinationDir, String destinationFile, final Configuration conf, String hdfsKeyTabFile, final Credentials credentials, final InetSocketAddress rmAddress, final boolean renewRMToken) throws IOException
+  public static long refreshTokens(long tokenLifeTime, String destinationDir, String destinationFile, final Configuration conf, String principal, String hdfsKeyTabFile, final Credentials credentials, final InetSocketAddress rmAddress, final boolean renewRMToken) throws IOException
   {
     long expiryTime = System.currentTimeMillis() + tokenLifeTime;
     //renew tokens
@@ -93,7 +98,10 @@ public class StramUserLogin
       keyTabFile = FSUtil.copyToLocalFileSystem(fs, destinationDir, destinationFile, hdfsKeyTabFile, conf);
     }
 
-    UserGroupInformation ugi = UserGroupInformation.loginUserFromKeytabAndReturnUGI(UserGroupInformation.getCurrentUser().getUserName(), keyTabFile.getAbsolutePath());
+    if (principal == null) {
+      principal = UserGroupInformation.getCurrentUser().getUserName();
+    }
+    UserGroupInformation ugi = UserGroupInformation.loginUserFromKeytabAndReturnUGI(principal, keyTabFile.getAbsolutePath());
     try {
       ugi.doAs(new PrivilegedExceptionAction<Object>()
       {

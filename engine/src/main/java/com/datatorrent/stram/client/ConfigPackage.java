@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.conf.Configuration;
 
 import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
@@ -71,6 +72,7 @@ public class ConfigPackage extends JarFile implements Closeable
 
   private final Map<String, String> properties = new TreeMap<>();
   private final Map<String, Map<String, String>> appProperties = new TreeMap<>();
+  private final List<AppPackage.AppInfo> applications = new ArrayList<>();
 
   /**
    * Creates an Config Package object.
@@ -114,6 +116,12 @@ public class ConfigPackage extends JarFile implements Closeable
     directory = newDirectory.getAbsolutePath();
     zipFile.extractAll(directory);
     processPropertiesXml();
+    processAppDirectory(new File(directory, "app"));
+  }
+
+  public List<AppPackage.AppInfo> getApplications()
+  {
+    return Collections.unmodifiableList(applications);
   }
 
   public String tempDirectory()
@@ -174,6 +182,38 @@ public class ConfigPackage extends JarFile implements Closeable
       return properties;
     } else {
       return appProperties.get(appName);
+    }
+  }
+
+  private void processAppDirectory(File dir)
+  {
+    if (!dir.exists()) {
+      return;
+    }
+
+    Configuration config = new Configuration();
+
+    List<String> absClassPath = new ArrayList<>(classPath);
+    for (int i = 0; i < absClassPath.size(); i++) {
+      String path = absClassPath.get(i);
+      if (!path.startsWith("/")) {
+        absClassPath.set(i, directory + "/" + path);
+      }
+    }
+
+    config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, StringUtils.join(absClassPath, ','));
+
+    File[] files = dir.listFiles();
+
+    for (File entry : files) {
+      if (entry.getName().endsWith(".json")) {
+
+        AppPackage.AppInfo appInfo = StramClientUtils.jsonFileToAppInfo(entry, config);
+
+        if (appInfo != null) {
+          applications.add(appInfo);
+        }
+      }
     }
   }
 

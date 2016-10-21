@@ -241,7 +241,7 @@ public class InjectConfigTest
 
     ObjectMapper mapper = new ObjectMapper();
     Map<String, Object> properties = mapper.convertValue(testBean, Map.class);
-    System.out.println("testBean source: " + properties);
+    LOG.debug("testBean source: {}", properties);
 
     BeanUtilsTestBean testBean2 = new BeanUtilsTestBean();
     testBean2.string2 = "testBean2";
@@ -267,7 +267,7 @@ public class InjectConfigTest
     //   Assert.assertEquals("preserve existing value", "testBean2", testBean2.string2);
     //   Assert.assertEquals("map property", "someValue", testBean2.mapProperty.get("someKey"));
 
-    //   System.out.println("testBean cloned: " + mapper.convertValue(testBean2, Map.class));
+    //   LOG.debug("testBean cloned: {}", mapper.convertValue(testBean2, Map.class));
 
     PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
     //PropertyDescriptor pd = propertyUtilsBean.getPropertyDescriptor(testBean2, "mapProperty.someKey2");

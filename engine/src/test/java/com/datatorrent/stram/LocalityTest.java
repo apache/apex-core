@@ -73,7 +73,7 @@ public class LocalityTest
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
-    Assert.assertEquals("number required containers", 7, scm.containerStartRequests.size());
+    Assert.assertEquals("number required containers", 6, scm.containerStartRequests.size());
 
     ResourceRequestHandler rr = new ResourceRequestHandler();
 

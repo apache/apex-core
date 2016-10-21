@@ -286,7 +286,7 @@ public class SubscribeRequestTuple extends RequestTuple
   public String toString()
   {
     return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier +
-        ", windowId=" + Codec.getStringWindowId((long)baseSeconds | windowId) + ", type=" + streamType +
+        ", windowId=" + Codec.getStringWindowId((long)baseSeconds << 32 | windowId) + ", type=" + streamType +
         ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask +
         ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) +
         ", bufferSize=" + bufferSize + '}';

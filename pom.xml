@@ -25,7 +25,7 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>16</version>
+    <version>18</version>
   </parent>
 
   <groupId>org.apache.apex</groupId>
@@ -57,7 +57,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.optimize>false</maven.compiler.optimize>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
-    <hadoop.version>2.2.0</hadoop.version>
+    <hadoop.version>2.6.0</hadoop.version>
     <github.global.server>github</github.global.server>
     <jackson.version>1.9.13</jackson.version>
     <jersey.version>1.9</jersey.version>
@@ -116,6 +116,7 @@
             <exclude>**/*.md</exclude>
             <exclude>**/*.txt</exclude>
             <exclude>**/*.yml</exclude>
+            <exclude>**/src/test/resources/**/*.keytab</exclude>
             <exclude>**/*.importorder</exclude>
             <exclude>**/archetype-resources/**</exclude>
             <exclude>misc/ide-templates/**</exclude>
@@ -192,6 +193,7 @@
             <exclude>.idea/**</exclude>
             <exclude>**/src/test/resources/**/MANIFEST.MF</exclude>
             <exclude>**/src/test/resources/**/*.json</exclude>
+            <exclude>**/src/test/resources/**/*.keytab</exclude>
             <exclude>**/resources/META-INF/services/**</exclude>
             <exclude>**/archetype-resources/**</exclude>
             <exclude>**/*.md</exclude>
@@ -337,7 +339,7 @@
             <dependency>
               <groupId>org.apache.apex</groupId>
               <artifactId>apex-codestyle-config</artifactId>
-              <version>1.0.0-incubating</version>
+              <version>1.1.0</version>
             </dependency>
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
@@ -367,7 +369,7 @@
         <plugin>
           <groupId>com.github.siom79.japicmp</groupId>
           <artifactId>japicmp-maven-plugin</artifactId>
-          <version>0.7.0</version>
+          <version>0.9.0</version>
           <configuration>
             <oldVersion>
               <dependency>
@@ -391,8 +393,6 @@
               <excludes>
                 <exclude>@org.apache.hadoop.classification.InterfaceStability$Evolving</exclude>
                 <exclude>@org.apache.hadoop.classification.InterfaceStability$Unstable</exclude>
-                <!-- com.ning:async-http-client upgrade -->
-                <exclude>com.datatorrent.common.util.PubSubWebSocketClient</exclude>
               </excludes>
             </parameter>
           </configuration>

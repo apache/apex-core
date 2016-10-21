@@ -59,7 +59,7 @@ public class AffinityRulesTest
 
   @Rule
   public TestMeta testMeta = new TestMeta();
-  
+
   @Test
   public void testOperatorPartitionsAntiAffinity()
   {

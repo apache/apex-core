@@ -21,8 +21,12 @@ package com.datatorrent.stram.engine;
 import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 
+import javax.validation.constraints.NotNull;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Preconditions;
 
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Context;
@@ -44,6 +48,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   private Thread thread;
   private long lastProcessedWindowId;
   private final int id;
+  private final String name;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<ContainerStats.OperatorStats>(1024);
   private final CircularBuffer<OperatorRequest> requests = new CircularBuffer<OperatorRequest>(1024);
@@ -81,14 +86,16 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   /**
    *
    * @param id the value of id
+   * @param name name of the operator
    * @param attributes the value of attributes
    * @param parentContext
    */
-  public OperatorContext(int id, AttributeMap attributes, Context parentContext)
+  public OperatorContext(int id, @NotNull String name, AttributeMap attributes, Context parentContext)
   {
     super(attributes, parentContext);
     this.lastProcessedWindowId = Stateless.WINDOW_ID;
     this.id = id;
+    this.name = Preconditions.checkNotNull(name, "operator name");
     this.stateless = super.getValue(OperatorContext.STATELESS);
   }
 
@@ -96,6 +103,12 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   public int getId()
   {
     return id;
+  }
+
+  @Override
+  public String getName()
+  {
+    return name;
   }
 
   @Override

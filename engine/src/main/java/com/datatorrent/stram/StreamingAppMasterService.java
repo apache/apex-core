@@ -105,6 +105,7 @@ import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
+import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.util.SecurityUtils;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
@@ -614,7 +615,11 @@ public class StreamingAppMasterService extends CompositeService
       }
       WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(config).start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
-      this.appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
+      appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
+
+      if (ConfigUtils.isSSLEnabled(config)) {
+        appMasterTrackingUrl = "https://" + appMasterTrackingUrl;
+      }
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);
     } catch (Exception e) {
       LOG.error("Webapps failed to start. Ignoring for now:", e);
@@ -671,6 +676,7 @@ public class StreamingAppMasterService extends CompositeService
     long tokenLifeTime = (long)(dag.getValue(LogicalPlan.TOKEN_REFRESH_ANTICIPATORY_FACTOR) * Math.min(dag.getValue(LogicalPlan.HDFS_TOKEN_LIFE_TIME), dag.getValue(LogicalPlan.RM_TOKEN_LIFE_TIME)));
     long expiryTime = System.currentTimeMillis() + tokenLifeTime;
     LOG.debug(" expiry token time {}", tokenLifeTime);
+    String principal = dag.getValue(LogicalPlan.PRINCIPAL);
     String hdfsKeyTabFile = dag.getValue(LogicalPlan.KEY_TAB_FILE);
 
     // Register self with ResourceManager
@@ -748,7 +754,7 @@ public class StreamingAppMasterService extends CompositeService
 
       if (UserGroupInformation.isSecurityEnabled() && currentTimeMillis >= expiryTime && hdfsKeyTabFile != null) {
         String applicationId = appAttemptID.getApplicationId().toString();
-        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, FileUtils.getTempDirectoryPath(), applicationId, conf, hdfsKeyTabFile, credentials, rmAddress, true);
+        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, FileUtils.getTempDirectoryPath(), applicationId, conf, principal, hdfsKeyTabFile, credentials, rmAddress, true);
       }
 
       if (currentTimeMillis > nodeReportUpdateTime) {

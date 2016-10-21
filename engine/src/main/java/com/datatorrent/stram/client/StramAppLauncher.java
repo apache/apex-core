@@ -88,11 +88,12 @@ import com.datatorrent.stram.security.StramUserLogin;
 public class StramAppLauncher
 {
   public static final String CLASSPATH_RESOLVERS_KEY_NAME = StreamingApplication.DT_PREFIX + "classpath.resolvers";
-  public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
-  public static final String FILES_CONF_KEY_NAME = "tmpfiles";
-  public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
-  public static final String ORIGINAL_APP_ID = "tmpOriginalAppId";
-  public static final String QUEUE_NAME = "queueName";
+  public static final String LIBJARS_CONF_KEY_NAME = "_apex.libjars";
+  public static final String FILES_CONF_KEY_NAME = "_apex.files";
+  public static final String ARCHIVES_CONF_KEY_NAME = "_apex.archives";
+  public static final String ORIGINAL_APP_ID = "_apex.originalAppId";
+  public static final String QUEUE_NAME = "_apex.queueName";
+  public static final String TAGS = "_apex.tags";
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
   private File jarFile;
@@ -560,14 +561,12 @@ public class StramAppLauncher
     return cl;
   }
 
-  private void setTokenRefreshKeytab(LogicalPlan dag, Configuration conf) throws IOException
+  private void setTokenRefreshCredentials(LogicalPlan dag, Configuration conf) throws IOException
   {
-    String keytabPath;
-    if ((keytabPath = conf.get(StramClientUtils.KEY_TAB_FILE)) == null) {
-      String keytab;
-      if ((keytab = StramUserLogin.getKeytab()) == null) {
-        keytab = conf.get(StramUserLogin.DT_AUTH_KEYTAB);
-      }
+    String principal = StramUserLogin.getPrincipal();
+    String keytabPath = conf.get(StramClientUtils.KEY_TAB_FILE);
+    if (keytabPath == null) {
+      String keytab = StramUserLogin.getKeytab();
       if (keytab != null) {
         Path localKeyTabPath = new Path(keytab);
         try (FileSystem fs = StramClientUtils.newFileSystemInstance(conf)) {
@@ -579,10 +578,11 @@ public class StramAppLauncher
         }
       }
     }
-    if (keytabPath != null) {
+    if ((principal != null) && (keytabPath != null)) {
+      dag.setAttribute(LogicalPlan.PRINCIPAL, principal);
       dag.setAttribute(LogicalPlan.KEY_TAB_FILE, keytabPath);
     } else {
-      LOG.warn("No keytab specified for refreshing tokens, application may not be able to run indefinitely");
+      LOG.warn("Credentials for refreshing tokens not available, application may not be able to run indefinitely");
     }
   }
 
@@ -600,13 +600,12 @@ public class StramAppLauncher
     Configuration conf = propertiesBuilder.conf;
     conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.CLUSTER);
     LogicalPlan dag = appConfig.createApp(propertiesBuilder);
-    long hdfsTokenMaxLifeTime = conf.getLong(StramClientUtils.DT_HDFS_TOKEN_MAX_LIFE_TIME, conf.getLong(StramClientUtils.HDFS_TOKEN_MAX_LIFE_TIME, StramClientUtils.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT));
-    dag.setAttribute(LogicalPlan.HDFS_TOKEN_LIFE_TIME, hdfsTokenMaxLifeTime);
-    long rmTokenMaxLifeTime = conf.getLong(StramClientUtils.DT_RM_TOKEN_MAX_LIFE_TIME, conf.getLong(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_KEY, YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT));
-    dag.setAttribute(LogicalPlan.RM_TOKEN_LIFE_TIME, rmTokenMaxLifeTime);
-    // TODO:- Need to see if other token refresh attributes are needed if security is not enabled
     if (UserGroupInformation.isSecurityEnabled()) {
-      setTokenRefreshKeytab(dag, conf);
+      long hdfsTokenMaxLifeTime = conf.getLong(StramClientUtils.DT_HDFS_TOKEN_MAX_LIFE_TIME, conf.getLong(StramClientUtils.HDFS_TOKEN_MAX_LIFE_TIME, StramClientUtils.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT));
+      dag.setAttribute(LogicalPlan.HDFS_TOKEN_LIFE_TIME, hdfsTokenMaxLifeTime);
+      long rmTokenMaxLifeTime = conf.getLong(StramClientUtils.DT_RM_TOKEN_MAX_LIFE_TIME, conf.getLong(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_KEY, YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT));
+      dag.setAttribute(LogicalPlan.RM_TOKEN_LIFE_TIME, rmTokenMaxLifeTime);
+      setTokenRefreshCredentials(dag, conf);
     }
     String tokenRefreshFactor = conf.get(StramClientUtils.TOKEN_ANTICIPATORY_REFRESH_FACTOR);
     if (tokenRefreshFactor != null && tokenRefreshFactor.trim().length() > 0) {
@@ -632,6 +631,12 @@ public class StramAppLauncher
       client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
       client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));
       client.setQueueName(conf.get(QUEUE_NAME));
+      String tags = conf.get(TAGS);
+      if (tags != null) {
+        for (String tag : tags.split(",")) {
+          client.addTag(tag.trim());
+        }
+      }
       client.startApplication();
       return client.getApplicationReport().getApplicationId();
     } finally {

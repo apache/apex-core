@@ -145,9 +145,9 @@ public class GenericNodeTest
 
     public volatile List<Checkpoint> checkpoints = Lists.newArrayList();
 
-    public TestStatsOperatorContext(int id, AttributeMap attributes, Context parentContext)
+    public TestStatsOperatorContext(int id, String name, AttributeMap attributes, Context parentContext)
     {
-      super(id, attributes, parentContext);
+      super(id, name, attributes, parentContext);
     }
 
     @Override
@@ -276,7 +276,8 @@ public class GenericNodeTest
     long sleeptime = 25L;
     final ArrayList<Object> list = new ArrayList<Object>();
     GenericOperator go = new GenericOperator();
-    final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, new DefaultAttributeMap(), null));
+    final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, "operator",
+        new DefaultAttributeMap(), null));
     gn.setId(1);
     AbstractReservoir reservoir1 = AbstractReservoir.newReservoir("ip1Res", 1024);
     AbstractReservoir reservoir2 = AbstractReservoir.newReservoir("ip2Res", 1024);
@@ -397,7 +398,8 @@ public class GenericNodeTest
     long maxSleep = 5000;
     long sleeptime = 25L;
     GenericOperator go = new GenericOperator();
-    final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, new DefaultAttributeMap(), null));
+    final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, "operator",
+        new DefaultAttributeMap(), null));
     gn.setId(1);
     AbstractReservoir reservoir1 = AbstractReservoir.newReservoir("ip1Res", 1024);
     AbstractReservoir reservoir2 = AbstractReservoir.newReservoir("ip2Res", 1024);
@@ -537,7 +539,7 @@ public class GenericNodeTest
 
     dam.put(OperatorContext.STORAGE_AGENT, storageAgent);
 
-    TestStatsOperatorContext operatorContext = new TestStatsOperatorContext(0, dam, null);
+    TestStatsOperatorContext operatorContext = new TestStatsOperatorContext(0, "operator", dam, null);
     final GenericNode gn = new GenericNode(go, operatorContext);
     gn.setId(1);
 
@@ -635,7 +637,7 @@ public class GenericNodeTest
     DefaultAttributeMap attrMap = new DefaultAttributeMap();
     attrMap.put(Context.DAGContext.CHECKPOINT_WINDOW_COUNT, dagCheckPoint);
     attrMap.put(Context.OperatorContext.CHECKPOINT_WINDOW_COUNT, opCheckPoint);
-    final OperatorContext context = new com.datatorrent.stram.engine.OperatorContext(0, attrMap, null);
+    final OperatorContext context = new com.datatorrent.stram.engine.OperatorContext(0, "operator", attrMap, null);
     final GenericNode gn = new GenericNode(go, context);
     gn.setId(1);
 

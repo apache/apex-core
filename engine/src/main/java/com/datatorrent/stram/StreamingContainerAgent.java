@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
@@ -347,7 +348,7 @@ public class StreamingContainerAgent
     if (inputPortMeta != null) {
       StreamCodec<?> codec = inputPortMeta.getValue(PortContext.STREAM_CODEC);
       if (codec == null) {
-        // it cannot be this object that gets returned. Depending on this value is dangerous 
+        // it cannot be this object that gets returned. Depending on this value is dangerous
         codec = inputPortMeta.getPortObject().getStreamCodec();
         if (codec != null) {
           // don't create codec multiple times - it will assign a new identifier
@@ -450,6 +451,12 @@ public class StreamingContainerAgent
     ci.state = container.getState().name();
     ci.jvmName = this.jvmName;
     ci.numOperators = container.getOperators().size();
+    ci.operators = new TreeMap<>();
+
+    for (PTOperator ptOperator : container.getOperators()) {
+      ci.operators.put(ptOperator.getId(), ptOperator.getName());
+    }
+
     ci.memoryMBAllocated = container.getAllocatedMemoryMB();
     ci.lastHeartbeat = lastHeartbeatMillis;
     ci.memoryMBFree = this.memoryMBFree;

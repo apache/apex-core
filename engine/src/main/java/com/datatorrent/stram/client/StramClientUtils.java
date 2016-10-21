@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.fs.FileSystem;
@@ -74,7 +75,6 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
-import org.apache.log4j.DTLoggerFactory;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -82,6 +82,7 @@ import com.google.common.collect.Sets;
 
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.util.ConfigValidator;
@@ -105,7 +106,7 @@ public class StramClientUtils
   public static final String SUBDIR_APPS = "apps";
   public static final String SUBDIR_PROFILES = "profiles";
   public static final String SUBDIR_CONF = "conf";
-  public static final int RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
+  public static final long RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
   public static final String DT_HDFS_TOKEN_MAX_LIFE_TIME = StreamingApplication.DT_PREFIX + "namenode.delegation.token.max-lifetime";
   public static final String HDFS_TOKEN_MAX_LIFE_TIME = "dfs.namenode.delegation.token.max-lifetime";
   public static final String DT_RM_TOKEN_MAX_LIFE_TIME = StreamingApplication.DT_PREFIX + "resourcemanager.delegation.token.max-lifetime";
@@ -413,7 +414,7 @@ public class StramClientUtils
     }
 
     //Validate loggers-level settings
-    String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
+    String loggersLevel = conf.get(StramUtils.DT_LOGGERS_LEVEL);
     if (loggersLevel != null) {
       String[] targets = loggersLevel.split(",");
       Preconditions.checkArgument(targets.length > 0, "zero loggers level");
@@ -431,15 +432,15 @@ public class StramClientUtils
     // We are overriding this to be 10 seconds maximum.
     //
 
-    int rmConnectMaxWait = conf.getInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, YarnConfiguration.DEFAULT_RESOURCEMANAGER_CONNECT_MAX_WAIT_MS);
+    long rmConnectMaxWait = conf.getLong(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, YarnConfiguration.DEFAULT_RESOURCEMANAGER_CONNECT_MAX_WAIT_MS);
     if (rmConnectMaxWait > RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE) {
       LOG.info("Overriding {} assigned value of {} to {} because the assigned value is too big.", YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, rmConnectMaxWait, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
-      conf.setInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
-      int rmConnectRetryInterval = conf.getInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, YarnConfiguration.DEFAULT_RESOURCEMANAGER_CONNECT_MAX_WAIT_MS);
-      int defaultRetryInterval = Math.max(500, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE / 5);
+      conf.setLong(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
+      long rmConnectRetryInterval = conf.getLong(YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, YarnConfiguration.DEFAULT_RESOURCEMANAGER_CONNECT_MAX_WAIT_MS);
+      long defaultRetryInterval = Math.max(500, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE / 5);
       if (rmConnectRetryInterval > defaultRetryInterval) {
         LOG.info("Overriding {} assigned value of {} to {} because the assigned value is too big.", YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, rmConnectRetryInterval, defaultRetryInterval);
-        conf.setInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, defaultRetryInterval);
+        conf.setLong(YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, defaultRetryInterval);
       }
     }
     LOG.info(" conf object in stramclient {}", conf);
@@ -710,7 +711,7 @@ public class StramClientUtils
 
   public static ApplicationReport getStartedAppInstanceByName(YarnClient clientRMService, String appName, String user, String excludeAppId) throws YarnException, IOException
   {
-    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE), EnumSet.of(YarnApplicationState.RUNNING,
+    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE, StramClient.YARN_APPLICATION_TYPE_DEPRECATED), EnumSet.of(YarnApplicationState.RUNNING,
         YarnApplicationState.ACCEPTED,
         YarnApplicationState.NEW,
         YarnApplicationState.NEW_SAVING,
@@ -821,7 +822,7 @@ public class StramClientUtils
       throws IOException, YarnException
   {
     List<ApplicationReport> result = new ArrayList<>();
-    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE),
+    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE, StramClient.YARN_APPLICATION_TYPE_DEPRECATED),
         EnumSet.of(YarnApplicationState.FAILED, YarnApplicationState.FINISHED, YarnApplicationState.KILLED));
     Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
     for (ApplicationReport ar : applications) {
@@ -841,6 +842,30 @@ public class StramClientUtils
       }
     }
     return result;
+  }
+
+  public static AppPackage.AppInfo jsonFileToAppInfo(File file, Configuration config)
+  {
+    AppPackage.AppInfo appInfo = null;
+
+    try {
+      StramAppLauncher.AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+      StramAppLauncher stramAppLauncher = new StramAppLauncher(file.getName(), config);
+      stramAppLauncher.loadDependencies();
+      appInfo = new AppPackage.AppInfo(appFactory.getName(), file.getName(), "json");
+      appInfo.displayName = appFactory.getDisplayName();
+      try {
+        appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
+        appInfo.dag.validate();
+      } catch (Exception ex) {
+        appInfo.error = ex.getMessage();
+        appInfo.errorStackTrace = ExceptionUtils.getStackTrace(ex);
+      }
+    } catch (Exception ex) {
+      LOG.error("Caught exceptions trying to process {}", file.getName(), ex);
+    }
+
+    return appInfo;
   }
 
 }

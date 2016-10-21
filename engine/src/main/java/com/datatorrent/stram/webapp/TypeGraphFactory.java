@@ -47,9 +47,9 @@ public class TypeGraphFactory
   private static final byte[] preComputeGraph;
 
   private static final Logger LOG = LoggerFactory.getLogger(TypeGraphFactory.class);
-  
+
   private static TypeGraph tg = null;
-  
+
 
   // statically initialize the precomputed type graph out of classes in jdk and jars in current classpath
 

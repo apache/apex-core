@@ -43,6 +43,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -209,7 +210,17 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
 
     if (executorService != null) {
-      executorService.shutdownNow();
+      executorService.shutdown();
+      boolean terminated = false;
+      try {
+        terminated = executorService.awaitTermination(100, TimeUnit.MILLISECONDS);
+      } catch (InterruptedException e) {
+        logger.debug("Wait for graceful executor service {} shutdown interrupted for node {}", executorService, this, e);
+      }
+      if (!terminated) {
+        logger.warn("Shutting down executor service {} for node {}", executorService, this);
+        executorService.shutdownNow();
+      }
     }
     operator.teardown();
   }

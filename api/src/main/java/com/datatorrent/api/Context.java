@@ -323,6 +323,11 @@ public interface Context
     int getId();
 
     /**
+     * @return the logical operator name which was used to add the operator in tha DAG.
+     */
+    String getName();
+
+    /**
      * Return the number of windows before the next checkpoint including the current window.
      * @return Number of windows from checkpoint, 1 if the checkpoint will be after the current window
      */

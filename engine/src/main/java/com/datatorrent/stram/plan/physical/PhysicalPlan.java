@@ -435,7 +435,7 @@ public class PhysicalPlan implements Serializable
     updatePartitionsInfoForPersistOperator(dag);
 
     Map<PTOperator, PTContainer> operatorContainerMap = new HashMap<>();
-    
+
     // assign operators to containers
     int groupCount = 0;
     Set<PTOperator> deployOperators = Sets.newHashSet();
@@ -463,7 +463,7 @@ public class PhysicalPlan implements Serializable
       }
     }
 
-    
+
     for (PTContainer container : containers) {
       updateContainerMemoryWithBufferServer(container);
       container.setRequiredVCores(getVCores(container.getOperators()));
@@ -490,7 +490,7 @@ public class PhysicalPlan implements Serializable
         LOG.debug("Container with operators [{}] has anti affinity with [{}]", StringUtils.join(containerOperators, ","), StringUtils.join(antiOperators, ","));
       }
     }
-    
+
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
       initCheckpoint(operEntry.getKey(), operEntry.getValue(), Checkpoint.INITIAL_CHECKPOINT);
     }
@@ -781,7 +781,7 @@ public class PhysicalPlan implements Serializable
     // create operator instance per partition
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());
     for (Partition<Operator> partition : partitions) {
-      PTOperator p = addPTOperator(m, partition, Checkpoint.INITIAL_CHECKPOINT);
+      PTOperator p = addPTOperator(m, partition, null);
       operatorIdToPartition.put(p.getId(), partition);
     }
 
@@ -1135,7 +1135,6 @@ public class PhysicalPlan implements Serializable
 
     //make sure all the new operators are included in deploy operator list
     this.deployOpers.addAll(this.newOpers.keySet());
-
     ctx.deploy(releaseContainers, this.undeployOpers, newContainers, deployOperators);
     this.newOpers.clear();
     this.deployOpers.clear();
@@ -1269,10 +1268,11 @@ public class PhysicalPlan implements Serializable
       Checkpoint activationCheckpoint = Checkpoint.INITIAL_CHECKPOINT;
       for (PTInput input : oper.inputs) {
         PTOperator sourceOper = input.source.source;
+        Checkpoint checkpoint = sourceOper.recoveryCheckpoint;
         if (sourceOper.checkpoints.isEmpty()) {
-          getActivationCheckpoint(sourceOper);
+          checkpoint = getActivationCheckpoint(sourceOper);
         }
-        activationCheckpoint = Checkpoint.max(activationCheckpoint, sourceOper.recoveryCheckpoint);
+        activationCheckpoint = Checkpoint.max(activationCheckpoint, checkpoint);
       }
       return activationCheckpoint;
     }
