@@ -522,9 +522,10 @@ public final class RecordingsAgent extends FSPartFileAgent
           lastProcessPartFile = indexLine.partFile;
           try (BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))))) {
             processPartFile(partBr, queryType, low, high, limit, ports, numRemainingTuples, currentTimestamp, currentWindowLow, currentOffset, info);
+            currentOffset += numTuples;
           }
         }
-        currentOffset += numTuples;
+
         if (numRemainingTuples.longValue() <= 0 || (queryType == QueryType.TIME && currentTimestamp.longValue() > high)) {
           return info;
         }
