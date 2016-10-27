@@ -2475,6 +2475,12 @@ public class StreamingContainerManager implements PlanContext
       } else {
         loi.partitions.add(physicalOperator.getId());
 
+        for (Map.Entry<String, PortStatus> portEntry : physicalOperator.stats.outputPortStatusList.entrySet()) {
+          loi.totalBufferServerWriteBytesPSMA += portEntry.getValue().bufferServerBytesPMSMA.getAvg() * 1000;
+        }
+        for (Map.Entry<String, PortStatus> portEntry : physicalOperator.stats.inputPortStatusList.entrySet()) {
+          loi.totalBufferServerReadBytesPSMA += portEntry.getValue().bufferServerBytesPMSMA.getAvg() * 1000;
+        }
         // exclude unifier, not sure if we should include it in the future
         loi.tuplesEmittedPSMA += os.tuplesEmittedPSMA.get();
         loi.tuplesProcessedPSMA += os.tuplesProcessedPSMA.get();

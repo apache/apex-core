@@ -980,6 +980,8 @@ public class StreamingContainerManagerTest
         JSONObject opObj = logicalOperators.getJSONObject(opName);
         Assert.assertTrue(opObj.has("totalTuplesProcessed"));
         Assert.assertTrue(opObj.has("totalTuplesEmitted"));
+        Assert.assertTrue(opObj.has("totalBufferServerReadBytesPSMA"));
+        Assert.assertTrue(opObj.has("totalBufferServerWriteBytesPSMA"));
         Assert.assertTrue(opObj.has("tuplesProcessedPSMA"));
         Assert.assertTrue(opObj.has("tuplesEmittedPSMA"));
         Assert.assertTrue(opObj.has("latencyMA"));

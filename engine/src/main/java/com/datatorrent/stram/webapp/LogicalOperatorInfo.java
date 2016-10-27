@@ -41,6 +41,10 @@ public class LogicalOperatorInfo
   public String name;
   public String className;
   @AutoMetric
+  public long totalBufferServerReadBytesPSMA;
+  @AutoMetric
+  public long totalBufferServerWriteBytesPSMA;
+  @AutoMetric
   public long totalTuplesProcessed = 0;
   @AutoMetric
   public long totalTuplesEmitted = 0;
