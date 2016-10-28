@@ -18,6 +18,9 @@
  */
 package com.datatorrent.api;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.Unifier;
 
@@ -31,7 +34,11 @@ import com.datatorrent.api.Operator.Unifier;
  */
 public class DefaultOutputPort<T> implements Operator.OutputPort<T>
 {
+  public static final String THREAD_AFFINITY_DISABLE_CHECK = "com.datatorrent.api.DefaultOutputPort.thread.check.disable";
+  private static final Logger logger = LoggerFactory.getLogger(DefaultOutputPort.class);
+
   private transient Sink<Object> sink;
+  private transient Thread operatorThread;
 
   /**
    * <p>Constructor for DefaultOutputPort.</p>
@@ -48,6 +55,12 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
    */
   public void emit(T tuple)
   {
+    // operatorThread could be null if setup() never got called.
+    if (operatorThread != null && Thread.currentThread() != operatorThread) {
+      // only under certain modes: enforce this
+      throw new IllegalStateException("Current thread " + Thread.currentThread().getName() +
+          " is different from the operator thread " + operatorThread.getName());
+    }
     sink.put(tuple);
   }
 
@@ -88,6 +101,10 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
   @Override
   public void setup(PortContext context)
   {
+    if (Boolean.getBoolean(THREAD_AFFINITY_DISABLE_CHECK) == false) {
+      operatorThread = Thread.currentThread();
+      logger.debug("Enforcing emit on {}", operatorThread.getName());
+    }
   }
 
   /** {@inheritDoc} */
