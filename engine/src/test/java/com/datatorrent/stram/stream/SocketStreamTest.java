@@ -22,8 +22,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -53,6 +55,18 @@ public class SocketStreamTest
   private static final Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
   private static int bufferServerPort = 0;
   private static Server bufferServer = null;
+
+  private static final String streamName = "streamName";
+  private static final String upstreamNodeId = "upstreamNodeId";
+  private static final String  downstreamNodeId = "downStreamNodeId";
+
+  private StreamContext issContext;
+  private StreamContext ossContext;
+  private SweepableReservoir reservoir;
+  private BufferServerSubscriber iss;
+  private BufferServerPublisher oss;
+  private AtomicInteger messageCount;
+
   static EventLoop eventloop;
 
   static {
@@ -91,8 +105,53 @@ public class SocketStreamTest
   @SuppressWarnings({"SleepWhileInLoop"})
   public void testBufferServerStream() throws Exception
   {
+    iss.activate(issContext);
+    LOG.debug("input stream activated");
+
+    oss.activate(ossContext);
+    LOG.debug("output stream activated");
+
+    sendMessage();
+  }
+
+  /**
+   * Test buffer server stream by sending
+   * tuple on outputstream and receive same tuple from inputstream with following changes
+   *
+   * 1. Sink is sweeped befere the BufferServerSubscriber is activated.
+   * 2. BufferServerSubscriber is activated after the messages are sent from BufferServerPublisher
+   *
+   * @throws Exception
+   */
+  @Test
+  @SuppressWarnings({"SleepWhileInLoop"})
+  public void testBufferServerStreamWithLateActivationForSubscriber() throws Exception
+  {
+    for (int i = 0; i < 50; i++) {
+      Tuple t = reservoir.sweep();
+      if (t == null) {
+        sleep(5);
+        continue;
+      }
+
+      throw new Exception("Unexpected control tuple.");
+    }
+
+    oss.activate(ossContext);
+    LOG.debug("output stream activated");
+
+    sendMessage();
+
+    iss.activate(issContext);
+    LOG.debug("input stream activated");
+  }
+
+  @Before
+  public void init()
+  {
     final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<Object>();
-    final AtomicInteger messageCount = new AtomicInteger();
+    messageCount = new AtomicInteger(0);
+
     Sink<Object> sink = new Sink<Object>()
     {
       @Override
@@ -107,14 +166,9 @@ public class SocketStreamTest
       {
         throw new UnsupportedOperationException("Not supported yet.");
       }
-
     };
 
-    String streamName = "streamName";
-    String upstreamNodeId = "upstreamNodeId";
-    String downstreamNodeId = "downStreamNodeId";
-
-    StreamContext issContext = new StreamContext(streamName);
+    issContext = new StreamContext(streamName);
     issContext.setSourceId(upstreamNodeId);
     issContext.setSinkId(downstreamNodeId);
     issContext.setFinishedWindowId(-1);
@@ -122,33 +176,25 @@ public class SocketStreamTest
     issContext.put(StreamContext.CODEC, serde);
     issContext.put(StreamContext.EVENT_LOOP, eventloop);
 
-    BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId, 1024);
+    iss = new BufferServerSubscriber(downstreamNodeId, 1024);
     iss.setup(issContext);
-    SweepableReservoir reservoir = iss.acquireReservoir("testReservoir", 1);
+    reservoir = iss.acquireReservoir("testReservoir", 1);
     reservoir.setSink(sink);
 
-    StreamContext ossContext = new StreamContext(streamName);
+    ossContext = new StreamContext(streamName);
     ossContext.setSourceId(upstreamNodeId);
     ossContext.setSinkId(downstreamNodeId);
     ossContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
     ossContext.put(StreamContext.CODEC, serde);
     ossContext.put(StreamContext.EVENT_LOOP, eventloop);
 
-    BufferServerPublisher oss = new BufferServerPublisher(upstreamNodeId, 1024);
+    oss = new BufferServerPublisher(upstreamNodeId, 1024);
     oss.setup(ossContext);
+  }
 
-    iss.activate(issContext);
-    LOG.debug("input stream activated");
-
-    oss.activate(ossContext);
-    LOG.debug("output stream activated");
-
-    LOG.debug("Sending hello message");
-    oss.put(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0));
-    oss.put(StramTestSupport.generateTuple("hello", 0));
-    oss.put(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0));
-    oss.put(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1)); // it's a spurious tuple, presence of it should not affect the outcome of the test.
-
+  @After
+  public void verify() throws InterruptedException
+  {
     for (int i = 0; i < 100; i++) {
       Tuple t = reservoir.sweep();
       if (t == null) {
@@ -165,6 +211,15 @@ public class SocketStreamTest
     eventloop.disconnect(oss);
     eventloop.disconnect(iss);
     Assert.assertEquals("Received messages", 1, messageCount.get());
+  }
+
+  private void sendMessage()
+  {
+    LOG.debug("Sending hello message");
+    oss.put(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0));
+    oss.put(StramTestSupport.generateTuple("hello", 0));
+    oss.put(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0));
+    oss.put(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1)); // it's a spurious tuple, presence of it should not affect the outcome of the test.
   }
 
   private static final Logger logger = LoggerFactory.getLogger(SocketStreamTest.class);
