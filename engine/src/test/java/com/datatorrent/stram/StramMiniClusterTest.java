@@ -43,9 +43,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.common.util.JarHelper;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
@@ -192,10 +192,9 @@ public class StramMiniClusterTest
       LOG.info("Number containers: {}", nr.getNumContainers());
     }
 
-    String appMasterJar = JarFinder.getJar(StreamingAppMaster.class);
-    LOG.info("appmaster jar: " + appMasterJar);
-    String testJar = JarFinder.getJar(StramMiniClusterTest.class);
-    LOG.info("testJar: " + testJar);
+    JarHelper jarHelper = new JarHelper();
+    LOG.info("engine jar: {}", jarHelper.getJar(StreamingAppMaster.class));
+    LOG.info("engine test jar: {}", jarHelper.getJar(StramMiniClusterTest.class));
 
     // create test application
     Properties dagProps = new Properties();

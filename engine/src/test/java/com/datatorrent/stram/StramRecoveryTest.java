@@ -20,6 +20,7 @@ package com.datatorrent.stram;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -49,7 +50,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RPC.Server;
 import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.test.MockitoUtil;
 
 import com.google.common.collect.Lists;
 
@@ -472,7 +472,7 @@ public class StramRecoveryTest
     Configuration conf = new Configuration(false);
     final AtomicBoolean timedout = new AtomicBoolean();
 
-    StreamingContainerUmbilicalProtocol impl = MockitoUtil.mockProtocol(StreamingContainerUmbilicalProtocol.class);
+    StreamingContainerUmbilicalProtocol impl = Mockito.mock(StreamingContainerUmbilicalProtocol.class, Mockito.withSettings().extraInterfaces(Closeable.class));
 
     Mockito.doAnswer(new org.mockito.stubbing.Answer<Void>()
     {
