@@ -241,7 +241,7 @@ public class StramRecoveryTest
     csr.setSinkOperatorPortName("inport1");
     FutureTask<?> lpmf = scm.logicalPlanModification(Lists.newArrayList(cor, csr));
     while (!lpmf.isDone()) {
-      scm.monitorHeartbeat();
+      scm.monitorHeartbeat(false);
     }
     Assert.assertNull(lpmf.get()); // unmask exception, if any
 

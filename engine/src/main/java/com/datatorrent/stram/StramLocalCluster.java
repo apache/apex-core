@@ -501,7 +501,7 @@ public class StramLocalCluster implements Runnable, Controller
 
       if (heartbeatMonitoringEnabled) {
         // monitor child containers
-        dnmgr.monitorHeartbeat();
+        dnmgr.monitorHeartbeat(false);
       }
 
       if (childContainers.isEmpty() && dnmgr.containerStartRequests.isEmpty()) {

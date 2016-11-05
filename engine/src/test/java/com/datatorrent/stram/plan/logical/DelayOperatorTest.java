@@ -456,7 +456,7 @@ public class DelayOperatorTest
     }
 
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, false, groups);
-    scm.updateRecoveryCheckpoints(opB1, ctx);
+    scm.updateRecoveryCheckpoints(opB1, ctx, false);
 
     Assert.assertEquals("checkpoint " + opA1, Checkpoint.INITIAL_CHECKPOINT, opA1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + opB1, cp3, opC1.getRecoveryCheckpoint());

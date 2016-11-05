@@ -216,11 +216,11 @@ public class CheckpointTest
       Assert.assertEquals("", PTOperator.State.PENDING_DEPLOY, oper.getState());
     }
 
-    dnm.updateRecoveryCheckpoints(o2p1, new UpdateCheckpointsContext(clock));
+    dnm.updateRecoveryCheckpoints(o2p1, new UpdateCheckpointsContext(clock), false);
     Assert.assertEquals("no checkpoints " + o2p1, Checkpoint.INITIAL_CHECKPOINT, o2p1.getRecoveryCheckpoint());
 
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
-    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx, false);
     Assert.assertEquals("no checkpoints " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("number dependencies " + ctx.visited, 3, ctx.visited.size());
 
@@ -231,17 +231,17 @@ public class CheckpointTest
 
     o1p1.checkpoints.add(cp3);
     o1p1.checkpoints.add(cp5);
-    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock), false);
     Assert.assertEquals("checkpoint " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
 
     o2p1.checkpoints.add(new Checkpoint(3L, 0, 0));
-    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock), false);
     Assert.assertEquals("checkpoint " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + o2p1, Checkpoint.INITIAL_CHECKPOINT, o2p1.getRecoveryCheckpoint());
 
     // set leaf operator checkpoint
     dnm.addCheckpoint(o3SLp1, cp5);
-    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock), false);
     Assert.assertEquals("checkpoint " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + o2p1, Checkpoint.INITIAL_CHECKPOINT, o2p1.getRecoveryCheckpoint());
 
@@ -249,20 +249,20 @@ public class CheckpointTest
     for (PTOperator oper : plan.getAllOperators().values()) {
       oper.setState(PTOperator.State.ACTIVE);
     }
-    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock), false);
     Assert.assertEquals("checkpoint " + o1p1, cp3, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + o2p1, cp3, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + o3SLp1, cp5, o3SLp1.getRecoveryCheckpoint());
     Assert.assertNull("checkpoint null for stateless operator " + o3SLp1, o3SLp1.stats.checkpointStats);
 
     o2p1.checkpoints.add(cp4);
-    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock), false);
     Assert.assertEquals("checkpoint " + o1p1, cp3, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + o2p1, cp4, o2p1.getRecoveryCheckpoint());
 
     o1p1.checkpoints.add(1, cp4);
     Assert.assertEquals(o1p1.checkpoints, getCheckpoints(3L, 4L, 5L));
-    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock), false);
     Assert.assertEquals("checkpoint " + o1p1, cp4, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals(o1p1.checkpoints, getCheckpoints(4L, 5L));
 
@@ -315,7 +315,7 @@ public class CheckpointTest
     o4p1.checkpoints.add(leafCheckpoint);
 
     UpdateCheckpointsContext ctx;
-    dnm.updateRecoveryCheckpoints(o1p1, ctx = new UpdateCheckpointsContext(clock, true, Collections.<OperatorMeta, Set<OperatorMeta>>emptyMap()));
+    dnm.updateRecoveryCheckpoints(o1p1, ctx = new UpdateCheckpointsContext(clock, true, Collections.<OperatorMeta, Set<OperatorMeta>>emptyMap()), false);
     Assert.assertEquals("initial checkpoint " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("initial checkpoint " + o2SLp1, leafCheckpoint, o2SLp1.getRecoveryCheckpoint());
     Assert.assertEquals("initial checkpoint " + o3SLp1, new Checkpoint(clock.getTime(), 0, 0), o3SLp1.getRecoveryCheckpoint());
@@ -376,7 +376,7 @@ public class CheckpointTest
     PTOperator o2p1 = partitions.get(0);
 
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
-    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx, false);
     Assert.assertTrue("no blocked operators", ctx.blocked.isEmpty());
 
     o1p1.stats.statsRevs.checkout();
@@ -387,25 +387,25 @@ public class CheckpointTest
     clock.time = o1p1.stats.windowProcessingTimeoutMillis + 1;
 
     ctx = new UpdateCheckpointsContext(clock);
-    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx, false);
     Assert.assertEquals("o2 blocked", Sets.newHashSet(o2p1), ctx.blocked);
 
     // assign future activation window (state-less or at-most-once).
     Checkpoint cp2 = o2p1.getRecoveryCheckpoint();
     o2p1.setRecoveryCheckpoint(new Checkpoint(o1p1.getRecoveryCheckpoint().windowId + 1, cp2.applicationWindowCount, cp2.checkpointWindowCount));
     ctx = new UpdateCheckpointsContext(clock);
-    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx, false);
     Assert.assertEquals("no operators blocked (o2 activation window ahead)", Sets.newHashSet(), ctx.blocked);
 
     // reset to blocked
     o2p1.setRecoveryCheckpoint(cp2);
     ctx = new UpdateCheckpointsContext(clock);
-    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx, false);
     Assert.assertEquals("o2 blocked", Sets.newHashSet(o2p1), ctx.blocked);
 
     clock.time++;
     ctx = new UpdateCheckpointsContext(clock);
-    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx, false);
     Assert.assertEquals("operators blocked", Sets.newHashSet(o1p1, o2p1), ctx.blocked);
 
     o2p1.stats.statsRevs.checkout();
@@ -413,16 +413,13 @@ public class CheckpointTest
     o2p1.stats.statsRevs.commit();
 
     ctx = new UpdateCheckpointsContext(clock);
-    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx, false);
     Assert.assertEquals("operators blocked", Sets.newHashSet(o1p1), ctx.blocked);
 
     clock.time--;
     ctx = new UpdateCheckpointsContext(clock);
-    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx, false);
     Assert.assertEquals("operators blocked", Sets.newHashSet(), ctx.blocked);
-
-
-
   }
 
   @Test
@@ -473,13 +470,13 @@ public class CheckpointTest
     mc1.sendHeartbeat();
     Assert.assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
     Assert.assertEquals(10, o1p1.stats.lastWindowIdChangeTms);
-    scm.monitorHeartbeat();
+    scm.monitorHeartbeat(false);
     Assert.assertTrue(scm.containerStopRequests.isEmpty());
 
     clock.time++;
     mc1.sendHeartbeat();
     Assert.assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
-    scm.monitorHeartbeat();
+    scm.monitorHeartbeat(false);
     Assert.assertTrue(scm.containerStopRequests.containsKey(o1p1.getContainer().getExternalId()));
 
   }

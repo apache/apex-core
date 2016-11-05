@@ -392,6 +392,8 @@ public class StramClient
       //appContext.setMaxAppAttempts(1); // no retries until Stram is HA
     }
 
+    appContext.setKeepContainersAcrossApplicationAttempts(true);
+
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 

@@ -749,7 +749,7 @@ public class StreamingContainerManager implements PlanContext
    * Check periodically that deployed containers phone home.
    * Run from the master main loop (single threaded access).
    */
-  public void monitorHeartbeat()
+  public void monitorHeartbeat(boolean waitForRecovery)
   {
     long currentTms = clock.getTime();
 
@@ -798,7 +798,7 @@ public class StreamingContainerManager implements PlanContext
     // events that may modify the plan
     processEvents();
 
-    committedWindowId = updateCheckpoints(false);
+    committedWindowId = updateCheckpoints(waitForRecovery);
     calculateEndWindowStats();
     if (this.vars.enableStatsRecording) {
       recordStats(currentTms);
@@ -1138,7 +1138,7 @@ public class StreamingContainerManager implements PlanContext
     // resolve dependencies
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, false, getCheckpointGroups());
     for (PTOperator oper : cs.container.getOperators()) {
-      updateRecoveryCheckpoints(oper, ctx);
+      updateRecoveryCheckpoints(oper, ctx, false);
     }
     includeLocalUpstreamOperators(ctx);
 
@@ -1170,7 +1170,7 @@ public class StreamingContainerManager implements PlanContext
       }
       if (!newOperators.isEmpty()) {
         for (PTOperator oper : newOperators) {
-          updateRecoveryCheckpoints(oper, ctx);
+          updateRecoveryCheckpoints(oper, ctx, false);
         }
       }
     } while (!newOperators.isEmpty());
@@ -2022,7 +2022,7 @@ public class StreamingContainerManager implements PlanContext
    * @param operator Operator instance for which to find recovery checkpoint
    * @param ctx      Context into which to collect traversal info
    */
-  public void updateRecoveryCheckpoints(PTOperator operator, UpdateCheckpointsContext ctx)
+  public void updateRecoveryCheckpoints(PTOperator operator, UpdateCheckpointsContext ctx, boolean recovery)
   {
     if (operator.getRecoveryCheckpoint().windowId < ctx.committedWindowId.longValue()) {
       ctx.committedWindowId.setValue(operator.getRecoveryCheckpoint().windowId);
@@ -2031,7 +2031,7 @@ public class StreamingContainerManager implements PlanContext
     if (operator.getState() == PTOperator.State.ACTIVE &&
         (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
       // if the checkpoint is ahead, then it is not blocked but waiting for activation (state-less recovery, at-most-once)
-      if (ctx.committedWindowId.longValue() >= operator.getRecoveryCheckpoint().windowId) {
+      if (ctx.committedWindowId.longValue() >= operator.getRecoveryCheckpoint().windowId && !recovery) {
         LOG.warn("Marking operator {} blocked committed window {}, recovery window {}, current time {}, last window id change time {}, window processing timeout millis {}",
             operator,
             Codec.getStringWindowId(ctx.committedWindowId.longValue()),
@@ -2096,7 +2096,7 @@ public class StreamingContainerManager implements PlanContext
           }
           if (!ctx.visited.contains(sinkOperator)) {
             // downstream traversal
-            updateRecoveryCheckpoints(sinkOperator, ctx);
+            updateRecoveryCheckpoints(sinkOperator, ctx, recovery);
           }
           // recovery window id cannot move backwards
           // when dynamically adding new operators
@@ -2196,7 +2196,7 @@ public class StreamingContainerManager implements PlanContext
       if (operators != null) {
         for (PTOperator operator : operators) {
           operatorCount++;
-          updateRecoveryCheckpoints(operator, ctx);
+          updateRecoveryCheckpoints(operator, ctx, recovery);
         }
       }
     }

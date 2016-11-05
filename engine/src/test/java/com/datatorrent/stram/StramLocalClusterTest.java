@@ -280,7 +280,7 @@ public class StramLocalClusterTest
     c2.waitForHeartbeat(5000);
 
     // purge checkpoints
-    localCluster.dnmgr.monitorHeartbeat(); // checkpoint purging
+    localCluster.dnmgr.monitorHeartbeat(false); // checkpoint purging
 
     Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Checkpoint[] {new Checkpoint(3L, 0, 0)}), ptNode1.checkpoints);
     Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Checkpoint[] {new Checkpoint(3L, 0, 0)}), ptNode2.checkpoints);
