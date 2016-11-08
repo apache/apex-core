@@ -216,7 +216,6 @@ public class StreamingContainerManager implements PlanContext
   protected String shutdownDiagnosticsMessage = "";
   private long lastResourceRequest = 0;
   private final Map<String, StreamingContainerAgent> containers = new ConcurrentHashMap<>();
-  private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<>();
   private Map<OperatorMeta, Set<OperatorMeta>> checkpointGroups;
   private final Map<Long, Set<PTOperator>> shutdownOperators = new HashMap<>();
   private CriticalPathInfo criticalPathInfo;
@@ -2123,7 +2122,6 @@ public class StreamingContainerManager implements PlanContext
     for (PTOperator groupOper : groupOpers) {
       // checkpoint frozen during deployment
       if (!pendingDeploy || ctx.recovery) {
-        // remove previous checkpoints
         Checkpoint c1 = Checkpoint.INITIAL_CHECKPOINT;
         LinkedList<Checkpoint> checkpoints = groupOper.checkpoints;
         synchronized (checkpoints) {
@@ -2132,8 +2130,6 @@ public class StreamingContainerManager implements PlanContext
             Checkpoint c2;
             while (checkpoints.size() > 1 && ((c2 = checkpoints.get(1)).windowId) <= maxCheckpoint.windowId) {
               checkpoints.removeFirst();
-              //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getName(), c1);
-              this.purgeCheckpoints.add(new Pair<>(groupOper, c1.windowId));
               c1 = c2;
             }
           } else {
@@ -2149,7 +2145,6 @@ public class StreamingContainerManager implements PlanContext
         LOG.debug("Skipping checkpoint update {} during {}", groupOper, groupOper.getState());
       }
     }
-
   }
 
   public long windowIdToMillis(long windowId)
@@ -2206,8 +2201,6 @@ public class StreamingContainerManager implements PlanContext
       return committedWindowId;
     }
 
-    purgeCheckpoints();
-
     for (PTOperator oper : ctx.blocked) {
       String containerId = oper.getContainer().getExternalId();
       if (containerId != null) {
@@ -2225,30 +2218,6 @@ public class StreamingContainerManager implements PlanContext
     InetSocketAddress address = operator.getContainer().bufferServerAddress;
     StreamingContainer.eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
     return bsc;
-  }
-
-  private void purgeCheckpoints()
-  {
-    for (Pair<PTOperator, Long> p : purgeCheckpoints) {
-      final PTOperator operator = p.getFirst();
-      if (!operator.isOperatorStateLess()) {
-        final long windowId = p.getSecond();
-        Runnable r = new Runnable()
-        {
-          @Override
-          public void run()
-          {
-            try {
-              operator.getOperatorMeta().getValue(OperatorContext.STORAGE_AGENT).delete(operator.getId(), windowId);
-            } catch (IOException ex) {
-              LOG.error("Failed to purge checkpoint for operator {} for windowId {}", operator, windowId, ex);
-            }
-          }
-        };
-        poolExecutor.submit(r);
-      }
-    }
-    purgeCheckpoints.clear();
   }
 
   /**

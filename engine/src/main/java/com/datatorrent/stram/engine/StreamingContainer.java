@@ -776,6 +776,26 @@ public class StreamingContainer extends YarnContainerMain
         bufferServer.purge(lastCommittedWindowId - 1);
       }
 
+      for (Node<?> node : nodes.values()) {
+
+        if (!node.context.stateless) {
+          StorageAgent storageAgent = node.context.getValue(OperatorContext.STORAGE_AGENT);
+          try {
+            for (long windowId : storageAgent.getWindowIds(node.getId())) {
+              if (windowId != Checkpoint.INITIAL_CHECKPOINT.windowId && windowId < lastCommittedWindowId) {
+                try {
+                  storageAgent.delete(node.getId(), windowId);
+                } catch (IOException ex) {
+                  logger.warn("Failed to purge checkpoint for operator {} for windowId {}", node, windowId, ex);
+                }
+              }
+            }
+          } catch (IOException ex) {
+            logger.warn("Getting the window id for the operator {} failed with the exception {}", node, ex);
+          }
+        }
+      }
+
       OperatorRequest nr = null;
       for (Entry<Integer, Node<?>> e : nodes.entrySet()) {
         final Thread thread = e.getValue().context.getThread();
