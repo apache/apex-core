@@ -641,7 +641,6 @@ public class LogicalPlanTest
 
   private class TestAnnotationsOperator2 extends BaseOperator implements InputOperator
   {
-    // multiple ports w/o annotation, one of them must be connected
     public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
     @Override
@@ -653,7 +652,6 @@ public class LogicalPlanTest
 
   private class TestAnnotationsOperator3 extends BaseOperator implements InputOperator
   {
-    // multiple ports w/o annotation, one of them must be connected
     @OutputPortFieldAnnotation(optional = true)
     public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
     @OutputPortFieldAnnotation(optional = true)
@@ -687,12 +685,8 @@ public class LogicalPlanTest
 
     TestAnnotationsOperator2 ta2 = dag.addOperator("multiOutputPorts1", new TestAnnotationsOperator2());
 
-    try {
-      dag.validate();
-      Assert.fail("should raise: At least one output port must be connected");
-    } catch (ValidationException e) {
-      Assert.assertEquals("", "At least one output port must be connected: multiOutputPorts1", e.getMessage());
-    }
+    dag.validate();
+
     TestOutputOperator o3 = dag.addOperator("o3", new TestOutputOperator());
     dag.addStream("s2", ta2.outport1, o3.inport);
 
