@@ -38,7 +38,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1361,14 +1360,11 @@ public class StreamingContainer extends YarnContainerMain
   public synchronized void activate(final Map<Integer, OperatorDeployInfo> nodeMap, Map<String, ComponentContextPair<Stream, StreamContext>> newStreams)
   {
     for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
-      if (!(pair.component instanceof BufferServerSubscriber)) {
-        activeStreams.put(pair.component, pair.context);
-        pair.component.activate(pair.context);
-        eventBus.publish(new StreamActivationEvent(pair));
-      }
+      activeStreams.put(pair.component, pair.context);
+      pair.component.activate(pair.context);
+      eventBus.publish(new StreamActivationEvent(pair));
     }
 
-    final CountDownLatch signal = new CountDownLatch(nodeMap.size());
     for (final OperatorDeployInfo ndi : nodeMap.values()) {
       /*
        * OiO nodes get activated with their primary nodes.
@@ -1408,10 +1404,6 @@ public class StreamingContainer extends YarnContainerMain
 
             currentdi = null;
 
-            for (int i = setOperators.size(); i-- > 0; ) {
-              signal.countDown();
-            }
-
             node.run(); /* this is a blocking call */
           } catch (Error error) {
             int[] operators;
@@ -1448,8 +1440,6 @@ public class StreamingContainer extends YarnContainerMain
                 failedNodes.add(ndi.id);
                 logger.error("Shutdown of operator {} failed due to an exception.", ndi, ex);
               }
-            } else {
-              signal.countDown();
             }
 
             List<Integer> oioNodeIdList = oioGroups.get(ndi.id);
@@ -1463,8 +1453,6 @@ public class StreamingContainer extends YarnContainerMain
                     failedNodes.add(oiodi.id);
                     logger.error("Shutdown of operator {} failed due to an exception.", oiodi, ex);
                   }
-                } else {
-                  signal.countDown();
                 }
               }
             }
@@ -1473,23 +1461,6 @@ public class StreamingContainer extends YarnContainerMain
       };
       node.context.setThread(thread);
       thread.start();
-    }
-
-    /**
-     * we need to make sure that before any of the operators gets the first message, it's activated.
-     */
-    try {
-      signal.await();
-    } catch (InterruptedException ex) {
-      logger.debug("Activation of operators interrupted.", ex);
-    }
-
-    for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
-      if (pair.component instanceof BufferServerSubscriber) {
-        activeStreams.put(pair.component, pair.context);
-        pair.component.activate(pair.context);
-        eventBus.publish(new StreamActivationEvent(pair));
-      }
     }
 
     for (WindowGenerator wg : generators.values()) {

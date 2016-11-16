@@ -1745,7 +1745,6 @@ public class LogicalPlan implements Serializable, DAG
         }
       }
 
-      boolean allPortsOptional = true;
       for (OutputPortMeta pm: portMapping.outPortMap.values()) {
         checkAttributeValueSerializable(pm.getAttributes(), n.getName() + "." + pm.getPortName());
         if (!n.outputStreams.containsKey(pm)) {
@@ -1765,10 +1764,6 @@ public class LogicalPlan implements Serializable, DAG
             }
           }
         }
-        allPortsOptional &= (pm.portAnnotation != null && pm.portAnnotation.optional());
-      }
-      if (!allPortsOptional && n.outputStreams.isEmpty()) {
-        throw new ValidationException("At least one output port must be connected: " + n.name);
       }
     }
 
