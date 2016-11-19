@@ -54,6 +54,7 @@ import com.datatorrent.netlet.AbstractLengthPrependerClient;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.netlet.Listener.ServerListener;
+import com.datatorrent.netlet.WriteOnlyLengthPrependerClient;
 import com.datatorrent.netlet.util.VarInt;
 
 /**
@@ -171,7 +172,7 @@ public class Server implements ServerListener
   private final ConcurrentHashMap<String, DataList> publisherBuffers = new ConcurrentHashMap<>(1, 0.75f, 1);
   private final ConcurrentHashMap<String, LogicalNode> subscriberGroups = new ConcurrentHashMap<String, LogicalNode>();
   private final ConcurrentHashMap<String, AbstractLengthPrependerClient> publisherChannels = new ConcurrentHashMap<>();
-  private final ConcurrentHashMap<String, AbstractLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, ClientListener> subscriberChannels = new ConcurrentHashMap<>();
   private final int blockSize;
   private final int numberOfCacheBlocks;
 
@@ -235,15 +236,18 @@ public class Server implements ServerListener
   /**
    *
    * @param request
-   * @param connection
+   * @param key
    * @return
    */
-  public LogicalNode handleSubscriberRequest(SubscribeRequestTuple request,
-      final AbstractLengthPrependerClient connection)
+  public LogicalNode handleSubscriberRequest(SubscribeRequestTuple request, SelectionKey key)
   {
     String identifier = request.getIdentifier();
     String type = request.getStreamType();
     String upstream_identifier = request.getUpstreamIdentifier();
+    final Subscriber subscriber = new Subscriber(type, request.getMask(), request.getPartitions(), request.getBufferSize());
+    key.attach(subscriber);
+    subscriber.registered(key);
+    subscriber.connected();
 
     // Check if there is a logical node of this type, if not create it.
     final LogicalNode ln;
@@ -252,7 +256,7 @@ public class Server implements ServerListener
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      AbstractLengthPrependerClient previous = subscriberChannels.put(identifier, connection);
+      ClientListener previous = subscriberChannels.put(identifier, subscriber);
       if (previous != null) {
         eventloop.disconnect(previous);
       }
@@ -264,7 +268,7 @@ public class Server implements ServerListener
         public void run()
         {
           ln.boot(eventloop);
-          ln.addConnection(connection);
+          ln.addConnection(subscriber);
           ln.catchUp();
         }
       });
@@ -302,7 +306,7 @@ public class Server implements ServerListener
         @Override
         public void run()
         {
-          ln.addConnection(connection);
+          ln.addConnection(subscriber);
           ln.catchUp();
           dl.addDataListener(ln);
         }
@@ -310,6 +314,32 @@ public class Server implements ServerListener
     }
 
     return ln;
+  }
+
+  private void teardownSubscriber(Subscriber subscriber)
+  {
+    LogicalNode ln = subscriberGroups.get(subscriber.type);
+    if (ln != null) {
+      if (subscriberChannels.containsValue(subscriber)) {
+        final Iterator<Entry<String, ClientListener>> i = subscriberChannels.entrySet().iterator();
+        while (i.hasNext()) {
+          if (i.next().getValue() == subscriber) {
+            i.remove();
+            break;
+          }
+        }
+      }
+
+      ln.removeChannel(subscriber);
+      if (ln.getPhysicalNodeCount() == 0) {
+        DataList dl = publisherBuffers.get(ln.getUpstream());
+        if (dl != null) {
+          dl.removeDataListener(ln);
+        }
+        subscriberGroups.remove(ln.getGroup());
+      }
+      ln.getIterator().close();
+    }
   }
 
   /**
@@ -464,43 +494,11 @@ public class Server implements ServerListener
           /*
            * unregister the unidentified client since its job is done!
            */
-          unregistered(key);
+          unregistered(key.interestOps(0));
           ignore = true;
           logger.info("Received subscriber request: {}", request);
 
-          SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
-          AbstractLengthPrependerClient subscriber;
-
-//          /* for backward compatibility - set the buffer size to 16k - EXPERIMENTAL */
-          int bufferSize = subscriberRequest.getBufferSize();
-//          if (bufferSize == 0) {
-//            bufferSize = 16 * 1024;
-//          }
-          if (subscriberRequest.getVersion().equals(Tuple.FAST_VERSION)) {
-            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(),
-                subscriberRequest.getPartitions(), bufferSize);
-          } else {
-            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(),
-                subscriberRequest.getPartitions(), bufferSize)
-            {
-              @Override
-              public int readSize()
-              {
-                if (writeOffset - readOffset < 2) {
-                  return -1;
-                }
-
-                short s = buffer[readOffset++];
-                return s | (buffer[readOffset++] << 8);
-              }
-
-            };
-          }
-          key.attach(subscriber);
-          key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
-          subscriber.registered(key);
-
-          handleSubscriberRequest(subscriberRequest, subscriber);
+          handleSubscriberRequest((SubscribeRequestTuple)request, key);
           break;
 
         case PURGE_REQUEST:
@@ -528,7 +526,7 @@ public class Server implements ServerListener
 
   }
 
-  class Subscriber extends AbstractLengthPrependerClient
+  private class Subscriber extends WriteOnlyLengthPrependerClient
   {
     private final String type;
     private final int mask;
@@ -536,18 +534,11 @@ public class Server implements ServerListener
 
     Subscriber(String type, int mask, int[] partitions, int bufferSize)
     {
-      super(1024, bufferSize);
+      super(1024 * 1024, bufferSize == 0 ? 256 * 1024 : bufferSize);
       this.type = type;
       this.mask = mask;
       this.partitions = partitions;
-      super.write = false;
-    }
-
-    @Override
-    public void onMessage(byte[] buffer, int offset, int size)
-    {
-      logger.warn("Received data when no data is expected: {}",
-          Arrays.toString(Arrays.copyOfRange(buffer, offset, offset + size)));
+      super.isWriteEnabled = false;
     }
 
     @Override
@@ -580,29 +571,7 @@ public class Server implements ServerListener
         return;
       }
       torndown = true;
-
-      LogicalNode ln = subscriberGroups.get(type);
-      if (ln != null) {
-        if (subscriberChannels.containsValue(this)) {
-          final Iterator<Entry<String, AbstractLengthPrependerClient>> i = subscriberChannels.entrySet().iterator();
-          while (i.hasNext()) {
-            if (i.next().getValue() == this) {
-              i.remove();
-              break;
-            }
-          }
-        }
-
-        ln.removeChannel(this);
-        if (ln.getPhysicalNodeCount() == 0) {
-          DataList dl = publisherBuffers.get(ln.getUpstream());
-          if (dl != null) {
-            dl.removeDataListener(ln);
-          }
-          subscriberGroups.remove(ln.getGroup());
-        }
-        ln.getIterator().close();
-      }
+      teardownSubscriber(this);
     }
 
   }
