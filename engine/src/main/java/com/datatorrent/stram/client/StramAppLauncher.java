@@ -44,6 +44,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.engine.util.StreamingAppFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.NotImplementedException;
@@ -62,7 +63,6 @@ import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.api.annotation.ApplicationAnnotation;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
@@ -462,36 +462,16 @@ public class StramAppLauncher
       try {
         final Class<?> clazz = cl.loadClass(className);
         if (!Modifier.isAbstract(clazz.getModifiers()) && StreamingApplication.class.isAssignableFrom(clazz)) {
-          final AppFactory appConfig = new AppFactory()
+          final AppFactory appConfig = new StreamingAppFactory(classFileName, clazz)
           {
             @Override
-            public String getName()
-            {
-              return classFileName;
-            }
-
-            @Override
-            public String getDisplayName()
-            {
-              ApplicationAnnotation an = clazz.getAnnotation(ApplicationAnnotation.class);
-              if (an != null) {
-                return an.name();
-              } else {
-                return classFileName;
-              }
-            }
-
-            @Override
-            public LogicalPlan createApp(LogicalPlanConfiguration conf)
+            public LogicalPlan createApp(LogicalPlanConfiguration planConfig)
             {
               // load class from current context class loader
               Class<? extends StreamingApplication> c = StramUtils.classForName(className, StreamingApplication.class);
               StreamingApplication app = StramUtils.newInstance(c);
-              LogicalPlan dag = new LogicalPlan();
-              conf.prepareDAG(dag, app, getName());
-              return dag;
+              return super.createApp(app, planConfig);
             }
-
           };
           appResourceList.add(appConfig);
         }
