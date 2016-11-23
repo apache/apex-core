@@ -316,12 +316,12 @@ public class StreamingContainer extends YarnContainerMain
       logger.error("Fatal error in container!", error);
       /* Report back any failures, for diagnostic purposes */
       String msg = ExceptionUtils.getStackTrace(error);
-      umbilical.reportError(childId, null, "FATAL: " + msg);
+      umbilical.reportError(childId, null, "FATAL: " + msg, LoggerUtil.getLogFileName(), LoggerUtil.getLogFileOffset());
     } catch (Exception exception) {
       logger.error("Fatal exception in container!", exception);
       /* Report back any failures, for diagnostic purposes */
       String msg = ExceptionUtils.getStackTrace(exception);
-      umbilical.reportError(childId, null, msg);
+      umbilical.reportError(childId, null, msg, LoggerUtil.getLogFileName(), LoggerUtil.getLogFileOffset());
     } finally {
       rpcProxy.close();
       DefaultMetricsSystem.shutdown();
@@ -1418,19 +1418,19 @@ public class StreamingContainer extends YarnContainerMain
               logger.error("Voluntary container termination due to an error in operator {}.", currentdi, error);
               operators = new int[]{currentdi.id};
             }
-            umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error));
+            umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error), LoggerUtil.getLogFileName(), LoggerUtil.getLogFileOffset());
             System.exit(1);
           } catch (Exception ex) {
             if (currentdi == null) {
               failedNodes.add(ndi.id);
               logger.error("Operator set {} stopped running due to an exception.", setOperators, ex);
               int[] operators = new int[]{ndi.id};
-              umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex));
+              umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex), LoggerUtil.getLogFileName(), LoggerUtil.getLogFileOffset());
             } else {
               failedNodes.add(currentdi.id);
               logger.error("Abandoning deployment of operator {} due to setup failure.", currentdi, ex);
               int[] operators = new int[]{currentdi.id};
-              umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex));
+              umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex), LoggerUtil.getLogFileName(), LoggerUtil.getLogFileOffset());
             }
           } finally {
             if (setOperators.contains(ndi)) {

@@ -451,7 +451,7 @@ Application Package needs the classpath in a specific order.
 ### Logging configuration
 
 Just like other Java projects, you can change the logging configuration
-by having your log4j.properties under src/main/resources.  For example,
+by updating your log4j.properties under src/main/resources.  For example,
 if you have the following in src/main/resources/log4j.properties:
 ```
  log4j.rootLogger=WARN,CONSOLE
@@ -464,8 +464,8 @@ if you have the following in src/main/resources/log4j.properties:
 The root logger’s level is set to WARN and the output is set to the console (stdout).
 
 Note that by default from project created from the maven archetype,
-there is already a log4j.properties file under src/test/resources and
-that file is only used for the unit test.
+there is a log4j.properties file under src/main/resources that can be modified or replaced.
+Also there is a log4j.properties file under src/test/resources and that file is only used for unit tests.
 
 
 ## Zip Structure of Application Package

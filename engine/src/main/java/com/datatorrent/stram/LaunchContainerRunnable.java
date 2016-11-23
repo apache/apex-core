@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -109,6 +110,7 @@ public class LaunchContainerRunnable implements Runnable
     // For now setting all required classpaths including
     // the classpath to "." for the application jar
     StringBuilder classPathEnv = new StringBuilder("./*");
+    classPathEnv.append(":."); // include log4j.properties, if any
     String classpath = nmClient.getConfig().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH);
     for (String c : StringUtils.isBlank(classpath) ? YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH : classpath.split(",")) {
       if (c.equals("$HADOOP_CLIENT_CONF_DIR")) {
@@ -118,7 +120,6 @@ public class LaunchContainerRunnable implements Runnable
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
     }
-    classPathEnv.append(":."); // include log4j.properties, if any
 
     env.put("CLASSPATH", classPathEnv.toString());
     LOG.info("CLASSPATH: {}", classPathEnv);
@@ -171,6 +172,18 @@ public class LaunchContainerRunnable implements Runnable
         String archives = dag.getAttributes().get(LogicalPlan.ARCHIVES);
         if (archives != null) {
           addFilesToLocalResources(LocalResourceType.ARCHIVE, archives, localResources, fs);
+        }
+        String configuredAppPath = dag.getValue(LogicalPlan.APPLICATION_PATH);
+        Path log4jPath = new Path(configuredAppPath + File.separator + StramClient.APEX_LOG4J_PROPS_FILE);
+        if (fs.exists(log4jPath)) {
+          FileStatus log4jFileStatus = fs.getFileStatus(log4jPath);
+          LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
+          log4jRsrc.setType(LocalResourceType.FILE);
+          log4jRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
+          log4jRsrc.setResource(ConverterUtils.getYarnUrlFromURI(log4jPath.toUri()));
+          log4jRsrc.setTimestamp(log4jFileStatus.getModificationTime());
+          log4jRsrc.setSize(log4jFileStatus.getLen());
+          localResources.put(StramClient.APEX_LOG4J_PROPS_FILE, log4jRsrc);
         }
         ctx.setLocalResources(localResources);
       }

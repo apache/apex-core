@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram.util;
 
+import java.io.File;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Map;
@@ -26,6 +27,7 @@ import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import org.apache.apex.log.appender.ApexRollingFileAppender;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Category;
 import org.apache.log4j.Level;
@@ -44,6 +46,7 @@ public class LoggerUtil
 {
 
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(LoggerUtil.class);
+  private static final String APEX_APPENDER = "APEXRFA";
 
   private static final Map<String, Level> patternLevel = Maps.newHashMap();
   private static final Map<String, Pattern> patterns = Maps.newHashMap();
@@ -274,5 +277,22 @@ public class LoggerUtil
       }
     }
     return ImmutableMap.copyOf(matchedClasses);
+  }
+
+  public static String getLogFileName()
+  {
+    ApexRollingFileAppender apexAppender = (ApexRollingFileAppender)LogManager.getRootLogger().getAppender(
+        APEX_APPENDER);
+    return apexAppender == null ? null : apexAppender.getCurrentFileName();
+  }
+
+  public static long getLogFileOffset()
+  {
+    String currentLogFileName = getLogFileName();
+    if (currentLogFileName != null) {
+      File logFile = new File(currentLogFileName);
+      return logFile.length();
+    }
+    return 0;
   }
 }
