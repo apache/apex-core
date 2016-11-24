@@ -214,4 +214,17 @@ public class DefaultStatefulStreamCodecTest
     }
   }
 
+  static class NoNewInstanceStatefulStreamCodec<T> extends DefaultStatefulStreamCodec<T>
+  {
+
+  }
+
+  @Test
+  public void testNewInstanceMethod()
+  {
+    NoNewInstanceStatefulStreamCodec codec = new NoNewInstanceStatefulStreamCodec();
+    DefaultStatefulStreamCodec newCodec = codec.newInstance();
+    Assert.assertNotEquals("Codec and newCodec are not same ", codec, newCodec);
+    Assert.assertEquals("Class of codec and newCodec is same ", newCodec.getClass(), codec.getClass());
+  }
 }
