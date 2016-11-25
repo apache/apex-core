@@ -68,7 +68,7 @@ public class EmbeddedAppLauncherImpl extends LocalMode<EmbeddedAppLauncherImpl.E
     } catch (Exception e) {
       throw new LauncherException(e);
     }
-    LocalMode.Controller lc = getController();
+    StramLocalCluster lc = getController();
     boolean launched = false;
     if (launchParameters != null) {
       if (StramUtils.getValueWithDefault(launchParameters, SERIALIZE_DAG)) {
@@ -100,16 +100,6 @@ public class EmbeddedAppLauncherImpl extends LocalMode<EmbeddedAppLauncherImpl.E
   }
 
   @Override
-  public void shutdownApp(EmbeddedAppHandleImpl app, ShutdownMode shutdownMode) throws LauncherException
-  {
-    if (shutdownMode != ShutdownMode.KILL) {
-      app.controller.shutdown();
-    } else {
-      throw new UnsupportedOperationException("Kill not supported");
-    }
-  }
-
-  @Override
   public DAG prepareDAG(StreamingApplication app, Configuration conf) throws Exception
   {
     if (app == null && conf == null) {
@@ -125,7 +115,7 @@ public class EmbeddedAppLauncherImpl extends LocalMode<EmbeddedAppLauncherImpl.E
   }
 
   @Override
-  public Controller getController()
+  public StramLocalCluster getController()
   {
     try {
       addLibraryJarsToClasspath(lp);
@@ -157,16 +147,25 @@ public class EmbeddedAppLauncherImpl extends LocalMode<EmbeddedAppLauncherImpl.E
 
   }
 
-  /**
-   *
-   */
   public static class EmbeddedAppHandleImpl implements EmbeddedAppLauncher.EmbeddedAppHandle
   {
-    Controller controller;
+    final StramLocalCluster controller;
 
-    public EmbeddedAppHandleImpl(Controller controller)
+    public EmbeddedAppHandleImpl(StramLocalCluster controller)
     {
       this.controller = controller;
+    }
+
+    @Override
+    public boolean isFinished()
+    {
+      return controller.isFinished();
+    }
+
+    @Override
+    public void shutdown(ShutdownMode shutdownMode) throws LauncherException
+    {
+      controller.shutdown();
     }
 
   }

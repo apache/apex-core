@@ -77,8 +77,30 @@ public abstract class Launcher<H extends Launcher.AppHandle>
     KILL
   }
 
-  // Marker interface
-  public interface AppHandle {}
+  /**
+   * Results of application launch. The client can interact with the running application through this handle.
+   */
+  public interface AppHandle
+  {
+    boolean isFinished();
+
+    /**
+     * Shutdown the application.
+     *
+     * The method takes the application handle and a shutdown mode. The shutdown mode specifies how to shutdown the
+     * application.
+     *
+     * If the mode is AWAIT_TERMINATION, an attempt should be made to shutdown the application in an orderly fashion
+     * and wait till termination. If the application does not terminate in a reasonable amount of time the
+     * implementation can forcibly terminate the application.
+     *
+     * If the mode is KILL, the application can be killed immediately.
+     *
+     * @param shutdownMode The shutdown mode
+     */
+    void shutdown(ShutdownMode shutdownMode) throws LauncherException;
+
+  }
 
   /**
    * Get a launcher instance.<br><br>
@@ -137,34 +159,6 @@ public abstract class Launcher<H extends Launcher.AppHandle>
    * @return The application handle
    */
   public abstract H launchApp(StreamingApplication application, Configuration configuration, Attribute.AttributeMap launchParameters) throws LauncherException;
-
-  /**
-   * Shutdown the application and await termination.
-   * Also see {@link #shutdownApp(AppHandle, ShutdownMode)}
-   *
-   * @param app The application handle
-   */
-  public void shutdownApp(H app) throws LauncherException
-  {
-    shutdownApp(app, ShutdownMode.AWAIT_TERMINATION);
-  }
-
-  /**
-   * Shutdown the application.
-   *
-   * The method takes the application handle and a shutdown mode. The shutdown mode specifies how to shutdown the
-   * application.
-   *
-   * If the mode is AWAIT_TERMINATION, an attempt should be made to shutdown the application in an orderly fashion
-   * and wait till termination. If the application does not terminate in a reasonable amount of time the
-   * implementation can forcibly terminate the application.
-   *
-   * If the mode is KILL, the application can be killed immediately.
-   *
-   * @param app The application handle
-   * @param shutdownMode The shutdown mode
-   */
-  public abstract void shutdownApp(H app, ShutdownMode shutdownMode) throws LauncherException;
 
   protected static <T> T loadService(Class<T> clazz)
   {

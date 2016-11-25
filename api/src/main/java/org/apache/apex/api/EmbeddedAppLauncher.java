@@ -21,7 +21,6 @@ package org.apache.apex.api;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.Attribute;
-import com.datatorrent.api.LocalMode;
 import com.datatorrent.api.StreamingApplication;
 
 /**
@@ -33,25 +32,25 @@ public abstract class EmbeddedAppLauncher<H extends EmbeddedAppLauncher.Embedded
   /**
    * Parameter to specify the time after which the application will be shutdown; pass 0 to run indefinitely.
    */
-  public static final Attribute<Long> RUN_MILLIS = new Attribute<Long>(0L);
+  public static final Attribute<Long> RUN_MILLIS = new Attribute<>(0L);
 
   /**
    * Parameter to launch application asynchronously and return from launch immediately.
    */
-  public static final Attribute<Boolean> RUN_ASYNC = new Attribute<Boolean>(false);
+  public static final Attribute<Boolean> RUN_ASYNC = new Attribute<>(false);
 
   /**
    * Parameter to enable or disable heartbeat monitoring.
    */
-  public static final Attribute<Boolean> HEARTBEAT_MONITORING = new Attribute<Boolean>(true);
+  public static final Attribute<Boolean> HEARTBEAT_MONITORING = new Attribute<>(true);
 
   /**
    * Parameter to serialize DAG before launch.
    */
-  public static final Attribute<Boolean> SERIALIZE_DAG = new Attribute<Boolean>(false);
+  public static final Attribute<Boolean> SERIALIZE_DAG = new Attribute<>(false);
 
   static {
-    Attribute.AttributeMap.AttributeInitializer.initialize(LocalMode.class);
+    Attribute.AttributeMap.AttributeInitializer.initialize(EmbeddedAppLauncher.class);
   }
 
   public static EmbeddedAppLauncher newInstance()

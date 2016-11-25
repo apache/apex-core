@@ -411,6 +411,11 @@ public class StramLocalCluster implements Runnable, Controller
     appDone = true;
   }
 
+  public boolean isFinished()
+  {
+    return appDone;
+  }
+
   @Override
   public void setHeartbeatMonitoringEnabled(boolean enabled)
   {

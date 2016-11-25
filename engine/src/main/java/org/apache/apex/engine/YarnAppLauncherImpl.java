@@ -20,14 +20,15 @@ package org.apache.apex.engine;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.apex.api.YarnAppLauncher;
 import org.apache.apex.engine.util.StreamingAppFactory;
+import org.apache.bval.jsr303.util.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 
@@ -35,7 +36,6 @@ import com.google.common.base.Throwables;
 
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.client.StramAppLauncher;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
@@ -54,6 +54,7 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
     propMapping.put(YarnAppLauncher.QUEUE_NAME, StramAppLauncher.QUEUE_NAME);
   }
 
+  @Override
   public YarnAppHandleImpl launchApp(final StreamingApplication app, Configuration conf, Attribute.AttributeMap launchParameters) throws LauncherException
   {
     if (launchParameters != null) {
@@ -83,27 +84,21 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
     }
   }
 
-  @Override
-  public void shutdownApp(YarnAppHandleImpl app, ShutdownMode shutdownMode) throws LauncherException
+  protected void shutdownApp(YarnAppHandleImpl app, ShutdownMode shutdownMode) throws LauncherException
   {
     if (shutdownMode == ShutdownMode.KILL) {
       YarnClient yarnClient = YarnClient.createYarnClient();
       try {
-        String appId = app.getApplicationId();
-        ApplicationId applicationId = null;
-        List<ApplicationReport> applications = StramUtils.getApexApplicationList(yarnClient);
-        for (ApplicationReport application : applications) {
-          if (application.getApplicationId().toString().equals(appId)) {
-            applicationId = application.getApplicationId();
-            break;
-          }
-        }
-        if (applicationId == null) {
-          throw new LauncherException("Application " + appId + " not found");
+        ApplicationId applicationId = app.appId;
+        ApplicationReport appReport = yarnClient.getApplicationReport(applicationId);
+        if (appReport == null) {
+          throw new LauncherException("Application " + app.getApplicationId() + " not found");
         }
         yarnClient.killApplication(applicationId);
       } catch (YarnException | IOException e) {
         throw Throwables.propagate(e);
+      } finally {
+        IOUtils.closeQuietly(yarnClient);
       }
     } else {
       throw new UnsupportedOperationException("Orderly shutdown not supported, try kill instead");
@@ -127,12 +122,9 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
     }
   }
 
-  /**
-   *
-   */
-  public static class YarnAppHandleImpl implements YarnAppLauncher.YarnAppHandle
+  public class YarnAppHandleImpl implements YarnAppLauncher.YarnAppHandle
   {
-    ApplicationId appId;
+    final ApplicationId appId;
 
     public YarnAppHandleImpl(ApplicationId appId)
     {
@@ -144,5 +136,34 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
     {
       return appId.toString();
     }
+
+    @Override
+    public boolean isFinished()
+    {
+      YarnClient yarnClient = YarnClient.createYarnClient();
+      try {
+        ApplicationReport appReport = yarnClient.getApplicationReport(appId);
+        if (appReport != null) {
+          if (appReport.getFinalApplicationStatus() == null
+              || appReport.getFinalApplicationStatus() == FinalApplicationStatus.UNDEFINED) {
+            return false;
+          }
+        }
+        return true;
+      } catch (YarnException | IOException e) {
+        throw Throwables.propagate(e);
+      } finally {
+        IOUtils.closeQuietly(yarnClient);
+      }
+    }
+
+    @Override
+    public void shutdown(org.apache.apex.api.Launcher.ShutdownMode shutdownMode)
+        throws org.apache.apex.api.Launcher.LauncherException
+    {
+      shutdownApp(this, shutdownMode);
+
+    }
+
   }
 }
