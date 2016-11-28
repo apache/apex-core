@@ -71,7 +71,7 @@ get-jar-operator-properties jar-files-comma-separated operator-class-name
 help [command]
 	Show help
 
-kill-app app-id [app-id ...]
+kill-app app-id/app-name [app-id/app-name ...]
 	Kill an app
 
   launch [options] jar-file/json-file/properties-file/app-package-file [matching-app-name]
@@ -166,7 +166,7 @@ get-port-attributes operator-name port-name [attribute-name]
 	Get attributes of a port
 get-recording-info [operator-id] [start-time]
 	Get tuple recording info
-kill-app [app-id ...]
+kill-app [<app-id/app-name> ...]
 	Kill an app
 kill-container container-id [container-id ...]
 	Kill a container

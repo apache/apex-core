@@ -609,8 +609,8 @@ public class ApexCli
         new Arg[]{new Arg("pattern")},
         "List applications"));
     globalCommands.put("kill-app", new CommandSpec(new KillAppCommand(),
-        new Arg[]{new Arg("app-id")},
-        new Arg[]{new VarArg("app-id")},
+        new Arg[]{new Arg("app-id/app-name")},
+        new Arg[]{new VarArg("app-id/app-name")},
         "Kill an app"));
     globalCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
         new Arg[]{new FileArg("jar-file/app-package-file")},
@@ -710,7 +710,7 @@ public class ApexCli
         "Shutdown an app"));
     connectedCommands.put("kill-app", new CommandSpec(new KillAppCommand(),
         null,
-        new Arg[]{new VarArg("app-id")},
+        new Arg[]{new VarArg("app-id/app-name")},
         "Kill an app"));
     connectedCommands.put("wait", new CommandSpec(new WaitCommand(),
         new Arg[]{new Arg("timeout")},
@@ -959,6 +959,24 @@ public class ApexCli
       return null;
     }
     return result.toString();
+  }
+
+  protected ApplicationReport getApplicationByName(String appName)
+  {
+    if (appName == null) {
+      throw new CliException("Invalid application name provided by user");
+    }
+    List<ApplicationReport> appList = getApplicationList();
+    for (ApplicationReport ar : appList) {
+      if ((ar.getName().equals(appName)) &&
+          (ar.getYarnApplicationState() != YarnApplicationState.KILLED) &&
+          (ar.getYarnApplicationState() != YarnApplicationState.FINISHED)) {
+        LOG.debug("Application Name: {} Application ID: {} Application State: {}",
+            ar.getName(), ar.getApplicationId().toString(), YarnApplicationState.FINISHED);
+        return ar;
+      }
+    }
+    return null;
   }
 
   protected ApplicationReport getApplication(String appId)
@@ -2263,7 +2281,14 @@ public class ApexCli
         while (++i < args.length) {
           app = getApplication(args[i]);
           if (app == null) {
-            throw new CliException("Streaming application with id " + args[i] + " is not found.");
+
+            /*
+             * try once again with application name type.
+             */
+            app = getApplicationByName(args[i]);
+            if (app == null) {
+              throw new CliException("Streaming application with id or name " + args[i] + " is not found.");
+            }
           }
           yarnClient.killApplication(app.getApplicationId());
           if (app == currentApp) {
