@@ -97,7 +97,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 public class StramClient
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
-  public static final String APEX_LOG4J_PROPS_FILE = "log4j.properties";
+  public static final String APEX_LOG4J_PROPS_FILE = "apexlog4j.properties";
   public static final String YARN_APPLICATION_TYPE = "ApacheApex";
   @Deprecated
   public static final String YARN_APPLICATION_TYPE_DEPRECATED = "DataTorrent";

@@ -281,9 +281,12 @@ public class LoggerUtil
 
   public static String getLogFileName()
   {
-    ApexRollingFileAppender apexAppender = (ApexRollingFileAppender)LogManager.getRootLogger().getAppender(
-        APEX_APPENDER);
-    return apexAppender == null ? null : apexAppender.getCurrentFileName();
+    Appender appender = LogManager.getRootLogger().getAppender(APEX_APPENDER);
+    if (appender != null && appender instanceof ApexRollingFileAppender) {
+      ApexRollingFileAppender apexAppender = (ApexRollingFileAppender)appender;
+      return apexAppender.getCurrentFileName();
+    }
+    return null;
   }
 
   public static long getLogFileOffset()

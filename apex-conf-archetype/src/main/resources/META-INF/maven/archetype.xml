@@ -28,6 +28,6 @@
     <resource>src/main/resources/META-INF/*</resource>
   </resources>
   <resources>
-    <resource>src/main/resources/log4j.properties</resource>
+    <resource>src/main/resources/apexlog4j.properties</resource>
   </resources>
 </archetype>
