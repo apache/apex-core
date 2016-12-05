@@ -21,6 +21,7 @@ package org.apache.apex.api;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.Attribute;
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
 
 /**
@@ -63,6 +64,41 @@ public abstract class EmbeddedAppLauncher<H extends EmbeddedAppLauncher.Embedded
    * compatibility of the launchApp method
    */
   public interface EmbeddedAppHandle extends AppHandle {}
+
+  /**
+   * <p>
+   * getDAG.</p>
+   *
+   * @return
+   */
+  public abstract DAG getDAG();
+
+  /**
+   * <p>
+   * cloneDAG.</p>
+   *
+   * @return
+   * @throws java.lang.Exception
+   */
+  public abstract DAG cloneDAG() throws Exception;
+
+  /**
+   * Build the logical plan through the given streaming application instance and/or from configuration.
+   * <p>
+   * The plan will be constructed through {@link StreamingApplication#populateDAG}. If configuration properties are
+   * specified, they function as override, as would be the case when launching an application through CLI.
+   * <p>
+   * This method can also be used to construct the plan declaratively from configuration only, by passing null for the
+   * application. In this case the configuration contains all operators and streams.
+   * <p>
+   *
+   * @param app
+   * @param conf
+   * @return
+   * @throws Exception
+   * @since 0.3.5
+   */
+  public abstract DAG prepareDAG(StreamingApplication app, Configuration conf) throws Exception;
 
   /**
    * Shortcut to run an application. Used for testing.
