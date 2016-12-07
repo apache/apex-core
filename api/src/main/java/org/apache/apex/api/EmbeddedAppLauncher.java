@@ -27,6 +27,8 @@ import com.datatorrent.api.StreamingApplication;
 /**
  * Launcher for running the application directly in the current Java VM. For basic operations such as launching or
  * stopping the application, {@link Launcher} can be used directly.
+ *
+ * @since 3.5.0
  */
 public abstract class EmbeddedAppLauncher<H extends EmbeddedAppLauncher.EmbeddedAppHandle> extends Launcher<H>
 {

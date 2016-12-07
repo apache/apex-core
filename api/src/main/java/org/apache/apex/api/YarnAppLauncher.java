@@ -27,6 +27,8 @@ import com.datatorrent.api.StringCodec;
 /**
  * Launcher for running the application on Hadoop YARN. For basic operations such as launching or stopping the
  * application, {@link Launcher} can be used directly.
+ *
+ * @since 3.5.0
  */
 public abstract class YarnAppLauncher<H extends YarnAppLauncher.YarnAppHandle> extends Launcher<H>
 {
