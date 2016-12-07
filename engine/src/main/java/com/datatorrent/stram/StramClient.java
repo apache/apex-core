@@ -60,10 +60,13 @@ import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
 import org.apache.hadoop.yarn.api.records.LocalResource;
 import org.apache.hadoop.yarn.api.records.LocalResourceType;
 import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
+import org.apache.hadoop.yarn.api.records.NodeReport;
+import org.apache.hadoop.yarn.api.records.NodeState;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.QueueACL;
 import org.apache.hadoop.yarn.api.records.QueueUserACLInfo;
 import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.records.ResourceRequest;
 import org.apache.hadoop.yarn.api.records.YarnClusterMetrics;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.client.api.YarnClientApplication;
@@ -77,6 +80,7 @@ import com.google.common.collect.Lists;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BasicContainerOptConfigurator;
@@ -600,13 +604,26 @@ public class StramClient
       // Not needed in this scenario
       // amContainer.setServiceData(serviceData);
       appContext.setAMContainerSpec(amContainer);
-
       // Set the priority for the application master
       Priority pri = Records.newRecord(Priority.class);
       pri.setPriority(amPriority);
       appContext.setPriority(pri);
       // Set the queue to which this application is to be submitted in the RM
       appContext.setQueue(queueName);
+
+      /*
+      * Select the node which is not blacklisted for AppMaster. Yarn has only provided the API without the implementation.
+      * */
+      if (dag.getAttributes().get(DAG.BLACKLISTED_NODES) != null) {
+        Set<String> nodes = new HashSet<>(Arrays.asList(dag.getAttributes().get(DAG.BLACKLISTED_NODES).split(",")));
+        for (NodeReport nodeReport : yarnClient.getNodeReports(NodeState.RUNNING)) {
+          if (!nodes.contains(nodeReport.getNodeId().getHost())) {
+            LOG.debug("Selected AppMaster node {}", nodeReport.getNodeId().getHost());
+            appContext.setAMContainerResourceRequest(ResourceRequest.newInstance(pri, nodeReport.getNodeId().getHost(), capability, 1));
+            break;
+          }
+        }
+      }
 
       // set the application tags
       appContext.setApplicationTags(tags);
