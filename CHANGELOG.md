@@ -1,6 +1,70 @@
 Apex Changelog
 ========================================================================================================================
 
+Version 3.5.0 - 2016-12-09
+------------------------------------------------------------------------------------------------------------------------
+
+### Bug
+* [APEXCORE-169] - instantiating DTLoggerFactory during test causes incorrect logging behavior
+* [APEXCORE-453] - Intermittent failure of DelayOperatorTest.testFibonacci test case
+* [APEXCORE-458] - Web service authentication failing in HA cases when yarn.resourcemanager.webapps.address.<rmId> is unavailable
+* [APEXCORE-459] - AbstractReservoirTest.performanceTest intermittently fail on slow platforms
+* [APEXCORE-461] - Hidden ports in extended operators appear in the application package
+* [APEXCORE-463] - get-app-package-operators in ApexCLI  not listing certain modules
+* [APEXCORE-476] - Window Id calculation in ToString method in SubscribeRequestTuple & GenericRequestTuple is wrong
+* [APEXCORE-488] - Issues in SSL communication with StrAM
+* [APEXCORE-494] - Window id of downstream operator is not moving after dynamic partition of upstream operator.
+* [APEXCORE-505] - setup and activate calls in operator block heartbeat loop in container
+* [APEXCORE-512] - Launching application using "-exactMatch" option in CLI is failing
+* [APEXCORE-515] - Refresh tokens failing in some scenarios with a login failure message
+* [APEXCORE-528] - Output Ports Not Optional by Default During Validation
+* [APEXCORE-532] - New dynamically added operator does not start with correct windowId.
+* [APEXCORE-533] - Layering of AppPackage properties & configPackage properties in case of ConfigApps is not working.
+* [APEXCORE-540] - Exclude hadoop dependencies from app packages
+* [APEXCORE-542] - Fix debug level verbose option for apex cli
+* [APEXCORE-544] - Latency values are out of whack immediately after app is launched
+* [APEXCORE-562] - RecordingsAgent: returns records for offset beyond number of tuples
+
+### Improvement
+* [APEXCORE-222] - Delegate Buffer Server purge to StreamingContainer
+* [APEXCORE-310] - apex cli - support to kill the app by appname
+* [APEXCORE-379] - Latency is stuck when an operator is stuck (before the 1000 window threshold)
+* [APEXCORE-386] - Upgrade to Jackson 1.9.13
+* [APEXCORE-405] - Provide an API to launch DAG on the cluster
+* [APEXCORE-448] - Make operator name available in OperatorContext
+* [APEXCORE-466] - Improve logging from the *Agent.java files
+* [APEXCORE-470] - New Api for setting the attribute on the operator ( setOperatorAttribute )
+* [APEXCORE-474] - Unifier placement during M*1 deployment
+* [APEXCORE-475] - change the YARN_APPLICATION_TYPE from DataTorrent to ApacheApex
+* [APEXCORE-495] - Enhancing the configuration package to store apps
+* [APEXCORE-502] - Unnecessary byte array copy in DefaultKryoStreamCodec.toByteArray
+* [APEXCORE-506] - Add trailing whitespace check to Apex checkstyle
+* [APEXCORE-510] - Enforce DefaultOutputPort.emit() or Sink.put() thread affinity
+* [APEXCORE-513] - Reduce the log level in updateNodeReports
+* [APEXCORE-516] - StramLocalCluster should always use loopback address for buffer server location
+* [APEXCORE-517] - ApexCli is not working with Hadoop web services when BASIC authentication is enabled
+* [APEXCORE-519] - Add support for DIGEST enabled hadoop web services environment
+* [APEXCORE-524] - Add support for custom maven repository to ClassPathResolverTest.testManifestClassPathResolver 
+* [APEXCORE-525] - Subclass aware DefaultStatefulStreamCodec.newInstance() implementation
+* [APEXCORE-527] - Minor changes in LocalStramChildLauncher to help with unit test failures
+* [APEXCORE-535] - Node.teardown() should try to gracefully shutdown exectutor service
+* [APEXCORE-536] - Upgrade Hadoop dependency
+* [APEXCORE-538] - Log raw data when RPC message fails to de-serialize 
+* [APEXCORE-543] - Enhance the ContainerInfo to contain operator id and name.
+
+### New Feature
+* [APEXCORE-451] - get-app-package-operators in ApexCLI to contain "type" property to indicate operator or  module
+* [APEXCORE-552] - Support application tags when launching application
+
+### Task
+* [APEXCORE-251] - Journal output stream is null error message
+* [APEXCORE-484] - Increase JVM PermGen size while running engine Unit test
+* [APEXCORE-485] - Upgrade maven surefire plugin to the latest version
+* [APEXCORE-487] - Upgrade apex and malhar dependencies in the archtype
+* [APEXCORE-521] - Upgrade Apex core pom.xml to the latest Apache pom parent
+* [APEXCORE-531] - Enable System.out/System.err check for *Test
+* [APEXCORE-557] - Upgrade netlet dependency to 1.3.0
+
 Version 3.4.0 - 2016-05-09
 ------------------------------------------------------------------------------------------------------------------------
 

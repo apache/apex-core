@@ -26,6 +26,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 /**
  *
+ *
+ * @since 3.5.0
  */
 public abstract class StreamingAppFactory implements StramAppLauncher.AppFactory
 {
