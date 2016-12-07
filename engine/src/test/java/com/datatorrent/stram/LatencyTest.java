@@ -127,7 +127,14 @@ public class LatencyTest
     Assert.assertEquals((1000 - 997) * windowWidthMillis, getLatency(1000, 1000, 997, false, 1000, 1500, 1600));
 
     // When the current window is larger than upstream's current window
-    Assert.assertEquals(0, getLatency(1000, 1000, 1001, true, -1, -1, 1600));
+    Assert.assertEquals(-1, getLatency(1000, 1000, 1001, true, -1, -1, 1600));
+
+    // When the current window of an operator is not available yet
+    Assert.assertEquals(-1, getLatency(1000, 1000, 0, false, -1, -1, -1));
+
+    // When the current window of an operator is the same as upstream and no end window stats are available
+    Assert.assertEquals(0, getLatency(1000, 90, 1000, false, -1, -1, -1));
+
   }
 
 }

@@ -81,7 +81,6 @@ import com.datatorrent.stram.engine.TestAppDataQueryOperator;
 import com.datatorrent.stram.engine.TestAppDataResultOperator;
 import com.datatorrent.stram.engine.TestAppDataSourceOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -1034,38 +1033,15 @@ public class StreamingContainerManagerTest
 
   public static class HighLatencyTestOperator extends GenericTestOperator
   {
-    private long firstWindowMillis;
-    private long windowWidthMillis;
-    private long currentWindowId;
     private long latency;
-
-    @Override
-    public void setup(OperatorContext context)
-    {
-      firstWindowMillis = System.currentTimeMillis();
-      // this is an approximation because there is no way to get to the actual value in the DAG
-
-      windowWidthMillis = context.getValue(Context.DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
-    }
-
-    @Override
-    public void beginWindow(long windowId)
-    {
-      currentWindowId = windowId;
-    }
 
     @Override
     public void endWindow()
     {
-      long sleepMillis = latency -
-          (System.currentTimeMillis() - WindowGenerator.getWindowMillis(currentWindowId, firstWindowMillis, windowWidthMillis));
-
-      if (sleepMillis > 0) {
-        try {
-          Thread.sleep(sleepMillis);
-        } catch (InterruptedException ex) {
-          // move on
-        }
+      try {
+        Thread.sleep(latency);
+      } catch (InterruptedException ex) {
+        // move on
       }
     }
 
