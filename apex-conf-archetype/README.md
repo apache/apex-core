@@ -6,7 +6,7 @@ How to Generate a Apex App Configuration Project Template
 
 Run the following command
 
-    mvn archetype:generate -DarchetypeGroupId=org.apache.apex -DarchetypeArtifactId=apex-conf-archetype -DarchetypeVersion=3.5.0-SNAPSHOT -DgroupId=com.example -Dpackage=com.example.myapexapp -DartifactId=myapexconf -Dversion=1.0-SNAPSHOT
+    mvn archetype:generate -DarchetypeGroupId=org.apache.apex -DarchetypeArtifactId=apex-conf-archetype -DarchetypeVersion=3.6.0-SNAPSHOT -DgroupId=com.example -Dpackage=com.example.myapexapp -DartifactId=myapexconf -Dversion=1.0-SNAPSHOT
 
 Using your favorite IDE, open the project that has just been created by the above command.
 Write your application code and optionally operator code 
