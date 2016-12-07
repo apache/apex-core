@@ -16,28 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.datatorrent.stram;
+package org.apache.apex.engine;
 
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 
+import org.apache.apex.api.EmbeddedAppLauncher;
 import org.apache.hadoop.conf.Configuration;
 
+import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode;
 import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 /**
- * <p>LocalModeImpl class.</p>
+ * An implementation of {@link EmbeddedAppLauncher} to launch applications directly in the current Java VM.
  *
+ * TODO: When LocalMode is removed, make this class extend EmbeddedAppLauncher directly
  * @since 0.3.2
  */
-public class LocalModeImpl extends LocalMode
+public class EmbeddedAppLauncherImpl extends LocalMode<EmbeddedAppLauncherImpl.EmbeddedAppHandleImpl>
 {
   private final LogicalPlan lp = new LogicalPlan();
 
@@ -51,6 +57,46 @@ public class LocalModeImpl extends LocalMode
   public DAG cloneDAG() throws Exception
   {
     return StramLocalCluster.cloneLogicalPlan(lp);
+  }
+
+  @Override
+  public EmbeddedAppHandleImpl launchApp(StreamingApplication application, Configuration configuration, Attribute.AttributeMap
+      launchParameters) throws LauncherException
+  {
+    try {
+      prepareDAG(application, configuration);
+    } catch (Exception e) {
+      throw new LauncherException(e);
+    }
+    StramLocalCluster lc = getController();
+    boolean launched = false;
+    if (launchParameters != null) {
+      if (StramUtils.getValueWithDefault(launchParameters, SERIALIZE_DAG)) {
+        // Check if DAG can be serialized
+        try {
+          cloneDAG();
+        } catch (Exception e) {
+          throw new LauncherException(e);
+        }
+      }
+      if (StramUtils.getValueWithDefault(launchParameters, HEARTBEAT_MONITORING)) {
+        lc.setHeartbeatMonitoringEnabled(true);
+      }
+      if (StramUtils.getValueWithDefault(launchParameters, RUN_ASYNC)) {
+        lc.runAsync();
+        launched = true;
+      } else {
+        Long runMillis = StramUtils.getValueWithDefault(launchParameters, RUN_MILLIS);
+        if (runMillis != null) {
+          lc.run(runMillis);
+          launched = true;
+        }
+      }
+    }
+    if (!launched) {
+      lc.run();
+    }
+    return new EmbeddedAppHandleImpl(lc);
   }
 
   @Override
@@ -69,7 +115,7 @@ public class LocalModeImpl extends LocalMode
   }
 
   @Override
-  public Controller getController()
+  public StramLocalCluster getController()
   {
     try {
       addLibraryJarsToClasspath(lp);
@@ -97,6 +143,29 @@ public class LocalModeImpl extends LocalMode
         URLClassLoader cl = URLClassLoader.newInstance(urlList, prevCl);
         Thread.currentThread().setContextClassLoader(cl);
       }
+    }
+
+  }
+
+  public static class EmbeddedAppHandleImpl implements EmbeddedAppLauncher.EmbeddedAppHandle
+  {
+    final StramLocalCluster controller;
+
+    public EmbeddedAppHandleImpl(StramLocalCluster controller)
+    {
+      this.controller = controller;
+    }
+
+    @Override
+    public boolean isFinished()
+    {
+      return controller.isFinished();
+    }
+
+    @Override
+    public void shutdown(ShutdownMode shutdownMode) throws LauncherException
+    {
+      controller.shutdown();
     }
 
   }

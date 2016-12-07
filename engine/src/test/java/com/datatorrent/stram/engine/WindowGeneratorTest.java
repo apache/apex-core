@@ -383,7 +383,7 @@ public class WindowGeneratorTest
     for (int windowWidthMillis : new int[]{500, 123}) {
       long window1 = WindowGenerator.getWindowId(first, first, windowWidthMillis);
       long window2 = WindowGenerator.getAheadWindowId(window1, first, windowWidthMillis, ahead);
-      Assert.assertEquals(ahead, WindowGenerator.compareWindowId(window2, window1, first, windowWidthMillis));
+      Assert.assertEquals(ahead, WindowGenerator.compareWindowId(window2, window1, windowWidthMillis));
     }
   }
 

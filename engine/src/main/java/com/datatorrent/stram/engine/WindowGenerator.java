@@ -282,14 +282,14 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
    *
    * @param windowIdA
    * @param windowIdB
-   * @param firstWindowMillis
    * @param windowWidthMillis
    * @return the number of windows ahead, negative if windowIdA is behind windowIdB
    */
-  public static long compareWindowId(long windowIdA, long windowIdB, long firstWindowMillis, long windowWidthMillis)
+  public static long compareWindowId(long windowIdA, long windowIdB, long windowWidthMillis)
   {
-    long millisA = getWindowMillis(windowIdA, firstWindowMillis, windowWidthMillis);
-    long millisB = getWindowMillis(windowIdB, firstWindowMillis, windowWidthMillis);
+    // firstWindowMillis here actually does not matter since they will be subtracted out.
+    long millisA = getWindowMillis(windowIdA, 0, windowWidthMillis);
+    long millisB = getWindowMillis(windowIdB, 0, windowWidthMillis);
     return (millisA - millisB) / windowWidthMillis;
   }
 

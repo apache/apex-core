@@ -18,54 +18,17 @@
  */
 package com.datatorrent.api;
 
-import java.util.Iterator;
-import java.util.ServiceLoader;
-
-import org.apache.hadoop.conf.Configuration;
+import org.apache.apex.api.EmbeddedAppLauncher;
 
 /**
  * Local mode execution for single application
  *
+ * @deprecated
  * @since 0.3.2
  */
-public abstract class LocalMode
+@Deprecated
+public abstract class LocalMode<H extends EmbeddedAppLauncher.EmbeddedAppHandle> extends EmbeddedAppLauncher<H>
 {
-
-  /**
-   * <p>
-   * getDAG.</p>
-   *
-   * @return
-   */
-  public abstract DAG getDAG();
-
-  /**
-   * <p>
-   * cloneDAG.</p>
-   *
-   * @return
-   * @throws java.lang.Exception
-   */
-  public abstract DAG cloneDAG() throws Exception;
-
-  /**
-   * Build the logical plan through the given streaming application instance and/or from configuration.
-   * <p>
-   * The plan will be constructed through {@link StreamingApplication#populateDAG}. If configuration properties are
-   * specified, they function as override, as would be the case when launching an application through CLI.
-   * <p>
-   * This method can also be used to construct the plan declaratively from configuration only, by passing null for the
-   * application. In this case the configuration contains all operators and streams.
-   * <p>
-   *
-   * @param app
-   * @param conf
-   * @return
-   * @throws Exception
-   * @since 0.3.5
-   */
-  public abstract DAG prepareDAG(StreamingApplication app, Configuration conf) throws Exception;
-
   /**
    * <p>
    * getController.</p>
@@ -96,38 +59,7 @@ public abstract class LocalMode
    */
   public static LocalMode newInstance()
   {
-    ServiceLoader<LocalMode> loader = ServiceLoader.load(LocalMode.class);
-    Iterator<LocalMode> impl = loader.iterator();
-    if (!impl.hasNext()) {
-      throw new RuntimeException("No implementation for " + LocalMode.class);
-    }
-    return impl.next();
-  }
-
-  /**
-   * Shortcut to run an application. Used for testing.
-   *
-   * @param app
-   * @param runMillis
-   */
-  public static void runApp(StreamingApplication app, int runMillis)
-  {
-    runApp(app, null, runMillis);
-  }
-
-  /**
-   * Shortcut to run an application with the modified configuration.
-   *
-   * @param app           - Application to be run
-   * @param configuration - Configuration
-   * @param runMillis     - The time after which the application will be shutdown; pass 0 to run indefinitely.
-   */
-  public static void runApp(StreamingApplication app, Configuration configuration, int runMillis)
-  {
-    LocalMode lma = newInstance();
-    app.populateDAG(lma.getDAG(), configuration == null ? new Configuration(false) : configuration);
-    LocalMode.Controller lc = lma.getController();
-    lc.run(runMillis);
+    return loadService(LocalMode.class);
   }
 
 }
