@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.bufferserver.util.SerializedData;
-import com.datatorrent.netlet.AbstractLengthPrependerClient;
+import com.datatorrent.netlet.WriteOnlyClient;
 
 /**
  * PhysicalNode represents one physical subscriber.
@@ -32,16 +32,16 @@ import com.datatorrent.netlet.AbstractLengthPrependerClient;
  */
 public class PhysicalNode
 {
-  public static final int BUFFER_SIZE = 8 * 1024;
   private final long starttime;
-  private final AbstractLengthPrependerClient client;
-  private final long processedMessageCount;
+  private final WriteOnlyClient client;
+  private long processedMessageCount;
+  private SerializedData blocker;
 
   /**
    *
    * @param client
    */
-  public PhysicalNode(AbstractLengthPrependerClient client)
+  public PhysicalNode(WriteOnlyClient client)
   {
     this.client = client;
     starttime = System.currentTimeMillis();
@@ -71,20 +71,11 @@ public class PhysicalNode
    * @param d
    * @throws InterruptedException
    */
-  private SerializedData blocker;
-
   public boolean send(SerializedData d)
   {
-    if (d.offset == d.dataOffset) {
-      if (client.write(d.buffer, d.offset, d.length)) {
-        return true;
-      }
-    } else {
-      if (client.send(d.buffer, d.offset, d.length)) {
-        return true;
-      }
+    if (client.send(d.buffer, d.dataOffset, d.length - (d.dataOffset - d.offset))) {
+      return true;
     }
-
     blocker = d;
     return false;
   }
@@ -150,7 +141,7 @@ public class PhysicalNode
   /**
    * @return the channel
    */
-  public AbstractLengthPrependerClient getClient()
+  public WriteOnlyClient getClient()
   {
     return client;
   }
