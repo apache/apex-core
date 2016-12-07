@@ -430,8 +430,6 @@
         <distMgmtReleaseUrl>https://repository.apache.org/service/local/staging/deploy/maven2</distMgmtReleaseUrl>
         <distMgmtDevUrl>file://${project.build.directory}/mvn-repo</distMgmtDevUrl>
         <sourceReleaseAssemblyDescriptor>source-release-zip-tar</sourceReleaseAssemblyDescriptor>
-        <package.prefix>/opt/datatorrent</package.prefix>
-        <package.groupname>dtorrent</package.groupname>
       </properties>
       <distributionManagement>
         <repository>
@@ -464,12 +462,24 @@
     <profile>
       <activation>
         <file>
-          <missing>${basedir}/src/main</missing>
+          <exists>${basedir}/NOTICE</exists>
         </file>
       </activation>
       <properties>
         <remoteresources.skip>true</remoteresources.skip>
+        <!-- do not push source archives to the repo - see MPOM-90 -->
+        <assembly.attach>false</assembly.attach>
       </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <configuration>
+              <finalName>apache-apex-core-${project.version}</finalName>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
   </profiles>
 </project>
