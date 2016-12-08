@@ -614,8 +614,9 @@ public class StramClient
       /*
       * Select the node which is not blacklisted for AppMaster. Yarn has only provided the API without the implementation.
       * */
-      if (dag.getAttributes().get(DAG.BLACKLISTED_NODES) != null) {
-        Set<String> nodes = new HashSet<>(Arrays.asList(dag.getAttributes().get(DAG.BLACKLISTED_NODES).split(",")));
+      String blackListedNodes = dag.getAttributes().get(DAG.BLACKLISTED_NODES);
+      if (blackListedNodes != null && !blackListedNodes.isEmpty()) {
+        Set<String> nodes = new HashSet<>(Arrays.asList(blackListedNodes.split(",")));
         for (NodeReport nodeReport : yarnClient.getNodeReports(NodeState.RUNNING)) {
           if (!nodes.contains(nodeReport.getNodeId().getHost())) {
             LOG.debug("Selected AppMaster node {}", nodeReport.getNodeId().getHost());
