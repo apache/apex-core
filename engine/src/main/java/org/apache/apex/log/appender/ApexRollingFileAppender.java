@@ -41,7 +41,7 @@ import org.apache.log4j.helpers.LogLog;
  * order again.
  * To identify current file, it creates <filename> symlink to current file.
  */
-public class ApexRollingFileAppender extends RollingFileAppender
+public class ApexRollingFileAppender extends RollingFileAppender implements LogLocationProvider
 {
   private int currentFileIndex = 0;
   private String currentFileName = "";
@@ -143,8 +143,15 @@ public class ApexRollingFileAppender extends RollingFileAppender
     }
   }
 
+  @Override
   public String getCurrentFileName()
   {
     return currentFileName;
+  }
+
+  @Override
+  public long getCurrentFileOffset()
+  {
+    return ((CountingQuietWriter)qw).getCount();
   }
 }

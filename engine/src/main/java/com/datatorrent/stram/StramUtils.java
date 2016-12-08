@@ -84,7 +84,7 @@ public abstract class StramUtils
         System.setProperty(StreamingApplication.DT_PREFIX + "cid", containerIdString);
       }
 
-      System.setProperty("hadoop.log.file", "dt.log");
+      System.setProperty("hadoop.log.file", "apex.log");
       if (envs.get("CDH_YARN_HOME") != null) {
         // map logging properties to what CHD expects out of the box
         String[] keys = new String[]{"log.dir", "log.file", "root.logger"};

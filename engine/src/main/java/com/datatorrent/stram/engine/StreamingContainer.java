@@ -313,15 +313,19 @@ public class StreamingContainer extends YarnContainerMain
         stramChild.teardown();
       }
     } catch (Error error) {
+      String logFileName = LoggerUtil.getLogFileName();
+      long logFileOffset = LoggerUtil.getLogFileOffset();
       logger.error("Fatal error in container!", error);
       /* Report back any failures, for diagnostic purposes */
       String msg = ExceptionUtils.getStackTrace(error);
-      umbilical.reportError(childId, null, "FATAL: " + msg, LoggerUtil.getLogFileName(), LoggerUtil.getLogFileOffset());
+      umbilical.reportError(childId, null, "FATAL: " + msg, logFileName, logFileOffset);
     } catch (Exception exception) {
+      String logFileName = LoggerUtil.getLogFileName();
+      long logFileOffset = LoggerUtil.getLogFileOffset();
       logger.error("Fatal exception in container!", exception);
       /* Report back any failures, for diagnostic purposes */
       String msg = ExceptionUtils.getStackTrace(exception);
-      umbilical.reportError(childId, null, msg, LoggerUtil.getLogFileName(), LoggerUtil.getLogFileOffset());
+      umbilical.reportError(childId, null, msg, logFileName, logFileOffset);
     } finally {
       rpcProxy.close();
       DefaultMetricsSystem.shutdown();
@@ -1407,6 +1411,8 @@ public class StreamingContainer extends YarnContainerMain
             node.run(); /* this is a blocking call */
           } catch (Error error) {
             int[] operators;
+            String logFileName = LoggerUtil.getLogFileName();
+            long logFileOffset = LoggerUtil.getLogFileOffset();
             if (currentdi == null) {
               logger.error("Voluntary container termination due to an error in operator set {}.", setOperators, error);
               operators = new int[setOperators.size()];
@@ -1418,19 +1424,21 @@ public class StreamingContainer extends YarnContainerMain
               logger.error("Voluntary container termination due to an error in operator {}.", currentdi, error);
               operators = new int[]{currentdi.id};
             }
-            umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error), LoggerUtil.getLogFileName(), LoggerUtil.getLogFileOffset());
+            umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error), logFileName, logFileOffset);
             System.exit(1);
           } catch (Exception ex) {
+            String logFileName = LoggerUtil.getLogFileName();
+            long logFileOffset = LoggerUtil.getLogFileOffset();
             if (currentdi == null) {
               failedNodes.add(ndi.id);
               logger.error("Operator set {} stopped running due to an exception.", setOperators, ex);
               int[] operators = new int[]{ndi.id};
-              umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex), LoggerUtil.getLogFileName(), LoggerUtil.getLogFileOffset());
+              umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex), logFileName, logFileOffset);
             } else {
               failedNodes.add(currentdi.id);
               logger.error("Abandoning deployment of operator {} due to setup failure.", currentdi, ex);
               int[] operators = new int[]{currentdi.id};
-              umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex), LoggerUtil.getLogFileName(), LoggerUtil.getLogFileOffset());
+              umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex), logFileName, logFileOffset);
             }
           } finally {
             if (setOperators.contains(ndi)) {

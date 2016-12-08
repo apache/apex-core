@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.apache.apex.log.appender.ApexRollingFileAppender;
+import org.apache.apex.log.appender.LogLocationProvider;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Category;
 import org.apache.log4j.Level;
@@ -282,8 +282,8 @@ public class LoggerUtil
   public static String getLogFileName()
   {
     Appender appender = LogManager.getRootLogger().getAppender(APEX_APPENDER);
-    if (appender != null && appender instanceof ApexRollingFileAppender) {
-      ApexRollingFileAppender apexAppender = (ApexRollingFileAppender)appender;
+    if (appender != null && appender instanceof LogLocationProvider) {
+      LogLocationProvider apexAppender = (LogLocationProvider)appender;
       return apexAppender.getCurrentFileName();
     }
     return null;
@@ -291,10 +291,10 @@ public class LoggerUtil
 
   public static long getLogFileOffset()
   {
-    String currentLogFileName = getLogFileName();
-    if (currentLogFileName != null) {
-      File logFile = new File(currentLogFileName);
-      return logFile.length();
+    Appender appender = LogManager.getRootLogger().getAppender(APEX_APPENDER);
+    if (appender != null && appender instanceof LogLocationProvider) {
+      LogLocationProvider apexAppender = (LogLocationProvider)appender;
+      return apexAppender.getCurrentFileOffset();
     }
     return 0;
   }
