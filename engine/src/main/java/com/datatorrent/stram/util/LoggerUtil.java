@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram.util;
 
+import java.io.File;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Map;
@@ -26,8 +27,11 @@ import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import org.apache.apex.log.LogFileInformation;
+
 import org.apache.log4j.Appender;
 import org.apache.log4j.Category;
+import org.apache.log4j.FileAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -36,6 +40,7 @@ import org.apache.log4j.spi.HierarchyEventListener;
 import org.apache.log4j.spi.LoggerFactory;
 import org.apache.log4j.spi.LoggerRepository;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -182,9 +187,19 @@ public class LoggerUtil
     }
   }
 
+  private static FileAppender fileAppender;
+  private static boolean shouldFetchLogFileInfo;
   static {
     logger.debug("initializing LoggerUtil");
+    initializeLogger();
+  }
+
+  @VisibleForTesting
+  static void initializeLogger()
+  {
     LogManager.setRepositorySelector(new DefaultRepositorySelector(new DelegatingLoggerRepository(LogManager.getLoggerRepository())), null);
+    fileAppender = getFileAppender();
+    shouldFetchLogFileInfo = shouldFetchLogFileInformation();
   }
 
   private static synchronized Level getLevelFor(String name)
@@ -278,4 +293,66 @@ public class LoggerUtil
     }
     return ImmutableMap.copyOf(matchedClasses);
   }
+
+  /**
+   * Returns logger log file {@link LogFileInformation}
+   * @return logFileInformation
+   */
+  public static LogFileInformation getLogFileInformation()
+  {
+    if (shouldFetchLogFileInfo) {
+      File logFile = new File(fileAppender.getFile());
+      LogFileInformation logFileInfo = new LogFileInformation(fileAppender.getFile(), logFile.length());
+      return logFileInfo;
+    }
+    return null;
+  }
+
+  private static FileAppender getFileAppender()
+  {
+    Enumeration<Appender> e = LogManager.getRootLogger().getAllAppenders();
+    FileAppender fileAppender = null;
+    while (e.hasMoreElements()) {
+      Appender appender = e.nextElement();
+      if (appender instanceof FileAppender) {
+        if (fileAppender == null) {
+          fileAppender = (FileAppender)appender;
+        } else {
+          //skip fetching log file information if we have multiple file Appenders
+          return null;
+        }
+      }
+    }
+    return fileAppender;
+  }
+
+  /*
+   * We should return log file information only if,
+   * we have single file Appender, the logging level of appender is set to level Error or above and immediateFlush is set to true.
+   * In future we should be able to enhance this feature to support multiple file appenders.
+   */
+  private static boolean shouldFetchLogFileInformation()
+  {
+    if (fileAppender != null && isErrorLevelEnable() && fileAppender.getImmediateFlush()) {
+      return true;
+    }
+    logger.warn(
+        "Log information is unavailable. To enable log information log4j/logging should be configured with single FileAppender that has immediateFlush set to true and log level set to ERROR or greater.");
+    return false;
+  }
+
+  private static boolean isErrorLevelEnable()
+  {
+    if (fileAppender != null) {
+      Level p = (Level)fileAppender.getThreshold();
+      if (p == null) {
+        p = LogManager.getRootLogger().getLevel();
+      }
+      if (p != null) {
+        return Level.ERROR.isGreaterOrEqual(p);
+      }
+    }
+    return false;
+  }
+
 }

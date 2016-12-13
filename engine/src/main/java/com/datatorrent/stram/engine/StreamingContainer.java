@@ -42,6 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.log.LogFileInformation;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -315,10 +316,11 @@ public class StreamingContainer extends YarnContainerMain
         stramChild.teardown();
       }
     } catch (Error | Exception e) {
+      LogFileInformation logFileInfo = LoggerUtil.getLogFileInformation();
       logger.error("Fatal {} in container!", (e instanceof Error) ? "Error" : "Exception", e);
       /* Report back any failures, for diagnostic purposes */
       try {
-        umbilical.reportError(childId, null, ExceptionUtils.getStackTrace(e));
+        umbilical.reportError(childId, null, ExceptionUtils.getStackTrace(e), logFileInfo);
       } catch (Exception ex) {
         logger.debug("Fail to log", ex);
       }
@@ -1426,6 +1428,8 @@ public class StreamingContainer extends YarnContainerMain
             node.run(); /* this is a blocking call */
           } catch (Error error) {
             int[] operators;
+            //fetch logFileInfo before logging exception, to get offset before exception
+            LogFileInformation logFileInfo = LoggerUtil.getLogFileInformation();
             if (currentdi == null) {
               logger.error("Voluntary container termination due to an error in operator set {}.", setOperators, error);
               operators = new int[setOperators.size()];
@@ -1438,19 +1442,21 @@ public class StreamingContainer extends YarnContainerMain
               operators = new int[]{currentdi.id};
             }
             try {
-              umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error));
+              umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error), logFileInfo);
             } catch (Exception e) {
               logger.debug("Fail to log", e);
             } finally {
               System.exit(1);
             }
           } catch (Exception ex) {
+            //fetch logFileInfo before logging exception, to get offset before exception
+            LogFileInformation logFileInfo = LoggerUtil.getLogFileInformation();
             if (currentdi == null) {
               failedNodes.add(ndi.id);
               logger.error("Operator set {} stopped running due to an exception.", setOperators, ex);
               int[] operators = new int[]{ndi.id};
               try {
-                umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex));
+                umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex), logFileInfo);
               } catch (Exception e) {
                 logger.debug("Fail to log", e);
               }
@@ -1459,7 +1465,7 @@ public class StreamingContainer extends YarnContainerMain
               logger.error("Abandoning deployment of operator {} due to setup failure.", currentdi, ex);
               int[] operators = new int[]{currentdi.id};
               try {
-                umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex));
+                umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex), logFileInfo);
               } catch (Exception e) {
                 logger.debug("Fail to log", e);
               }

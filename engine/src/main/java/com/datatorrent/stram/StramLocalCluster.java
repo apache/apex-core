@@ -33,6 +33,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.apex.log.LogFileInformation;
+
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
@@ -105,7 +108,7 @@ public class StramLocalCluster implements Runnable, Controller
     }
 
     @Override
-    public void reportError(String containerId, int[] operators, String msg) throws IOException
+    public void reportError(String containerId, int[] operators, String msg, LogFileInformation logFileInfo) throws IOException
     {
       log(containerId, msg);
     }
