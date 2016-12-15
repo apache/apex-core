@@ -33,6 +33,7 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
+import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.StringCodec.Object2String;
 
 public class StatelessPartitionerTest
@@ -127,7 +128,7 @@ public class StatelessPartitionerTest
   @Test
   public void objectPropertyTest()
   {
-    Object2String<StatelessPartitioner<DummyOperator>> propertyReader = new Object2String<StatelessPartitioner<DummyOperator>>();
+    StringCodec<StatelessPartitioner<DummyOperator>> propertyReader = Object2String.getInstance();
     StatelessPartitioner<DummyOperator> partitioner = propertyReader.fromString("com.datatorrent.common.partitioner.StatelessPartitioner:3");
     Assert.assertEquals(3, partitioner.getPartitionCount());
   }

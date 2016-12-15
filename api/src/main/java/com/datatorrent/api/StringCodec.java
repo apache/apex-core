@@ -62,8 +62,44 @@ public interface StringCodec<T>
    */
   String toString(T pojo);
 
+  class Factory
+  {
+    public static StringCodec<?> getInstance(Class<?> cls)
+    {
+      if (cls == String.class) {
+        return String2String.getInstance();
+      } else if (cls == Integer.class) {
+        return Integer2String.getInstance();
+      } else if (cls == Long.class) {
+        return Long2String.getInstance();
+      } else if (cls == Boolean.class) {
+        return Boolean2String.getInstance();
+      } else if (Enum.class.isAssignableFrom(cls)) {
+        return Enum2String.getInstance(cls);
+      } else {
+        return null;
+      }
+    }
+  }
+
   class String2String implements StringCodec<String>, Serializable
   {
+    @SuppressWarnings("deprecation")
+    private static final String2String instance = new String2String();
+
+    public static StringCodec<String> getInstance()
+    {
+      return instance;
+    }
+
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance()}
+     */
+    @Deprecated
+    public String2String()
+    {
+    }
+
     @Override
     public String fromString(String string)
     {
@@ -81,6 +117,22 @@ public interface StringCodec<T>
 
   class Integer2String implements StringCodec<Integer>, Serializable
   {
+    @SuppressWarnings("deprecation")
+    private static final Integer2String instance = new Integer2String();
+
+    public static StringCodec<Integer> getInstance()
+    {
+      return instance;
+    }
+
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance()}
+     */
+    @Deprecated
+    public Integer2String()
+    {
+    }
+
     @Override
     public Integer fromString(String string)
     {
@@ -98,6 +150,22 @@ public interface StringCodec<T>
 
   class Long2String implements StringCodec<Long>, Serializable
   {
+    @SuppressWarnings("deprecation")
+    private static final Long2String instance = new Long2String();
+
+    public static StringCodec<Long> getInstance()
+    {
+      return instance;
+    }
+
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance()}
+     */
+    @Deprecated
+    public Long2String()
+    {
+    }
+
     @Override
     public Long fromString(String string)
     {
@@ -115,6 +183,22 @@ public interface StringCodec<T>
 
   class Boolean2String implements StringCodec<Boolean>, Serializable
   {
+    @SuppressWarnings("deprecation")
+    private static final Boolean2String instance = new Boolean2String();
+
+    public static StringCodec<Boolean> getInstance()
+    {
+      return instance;
+    }
+
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance()}
+     */
+    @Deprecated
+    public Boolean2String()
+    {
+    }
+
     @Override
     public Boolean fromString(String string)
     {
@@ -148,21 +232,52 @@ public interface StringCodec<T>
    */
   class Object2String<T> implements StringCodec<T>, Serializable
   {
+    @SuppressWarnings("deprecation")
+    private static final Object2String instance = new Object2String();
+
+    public static <T> StringCodec<T> getInstance()
+    {
+      return instance;
+    }
+
+    public static <T> StringCodec<T> getInstance(String separator)
+    {
+      return getInstance(separator, "=");
+    }
+
+    @SuppressWarnings("deprecation")
+    public static <T> StringCodec<T> getInstance(String separator, String propertySeparator)
+    {
+      return new Object2String<>(separator, propertySeparator);
+    }
+
     public final String separator;
     public final String propertySeparator;
 
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance()}
+     */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public Object2String()
     {
-      separator = ":";
-      propertySeparator = "=";
+      this(":", "=");
     }
 
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance(String)}
+     */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public Object2String(String separator)
     {
-      this.separator = separator;
-      this.propertySeparator = "=";
+      this(separator, "=");
     }
 
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance(String, String)}
+     */
+    @Deprecated
     public Object2String(String separator, String propertySeparator)
     {
       this.separator = separator;
@@ -219,11 +334,21 @@ public interface StringCodec<T>
 
   class Map2String<K, V> implements StringCodec<Map<K, V>>, Serializable
   {
+    @SuppressWarnings("deprecation")
+    public static <K, V> StringCodec<Map<K, V>> getInstance(String separator, String equal, StringCodec<K> keyCodec, StringCodec<V> valueCodec)
+    {
+      return new Map2String<>(separator, equal, keyCodec, valueCodec);
+    }
+
     private final StringCodec<K> keyCodec;
     private final StringCodec<V> valueCodec;
     private final String separator;
     private final String equal;
 
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance(String, String, StringCodec, StringCodec)}
+     */
+    @Deprecated
     public Map2String(String separator, String equal, StringCodec<K> keyCodec, StringCodec<V> valueCodec)
     {
       this.equal = equal;
@@ -276,9 +401,19 @@ public interface StringCodec<T>
 
   class Collection2String<T> implements StringCodec<Collection<T>>, Serializable
   {
+    @SuppressWarnings("deprecation")
+    public static <T> StringCodec<Collection<T>> getInstance(String separator, StringCodec<T> codec)
+    {
+      return new Collection2String<>(separator, codec);
+    }
+
     private final String separator;
     private final StringCodec<T> codec;
 
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance(String, StringCodec)}
+     */
+    @Deprecated
     public Collection2String(String separator, StringCodec<T> codec)
     {
       this.separator = separator;
@@ -334,6 +469,16 @@ public interface StringCodec<T>
   {
     private final Class<T> clazz;
 
+    @SuppressWarnings("deprecation")
+    public static Enum2String getInstance(Class clazz)
+    {
+      return new Enum2String(clazz);
+    }
+
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance(Class<T>)}
+     */
+    @Deprecated
     public Enum2String(Class<T> clazz)
     {
       this.clazz = clazz;
@@ -356,6 +501,21 @@ public interface StringCodec<T>
 
   class Class2String<T> implements StringCodec<Class<? extends T>>, Serializable
   {
+    @SuppressWarnings("deprecation")
+    private static final StringCodec instance = new Class2String<>();
+
+    public static <T> StringCodec<Class<? extends T>> getInstance()
+    {
+      return (StringCodec<Class<? extends T>>)instance;
+    }
+
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance()}
+     */
+    public Class2String()
+    {
+    }
+
     @Override
     @SuppressWarnings({"BroadCatchBlock", "TooBroadCatch"})
     public Class<? extends T> fromString(String string)
@@ -381,8 +541,18 @@ public interface StringCodec<T>
   class JsonStringCodec<T> implements StringCodec<T>, Serializable
   {
     private static final long serialVersionUID = 2513932518264776006L;
+
+    @SuppressWarnings("deprecation")
+    public static <T> StringCodec<T> getInstance(Class<T> clazz)
+    {
+      return new JsonStringCodec<>(clazz);
+    }
+
     Class<?> clazz;
 
+    /**
+     * @deprecated As of release 3.5.0, replaced by {@link #getInstance(Class)}
+     */
     public JsonStringCodec(Class<T> clazz)
     {
       this.clazz = clazz;

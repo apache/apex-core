@@ -20,17 +20,21 @@ package com.datatorrent.api;
 
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
+import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 /**
  * This tests the Object2String codec
  */
 public class Object2StringTest
 {
+  private StringCodec<TestBean> bean2String;
+
   public static class TestBean
   {
     private int intVal;
@@ -127,10 +131,16 @@ public class Object2StringTest
     }
   }
 
+  @Before
+  public void setup()
+  {
+    bean2String = StringCodec.Object2String.getInstance();
+    assertTrue(bean2String instanceof StringCodec.Object2String);
+  }
+
   @Test
   public void testBeanCodecWithoutConstructorWithoutProperty()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName();
     TestBean obj = bean2String.fromString(bean);
     assertEquals("validating the bean",obj,new TestBean());
@@ -139,7 +149,6 @@ public class Object2StringTest
   @Test
   public void testBeanCodecWithConstructorSet()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ":testVal";
     TestBean obj = bean2String.fromString(bean);
     assertEquals("validating the bean", obj, new TestBean("testVal"));
@@ -148,7 +157,6 @@ public class Object2StringTest
   @Test
   public void testBeanCodecWithConstructorPropertySet()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ":testVal:intVal=10:stringVal=strVal";
     TestBean obj = bean2String.fromString(bean);
     TestBean expectedBean = new TestBean("testVal");
@@ -160,7 +168,6 @@ public class Object2StringTest
   @Test
   public void testBeanCodecWithConstructorSetEmptyProperties()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ":testVal:";
     TestBean obj = bean2String.fromString(bean);
     assertEquals("validating the bean",obj,new TestBean("testVal"));
@@ -169,7 +176,6 @@ public class Object2StringTest
   @Test
   public void testBeanCodecOnlyEmptyConstructor()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ":";
     TestBean obj = bean2String.fromString(bean);
     assertEquals("validating the bean",obj,new TestBean());
@@ -178,7 +184,6 @@ public class Object2StringTest
   @Test
   public void testBeanCodecOnlyConstructor()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ": ";
     TestBean obj = bean2String.fromString(bean);
     assertEquals("validating the bean",obj,new TestBean(" "));
@@ -187,7 +192,6 @@ public class Object2StringTest
   @Test
   public void testBeanCodecEmptyConstructorEmptyProperty()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + "::";
     TestBean obj = bean2String.fromString(bean);
     assertEquals("validating the bean",obj,new TestBean());
@@ -196,7 +200,6 @@ public class Object2StringTest
   @Test
   public void testBeanCodecWithProperty()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + "::intVal=1";
     TestBean obj = bean2String.fromString(bean);
     TestBean expectedBean = new TestBean("");
@@ -207,7 +210,6 @@ public class Object2StringTest
   @Test
   public void testBeanCodecWithAllProperties()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + "::intVal=1:stringVal=testStr:longVal=10";
     TestBean obj = bean2String.fromString(bean);
     TestBean expectedBean = new TestBean("testStr");
@@ -219,7 +221,6 @@ public class Object2StringTest
   @Test
   public void testBeanWithWrongClassName()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + "1::intVal=1";
     try {
       bean2String.fromString(bean);
@@ -237,7 +238,6 @@ public class Object2StringTest
   @Test
   public void testBeanFailure()
   {
-    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + "::intVal=1:stringVal=hello:longVal=10";
     TestBean obj = bean2String.fromString(bean);
     TestBean expectedBean = new TestBean("hello");
