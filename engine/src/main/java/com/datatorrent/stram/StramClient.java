@@ -285,9 +285,20 @@ public class StramClient
 
     // copy sub directories that are not present in target
     FileStatus[] lFiles = fs.listStatus(origAppDir);
+
+    // In case of MapR/MapR-FS, f.getPath().toString() returns path as maprfs:///<orig app dir>
+    // whereas origAppDir.toString & newAppDir are in maprfs:/<orig or new app dir> format
+    // e.g.
+    // f.getPath().toString -> maprfs:///user/dtadmin/datatorrent/apps/application_1481890072066_0004/checkpoints
+    // origAppDir -> maprfs:/user/dtadmin/datatorrent/apps/application_1481890072066_0004
+    // newAppDir -> maprfs:/user/dtadmin/datatorrent/apps/application_1481890072066_0005
+
+    String origAppDirPath = Path.getPathWithoutSchemeAndAuthority(origAppDir).toString();
+    String newAppDirPath = Path.getPathWithoutSchemeAndAuthority(new Path(newAppDir)).toString();
+
     for (FileStatus f : lFiles) {
       if (f.isDirectory()) {
-        String targetPath = f.getPath().toString().replace(origAppDir.toString(), newAppDir);
+        String targetPath = f.getPath().toString().replace(origAppDirPath, newAppDirPath);
         if (!fs.exists(new Path(targetPath))) {
           LOG.debug("Copying {} to {}", f.getPath(), targetPath);
           FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
