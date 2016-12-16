@@ -35,15 +35,15 @@ public abstract class Tuple
 {
   public static final String CLASSIC_VERSION = "1.0";
   public static final String FAST_VERSION = "1.1";
-  public final byte[] buffer;
-  public final int offset;
-  public final int length;
+  protected final byte[] buffer;
+  protected int offset;
+  protected final int limit;
 
-  public Tuple(byte[] array, int offset, int length)
+  protected Tuple(byte[] array, int offset, int length)
   {
     this.buffer = array;
-    this.offset = offset;
-    this.length = length;
+    this.offset = offset + 1;
+    this.limit = offset + length;
   }
 
   public static Tuple getTuple(byte[] buffer, int offset, int length)
@@ -77,36 +77,16 @@ public abstract class Tuple
         return new WindowIdTuple(buffer, offset, length);
 
       case PUBLISHER_REQUEST:
-        PublishRequestTuple prt = new PublishRequestTuple(buffer, offset, length);
-        prt.parse();
-        if (!prt.isValid()) {
-          logger.error("Unparseable Generic Request Tuple of type {} received!", MessageType.valueOf(buffer[offset]));
-        }
-        return prt;
+        return new PublishRequestTuple(buffer, offset, length);
 
       case PURGE_REQUEST:
-        PurgeRequestTuple purgert = new PurgeRequestTuple(buffer, offset, length);
-        purgert.parse();
-        if (!purgert.isValid()) {
-          logger.error("Unparseable Purge Request Tuple of type {} received!", MessageType.valueOf(buffer[offset]));
-        }
-        return purgert;
+        return new PurgeRequestTuple(buffer, offset, length);
 
       case RESET_REQUEST:
-        ResetRequestTuple resetrt = new ResetRequestTuple(buffer, offset, length);
-        resetrt.parse();
-        if (!resetrt.isValid()) {
-          logger.error("Unparseable Reset Request Tuple of type {} received!", MessageType.valueOf(buffer[offset]));
-        }
-        return resetrt;
+        return new ResetRequestTuple(buffer, offset, length);
 
       case SUBSCRIBER_REQUEST:
-        SubscribeRequestTuple srt = new SubscribeRequestTuple(buffer, offset, length);
-        srt.parse();
-        if (!srt.isValid()) {
-          logger.error("Unparseable Subscriber Request Tuple received!");
-        }
-        return srt;
+        return new SubscribeRequestTuple(buffer, offset, length);
 
       default:
         return null;
@@ -120,7 +100,7 @@ public abstract class Tuple
     return offset + identifier.getBytes().length;
   }
 
-  public int readVarInt(int offset, int limit)
+  protected int readVarInt()
   {
     if (offset < limit) {
       byte tmp = buffer[offset++];
@@ -161,20 +141,32 @@ public abstract class Tuple
                                     + Arrays.toString(Arrays.copyOfRange(buffer, offset, limit)));
   }
 
-  public MessageType getType()
+  public abstract MessageType getType();
+
+  public int getWindowId()
   {
-    return MessageType.valueOf(buffer[offset]);
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
-  public abstract int getWindowId();
+  public int getPartition()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 
-  public abstract int getPartition();
+  public Slice getData()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 
-  public abstract Slice getData();
+  public int getBaseSeconds()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 
-  public abstract int getBaseSeconds();
-
-  public abstract int getWindowWidth();
+  public int getWindowWidth()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 
   private static final Logger logger = LoggerFactory.getLogger(Tuple.class);
 }

@@ -46,112 +46,90 @@ public class SubscribeRequestTuple extends RequestTuple
   private int bufferSize;
 
   @Override
+  public MessageType getType()
+  {
+    return MessageType.SUBSCRIBER_REQUEST;
+  }
+
+  @Override
   public void parse()
   {
     parsed = true;
-    int dataOffset = offset + 1;
-    int limit = offset + length;
     try {
       /*
        * read the version.
        */
-      int idlen = readVarInt(dataOffset, limit);
+      int idlen = readVarInt();
       if (idlen > 0) {
-        while (buffer[dataOffset++] < 0) {
-        }
-        version = new String(buffer, dataOffset, idlen);
-        dataOffset += idlen;
+        version = new String(buffer, offset, idlen);
+        offset += idlen;
       } else if (idlen == 0) {
         version = EMPTY_STRING;
-        dataOffset++;
       } else {
         return;
       }
       /*
        * read the identifier.
        */
-      idlen = readVarInt(dataOffset, limit);
+      idlen = readVarInt();
       if (idlen > 0) {
-        while (buffer[dataOffset++] < 0) {
-        }
-        identifier = new String(buffer, dataOffset, idlen);
-        dataOffset += idlen;
+        identifier = new String(buffer, offset, idlen);
+        offset += idlen;
       } else if (idlen == 0) {
         identifier = EMPTY_STRING;
-        dataOffset++;
       } else {
         return;
       }
 
-      baseSeconds = readVarInt(dataOffset, limit);
-      while (buffer[dataOffset++] < 0) {
-      }
+      baseSeconds = readVarInt();
 
-      windowId = readVarInt(dataOffset, limit);
-      while (buffer[dataOffset++] < 0) {
-      }
+      windowId = readVarInt();
       /*
        * read the type
        */
-      idlen = readVarInt(dataOffset, limit);
+      idlen = readVarInt();
       if (idlen > 0) {
-        while (buffer[dataOffset++] < 0) {
-        }
-        streamType = new String(buffer, dataOffset, idlen);
-        dataOffset += idlen;
+        streamType = new String(buffer, offset, idlen);
+        offset += idlen;
       } else if (idlen == 0) {
         streamType = EMPTY_STRING;
-        dataOffset++;
       } else {
         return;
       }
       /*
        * read the upstream identifier
        */
-      idlen = readVarInt(dataOffset, limit);
+      idlen = readVarInt();
       if (idlen > 0) {
-        while (buffer[dataOffset++] < 0) {
-        }
-        upstreamIdentifier = new String(buffer, dataOffset, idlen);
-        dataOffset += idlen;
+        upstreamIdentifier = new String(buffer, offset, idlen);
+        offset += idlen;
       } else if (idlen == 0) {
         upstreamIdentifier = EMPTY_STRING;
-        dataOffset++;
       } else {
         return;
       }
       /*
        * read the partition count
        */
-      int count = readVarInt(dataOffset, limit);
+      int count = readVarInt();
       if (count > 0) {
-        while (buffer[dataOffset++] < 0) {
-        }
-        mask = readVarInt(dataOffset, limit);
-        if (mask > 0) {
-          while (buffer[dataOffset++] < 0) {
-          }
-        } else {
+        mask = readVarInt();
+        if (mask <= 0) {
           /* mask cannot be zero */
           return;
         }
         partitions = new int[count];
         for (int i = 0; i < count; i++) {
-          partitions[i] = readVarInt(dataOffset, limit);
+          partitions[i] = readVarInt();
           if (partitions[i] == -1) {
             return;
-          } else {
-            while (buffer[dataOffset++] < 0) {
-            }
           }
         }
       }
 
-      bufferSize = readVarInt(dataOffset, limit);
+      bufferSize = readVarInt();
       if (bufferSize == -1) {
         return;
-      }
-      while (buffer[dataOffset++] < 0) {
       }
 
       valid = true;

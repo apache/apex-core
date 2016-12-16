@@ -18,6 +18,8 @@
  */
 package com.datatorrent.bufferserver.packet;
 
+import java.nio.ByteBuffer;
+
 import com.datatorrent.netlet.util.Slice;
 
 /**
@@ -41,23 +43,13 @@ public class PayloadTuple extends Tuple
   @Override
   public int getPartition()
   {
-    int p = buffer[offset + 1];
-    p |= buffer[offset + 2] << 8;
-    p |= buffer[offset + 3] << 16;
-    p |= buffer[offset + 4] << 24;
-    return p;
-  }
-
-  @Override
-  public int getWindowId()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return ByteBuffer.wrap(buffer, offset, 4).getInt();
   }
 
   @Override
   public Slice getData()
   {
-    return new Slice(buffer, offset + 5, length - 5);
+    return new Slice(buffer, offset + 4, limit - offset - 4);
   }
 
   @Override
@@ -66,37 +58,21 @@ public class PayloadTuple extends Tuple
     return "PayloadTuple{" + getPartition() + ", " + getData() + '}';
   }
 
-  @Override
-  public int getBaseSeconds()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public int getWindowWidth()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
   public static byte[] getSerializedTuple(int partition, int size)
   {
     byte[] array = new byte[size + 5];
-    array[0] = MessageType.PAYLOAD_VALUE;
-    array[1] = (byte)partition;
-    array[2] = (byte)(partition >> 8);
-    array[3] = (byte)(partition >> 16);
-    array[4] = (byte)(partition >> 24);
+    ByteBuffer byteBuffer = ByteBuffer.wrap(array);
+    byteBuffer.put(MessageType.PAYLOAD_VALUE);
+    byteBuffer.putInt(partition);
     return array;
   }
 
   public static byte[] getSerializedTuple(int partition, Slice f)
   {
     byte[] array = new byte[5 + f.length];
-    array[0] = MessageType.PAYLOAD_VALUE;
-    array[1] = (byte)partition;
-    array[2] = (byte)(partition >> 8);
-    array[3] = (byte)(partition >> 16);
-    array[4] = (byte)(partition >> 24);
+    ByteBuffer byteBuffer = ByteBuffer.wrap(array);
+    byteBuffer.put(MessageType.PAYLOAD_VALUE);
+    byteBuffer.putInt(partition);
     System.arraycopy(f.buffer, f.offset, array, 5, f.length);
     return array;
   }

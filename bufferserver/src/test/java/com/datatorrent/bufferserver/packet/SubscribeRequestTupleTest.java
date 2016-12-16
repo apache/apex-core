@@ -23,7 +23,8 @@ import org.testng.annotations.Test;
 
 import static com.datatorrent.bufferserver.packet.SubscribeRequestTuple.getSerializedRequest;
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
 
 /**
  *
@@ -44,17 +45,30 @@ public class SubscribeRequestTupleTest
     ArrayList<Integer> partitions = new ArrayList<Integer>();
     partitions.add(5);
     long startingWindowId = 0xcafebabe00000078L;
-    byte[] serial = getSerializedRequest(null, id, down_type, upstream_id, mask, partitions, startingWindowId, 0);
+
+    byte[] serial = getSerializedRequest(null, id, down_type, upstream_id, mask, partitions, startingWindowId, 32 * 1024);
     SubscribeRequestTuple tuple = (SubscribeRequestTuple)Tuple.getTuple(serial, 0, serial.length);
+
     assertEquals(tuple.getIdentifier(), id, "Identifier");
     assertEquals(tuple.getStreamType(), down_type, "UpstreamType");
     assertEquals(tuple.getUpstreamIdentifier(), upstream_id, "UpstreamId");
     assertEquals(tuple.getMask(), mask, "Mask");
-
+    assertEquals(tuple.getBufferSize(), 32 * 1024, "BufferSize");
     int[] parts = tuple.getPartitions();
-    assertTrue(parts != null && parts.length == 1 && parts[0] == 5);
+    assertNotNull(parts);
+    assertEquals(parts.length, 1);
+    assertEquals(parts[0], 5);
+    assertEquals((long)tuple.getBaseSeconds() << 32 | tuple.getWindowId(), startingWindowId, "Window");
 
+    serial = getSerializedRequest(null, id, down_type, upstream_id, 0, null, startingWindowId, 32 * 1024);
+    tuple = (SubscribeRequestTuple)Tuple.getTuple(serial, 0, serial.length);
+
+    assertEquals(tuple.getIdentifier(), id, "Identifier");
+    assertEquals(tuple.getStreamType(), down_type, "UpstreamType");
+    assertEquals(tuple.getUpstreamIdentifier(), upstream_id, "UpstreamId");
+    assertEquals(tuple.getMask(), 0, "Mask");
+    assertEquals(tuple.getBufferSize(), 32 * 1024, "BufferSize");
+    assertNull(tuple.getPartitions());
     assertEquals((long)tuple.getBaseSeconds() << 32 | tuple.getWindowId(), startingWindowId, "Window");
   }
-
 }
