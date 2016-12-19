@@ -99,6 +99,11 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     return result.entrySet().iterator();
   }
 
+  public Map<String, ValueEntry> getMap()
+  {
+    return map;
+  }
+
   public void writeToFile(File file, Scope scope, String comment) throws IOException
   {
     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
