@@ -43,6 +43,7 @@
   <property>
     <name>dt.test.required.1</name>
     <value>app-default-for-required-1</value>
+    <description>app-default-for-required-1-description</description>
   </property>
   <property>
     <name>dt.test.required.3</name>

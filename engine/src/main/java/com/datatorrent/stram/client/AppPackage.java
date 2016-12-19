@@ -81,7 +81,7 @@ public class AppPackage extends JarFile
   private final List<String> appPropertiesFiles = new ArrayList<>();
 
   private final Set<String> requiredProperties = new TreeSet<>();
-  private final Map<String, String> defaultProperties = new TreeMap<>();
+  private final Map<String, PropertyInfo> defaultProperties = new TreeMap<>();
   private final Set<String> configs = new TreeSet<>();
 
   private final File resourcesDirectory;
@@ -98,7 +98,7 @@ public class AppPackage extends JarFile
     public String errorStackTrace;
 
     public Set<String> requiredProperties = new TreeSet<>();
-    public Map<String, String> defaultProperties = new TreeMap<>();
+    public Map<String, PropertyInfo> defaultProperties = new TreeMap<>();
 
     public AppInfo(String name, String file, String type)
     {
@@ -107,6 +107,28 @@ public class AppPackage extends JarFile
       this.type = type;
     }
 
+  }
+
+  public static class PropertyInfo
+  {
+    private final String value;
+    private final String description;
+
+    public PropertyInfo(final String value, final String description)
+    {
+      this.value = value;
+      this.description = description;
+    }
+
+    public String getValue()
+    {
+      return value;
+    }
+
+    public String getDescription()
+    {
+      return description;
+    }
   }
 
   public AppPackage(File file) throws IOException, ZipException
@@ -317,7 +339,7 @@ public class AppPackage extends JarFile
     return Collections.unmodifiableSet(requiredProperties);
   }
 
-  public Map<String, String> getDefaultProperties()
+  public Map<String, PropertyInfo> getDefaultProperties()
   {
     return Collections.unmodifiableMap(defaultProperties);
   }
@@ -434,11 +456,14 @@ public class AppPackage extends JarFile
             app.requiredProperties.add(key);
           }
         } else {
+        //Attribute are platform specific, ignoring description provided in properties file
+          String description = key.contains(".attr.") ? null : config.getDescription(key);
+          PropertyInfo propertyInfo = new PropertyInfo(value, description);
           if (app == null) {
-            defaultProperties.put(key, value);
+            defaultProperties.put(key, propertyInfo);
           } else {
             app.requiredProperties.remove(key);
-            app.defaultProperties.put(key, value);
+            app.defaultProperties.put(key, propertyInfo);
           }
         }
       }

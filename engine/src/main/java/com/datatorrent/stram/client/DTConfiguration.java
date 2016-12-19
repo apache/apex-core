@@ -70,7 +70,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
   private final Map<String, ValueEntry> map = new LinkedHashMap<>();
   private static final Logger LOG = LoggerFactory.getLogger(DTConfiguration.class);
 
-  public static class ValueEntry
+  private static class ValueEntry
   {
     public String value;
     public boolean isFinal = false;

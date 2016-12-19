@@ -98,6 +98,7 @@ import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.client.AppPackage;
 import com.datatorrent.stram.client.AppPackage.AppInfo;
+import com.datatorrent.stram.client.AppPackage.PropertyInfo;
 import com.datatorrent.stram.client.ConfigPackage;
 import com.datatorrent.stram.client.DTConfiguration;
 import com.datatorrent.stram.client.DTConfiguration.Scope;
@@ -3480,7 +3481,6 @@ public class ApexCli
         printJson(apInfo);
       }
     }
-
   }
 
   private void checkConfigPackageCompatible(AppPackage ap, ConfigPackage cp)
@@ -3728,11 +3728,11 @@ public class ApexCli
         break;
       }
     }
-    Map<String, String> defaultProperties = selectedApp == null ? ap.getDefaultProperties() : selectedApp.defaultProperties;
+    Map<String, PropertyInfo> defaultProperties = selectedApp == null ? ap.getDefaultProperties() : selectedApp.defaultProperties;
     Set<String> requiredProperties = new TreeSet<>(selectedApp == null ? ap.getRequiredProperties() : selectedApp.requiredProperties);
 
-    for (Map.Entry<String, String> entry : defaultProperties.entrySet()) {
-      launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+    for (Map.Entry<String, PropertyInfo> entry : defaultProperties.entrySet()) {
+      launchProperties.set(entry.getKey(), entry.getValue().getValue(), Scope.TRANSIENT, entry.getValue().getDescription());
       requiredProperties.remove(entry.getKey());
     }
 
