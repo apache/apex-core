@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.engine.serde.SerializationBuffer;
+
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Registration;
 import com.esotericsoftware.kryo.io.Input;
@@ -49,6 +51,8 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
   private final Output data;
   private final Output state;
   private final Input input;
+
+  private final SerializationBuffer serializationBuffer = SerializationBuffer.READ_BUFFER;
 
   @SuppressWarnings("OverridableMethodCallInConstructor")
   public DefaultStatefulStreamCodec()
@@ -130,6 +134,29 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
     pair.data = new Slice(bytes, 0, bytes.length);
     return pair;
   }
+
+//  int count = 0;
+//  public DataStatePair toDataStatePairNew(T o)
+//  {
+//    DataStatePair pair = new DataStatePair();
+//    if(++count > 10000) {
+//      serializationBuffer.reset();
+//      count = 0;
+//    }
+//    writeClassAndObject(serializationBuffer, o);
+//    pair.data = serializationBuffer.toSlice();
+//
+//    if (!pairs.isEmpty()) {
+//      for (ClassIdPair cip : pairs) {
+//        writeClassAndObject(serializationBuffer, cip);
+//      }
+//      pairs.clear();
+//
+//      pair.state = serializationBuffer.toSlice();
+//    }
+//
+//    return pair;
+//  }
 
   @Override
   public int getPartition(T o)
