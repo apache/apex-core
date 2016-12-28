@@ -21,10 +21,13 @@ package com.datatorrent.stram.stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.api.UserDefinedControlTuple;
+
 import com.datatorrent.stram.engine.AbstractReservoir;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
+import com.datatorrent.stram.tuple.CustomControlTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
@@ -96,6 +99,13 @@ public class InlineStream implements Stream
       logger.debug("Interrupted", ie);
       throw new RuntimeException(ie);
     }
+  }
+
+  @Override
+  public boolean putControl(UserDefinedControlTuple payload)
+  {
+    put(new CustomControlTuple(payload));
+    return false;
   }
 
   @Override

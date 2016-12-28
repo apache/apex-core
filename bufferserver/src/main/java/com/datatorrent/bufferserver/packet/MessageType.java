@@ -37,6 +37,7 @@ public enum MessageType
   RESET_REQUEST(9),
   CHECKPOINT(10),
   CODEC_STATE(11),
+  CUSTOM_CONTROL(12),
   NO_MESSAGE_ODD(127);
 
   public static final byte NO_MESSAGE_VALUE = 0;
@@ -51,6 +52,7 @@ public enum MessageType
   public static final byte RESET_REQUEST_VALUE = 9;
   public static final byte CHECKPOINT_VALUE = 10;
   public static final byte CODEC_STATE_VALUE = 11;
+  public static final byte CUSTOM_CONTROL_VALUE = 12;
   public static final byte NO_MESSAGE_ODD_VALUE = 127;
 
   public final int getNumber()
@@ -85,6 +87,8 @@ public enum MessageType
         return CHECKPOINT;
       case 11:
         return CODEC_STATE;
+      case 12:
+        return CUSTOM_CONTROL;
       case 127:
         return NO_MESSAGE_ODD;
       default:

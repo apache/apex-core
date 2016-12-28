@@ -18,10 +18,13 @@
  */
 package com.datatorrent.stram.stream;
 
+import org.apache.apex.api.UserDefinedControlTuple;
+
 import com.datatorrent.api.Sink;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
+import com.datatorrent.stram.tuple.CustomControlTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
@@ -77,6 +80,13 @@ public class OiOStream implements Stream
   }
 
   @Override
+  public boolean putControl(UserDefinedControlTuple payload)
+  {
+    put(new CustomControlTuple(payload));
+    return false;
+  }
+
+  @Override
   public int getCount(boolean reset)
   {
     try {
@@ -122,6 +132,11 @@ public class OiOStream implements Stream
       } finally {
         OiOStream.this.sink = sink;
       }
+    }
+
+    public Sink<Object> getSink()
+    {
+      return OiOStream.this.sink;
     }
 
     @Override

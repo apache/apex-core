@@ -28,6 +28,8 @@ import java.nio.channels.SocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.api.UserDefinedControlTuple;
+
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Output;
@@ -44,6 +46,7 @@ import com.datatorrent.netlet.Listener;
 import com.datatorrent.netlet.Listener.ClientListener;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
+import com.datatorrent.stram.tuple.CustomControlTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
 import static java.lang.Thread.sleep;
@@ -226,6 +229,11 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
         case END_WINDOW:
           array = EndWindowTuple.getSerializedTuple((int)t.getWindowId());
+          break;
+
+        case CUSTOM_CONTROL:
+          array = null;
+          // TODO implement
           break;
 
         case END_STREAM:
@@ -475,6 +483,13 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
       write = true;
       key.selector().wakeup();
     }
+  }
+
+  @Override
+  public boolean putControl(UserDefinedControlTuple payload)
+  {
+    put(new CustomControlTuple(payload));
+    return true;
   }
 
   @SuppressWarnings("SleepWhileInLoop")

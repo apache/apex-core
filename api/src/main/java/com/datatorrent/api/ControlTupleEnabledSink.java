@@ -16,28 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.datatorrent.stram.engine;
+package com.datatorrent.api;
 
-import com.datatorrent.api.Component;
-import com.datatorrent.api.ControlTupleEnabledSink;
-import com.datatorrent.api.Operator.ActivationListener;
-import com.datatorrent.api.Sink;
+import org.apache.apex.api.UserDefinedControlTuple;
+import org.apache.hadoop.classification.InterfaceStability;
 
 /**
- *
- * Base interface for all streams in the streaming platform<p>
- * <br>
- *
- * @since 0.3.2
+ * A {@link Sink} which supports adding control tuples
  */
-/*
- * Provides basic interface for a stream object. Stram, StramChild work via this interface
- */
-public interface Stream extends Component<StreamContext>, ActivationListener<StreamContext>, ControlTupleEnabledSink<Object>
+@InterfaceStability.Evolving
+public interface ControlTupleEnabledSink<T> extends Sink<T>
 {
-  public interface MultiSinkCapableStream extends Stream
+  public static final ControlTupleEnabledSink<Object> BLACKHOLE = new ControlTupleEnabledSink<Object>()
   {
-    public void setSink(String id, Sink<Object> sink);
-  }
+    @Override
+    public void put(Object tuple)
+    {
+    }
 
+    @Override
+    public boolean putControl(UserDefinedControlTuple payload)
+    {
+      return true;
+    }
+
+    @Override
+    public int getCount(boolean reset)
+    {
+      return 0;
+    }
+  };
+
+  /**
+   * Add a control tuple to the sink
+   *
+   * @param payload the control tuple payload
+   */
+  public boolean putControl(UserDefinedControlTuple payload);
 }

@@ -24,10 +24,12 @@ import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Sink;
+import org.apache.apex.api.UserDefinedControlTuple;
 
+import com.datatorrent.api.Sink;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
+import com.datatorrent.stram.tuple.CustomControlTuple;
 
 /**
  * <p>MuxStream class.</p>
@@ -118,6 +120,13 @@ public class MuxStream implements Stream.MultiSinkCapableStream
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].put(payload);
     }
+  }
+
+  @Override
+  public boolean putControl(UserDefinedControlTuple payload)
+  {
+    put(new CustomControlTuple(payload));
+    return false;
   }
 
   @Override

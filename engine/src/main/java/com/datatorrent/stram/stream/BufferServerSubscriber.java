@@ -27,6 +27,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.api.UserDefinedControlTuple;
+
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.bufferserver.client.Subscriber;
@@ -196,6 +198,12 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
+  @Override
+  public boolean putControl(UserDefinedControlTuple payload)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
   public SweepableReservoir releaseReservoir(String sinkId)
   {
     BufferReservoir r = reservoirMap.remove(sinkId);
@@ -341,6 +349,10 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
             case END_WINDOW:
               //logger.debug("received {}", data);
               o = new EndWindowTuple(baseSeconds | (lastWindowId = data.getWindowId()));
+              break;
+
+            case CUSTOM_CONTROL:
+              o = processPayload(data);
               break;
 
             case END_STREAM:

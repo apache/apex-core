@@ -73,6 +73,9 @@ public abstract class Tuple
       case END_WINDOW:
         return new EndWindowTuple(buffer, offset, length);
 
+      case CUSTOM_CONTROL:
+        return new CustomControlTuple(buffer, offset, length);
+
       case END_STREAM:
         return new WindowIdTuple(buffer, offset, length);
 

@@ -19,16 +19,24 @@
 package com.datatorrent.stram.engine;
 
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.apex.api.ControlAwareDefaultInputPort;
+import org.apache.apex.api.UserDefinedControlTuple;
 import org.apache.commons.lang.UnhandledException;
+
+import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Sink;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
+import com.datatorrent.stram.stream.OiOStream;
+import com.datatorrent.stram.tuple.CustomControlTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
@@ -59,6 +67,9 @@ public class OiONode extends GenericNode
       reservoir = sr;
     }
 
+    private LinkedHashSet<CustomControlTuple> immediateDeliveryControlTuples = Sets.newLinkedHashSet();
+    private LinkedHashSet<CustomControlTuple> endWindowControlTuples = Sets.newLinkedHashSet();
+
     @Override
     public void put(Tuple t)
     {
@@ -82,7 +93,49 @@ public class OiONode extends GenericNode
         case END_WINDOW:
           endWindowDequeueTimes.put(reservoir, System.currentTimeMillis());
           if (--expectingEndWindows == 0) {
+
+            /* process custom control tuples here */
+            for (CustomControlTuple cct : endWindowControlTuples) {
+              Sink sink = ((OiOStream.OiOReservoir)reservoir).getSink();
+              if (sink instanceof ControlAwareDefaultInputPort) {
+                if (!((ControlAwareDefaultInputPort)sink).putControl((UserDefinedControlTuple)cct.getUserObject())) {
+                  // Operator will not handle; forward to sinks
+                  forwardToSinks(false, cct);
+                }
+              } else {
+                // Port incapable of handling; forward to sinks
+                forwardToSinks(false, cct);
+              }
+            }
+            endWindowControlTuples.clear();
+            immediateDeliveryControlTuples.clear();
+
             processEndWindow(t);
+          }
+          break;
+
+        case CUSTOM_CONTROL:
+          CustomControlTuple cct = ((CustomControlTuple)t);
+          UserDefinedControlTuple udct = (UserDefinedControlTuple)cct.getUserObject();
+
+          if (udct.getDeliveryType().equals(UserDefinedControlTuple.DeliveryType.IMMEDIATE)) { // Immediate Delivery
+            if (!isDuplicate(immediateDeliveryControlTuples, cct)) {
+              Sink sink = ((OiOStream.OiOReservoir)reservoir).getSink();
+              if (sink instanceof ControlAwareDefaultInputPort) {
+                if (!((ControlAwareDefaultInputPort)sink).putControl((UserDefinedControlTuple)cct.getUserObject())) {
+                  // Operator will not handle; forward to sinks
+                  forwardToSinks(false, cct);
+                }
+              } else {
+                forwardToSinks(false, cct);
+              }
+              // store
+              immediateDeliveryControlTuples.add(cct);
+            }
+          } else { // End Window Delivery
+            if (!isDuplicate(endWindowControlTuples, cct)) {
+              endWindowControlTuples.add(cct);
+            }
           }
           break;
 

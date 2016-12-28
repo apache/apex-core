@@ -16,28 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.datatorrent.stram.engine;
+package org.apache.apex.api;
 
-import com.datatorrent.api.Component;
-import com.datatorrent.api.ControlTupleEnabledSink;
-import com.datatorrent.api.Operator.ActivationListener;
-import com.datatorrent.api.Sink;
+import org.apache.hadoop.classification.InterfaceStability;
 
 /**
- *
- * Base interface for all streams in the streaming platform<p>
- * <br>
- *
- * @since 0.3.2
+ * Any user generated control tuple must implement {@link UserDefinedControlTuple} interface
  */
-/*
- * Provides basic interface for a stream object. Stram, StramChild work via this interface
- */
-public interface Stream extends Component<StreamContext>, ActivationListener<StreamContext>, ControlTupleEnabledSink<Object>
+@InterfaceStability.Evolving
+public interface UserDefinedControlTuple
 {
-  public interface MultiSinkCapableStream extends Stream
-  {
-    public void setSink(String id, Sink<Object> sink);
-  }
+  /**
+   * A user generated control tuple must specify a @{@link DeliveryType}
+   * @return @{@link DeliveryType} type
+   */
+  DeliveryType getDeliveryType();
 
+  /**
+   * All custom control tuples can be delivered according to the following semantics
+   * 1. IMMEDIATE - The control tuple will be delivered immediately to the next operator
+   * 2. END_WINDOW - The control tuple will be delivered to the next operator just before the
+   * com.datatorrent.api.Operator#endWindow() call.
+   */
+  enum DeliveryType
+  {
+    IMMEDIATE,
+    END_WINDOW
+  }
 }

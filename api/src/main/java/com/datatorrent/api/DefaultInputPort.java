@@ -31,7 +31,7 @@ import com.datatorrent.api.Operator.InputPort;
  */
 public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
 {
-  private int count;
+  protected int count;
   protected boolean connected = false;
 
   /**

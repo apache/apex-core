@@ -16,28 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.datatorrent.stram.engine;
-
-import com.datatorrent.api.Component;
-import com.datatorrent.api.ControlTupleEnabledSink;
-import com.datatorrent.api.Operator.ActivationListener;
-import com.datatorrent.api.Sink;
+package com.datatorrent.bufferserver.packet;
 
 /**
- *
- * Base interface for all streams in the streaming platform<p>
- * <br>
- *
- * @since 0.3.2
+ * Custom Control Tuple class
  */
-/*
- * Provides basic interface for a stream object. Stram, StramChild work via this interface
- */
-public interface Stream extends Component<StreamContext>, ActivationListener<StreamContext>, ControlTupleEnabledSink<Object>
+public class CustomControlTuple extends DataTuple
 {
-  public interface MultiSinkCapableStream extends Stream
+  public CustomControlTuple(byte[] array, int offset, int index)
   {
-    public void setSink(String id, Sink<Object> sink);
+    super(array, offset, index);
   }
 
+  @Override
+  public MessageType getType()
+  {
+    return MessageType.CUSTOM_CONTROL;
+  }
 }

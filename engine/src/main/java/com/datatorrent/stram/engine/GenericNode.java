@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -30,10 +31,14 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.api.ControlAwareDefaultInputPort;
+import org.apache.apex.api.UserDefinedControlTuple;
 import org.apache.commons.lang.UnhandledException;
 
 import com.google.common.base.Throwables;
+import com.google.common.collect.Maps;
 
+import com.datatorrent.api.ControlTupleEnabledSink;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.IdleTimeHandler;
 import com.datatorrent.api.Operator.InputPort;
@@ -47,6 +52,7 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerSt
 import com.datatorrent.stram.debug.TappedReservoir;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.tuple.CustomControlTuple;
 import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
@@ -67,6 +73,7 @@ public class GenericNode extends Node<Operator>
 {
   protected final HashMap<String, SweepableReservoir> inputs = new HashMap<>();
   protected ArrayList<DeferredInputConnection> deferredInputConnections = new ArrayList<>();
+  protected Map<SweepableReservoir,Sink> reservoirPortMap = Maps.newHashMap();
 
   @Override
   @SuppressWarnings("unchecked")
@@ -249,6 +256,9 @@ public class GenericNode extends Node<Operator>
 
     TupleTracker tracker;
     LinkedList<TupleTracker> resetTupleTracker = new LinkedList<>();
+    Map<SweepableReservoir, LinkedHashSet<CustomControlTuple>> immediateDeliveryTuples = Maps.newHashMap();
+    Map<SweepableReservoir,LinkedHashSet<CustomControlTuple>> endWindowDeliveryTuples = Maps.newHashMap();
+
     try {
       do {
         Iterator<Map.Entry<String, SweepableReservoir>> buffers = activeQueues.iterator();
@@ -290,8 +300,8 @@ public class GenericNode extends Node<Operator>
                       for (int s = sinks.length; s-- > 0; ) {
                         sinks[s].put(resetWindowTuple);
                       }
-                      controlTupleCount++;
                     }
+                    controlTupleCount++;
                     t.setWindowId(windowAhead);
                   }
                   for (int s = sinks.length; s-- > 0; ) {
@@ -354,10 +364,87 @@ public class GenericNode extends Node<Operator>
                     if (delay) {
                       t.setWindowId(windowAhead);
                     }
+
+                    /* Emit control tuples here */
+                    if (reservoirPortMap.isEmpty()) {
+                      populateReservoirInputPortMap();
+                    }
+
+
+                    for (Entry<SweepableReservoir,LinkedHashSet<CustomControlTuple>> portSet: endWindowDeliveryTuples.entrySet()) {
+                      Sink activeSink = reservoirPortMap.get(portSet.getKey());
+                      // activeSink may not be null
+                      if (activeSink instanceof ControlAwareDefaultInputPort) {
+                        ControlTupleEnabledSink sink = (ControlTupleEnabledSink)activeSink;
+                        for (CustomControlTuple cct : portSet.getValue()) {
+                          if (!sink.putControl((UserDefinedControlTuple)cct.getUserObject())) {
+                            // operator cannot handle control tuple; forward to sinks
+                            forwardToSinks(delay, cct);
+                          }
+                        }
+                      } else {
+                        // Not a ControlAwarePort. Operator cannot handle a custom control tuple.
+                        for (CustomControlTuple cct : portSet.getValue()) {
+                          forwardToSinks(delay, cct);
+                        }
+                      }
+                    }
+
+                    immediateDeliveryTuples.clear();
+                    endWindowDeliveryTuples.clear();
+
+                    /* Now call endWindow() */
                     processEndWindow(t);
                     activeQueues.addAll(inputs.entrySet());
                     expectingBeginWindow = activeQueues.size();
                     break activequeue;
+                  }
+                }
+                break;
+
+              case CUSTOM_CONTROL:
+                activePort.remove();
+                /* All custom control tuples are expected to be arriving in the current window only.*/
+                /* Buffer control tuples until end of the window */
+                CustomControlTuple cct = (CustomControlTuple)t;
+                UserDefinedControlTuple udct = (UserDefinedControlTuple)cct.getUserObject();
+                boolean forward = false;
+
+                // Handle Immediate Delivery Control Tuples
+                if (udct.getDeliveryType().equals(UserDefinedControlTuple.DeliveryType.IMMEDIATE)) {
+                  if (!isDuplicate(immediateDeliveryTuples.get(activePort), cct)) {
+                    // Forward immediately
+                    if (reservoirPortMap.isEmpty()) {
+                      populateReservoirInputPortMap();
+                    }
+
+                    Sink activeSink = reservoirPortMap.get(activePort);
+                    // activeSink may not be null
+                    if (activeSink instanceof ControlAwareDefaultInputPort) {
+                      ControlTupleEnabledSink sink = (ControlTupleEnabledSink)activeSink;
+                      if (!sink.putControl((UserDefinedControlTuple)cct.getUserObject())) {
+                        forward = true;
+                      }
+                    } else {
+                      forward = true;
+                    }
+
+                    if (forward) {
+                      forwardToSinks(delay, cct);
+                    }
+                    // Add to set
+                    if (!immediateDeliveryTuples.containsKey(activePort)) {
+                      immediateDeliveryTuples.put(activePort, new LinkedHashSet<CustomControlTuple>());
+                    }
+                    immediateDeliveryTuples.get(activePort).add(cct);
+                  }
+                } else {
+                  // Buffer EndWindow Delivery Control Tuples
+                  if (!endWindowDeliveryTuples.containsKey(activePort)) {
+                    endWindowDeliveryTuples.put(activePort, new LinkedHashSet<CustomControlTuple>());
+                  }
+                  if (!isDuplicate(endWindowDeliveryTuples.get(activePort), cct)) {
+                    endWindowDeliveryTuples.get(activePort).add(cct);
                   }
                 }
                 break;
@@ -654,6 +741,43 @@ public class GenericNode extends Node<Operator>
       handleRequests(currentWindowId);
     }
 
+  }
+
+  protected void forwardToSinks(boolean delay, Object o)
+  {
+    if (!delay) {
+      for (int s = sinks.length; s-- > 0; ) {
+        sinks[s].put(o);
+      }
+      controlTupleCount++;
+    }
+  }
+
+  /**
+   * Populate {@link #reservoirPortMap} with information on which reservoirs are connected to which input ports
+   */
+  protected void populateReservoirInputPortMap()
+  {
+    for (Entry<String,Operators.PortContextPair<InputPort<?>>> entry : descriptor.inputPorts.entrySet()) {
+      if (entry.getValue().component != null && entry.getValue().component instanceof InputPort) {
+        if (inputs.containsKey(entry.getKey())) {
+          reservoirPortMap.put(inputs.get(entry.getKey()), entry.getValue().component.getSink());
+        }
+      }
+    }
+  }
+
+  protected boolean isDuplicate(LinkedHashSet<CustomControlTuple> set, CustomControlTuple t)
+  {
+    if (set == null || set.isEmpty()) {
+      return false;
+    }
+    for (CustomControlTuple cct : set) {
+      if (cct.getUid().equals(t.getUid())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void fabricateFirstWindow(Operator.DelayOperator delayOperator, long windowAhead)
