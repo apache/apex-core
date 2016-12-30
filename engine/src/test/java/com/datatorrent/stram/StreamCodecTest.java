@@ -1185,7 +1185,7 @@ public class StreamCodecTest
                                        Map<Integer, StreamCodec<?>> streamCodecs,
                                        String id, PhysicalPlan plan )
   {
-    StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(operatorMeta.getMeta(inputPort));
+    StreamCodec<?> streamCodecInfo = operatorMeta.getMeta(inputPort).getStreamCodec();
     Assert.assertTrue("stream codec identifier not present" + id, isStrCodecPresent(streamCodecInfo, plan));
     Integer streamCodecIdentifier = plan.getStreamCodecIdentifier(streamCodecInfo);
     checkPresentStreamCodecInfo(streamCodecs, id, streamCodecIdentifier, streamCodecInfo);

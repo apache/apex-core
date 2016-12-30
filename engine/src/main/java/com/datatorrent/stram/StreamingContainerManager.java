@@ -2066,7 +2066,7 @@ public class StreamingContainerManager implements PlanContext
           }
 
           for (InputPortMeta ipm : out.logicalStream.getSinks()) {
-            StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(ipm);
+            StreamCodec<?> streamCodecInfo = ipm.getStreamCodec();
             Integer codecId = plan.getStreamCodecIdentifier(streamCodecInfo);
             // following needs to match the concat logic in StreamingContainer
             String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName).concat(Component.CONCAT_SEPARATOR).concat(codecId.toString());
@@ -2163,7 +2163,7 @@ public class StreamingContainerManager implements PlanContext
             for (PTOperator.PTOutput out : operator.getOutputs()) {
               if (!out.isDownStreamInline()) {
                 for (InputPortMeta ipm : out.logicalStream.getSinks()) {
-                  StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(ipm);
+                  StreamCodec<?> streamCodecInfo = ipm.getStreamCodec();
                   Integer codecId = plan.getStreamCodecIdentifier(streamCodecInfo);
                   // following needs to match the concat logic in StreamingContainer
                   String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName).concat(Component.CONCAT_SEPARATOR).concat(codecId.toString());
