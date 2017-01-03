@@ -100,7 +100,7 @@
       <plugin>
         <groupId>com.mycila</groupId>
         <artifactId>license-maven-plugin</artifactId>
-        <version>2.11</version>
+        <version>3.0</version>
         <configuration>
           <header>header.txt</header>
           <properties>
@@ -194,7 +194,6 @@
             <exclude>**/src/test/resources/**/MANIFEST.MF</exclude>
             <exclude>**/src/test/resources/**/*.json</exclude>
             <exclude>**/src/test/resources/**/*.keytab</exclude>
-            <exclude>**/resources/META-INF/services/**</exclude>
             <exclude>**/archetype-resources/**</exclude>
             <exclude>**/*.md</exclude>
             <exclude>**/*.txt</exclude>
