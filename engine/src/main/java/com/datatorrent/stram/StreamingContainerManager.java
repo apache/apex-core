@@ -2188,16 +2188,24 @@ public class StreamingContainerManager implements PlanContext
    */
   private long updateCheckpoints(boolean recovery)
   {
+    int operatorCount = 0;
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, recovery, getCheckpointGroups());
     for (OperatorMeta logicalOperator : plan.getLogicalPlan().getRootOperators()) {
       //LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator : operators) {
+          operatorCount++;
           updateRecoveryCheckpoints(operator, ctx);
         }
       }
     }
+
+    // if no physical operators are available, then don't update committedWindowId
+    if (operatorCount == 0) {
+      return committedWindowId;
+    }
+
     purgeCheckpoints();
 
     for (PTOperator oper : ctx.blocked) {
