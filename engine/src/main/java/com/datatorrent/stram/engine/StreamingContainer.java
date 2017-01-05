@@ -1460,6 +1460,13 @@ public class StreamingContainer extends YarnContainerMain
         }
       };
       node.context.setThread(thread);
+      List<Integer> oioNodeIdList = oioGroups.get(ndi.id);
+      if (oioNodeIdList != null) {
+        for (Integer oioNodeId : oioNodeIdList) {
+          Node<?> oioNode = nodes.get(oioNodeId);
+          oioNode.context.setThread(thread);
+        }
+      }
       thread.start();
     }
 
