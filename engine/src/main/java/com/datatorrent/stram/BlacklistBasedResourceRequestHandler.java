@@ -54,8 +54,13 @@ public class BlacklistBasedResourceRequestHandler extends ResourceRequestHandler
   @Override
   public void reissueContainerRequests(AMRMClient<ContainerRequest> amRmClient, Map<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> requestedResources, int loopCounter, ResourceRequestHandler resourceRequestor, List<ContainerRequest> containerRequests, List<ContainerRequest> removedContainerRequests)
   {
+    if (!requestedResources.isEmpty()) {
+      // Check if any requests timed out, create new requests in that case
+      recreateContainerRequest(requestedResources, loopCounter, resourceRequestor, removedContainerRequests);
+    }
+
     // Issue all host specific requests first
-    if (!hostSpecificRequestsMap.isEmpty() && requestedResources.isEmpty()) {
+    if (!hostSpecificRequestsMap.isEmpty()) {
       LOG.info("Issue Host specific requests first");
       // Blacklist all the nodes and issue request for host specific
       Entry<String, List<ContainerRequest>> set = hostSpecificRequestsMap.entrySet().iterator().next();
@@ -74,10 +79,7 @@ public class BlacklistBasedResourceRequestHandler extends ResourceRequestHandler
         hostSpecificRequests.remove(cr);
       }
       hostSpecificRequestsMap.remove(set.getKey());
-    } else if (!requestedResources.isEmpty()) {
-      // Check if any requests timed out, create new requests in that case
-      recreateContainerRequest(requestedResources, loopCounter, resourceRequestor, removedContainerRequests);
-    } else {
+    }  else {
       if (blacklistedNodesForHostSpecificRequests != null) {
         // Remove the blacklisted nodes during host specific requests
         LOG.debug("All requests done.. Removing nodes from blacklist {}", blacklistedNodesForHostSpecificRequests);
@@ -98,7 +100,7 @@ public class BlacklistBasedResourceRequestHandler extends ResourceRequestHandler
     }
   }
 
-  public void recreateContainerRequest(Map<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> requestedResources, int loopCounter, ResourceRequestHandler resourceRequestor, List<ContainerRequest> removedContainerRequests)
+  private void recreateContainerRequest(Map<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> requestedResources, int loopCounter, ResourceRequestHandler resourceRequestor, List<ContainerRequest> removedContainerRequests)
   {
     for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> entry : requestedResources.entrySet()) {
       if ((loopCounter - entry.getValue().getKey()) > NUMBER_MISSED_HEARTBEATS) {
@@ -126,7 +128,7 @@ public class BlacklistBasedResourceRequestHandler extends ResourceRequestHandler
     }
   }
 
-  public void addHostSpecificRequest(StreamingContainerAgent.ContainerStartRequest csr, ContainerRequest cr)
+  private void addHostSpecificRequest(StreamingContainerAgent.ContainerStartRequest csr, ContainerRequest cr)
   {
     String hostKey = StringUtils.join(cr.getNodes(), ":");
     List<ContainerRequest> requests;
