@@ -18,8 +18,6 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-
-import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.netlet.util.VarInt;
 
 /**
@@ -29,45 +27,26 @@ import com.datatorrent.netlet.util.VarInt;
  */
 public class WindowIdTuple extends Tuple
 {
+  private final MessageType messageType;
+  private final int windowId;
+
   public WindowIdTuple(byte[] array, int offset, int length)
   {
     super(array, offset, length);
-  }
-
-  @Override
-  public int getWindowId()
-  {
-    return readVarInt(offset + 1, offset + length);
+    messageType = MessageType.valueOf(array[offset]);
+    windowId = readVarInt();
   }
 
   @Override
   public MessageType getType()
   {
-    return MessageType.valueOf(buffer[offset]);
+    return messageType;
   }
 
   @Override
-  public int getPartition()
+  public int getWindowId()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public Slice getData()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public int getBaseSeconds()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public int getWindowWidth()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return windowId;
   }
 
   @Override

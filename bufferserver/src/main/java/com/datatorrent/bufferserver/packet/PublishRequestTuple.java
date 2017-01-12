@@ -30,6 +30,11 @@ public class PublishRequestTuple extends GenericRequestTuple
     super(array, offset, len);
   }
 
+  public MessageType getType()
+  {
+    return MessageType.PUBLISHER_REQUEST;
+  }
+
   public static byte[] getSerializedRequest(final String version, final String identifier, final long startingWindowId)
   {
     return GenericRequestTuple.getSerializedRequest(version, identifier, startingWindowId,

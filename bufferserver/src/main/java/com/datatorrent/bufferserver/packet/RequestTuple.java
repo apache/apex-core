@@ -18,7 +18,8 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-import com.datatorrent.netlet.util.Slice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>Abstract RequestTuple class.</p>
@@ -27,12 +28,18 @@ import com.datatorrent.netlet.util.Slice;
  */
 public abstract class RequestTuple extends Tuple
 {
+  private static final Logger logger = LoggerFactory.getLogger(RequestTuple.class);
+
   protected boolean valid;
   protected boolean parsed;
 
-  public RequestTuple(byte[] buffer, int offset, int length)
+  protected RequestTuple(byte[] buffer, int offset, int length)
   {
     super(buffer, offset, length);
+    parse();
+    if (!isValid()) {
+      logger.error("Invalid Request Tuple of type {} received!", getType());
+    }
   }
 
   public boolean isValid()
@@ -40,25 +47,7 @@ public abstract class RequestTuple extends Tuple
     return valid;
   }
 
-  @Override
-  public int getPartition()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public Slice getData()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public int getWindowWidth()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  public abstract void parse();
+  protected abstract void parse();
 
   public abstract String getVersion();
 

@@ -45,58 +45,51 @@ public class GenericRequestTuple extends RequestTuple
   }
 
   @Override
+  public MessageType getType()
+  {
+    return null;
+  }
+
+  @Override
   public boolean isValid()
   {
     return valid;
   }
 
   @Override
-  public void parse()
+  protected void parse()
   {
     parsed = true;
-
-    int dataOffset = offset + 1;
-    int limit = offset + length;
 
     try {
       /*
        * read the version.
        */
-      int idlen = readVarInt(dataOffset, limit);
+      int idlen = readVarInt();
       if (idlen > 0) {
-        while (buffer[dataOffset++] < 0) {
-        }
-        version = new String(buffer, dataOffset, idlen);
-        dataOffset += idlen;
+        version = new String(buffer, offset, idlen);
+        offset += idlen;
       } else if (idlen == 0) {
         version = EMPTY_STRING;
-        dataOffset++;
       } else {
         return;
       }
       /*
        * read the identifier.
        */
-      idlen = readVarInt(dataOffset, limit);
+      idlen = readVarInt();
       if (idlen > 0) {
-        while (buffer[dataOffset++] < 0) {
-        }
-        identifier = new String(buffer, dataOffset, idlen);
-        dataOffset += idlen;
+        identifier = new String(buffer, offset, idlen);
+        offset += idlen;
       } else if (idlen == 0) {
         identifier = EMPTY_STRING;
-        dataOffset++;
       } else {
         return;
       }
 
-      baseSeconds = readVarInt(dataOffset, limit);
-      while (buffer[dataOffset++] < 0) {
-      }
+      baseSeconds = readVarInt();
 
-      windowId = readVarInt(dataOffset, limit);
-      while (buffer[dataOffset++] < 0) {
-      }
+      windowId = readVarInt();
 
       valid = true;
     } catch (NumberFormatException nfe) {

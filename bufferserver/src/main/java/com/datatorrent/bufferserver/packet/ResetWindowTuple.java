@@ -18,8 +18,6 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-
-import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.netlet.util.VarInt;
 
 /**
@@ -29,9 +27,14 @@ import com.datatorrent.netlet.util.VarInt;
  */
 public class ResetWindowTuple extends Tuple
 {
+  private final int baseSeconds;
+  private final int windowWidth;
+
   public ResetWindowTuple(byte[] buffer, int offset, int length)
   {
     super(buffer, offset, length);
+    baseSeconds = readVarInt();
+    windowWidth = readVarInt();
   }
 
   @Override
@@ -41,36 +44,15 @@ public class ResetWindowTuple extends Tuple
   }
 
   @Override
-  public int getWindowId()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public int getPartition()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public Slice getData()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
   public int getBaseSeconds()
   {
-    return readVarInt(offset + 1, offset + length);
+    return baseSeconds;
   }
 
   @Override
   public int getWindowWidth()
   {
-    int intervalOffset = offset + 1;
-    while (buffer[intervalOffset++] < 0) {
-    }
-    return readVarInt(intervalOffset, offset + length);
+    return windowWidth;
   }
 
   public static byte[] getSerializedTuple(int baseSeconds, int windowWidth)

@@ -18,8 +18,6 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-import com.datatorrent.netlet.util.Slice;
-
 /**
  * <p>EmptyTuple class.</p>
  *
@@ -36,36 +34,6 @@ public class EmptyTuple extends Tuple
   public MessageType getType()
   {
     return MessageType.NO_MESSAGE;
-  }
-
-  @Override
-  public int getWindowId()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public int getPartition()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public Slice getData()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public int getBaseSeconds()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public int getWindowWidth()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   public static byte[] getSerializedTuple(byte value)
