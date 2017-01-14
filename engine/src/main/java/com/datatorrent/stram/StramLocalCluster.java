@@ -446,7 +446,7 @@ public class StramLocalCluster implements Runnable, Controller
   {
     if (!perContainerBufferServer) {
       StreamingContainer.eventloop.start();
-      bufferServer = new Server(0, 1024 * 1024,8);
+      bufferServer = new Server(0, 1024 * 1024, 8);
       try {
         bufferServer.setSpoolStorage(new DiskStorage());
       } catch (IOException e) {

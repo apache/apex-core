@@ -37,9 +37,9 @@ public class FastDataList extends DataList
     super(identifier);
   }
 
-  public FastDataList(String identifier, int blocksize, int numberOfCacheBlocks)
+  public FastDataList(String identifier, int blocksize, int numberOfCacheBlocks, boolean backPressureEnabled)
   {
-    super(identifier, blocksize, numberOfCacheBlocks);
+    super(identifier, blocksize, numberOfCacheBlocks, backPressureEnabled);
   }
 
   long item;
