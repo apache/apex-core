@@ -95,9 +95,10 @@ public abstract class Tuple
 
   public static int writeString(String identifier, byte[] array, int offset)
   {
-    offset = VarInt.write(identifier.getBytes().length, array, offset);
-    System.arraycopy(identifier.getBytes(), 0, array, offset, identifier.getBytes().length);
-    return offset + identifier.getBytes().length;
+    byte[] identifierBytes = identifier.getBytes();
+    offset = VarInt.write(identifierBytes.length, array, offset);
+    System.arraycopy(identifierBytes, 0, array, offset, identifierBytes.length);
+    return offset + identifierBytes.length;
   }
 
   protected int readVarInt()
