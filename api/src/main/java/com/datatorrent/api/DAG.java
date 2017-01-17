@@ -19,6 +19,8 @@
 package com.datatorrent.api;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.Map;
 
 import org.apache.hadoop.classification.InterfaceStability;
 
@@ -41,11 +43,26 @@ public interface DAG extends DAGContext, Serializable
 {
   interface InputPortMeta extends Serializable, PortContext
   {
+    /**
+     * Return port object represented by this InputPortMeta
+     * @return
+     */
+    public Operator.InputPort<?> getPort();
+
+    public <T extends OperatorMeta> T getOperatorMeta();
   }
 
   interface OutputPortMeta extends Serializable, PortContext
   {
     OperatorMeta getUnifierMeta();
+
+    /**
+     * Return port object represented by this OutputPortMeta
+     * @return
+     */
+    public Operator.OutputPort<?> getPort();
+
+    public <T extends OperatorMeta> T getOperatorMeta();
   }
 
   /**
@@ -143,6 +160,19 @@ public interface DAG extends DAGContext, Serializable
      */
     public StreamMeta persistUsing(String name, Operator persistOperator, Operator.InputPort<?> persistOperatorInputPort, Operator.InputPort<?> sinkToPersist);
 
+    /**
+     * Return source of the stream.
+     * @param <T>
+     * @return
+     */
+    public <T extends OutputPortMeta> T getSource();
+
+    /**
+     * Return all sinks connected to this stream.
+     * @param <T>
+     * @return
+     */
+    public <T extends InputPortMeta> Collection<T> getSinks();
   }
 
   /**
@@ -157,6 +187,22 @@ public interface DAG extends DAGContext, Serializable
     public InputPortMeta getMeta(Operator.InputPort<?> port);
 
     public OutputPortMeta getMeta(Operator.OutputPort<?> port);
+
+    /**
+     * Return collection of stream which are connected to this operator's
+     * input ports.
+     * @param <T>
+     * @return
+     */
+    public <K extends InputPortMeta, V extends StreamMeta> Map<K, V> getInputStreams();
+
+    /**
+     * Return collection of stream which are connected to this operator's
+     * output ports.
+     * @param <T>
+     * @return
+     */
+    public <K extends OutputPortMeta, V extends StreamMeta> Map<K, V> getOutputStreams();
   }
 
   /**
@@ -279,6 +325,31 @@ public interface DAG extends DAGContext, Serializable
    * <p>getMeta.</p>
    */
   public abstract OperatorMeta getMeta(Operator operator);
+
+  /**
+   * Return all operators present in the DAG.
+   * @param <T>
+   * @return
+   */
+  public <T extends OperatorMeta> Collection<T> getAllOperatorsMeta();
+
+  /**
+   * Get all input operators in the DAG. This method returns operators which are
+   * not connected to any upstream operator. i.e the operators which do not have
+   * any input ports or operators which is not connected through any input ports
+   * in the DAG.
+   *
+   * @param <T>
+   * @return list of {@see OperatorMeta} for root operators in the DAG.
+   */
+  public <T extends OperatorMeta> Collection<T> getRootOperatorsMeta();
+
+  /**
+   * Returns all Streams present in the DAG.
+   * @param <T>
+   * @return
+   */
+  public <T extends StreamMeta> Collection<T> getAllStreamsMeta();
 
   /**
    * Marker interface for the Node in the DAG. Any object which can be added as a Node in the DAG

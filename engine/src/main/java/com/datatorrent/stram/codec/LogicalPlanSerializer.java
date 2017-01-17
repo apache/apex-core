@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.Produces;
@@ -203,11 +202,11 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       sourcePortDetailMap.put("portName", sourcePortName);
       streamDetailMap.put("name", streamName);
       streamDetailMap.put("source", sourcePortDetailMap);
-      List<InputPortMeta> sinks = streamMeta.getSinks();
+      Collection<InputPortMeta> sinks = streamMeta.getSinks();
       ArrayList<HashMap<String, Object>> sinkPortList = new ArrayList<>();
       for (InputPortMeta sinkPort : sinks) {
         HashMap<String, Object> sinkPortDetailMap = new HashMap<>();
-        sinkPortDetailMap.put("operatorName", sinkPort.getOperatorWrapper().getName());
+        sinkPortDetailMap.put("operatorName", sinkPort.getOperatorMeta().getName());
         sinkPortDetailMap.put("portName", sinkPort.getPortName());
         sinkPortList.add(sinkPortDetailMap);
       }
@@ -257,14 +256,14 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     for (StreamMeta streamMeta : allStreams) {
       String streamKey = LogicalPlanConfiguration.STREAM_PREFIX + streamMeta.getName();
       OutputPortMeta source = streamMeta.getSource();
-      List<InputPortMeta> sinks = streamMeta.getSinks();
+      Collection<InputPortMeta> sinks = streamMeta.getSinks();
       props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_SOURCE, source.getOperatorMeta().getName() + "." + source.getPortName());
       String sinksValue = "";
       for (InputPortMeta sink : sinks) {
         if (!sinksValue.isEmpty()) {
           sinksValue += ",";
         }
-        sinksValue += sink.getOperatorWrapper().getName() + "." + sink.getPortName();
+        sinksValue += sink.getOperatorMeta().getName() + "." + sink.getPortName();
       }
       props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_SINKS, sinksValue);
       if (streamMeta.getLocality() != null) {

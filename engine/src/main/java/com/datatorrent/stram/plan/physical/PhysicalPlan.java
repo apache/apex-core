@@ -573,7 +573,7 @@ public class PhysicalPlan implements Serializable
 
   private void updatePersistOperatorWithSinkPartitions(InputPortMeta persistInputPort, OperatorMeta persistOperatorMeta, StreamCodecWrapperForPersistance<?> persistCodec, InputPortMeta sinkPortMeta)
   {
-    Collection<PTOperator> ptOperators = getOperators(sinkPortMeta.getOperatorWrapper());
+    Collection<PTOperator> ptOperators = getOperators(sinkPortMeta.getOperatorMeta());
     Collection<PartitionKeys> partitionKeysList = new ArrayList<>();
     for (PTOperator p : ptOperators) {
       PartitionKeys keys = p.partitionKeys.get(sinkPortMeta);
@@ -593,7 +593,7 @@ public class PhysicalPlan implements Serializable
             Map<InputPortMeta, StreamCodec<?>> inputStreamCodecs = new HashMap<>();
             // Logging is enabled for the stream
             for (InputPortMeta portMeta : s.getSinksToPersist()) {
-              InputPort<?> port = portMeta.getPortObject();
+              InputPort<?> port = portMeta.getPort();
               StreamCodec<?> inputStreamCodec = (portMeta.getValue(PortContext.STREAM_CODEC) != null) ? portMeta.getValue(PortContext.STREAM_CODEC) : port.getStreamCodec();
               if (inputStreamCodec != null) {
                 boolean alreadyAdded = false;
@@ -619,7 +619,7 @@ public class PhysicalPlan implements Serializable
               // Create Wrapper codec for Stream persistence using all unique
               // stream codecs
               // Logger should write merged or union of all input stream codecs
-              StreamCodec<?> specifiedCodecForLogger = (s.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC) != null) ? s.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC) : s.getPersistOperatorInputPort().getPortObject().getStreamCodec();
+              StreamCodec<?> specifiedCodecForLogger = (s.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC) != null) ? s.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC) : s.getPersistOperatorInputPort().getPort().getStreamCodec();
               @SuppressWarnings({ "unchecked", "rawtypes" })
               StreamCodecWrapperForPersistance<Object> codec = new StreamCodecWrapperForPersistance(inputStreamCodecs, specifiedCodecForLogger);
               streamMetaToCodecMap.put(s, codec);
@@ -629,7 +629,7 @@ public class PhysicalPlan implements Serializable
       }
 
       for (java.util.Map.Entry<StreamMeta, StreamCodec<?>> entry : streamMetaToCodecMap.entrySet()) {
-        dag.setInputPortAttribute(entry.getKey().getPersistOperatorInputPort().getPortObject(), PortContext.STREAM_CODEC, entry.getValue());
+        dag.setInputPortAttribute(entry.getKey().getPersistOperatorInputPort().getPort(), PortContext.STREAM_CODEC, entry.getValue());
       }
     } catch (Exception e) {
       throw Throwables.propagate(e);
@@ -1326,7 +1326,7 @@ public class PhysicalPlan implements Serializable
       // copy list as it is modified by recursive remove
       for (PTInput in : Lists.newArrayList(out.sinks)) {
         for (LogicalPlan.InputPortMeta im : in.logicalStream.getSinks()) {
-          PMapping m = this.logicalToPTOperator.get(im.getOperatorWrapper());
+          PMapping m = this.logicalToPTOperator.get(im.getOperatorMeta());
           if (m.parallelPartitions == operatorMapping.parallelPartitions) {
             // associated operator parallel partitioned
             removePartition(in.target, operatorMapping);
@@ -1439,7 +1439,7 @@ public class PhysicalPlan implements Serializable
     List<InputPort<?>> inputPortList = Lists.newArrayList();
 
     for (InputPortMeta inputPortMeta: operatorMeta.getInputStreams().keySet()) {
-      inputPortList.add(inputPortMeta.getPortObject());
+      inputPortList.add(inputPortMeta.getPort());
     }
 
     return inputPortList;
@@ -1609,7 +1609,7 @@ public class PhysicalPlan implements Serializable
         for (PTInput in : operator.inputs) {
           if (in.logicalStream.getPersistOperator() != null) {
             for (InputPortMeta inputPort : in.logicalStream.getSinksToPersist()) {
-              if (inputPort.getOperatorWrapper().equals(operator.operatorMeta)) {
+              if (inputPort.getOperatorMeta().equals(operator.operatorMeta)) {
                 // Redeploy the stream wide persist operator only if the current sink is being persisted
                 persistOperators.addAll(getOperators(in.logicalStream.getPersistOperator()));
                 break;
@@ -1689,7 +1689,7 @@ public class PhysicalPlan implements Serializable
   {
     // remove incoming connections for logical stream
     for (InputPortMeta ipm : sm.getSinks()) {
-      OperatorMeta om = ipm.getOperatorWrapper();
+      OperatorMeta om = ipm.getOperatorMeta();
       PMapping m = this.logicalToPTOperator.get(om);
       if (m == null) {
         throw new AssertionError("Unknown operator " + om);
@@ -1735,7 +1735,7 @@ public class PhysicalPlan implements Serializable
    */
   public void connectInput(InputPortMeta ipm)
   {
-    for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry : ipm.getOperatorWrapper().getInputStreams().entrySet()) {
+    for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry : ipm.getOperatorMeta().getInputStreams().entrySet()) {
       if (inputEntry.getKey() == ipm) {
         // initialize outputs for existing operators
         for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : inputEntry.getValue().getSource().getOperatorMeta().getOutputStreams().entrySet()) {
@@ -1746,7 +1746,7 @@ public class PhysicalPlan implements Serializable
             deployOpers.add(oper);
           }
         }
-        PMapping m = this.logicalToPTOperator.get(ipm.getOperatorWrapper());
+        PMapping m = this.logicalToPTOperator.get(ipm.getOperatorMeta());
         updateStreamMappings(m);
         for (PTOperator oper : m.partitions) {
           undeployOpers.add(oper);

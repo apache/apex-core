@@ -706,7 +706,7 @@ public class StreamingContainerManager implements PlanContext
               appDataSource.setQueryOperatorName(queryOperatorName);
               appDataSource.setQueryTopic(queryTopic);
               appDataSource.setQueryUrl(convertAppDataUrl(queryUrl));
-              List<LogicalPlan.InputPortMeta> sinks = entry.getValue().getSinks();
+              Collection<LogicalPlan.InputPortMeta> sinks = entry.getValue().getSinks();
               if (sinks.isEmpty()) {
                 LOG.warn("There is no result operator for the App Data Source {}.{}. Ignoring the App Data Source.", operatorMeta.getName(), portMeta.getPortName());
                 continue;
@@ -715,7 +715,7 @@ public class StreamingContainerManager implements PlanContext
                 LOG.warn("There are multiple result operators for the App Data Source {}.{}. Ignoring the App Data Source.", operatorMeta.getName(), portMeta.getPortName());
                 continue;
               }
-              OperatorMeta resultOperatorMeta = sinks.get(0).getOperatorWrapper();
+              OperatorMeta resultOperatorMeta = sinks.iterator().next().getOperatorMeta();
               if (resultOperatorMeta.getOperator() instanceof AppData.ConnectionInfoProvider) {
                 AppData.ConnectionInfoProvider resultOperator = (AppData.ConnectionInfoProvider)resultOperatorMeta.getOperator();
                 appDataSource.setResultOperatorName(resultOperatorMeta.getName());

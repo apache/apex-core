@@ -932,7 +932,7 @@ public class StreamCodecTest
           PTOperator.PTOutput out = operator.getOutputs().get(0);
           Assert.assertEquals("unifier sinks " + operator.getName(), 1, out.sinks.size());
           PTOperator.PTInput idInput = out.sinks.get(0);
-          LogicalPlan.OperatorMeta idMeta = StreamingContainerAgent.getIdentifyingInputPortMeta(idInput).getOperatorWrapper();
+          LogicalPlan.OperatorMeta idMeta = StreamingContainerAgent.getIdentifyingInputPortMeta(idInput).getOperatorMeta();
           Operator.InputPort<?> idInputPort = null;
           if (idMeta == n2meta) {
             idInputPort = node2.inport1;

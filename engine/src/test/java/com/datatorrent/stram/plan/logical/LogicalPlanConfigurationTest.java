@@ -143,7 +143,7 @@ public class LogicalPlanConfigurationTest
     assertEquals("rootNode out is operator2 in", n1n2, operator1.getOutputStreams().get(operator1.getMeta(((TestGeneratorInputOperator)operator1.getOperator()).outport)));
     assertEquals("n1n2 source", operator1, n1n2.getSource().getOperatorMeta());
     Assert.assertEquals("n1n2 targets", 1, n1n2.getSinks().size());
-    Assert.assertEquals("n1n2 target", operator2, n1n2.getSinks().get(0).getOperatorWrapper());
+    Assert.assertEquals("n1n2 target", operator2, n1n2.getSinks().iterator().next().getOperatorMeta());
 
     assertEquals("stream name", "n1n2", n1n2.getName());
     Assert.assertEquals("n1n2 not inline (default)", null, n1n2.getLocality());
@@ -154,7 +154,7 @@ public class LogicalPlanConfigurationTest
 
     Set<OperatorMeta> targetNodes = Sets.newHashSet();
     for (LogicalPlan.InputPortMeta ip : fromNode2.getSinks()) {
-      targetNodes.add(ip.getOperatorWrapper());
+      targetNodes.add(ip.getOperatorMeta());
     }
     Assert.assertEquals("outputs " + fromNode2, Sets.newHashSet(operator3, operator4), targetNodes);
 
@@ -181,7 +181,7 @@ public class LogicalPlanConfigurationTest
     for (StreamMeta downStream : operator.getOutputStreams().values()) {
       if (!downStream.getSinks().isEmpty()) {
         for (LogicalPlan.InputPortMeta targetNode : downStream.getSinks()) {
-          printTopology(targetNode.getOperatorWrapper(), tplg, level + 1);
+          printTopology(targetNode.getOperatorMeta(), tplg, level + 1);
         }
       }
     }
@@ -228,7 +228,7 @@ public class LogicalPlanConfigurationTest
     Assert.assertEquals("input1 source", dag.getOperatorMeta("inputOperator"), input1.getSource().getOperatorMeta());
     Set<OperatorMeta> targetNodes = Sets.newHashSet();
     for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
-      targetNodes.add(targetPort.getOperatorWrapper());
+      targetNodes.add(targetPort.getOperatorMeta());
     }
 
     Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperatorMeta("operator1"), operator3, operator4), targetNodes);
@@ -296,7 +296,7 @@ public class LogicalPlanConfigurationTest
     Assert.assertEquals("input1 source", inputOperator, input1.getSource().getOperatorMeta());
     Set<OperatorMeta> targetNodes = Sets.newHashSet();
     for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
-      targetNodes.add(targetPort.getOperatorWrapper());
+      targetNodes.add(targetPort.getOperatorMeta());
     }
     Assert.assertEquals("operator attribute " + inputOperator, 64, (int)inputOperator.getValue(OperatorContext.MEMORY_MB));
     Assert.assertEquals("port attribute " + inputOperator, 8, (int)input1.getSource().getValue(PortContext.UNIFIER_LIMIT));

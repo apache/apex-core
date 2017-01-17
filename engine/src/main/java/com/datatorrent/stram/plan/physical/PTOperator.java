@@ -359,7 +359,7 @@ public class PTOperator implements java.io.Serializable
     if (partitionKeys != null) {
       pkeys = Maps.newHashMapWithExpectedSize(partitionKeys.size());
       for (Map.Entry<InputPortMeta, PartitionKeys> e : partitionKeys.entrySet()) {
-        pkeys.put(e.getKey().getPortObject(), e.getValue());
+        pkeys.put(e.getKey().getPort(), e.getValue());
       }
     }
     return pkeys;

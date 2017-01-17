@@ -459,7 +459,7 @@ public class TestModuleExpansion
 
     List<String> sinksName = new ArrayList<>();
     for (LogicalPlan.InputPortMeta inputPortMeta : streamMeta.getSinks()) {
-      sinksName.add(inputPortMeta.getOperatorWrapper().getName());
+      sinksName.add(inputPortMeta.getOperatorMeta().getName());
     }
 
     Assert.assertTrue(inputOperatorName.equals(sourceName));

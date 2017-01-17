@@ -90,7 +90,7 @@ public class PlanModifier
       sm.addSink(sink);
       if (physicalPlan != null) {
         for (InputPortMeta ipm : sm.getSinks()) {
-          if (ipm.getPortObject() == sink) {
+          if (ipm.getPort() == sink) {
             physicalPlan.connectInput(ipm);
           }
         }

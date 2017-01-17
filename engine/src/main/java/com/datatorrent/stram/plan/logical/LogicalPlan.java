@@ -242,7 +242,8 @@ public class LogicalPlan implements Serializable, DAG
     //This is null when port is not hidden
     private Class<?> classDeclaringHiddenPort;
 
-    public OperatorMeta getOperatorWrapper()
+    @Override
+    public OperatorMeta getOperatorMeta()
     {
       return operatorMeta;
     }
@@ -252,7 +253,8 @@ public class LogicalPlan implements Serializable, DAG
       return fieldName;
     }
 
-    public InputPort<?> getPortObject()
+    @Override
+    public InputPort<?> getPort()
     {
       for (Map.Entry<InputPort<?>, InputPortMeta> e : operatorMeta.getPortMapping().inPortMap.entrySet()) {
         if (e.getValue() == this) {
@@ -328,6 +330,7 @@ public class LogicalPlan implements Serializable, DAG
       this.attributes = new DefaultAttributeMap();
     }
 
+    @Override
     public OperatorMeta getOperatorMeta()
     {
       return operatorMeta;
@@ -363,7 +366,8 @@ public class LogicalPlan implements Serializable, DAG
       return fieldName;
     }
 
-    public OutputPort<?> getPortObject()
+    @Override
+    public OutputPort<?> getPort()
     {
       for (Map.Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
         if (e.getValue() == this) {
@@ -504,7 +508,8 @@ public class LogicalPlan implements Serializable, DAG
       return this;
     }
 
-    public List<InputPortMeta> getSinks()
+    @Override
+    public Collection<InputPortMeta> getSinks()
     {
       return sinks;
     }
@@ -517,7 +522,7 @@ public class LogicalPlan implements Serializable, DAG
         return this;
       }
       InputPortMeta portMeta = assertGetPortMeta(port);
-      OperatorMeta om = portMeta.getOperatorWrapper();
+      OperatorMeta om = portMeta.getOperatorMeta();
       String portName = portMeta.getPortName();
       if (om.inputStreams.containsKey(portMeta)) {
         throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, om.inputStreams.get(portMeta)));
@@ -539,9 +544,9 @@ public class LogicalPlan implements Serializable, DAG
     public void remove()
     {
       for (InputPortMeta ipm : this.sinks) {
-        ipm.getOperatorWrapper().inputStreams.remove(ipm);
-        if (ipm.getOperatorWrapper().inputStreams.isEmpty()) {
-          rootOperators.add(ipm.getOperatorWrapper());
+        ipm.getOperatorMeta().inputStreams.remove(ipm);
+        if (ipm.getOperatorMeta().inputStreams.isEmpty()) {
+          rootOperators.add(ipm.getOperatorMeta());
         }
       }
       // Remove persist operator for at stream level if present:
@@ -697,7 +702,7 @@ public class LogicalPlan implements Serializable, DAG
 
     private void setPersistOperatorInputPort(InputPortMeta inport)
     {
-      this.addSink(inport.getPortObject());
+      this.addSink(inport.getPort());
       this.persistOperatorInputPort = inport;
     }
 
@@ -714,7 +719,7 @@ public class LogicalPlan implements Serializable, DAG
     private String getPersistOperatorName(InputPort<?> sinkToPersist)
     {
       InputPortMeta portMeta = assertGetPortMeta(sinkToPersist);
-      OperatorMeta operatorMeta = portMeta.getOperatorWrapper();
+      OperatorMeta operatorMeta = portMeta.getOperatorMeta();
       return id + "_" + operatorMeta.getName() + "_persister";
     }
 
@@ -735,7 +740,7 @@ public class LogicalPlan implements Serializable, DAG
     {
       StreamCodec<Object> inputStreamCodec = sinkToPersistPortMeta.getValue(PortContext.STREAM_CODEC) != null
           ? (StreamCodec<Object>)sinkToPersistPortMeta.getValue(PortContext.STREAM_CODEC)
-          : (StreamCodec<Object>)sinkToPersistPortMeta.getPortObject().getStreamCodec();
+          : (StreamCodec<Object>)sinkToPersistPortMeta.getPort().getStreamCodec();
       if (inputStreamCodec != null) {
         Map<InputPortMeta, StreamCodec<Object>> codecs = new HashMap<>();
         codecs.put(sinkToPersistPortMeta, inputStreamCodec);
@@ -1138,6 +1143,7 @@ public class LogicalPlan implements Serializable, DAG
       return getPortMapping().inPortMap.get(port);
     }
 
+    @Override
     public Map<InputPortMeta, StreamMeta> getInputStreams()
     {
       return this.inputStreams;
@@ -1359,7 +1365,7 @@ public class LogicalPlan implements Serializable, DAG
     Map<InputPortMeta, StreamMeta> inputStreams = om.getInputStreams();
     for (Map.Entry<InputPortMeta, StreamMeta> e : inputStreams.entrySet()) {
       StreamMeta stream = e.getValue();
-      if (e.getKey().getOperatorWrapper() == om) {
+      if (e.getKey().getOperatorMeta() == om) {
         stream.sinks.remove(e.getKey());
       }
       // If persistStream was enabled for stream, reset stream when sink removed
@@ -1424,12 +1430,12 @@ public class LogicalPlan implements Serializable, DAG
       OutputPortMeta sourceMeta = streamMeta.getSource();
       List<InputPort<?>> ports = new LinkedList<>();
       for (InputPortMeta inputPortMeta : streamMeta.getSinks()) {
-        ports.add(inputPortMeta.getPortObject());
+        ports.add(inputPortMeta.getPort());
       }
       InputPort[] inputPorts = ports.toArray(new InputPort[]{});
 
       name = subDAGName + MODULE_NAMESPACE_SEPARATOR + streamMeta.getName();
-      StreamMeta streamMetaNew = this.addStream(name, sourceMeta.getPortObject(), inputPorts);
+      StreamMeta streamMetaNew = this.addStream(name, sourceMeta.getPort(), inputPorts);
       streamMetaNew.setLocality(streamMeta.getLocality());
     }
   }
@@ -1531,6 +1537,12 @@ public class LogicalPlan implements Serializable, DAG
     return Collections.unmodifiableList(this.rootOperators);
   }
 
+  @Override
+  public List<OperatorMeta> getRootOperatorsMeta()
+  {
+    return getRootOperators();
+  }
+
   public List<OperatorMeta> getLeafOperators()
   {
     return Collections.unmodifiableList(this.leafOperators);
@@ -1541,6 +1553,12 @@ public class LogicalPlan implements Serializable, DAG
     return Collections.unmodifiableCollection(this.operators.values());
   }
 
+  @Override
+  public Collection<OperatorMeta> getAllOperatorsMeta()
+  {
+    return getAllOperators();
+  }
+
   public Collection<ModuleMeta> getAllModules()
   {
     return Collections.unmodifiableCollection(this.modules.values());
@@ -1549,6 +1567,12 @@ public class LogicalPlan implements Serializable, DAG
   public Collection<StreamMeta> getAllStreams()
   {
     return Collections.unmodifiableCollection(this.streams.values());
+  }
+
+  @Override
+  public Collection<StreamMeta> getAllStreamsMeta()
+  {
+    return getAllStreams();
   }
 
   @Override
@@ -1618,7 +1642,7 @@ public class LogicalPlan implements Serializable, DAG
         if (streamCodec != null) {
           classNames.add(streamCodec.getClass().getName());
         } else {
-          StreamCodec<?> codec = sink.getPortObject().getStreamCodec();
+          StreamCodec<?> codec = sink.getPort().getStreamCodec();
           if (codec != null) {
             classNames.add(codec.getClass().getName());
           }
@@ -1927,7 +1951,7 @@ public class LogicalPlan implements Serializable, DAG
     for (StreamMeta stream : getAllStreams()) {
       String source = stream.source.getOperatorMeta().getName();
       for (InputPortMeta sink : stream.sinks) {
-        String sinkOperator = sink.getOperatorWrapper().getName();
+        String sinkOperator = sink.getOperatorMeta().getName();
         OperatorPair pair = new OperatorPair(source, sinkOperator);
         if (stream.getLocality() != null && stream.getLocality().ordinal() <= Locality.NODE_LOCAL.ordinal() && hostNamesMapping.containsKey(pair.first) && hostNamesMapping.containsKey(pair.second) && !hostNamesMapping.get(pair.first).equals(hostNamesMapping.get(pair.second))) {
           throw new ValidationException(String.format("Host Locality for operators: %s(host: %s) & %s(host: %s) conflicts with stream locality", pair.first, hostNamesMapping.get(pair.first), pair.second, hostNamesMapping.get(pair.second)));
@@ -2188,7 +2212,7 @@ public class LogicalPlan implements Serializable, DAG
     // depth first successors traversal
     for (StreamMeta downStream: om.outputStreams.values()) {
       for (InputPortMeta sink: downStream.sinks) {
-        OperatorMeta successor = sink.getOperatorWrapper();
+        OperatorMeta successor = sink.getOperatorMeta();
         if (successor == null) {
           continue;
         }
@@ -2256,7 +2280,7 @@ public class LogicalPlan implements Serializable, DAG
 
     for (StreamMeta downStream: om.outputStreams.values()) {
       for (InputPortMeta sink : downStream.sinks) {
-        OperatorMeta successor = sink.getOperatorWrapper();
+        OperatorMeta successor = sink.getOperatorMeta();
         if (isDelayOperator) {
           sink.attributes.put(IS_CONNECTED_TO_DELAY_OPERATOR, true);
           // Check whether all downstream operators are already visited in the path
@@ -2285,7 +2309,7 @@ public class LogicalPlan implements Serializable, DAG
     Operator.ProcessingMode pm = om.getValue(OperatorContext.PROCESSING_MODE);
     for (StreamMeta os : om.outputStreams.values()) {
       for (InputPortMeta sink: os.sinks) {
-        OperatorMeta sinkOm = sink.getOperatorWrapper();
+        OperatorMeta sinkOm = sink.getOperatorMeta();
         Operator.ProcessingMode sinkPm = sinkOm.attributes == null ? null : sinkOm.attributes.get(OperatorContext.PROCESSING_MODE);
         if (sinkPm == null) {
           // If the source processing mode is AT_MOST_ONCE and a processing mode is not specified for the sink then

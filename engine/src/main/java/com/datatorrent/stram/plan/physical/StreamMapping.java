@@ -209,8 +209,8 @@ public class StreamMapping implements java.io.Serializable
     for (InputPortMeta ipm : streamMeta.getSinks()) {
       // gets called prior to all logical operators mapped
       // skipped for parallel partitions - those are handled elsewhere
-      if (!ipm.getValue(PortContext.PARTITION_PARALLEL) && plan.hasMapping(ipm.getOperatorWrapper())) {
-        List<PTOperator> partitions = plan.getOperators(ipm.getOperatorWrapper());
+      if (!ipm.getValue(PortContext.PARTITION_PARALLEL) && plan.hasMapping(ipm.getOperatorMeta())) {
+        List<PTOperator> partitions = plan.getOperators(ipm.getOperatorMeta());
         for (PTOperator doper : partitions) {
           downstreamOpers.add(new Pair<>(doper, ipm));
         }

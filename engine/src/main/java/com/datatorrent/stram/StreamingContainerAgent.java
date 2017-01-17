@@ -350,7 +350,7 @@ public class StreamingContainerAgent
       StreamCodec<?> codec = inputPortMeta.getValue(PortContext.STREAM_CODEC);
       if (codec == null) {
         // it cannot be this object that gets returned. Depending on this value is dangerous
-        codec = inputPortMeta.getPortObject().getStreamCodec();
+        codec = inputPortMeta.getPort().getStreamCodec();
         if (codec != null) {
           // don't create codec multiple times - it will assign a new identifier
           inputPortMeta.getAttributes().put(PortContext.STREAM_CODEC, codec);
