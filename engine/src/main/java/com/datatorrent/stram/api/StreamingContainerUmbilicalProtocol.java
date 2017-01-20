@@ -431,7 +431,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
    * @param operators
    * @param msg
    */
-  void reportError(String containerId, int[] operators, String msg);
+  void reportError(String containerId, int[] operators, String msg) throws IOException;
 
   /**
    * To be called periodically by child for heartbeat protocol.
@@ -439,6 +439,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
    * @param msg
    * @return
    */
-  ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg);
+  ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg) throws IOException;
 
 }

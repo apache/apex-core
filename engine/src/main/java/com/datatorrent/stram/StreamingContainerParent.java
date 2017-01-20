@@ -163,11 +163,16 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
   @Override
   public void log(String containerId, String msg) throws IOException
   {
-    LOG.info("child msg: {} context: {}", msg, dagManager.getContainerAgent(containerId).container);
+    final StreamingContainerAgent sca = dagManager.getContainerAgent(containerId);
+    if (sca != null) {
+      LOG.info("child msg: {} context: {}", msg, sca.container);
+    } else {
+      LOG.info("unknown container {} msg: {}", containerId, msg);
+    }
   }
 
   @Override
-  public void reportError(String containerId, int[] operators, String msg)
+  public void reportError(String containerId, int[] operators, String msg) throws IOException
   {
     if (operators == null || operators.length == 0) {
       dagManager.recordEventAsync(new ContainerErrorEvent(containerId, msg));
@@ -179,24 +184,23 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
         }
       }
     }
-    try {
-      log(containerId, msg);
-    } catch (IOException ex) {
-      // ignore
-    }
+    log(containerId, msg);
   }
 
   @Override
   public StreamingContainerContext getInitContext(String containerId)
       throws IOException
   {
+    StreamingContainerContext scc = null;
     StreamingContainerAgent sca = dagManager.getContainerAgent(containerId);
-
-    return sca.getInitContext();
+    if (sca != null) {
+      scc = sca.getInitContext();
+    }
+    return scc;
   }
 
   @Override
-  public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg)
+  public ContainerHeartbeatResponse processHeartbeat(final ContainerHeartbeat msg) throws IOException
   {
     // -- TODO
     // Change to use some sort of a annotation that developers can use to specify secure code
@@ -208,20 +212,14 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
     //LOG.debug("RPC latency from child container {} is {} ms (according to system clocks)", msg.getContainerId(),
     // now - msg.sentTms);
     dagManager.updateRPCLatency(msg.getContainerId(), now - msg.sentTms);
-    try {
-      final ContainerHeartbeat fmsg = msg;
-      return SecureExecutor.execute(new SecureExecutor.WorkLoad<ContainerHeartbeatResponse>()
+    return SecureExecutor.execute(new SecureExecutor.WorkLoad<ContainerHeartbeatResponse>()
+    {
+      @Override
+      public ContainerHeartbeatResponse run()
       {
-        @Override
-        public ContainerHeartbeatResponse run()
-        {
-          return dagManager.processHeartbeat(fmsg);
-        }
-      });
-    } catch (IOException ex) {
-      LOG.error("Error processing heartbeat", ex);
-      return null;
-    }
+        return dagManager.processHeartbeat(msg);
+      }
+    });
   }
 
 }
