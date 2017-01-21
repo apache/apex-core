@@ -18,27 +18,21 @@
  */
 package com.datatorrent.stram.engine;
 
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Sets;
-
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
-import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator.IdleTimeHandler;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
 import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.engine.GenericNodeTest.FSTestWatcher;
-import com.datatorrent.stram.engine.GenericNodeTest.GenericCheckpointOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -60,7 +54,6 @@ public class InputNodeTest
     emitTestHelper(false);
   }
 
-  @SuppressWarnings("deprecation")
   private void emitTestHelper(boolean trueEmitTuplesFalseHandleIdleTime) throws Exception
   {
     TestInputOperator tio = new TestInputOperator();
@@ -69,32 +62,29 @@ public class InputNodeTest
     dam.put(OperatorContext.APPLICATION_WINDOW_COUNT, 10);
     dam.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 10);
 
-    final InputNode in = new InputNode(tio, new com.datatorrent.stram.engine.OperatorContext(0, "operator", dam, null));
-    in.setId(1);
+    final InputNode in = new InputNode(tio, new OperatorContext(0, "operator", dam, null));
 
     TestSink testSink = new TestSink();
 
     in.connectInputPort(Node.INPUT, new TestWindowGenerator());
     in.connectOutputPort("output", testSink);
 
-    final AtomicBoolean ab = new AtomicBoolean(false);
     Thread t = new Thread()
     {
       @Override
       public void run()
       {
-        ab.set(true);
         in.activate();
         in.run();
         in.deactivate();
       }
-
     };
     t.start();
 
     Thread.sleep(3000);
 
-    t.stop();
+    in.shutdown();
+    t.join();
 
     Assert.assertTrue("Should have emitted some tuples", testSink.collectedTuples.size() > 0);
 
@@ -237,48 +227,7 @@ public class InputNodeTest
     private static final Logger LOG = LoggerFactory.getLogger(TestWindowGenerator.class);
   }
 
-
-  public static class InputCheckpointOperator extends GenericCheckpointOperator implements InputOperator
-  {
-    public Set<Long> checkpointedWindows = Sets.newHashSet();
-    public volatile boolean checkpointTwice = false;
-    public volatile int numWindows = 0;
-
-    public InputCheckpointOperator()
-    {
-    }
-
-    @Override
-    public void beginWindow(long windowId)
-    {
-      super.beginWindow(windowId);
-    }
-
-    @Override
-    public void endWindow()
-    {
-      super.endWindow();
-    }
-
-    @Override
-    public void checkpointed(long windowId)
-    {
-      super.checkpointed(windowId);
-    }
-
-    @Override
-    public void committed(long windowId)
-    {
-      super.committed(windowId);
-    }
-
-    @Override
-    public void emitTuples()
-    {
-    }
-  }
-
-  public static class TestInputOperator implements InputOperator, IdleTimeHandler
+  private static class TestInputOperator extends BaseOperator implements InputOperator, IdleTimeHandler
   {
     public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<>();
 
@@ -291,26 +240,6 @@ public class InputNodeTest
       if (trueEmitTuplesFalseHandleIdleTime) {
         emit(100L);
       }
-    }
-
-    @Override
-    public void beginWindow(long windowId)
-    {
-    }
-
-    @Override
-    public void endWindow()
-    {
-    }
-
-    @Override
-    public void setup(OperatorContext context)
-    {
-    }
-
-    @Override
-    public void teardown()
-    {
     }
 
     @Override

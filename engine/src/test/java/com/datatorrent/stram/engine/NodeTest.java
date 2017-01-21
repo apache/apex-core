@@ -20,7 +20,7 @@ package com.datatorrent.stram.engine;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Set;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -28,18 +28,20 @@ import org.junit.Test;
 
 import org.apache.hadoop.conf.Configuration;
 
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.CheckpointNotificationListener;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.engine.GenericNodeTest.GenericCheckpointOperator;
-import com.datatorrent.stram.engine.InputNodeTest.InputCheckpointOperator;
+import com.datatorrent.stram.engine.GenericNodeTest.GenericOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 
 /**
@@ -276,12 +278,12 @@ public class NodeTest
     windowGenerator.setWindowWidth(100);
     windowGenerator.setCheckpointCount(1, 0);
 
-    GenericCheckpointOperator gco;
+    CheckpointTestOperator checkpointTestOperator;
 
     if (trueGenericFalseInput) {
-      gco = new GenericCheckpointOperator();
+      checkpointTestOperator = new CheckpointTestOperator();
     } else {
-      gco = new InputCheckpointOperator();
+      checkpointTestOperator = new InputCheckpointTestOperator();
     }
     DefaultAttributeMap dam = new DefaultAttributeMap();
     dam.put(com.datatorrent.stram.engine.OperatorContext.APPLICATION_WINDOW_COUNT, 2);
@@ -292,9 +294,9 @@ public class NodeTest
     final Node in;
 
     if (trueGenericFalseInput) {
-      in = new GenericNode(gco, new com.datatorrent.stram.engine.OperatorContext(0, "operator", dam, null));
+      in = new GenericNode(checkpointTestOperator, new com.datatorrent.stram.engine.OperatorContext(0, "operator", dam, null));
     } else {
-      in = new InputNode((InputCheckpointOperator)gco, new com.datatorrent.stram.engine.OperatorContext(0, "operator",
+      in = new InputNode((InputCheckpointTestOperator)checkpointTestOperator, new com.datatorrent.stram.engine.OperatorContext(0, "operator",
           dam, null));
     }
 
@@ -316,13 +318,11 @@ public class NodeTest
 
     windowGenerator.activate(null);
 
-    final AtomicBoolean ab = new AtomicBoolean(false);
     Thread t = new Thread()
     {
       @Override
       public void run()
       {
-        ab.set(true);
         in.activate();
         in.run();
         in.deactivate();
@@ -334,7 +334,7 @@ public class NodeTest
     long startTime = System.currentTimeMillis();
     long endTime = 0;
 
-    while (gco.numWindows < 3 && ((endTime = System.currentTimeMillis()) - startTime) < 6000) {
+    while (checkpointTestOperator.numWindows < 3 && ((endTime = System.currentTimeMillis()) - startTime) < 6000) {
       Thread.sleep(50);
     }
 
@@ -343,7 +343,45 @@ public class NodeTest
 
     windowGenerator.deactivate();
 
-    Assert.assertFalse(gco.checkpointTwice);
+    Assert.assertFalse(checkpointTestOperator.checkpointTwice);
     Assert.assertTrue("Timed out", (endTime - startTime) < 5000);
+  }
+
+  private static class CheckpointTestOperator extends GenericOperator implements CheckpointNotificationListener
+  {
+    public Set<Long> checkpointedWindows = Sets.newHashSet();
+    public volatile boolean checkpointTwice = false;
+    public volatile int numWindows = 0;
+
+    @Override
+    public void endWindow()
+    {
+      super.endWindow();
+      numWindows++;
+    }
+
+    @Override
+    public void checkpointed(long windowId)
+    {
+      checkpointTwice = checkpointTwice || !checkpointedWindows.add(windowId);
+    }
+
+    @Override
+    public void committed(long windowId)
+    {
+    }
+
+    @Override
+    public void beforeCheckpoint(long windowId)
+    {
+    }
+  }
+
+  private static class InputCheckpointTestOperator extends CheckpointTestOperator implements InputOperator
+  {
+    @Override
+    public void emitTuples()
+    {
+    }
   }
 }
