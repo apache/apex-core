@@ -153,6 +153,7 @@ public class StramClient
   };
 
   private static final Class<?>[] APEX_SECURITY_SPECIFIC_CLASSES = new Class<?>[]{
+      com.sun.jersey.client.apache4.ApacheHttpClient4Handler.class
   };
 
   private static final Class<?>[] APEX_SECURITY_CLASSES =
