@@ -43,5 +43,11 @@
         <include>**/*.xml</include>
       </includes>
     </fileSet>
+    <fileSet filtered="true" encoding="UTF-8">
+      <directory>src/main/resources</directory>
+      <includes>
+        <include>**/apexlog4j.properties</include>
+      </includes>
+    </fileSet>
   </fileSets>
 </archetype-descriptor>

@@ -420,12 +420,22 @@ public abstract class StramEvent
   {
     private String containerId;
     private String errorMessage;
+    private String logFileName;
+    private long logFileOffset;
 
     public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage)
+    {
+      this(operatorName, operatorId, containerId, errorMessage, null, -1);
+    }
+
+    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage,
+        String logFileName, long logFileOffset)
     {
       super(operatorName, operatorId);
       this.containerId = containerId;
       this.errorMessage = errorMessage;
+      this.logFileName = logFileName;
+      this.logFileOffset = logFileOffset;
     }
 
     @Override
@@ -454,17 +464,45 @@ public abstract class StramEvent
       this.errorMessage = errorMessage;
     }
 
+    public String getLogFileName()
+    {
+      return logFileName;
+    }
+
+    public void setLogFileName(String logFileName)
+    {
+      this.logFileName = logFileName;
+    }
+
+    public long getLogFileOffset()
+    {
+      return logFileOffset;
+    }
+
+    public void setLogFileOffset(long logFileOffset)
+    {
+      this.logFileOffset = logFileOffset;
+    }
   }
 
   public static class ContainerErrorEvent extends StramEvent
   {
     private String containerId;
     private String errorMessage;
+    private String logFileName;
+    private long logFileOffset;
 
     public ContainerErrorEvent(String containerId, String errorMessage)
     {
+      this(containerId, errorMessage, null, -1);
+    }
+
+    public ContainerErrorEvent(String containerId, String errorMessage, String logFileName, long logFileOffset)
+    {
       this.containerId = containerId;
       this.errorMessage = errorMessage;
+      this.logFileName = logFileName;
+      this.logFileOffset = logFileOffset;
     }
 
     @Override
@@ -491,6 +529,26 @@ public abstract class StramEvent
     public void setErrorMessage(String errorMessage)
     {
       this.errorMessage = errorMessage;
+    }
+
+    public String getLogFileName()
+    {
+      return logFileName;
+    }
+
+    public void setLogFileName(String logFileName)
+    {
+      this.logFileName = logFileName;
+    }
+
+    public long getLogFileOffset()
+    {
+      return logFileOffset;
+    }
+
+    public void setLogFileOffset(long logFileOffset)
+    {
+      this.logFileOffset = logFileOffset;
     }
 
   }

@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -97,6 +98,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 public class StramClient
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
+  public static final String APEX_LOG4J_PROPS_FILE = "apexlog4j.properties";
   public static final String YARN_APPLICATION_TYPE = "ApacheApex";
   @Deprecated
   public static final String YARN_APPLICATION_TYPE_DEPRECATED = "DataTorrent";
@@ -115,7 +117,7 @@ public class StramClient
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
   // log4j.properties file
   // if available, add to local resources and set into classpath
-  private final String log4jPropFile = "";
+  private String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
   private String originalAppId;
@@ -480,10 +482,12 @@ public class StramClient
         dag.setAttribute(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR, new BasicContainerOptConfigurator());
       }
 
+      log4jPropFile = StramClientUtils.getConfigDir() + File.separator + APEX_LOG4J_PROPS_FILE;
+
       // Set the log4j properties if needed
-      if (!log4jPropFile.isEmpty()) {
+      if (new File(log4jPropFile).exists()) {
         Path log4jSrc = new Path(log4jPropFile);
-        Path log4jDst = new Path(appPath, "log4j.props");
+        Path log4jDst = new Path(appPath, APEX_LOG4J_PROPS_FILE);
         fs.copyFromLocalFile(false, true, log4jSrc, log4jDst);
         FileStatus log4jFileStatus = fs.getFileStatus(log4jDst);
         LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
@@ -492,7 +496,7 @@ public class StramClient
         log4jRsrc.setResource(ConverterUtils.getYarnUrlFromURI(log4jDst.toUri()));
         log4jRsrc.setTimestamp(log4jFileStatus.getModificationTime());
         log4jRsrc.setSize(log4jFileStatus.getLen());
-        localResources.put("log4j.properties", log4jRsrc);
+        localResources.put(APEX_LOG4J_PROPS_FILE, log4jRsrc);
       }
 
       if (originalAppId != null) {
@@ -531,6 +535,7 @@ public class StramClient
       // including ${CLASSPATH} will duplicate the class path in app master, removing it for now
       //StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
       StringBuilder classPathEnv = new StringBuilder("./*");
+      classPathEnv.append(":."); // include log4j.properties, if any
       String classpath = conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH);
       for (String c : StringUtils.isBlank(classpath) ? YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH : classpath.split(",")) {
         if (c.equals("$HADOOP_CLIENT_CONF_DIR")) {

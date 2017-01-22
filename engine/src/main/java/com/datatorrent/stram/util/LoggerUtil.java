@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import org.apache.apex.log.appender.LogLocationProvider;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Category;
 import org.apache.log4j.Level;
@@ -47,6 +48,7 @@ public class LoggerUtil
 {
 
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(LoggerUtil.class);
+  private static final String APEX_APPENDER = "APEXRFA";
 
   private static final Map<String, Level> patternLevel = Maps.newHashMap();
   private static final Map<String, Pattern> patterns = Maps.newHashMap();
@@ -277,5 +279,25 @@ public class LoggerUtil
       }
     }
     return ImmutableMap.copyOf(matchedClasses);
+  }
+
+  public static String getLogFileName()
+  {
+    Appender appender = LogManager.getRootLogger().getAppender(APEX_APPENDER);
+    if (appender != null && appender instanceof LogLocationProvider) {
+      LogLocationProvider apexAppender = (LogLocationProvider)appender;
+      return apexAppender.getCurrentFileName();
+    }
+    return null;
+  }
+
+  public static long getLogFileOffset()
+  {
+    Appender appender = LogManager.getRootLogger().getAppender(APEX_APPENDER);
+    if (appender != null && appender instanceof LogLocationProvider) {
+      LogLocationProvider apexAppender = (LogLocationProvider)appender;
+      return apexAppender.getCurrentFileOffset();
+    }
+    return 0;
   }
 }
