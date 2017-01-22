@@ -42,6 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.common.util.PropertiesHelper;
 import org.apache.apex.log.LogFileInformation;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -116,6 +117,7 @@ import com.datatorrent.stram.stream.MuxStream;
 import com.datatorrent.stram.stream.OiOStream;
 import com.datatorrent.stram.stream.PartitionAwareSink;
 import com.datatorrent.stram.stream.PartitionAwareSinkForPersistence;
+import com.datatorrent.stram.stream.QueueServerPublisher;
 import com.datatorrent.stram.util.LoggerUtil;
 
 import net.engio.mbassy.bus.MBassador;
@@ -164,6 +166,7 @@ public class StreamingContainer extends YarnContainerMain
   private final MBassador<ContainerEvent> eventBus; // event bus for publishing container events
   HashSet<Component<ContainerContext>> components;
   private RequestFactory requestFactory;
+  private static boolean publishTuplesFromSocket = PropertiesHelper.getBoolean("org.apache.apex.socket.publisher.enable", false);
 
   static {
     try {
@@ -966,7 +969,14 @@ public class StreamingContainer extends YarnContainerMain
       bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
     }
 
-    Stream publisher = fastPublisherSubscriber ? new FastPublisher(connIdentifier, queueCapacity * 256) : new BufferServerPublisher(connIdentifier, queueCapacity);
+    Stream publisher;
+
+    if (publishTuplesFromSocket) {
+      publisher = fastPublisherSubscriber ? new FastPublisher(connIdentifier, queueCapacity * 256) : new BufferServerPublisher(connIdentifier, queueCapacity);
+    } else {
+      publisher = new QueueServerPublisher(connIdentifier, bufferServer, queueCapacity);
+    }
+
     return new HashMap.SimpleEntry<>(sinkIdentifier, new ComponentContextPair<>(publisher, bssc));
   }
 

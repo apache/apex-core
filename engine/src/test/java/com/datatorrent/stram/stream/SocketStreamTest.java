@@ -208,7 +208,7 @@ public class SocketStreamTest
       }
     }
 
-    eventloop.disconnect(oss);
+    eventloop.disconnect(oss.publisher);
     eventloop.disconnect(iss);
     Assert.assertEquals("Received messages", 1, messageCount.get());
   }

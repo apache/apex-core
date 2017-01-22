@@ -27,6 +27,7 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -36,6 +37,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.jctools.queues.SpscArrayQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -345,8 +347,8 @@ public class Server extends AbstractServer
           DataList dl = publisherBuffers.get(upstream_identifier);
           if (dl == null) {
             dl = Tuple.FAST_VERSION.equals(request.getVersion()) ?
-                new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED) :
-                new DataList(upstream_identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED);
+                new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED, true) :
+                new DataList(upstream_identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED, true);
             DataList odl = publisherBuffers.putIfAbsent(upstream_identifier, dl);
             if (odl != null) {
               dl = odl;
@@ -448,28 +450,32 @@ public class Server extends AbstractServer
    */
   public DataList handlePublisherRequest(PublishRequestTuple request, AbstractLengthPrependerClient connection)
   {
-    String identifier = request.getIdentifier();
+    return publisherRequestHelper(request.getIdentifier(), (long)request.getBaseSeconds() << 32 | request.getWindowId(), connection, request.getVersion());
+  }
 
+  private DataList publisherRequestHelper(String identifier, long windowId, AbstractLengthPrependerClient connection, String version)
+  {
     DataList dl = publisherBuffers.get(identifier);
 
     if (dl != null) {
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      AbstractLengthPrependerClient previous = publisherChannels.put(identifier, connection);
-      if (previous != null) {
-        eventloop.disconnect(previous);
+
+      if (connection != null) {
+        AbstractLengthPrependerClient previous = publisherChannels.put(identifier, connection);
+        if (previous != null) {
+          eventloop.disconnect(previous);
+        }
       }
 
       try {
-        dl.rewind(request.getBaseSeconds(), request.getWindowId());
+        dl.rewind(windowId);
       } catch (IOException ie) {
         throw new RuntimeException(ie);
       }
     } else {
-      dl = Tuple.FAST_VERSION.equals(request.getVersion()) ?
-          new FastDataList(identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED) :
-          new DataList(identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED);
+      dl = Tuple.FAST_VERSION.equals(version) ? new FastDataList(identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED, true) : new DataList(identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED, connection != null ? true : false);
       DataList odl = publisherBuffers.putIfAbsent(identifier, dl);
       if (odl != null) {
         dl = odl;
@@ -478,6 +484,15 @@ public class Server extends AbstractServer
     dl.setSecondaryStorage(storage, storageHelperExecutor);
 
     return dl;
+  }
+
+  public QueuePublisher handleQueuePublisher(long windowId, String identifier, int queueCapacity)
+  {
+    DataList dl = publisherRequestHelper(identifier, windowId, null, null);
+
+    dl.setAutoFlushExecutor(serverHelperExecutor);
+
+    return new QueuePublisher(dl, windowId, queueCapacity);
   }
 
   @Override
@@ -896,7 +911,128 @@ public class Server extends AbstractServer
         ln.boot();
       }
     }
+  }
 
+  public static class QueuePublisher
+  {
+    private final DataList dl;
+    private byte[] buffer;
+    private volatile int offset = 0;
+    private Queue<byte[]> queue;
+    private Thread dataListWriter = new Thread(new Runnable()
+    {
+      @Override
+      public void run()
+      {
+        boolean flushRequired = false;
+        int progressiveSleep = 0;
+
+        logger.info("Inside run");
+
+        try {
+          while (true) {
+            byte[] data = queue.poll();
+
+            if (data == null) {
+              if (flushRequired) {
+                dl.flush(offset);
+                flushRequired = false;
+                progressiveSleep = 0;
+              } else {
+                try {
+                  Thread.sleep(progressiveSleep++);
+                  progressiveSleep = Math.min(progressiveSleep, 10);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+              }
+            } else {
+              put(data);
+              flushRequired = true;
+            }
+          }
+        } catch (Exception ex) {
+          logger.info("Writing to DataList is interrupted because of the exception {} ", ex);
+        }
+      }
+    });
+
+    QueuePublisher(DataList dl, long windowId, int queueCapacity)
+    {
+      this.dl = dl;
+      buffer = dl.getBuffer(windowId);
+      dataListWriter.setName("DataListWriter " + dl.getIdentifier());
+      queue = new SpscArrayQueue<>(256 * queueCapacity);
+      dataListWriter.start();
+    }
+
+    public byte[] getBuffer()
+    {
+      return buffer;
+    }
+
+    public int getOffset()
+    {
+      return offset;
+    }
+
+    public void setOffset(int offset)
+    {
+      this.offset = offset;
+    }
+
+    public void send(byte[] tuple)
+    {
+      while (!queue.offer(tuple)) {
+      }
+    }
+
+    private void put(byte[] tuple)
+    {
+      int len = VarInt.getSize(tuple.length);
+
+      if (buffer.length - offset >= len + tuple.length) {
+        write(tuple, offset);
+        return;
+      }
+
+      if (buffer.length - offset >= len) {
+        offset = VarInt.write(tuple.length, buffer, offset);
+      }
+
+      dl.flush(buffer.length);
+
+      acquireNewMemory();
+
+      write(tuple, 0);
+    }
+
+    private void write(byte[] tuple, int pos)
+    {
+      offset = VarInt.write(tuple.length, buffer, pos);
+      System.arraycopy(tuple, 0, buffer, offset, tuple.length);
+      offset += tuple.length;
+    }
+
+    private void acquireNewMemory()
+    {
+      int count = 0;
+      while (!dl.isMemoryBlockAvailable()) {
+        try {
+          Thread.sleep(10);
+
+          if (count++ == 100) {
+            count = 0;
+            logger.warn("Memory block not available, spooling needs to be done");
+          }
+        } catch (InterruptedException e) {
+          logger.warn("QueuePublisher received interrupt exception.");
+        }
+      }
+
+      buffer = dl.newBuffer(buffer.length);
+      dl.addBuffer(buffer);
+    }
   }
 
   abstract class SeedDataClient extends AbstractLengthPrependerClient

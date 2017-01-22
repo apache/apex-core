@@ -163,18 +163,22 @@ public class StramLocalCluster implements Runnable, Controller
      */
     private final AtomicInteger heartbeatCount = new AtomicInteger();
     private final WindowGenerator windowGenerator;
+    private boolean perContainerBufferServer = false;
 
-    public LocalStreamingContainer(String containerId, StreamingContainerUmbilicalProtocol umbilical, WindowGenerator winGen)
+    public LocalStreamingContainer(String containerId, StreamingContainerUmbilicalProtocol umbilical, WindowGenerator winGen, Server server, InetSocketAddress bufferServerAddress, boolean perContainerBufferServer)
     {
       super(containerId, umbilical);
+      this.bufferServerAddress = bufferServerAddress;
+      this.bufferServer = server;
       this.windowGenerator = winGen;
+      this.perContainerBufferServer = perContainerBufferServer;
     }
 
     public void run(StreamingContainerContext ctx) throws Exception
     {
       LOG.debug("container {} context {}", getContainerId(), ctx);
       setup(ctx);
-      if (bufferServerAddress != null && !bufferServerAddress.getAddress().isLoopbackAddress()) {
+      if (bufferServerAddress != null && bufferServerAddress.getAddress() != null && bufferServerAddress.getAddress().isLoopbackAddress()) {
         bufferServerAddress = InetSocketAddress.createUnresolved(LOCALHOST, bufferServerAddress.getPort());
       }
 
@@ -186,6 +190,10 @@ public class StramLocalCluster implements Runnable, Controller
       } finally {
         // teardown
         try {
+          if (perContainerBufferServer) {
+            bufferServer.stop();
+          }
+          bufferServer = null;
           teardown();
         } catch (Exception e) {
           if (!hasError) {
@@ -250,7 +258,7 @@ public class StramLocalCluster implements Runnable, Controller
       if (mockComponentFactory != null) {
         wingen = mockComponentFactory.setupWindowGenerator();
       }
-      this.child = new LocalStreamingContainer(containerId, umbilical, wingen);
+      this.child = new LocalStreamingContainer(containerId, umbilical, wingen, perContainerBufferServer ? null : bufferServer, bufferServerAddress, perContainerBufferServer);
       ContainerResource cr = new ContainerResource(cdr.container.getResourceRequestPriority(), containerId, "localhost", cdr.container.getRequiredMemoryMB(), cdr.container.getRequiredVCores(), null);
       StreamingContainerAgent sca = dnmgr.assignContainer(cr, perContainerBufferServer ? null : bufferServerAddress);
       if (sca != null) {
@@ -477,7 +485,6 @@ public class StramLocalCluster implements Runnable, Controller
         bufferServerAddress = InetSocketAddress.createUnresolved(LOCALHOST, bufferServer.run().getPort());
         LOG.info("Buffer server started: {}", bufferServerAddress);
       }
-
       long endMillis = System.currentTimeMillis() + runMillis;
 
       while (!appDone) {
