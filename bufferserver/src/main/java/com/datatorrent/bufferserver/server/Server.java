@@ -803,7 +803,103 @@ public class Server implements ServerListener
         ln.boot(eventloop);
       }
     }
+  }
 
+  public QueuePublisher handleQueuePublisher(long windowId, String identifier)
+  {
+    DataList dl = publisherBuffers.get(identifier);
+
+    if (dl != null) {
+      try {
+        dl.rewind(windowId);
+      } catch (IOException ie) {
+        throw new RuntimeException(ie);
+      }
+    } else {
+      dl = new DataList(identifier, blockSize, numberOfCacheBlocks);
+      DataList odl = publisherBuffers.putIfAbsent(identifier, dl);
+      if (odl != null) {
+        dl = odl;
+      }
+    }
+
+    dl.setAutoFlushExecutor(serverHelperExecutor);
+    dl.setSecondaryStorage(storage, storageHelperExecutor);
+
+    QueuePublisher publisher = new QueuePublisher(dl, windowId);
+
+    return publisher;
+  }
+
+  public static class QueuePublisher
+  {
+    private final DataList dl;
+    private byte[] buffer;
+    private int offset = 0;
+    private byte[] scratch = new byte[5];
+
+    QueuePublisher(DataList dl, long windowId)
+    {
+      this.dl = dl;
+      buffer = dl.getBuffer(windowId);
+    }
+
+    public byte[] getBuffer()
+    {
+      return buffer;
+    }
+
+    public int getOffset()
+    {
+      return offset;
+    }
+
+    public void setOffset(int offset)
+    {
+      this.offset = offset;
+    }
+
+    public void put(byte[] tuple)
+    {
+      int len = VarInt.write(tuple.length, scratch, 0);
+
+      if (buffer.length - offset >= len + tuple.length) {
+        offset = VarInt.write(tuple.length, buffer, offset);
+        System.arraycopy(tuple, 0, buffer, offset, tuple.length);
+        offset += tuple.length;
+        dl.flush(offset);
+        return;
+      }
+
+      if (buffer.length - offset >= len) {
+        offset = VarInt.write(tuple.length, buffer, offset);
+      }
+
+      dl.flush(buffer.length);
+
+      int count = 0;
+      while (!dl.isMemoryBlockAvailable()) {
+        try {
+          // TODO: Call spooling to disk?
+          Thread.sleep(10);
+
+          if (count++ == 100) {
+            count = 0;
+            logger.warn("Memory block not available, spooling needs to be done");
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      buffer = dl.newBuffer(buffer.length);
+      dl.addBuffer(buffer);
+
+      offset = VarInt.write(tuple.length, buffer, 0);
+      System.arraycopy(tuple, 0, buffer, offset, tuple.length);
+      offset += tuple.length;
+      dl.flush(offset);
+    }
   }
 
   abstract class SeedDataClient extends AbstractLengthPrependerClient

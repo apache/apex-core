@@ -106,15 +106,14 @@ import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
 import com.datatorrent.stram.security.StramUserLogin;
-import com.datatorrent.stram.stream.BufferServerPublisher;
 import com.datatorrent.stram.stream.BufferServerSubscriber;
-import com.datatorrent.stram.stream.FastPublisher;
 import com.datatorrent.stram.stream.FastSubscriber;
 import com.datatorrent.stram.stream.InlineStream;
 import com.datatorrent.stram.stream.MuxStream;
 import com.datatorrent.stram.stream.OiOStream;
 import com.datatorrent.stram.stream.PartitionAwareSink;
 import com.datatorrent.stram.stream.PartitionAwareSinkForPersistence;
+import com.datatorrent.stram.stream.QueueServerPublisher;
 import com.datatorrent.stram.util.LoggerUtil;
 
 import net.engio.mbassy.bus.MBassador;
@@ -944,7 +943,7 @@ public class StreamingContainer extends YarnContainerMain
       bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
     }
 
-    Stream publisher = fastPublisherSubscriber ? new FastPublisher(connIdentifier, queueCapacity * 256) : new BufferServerPublisher(connIdentifier, queueCapacity);
+    Stream publisher = new QueueServerPublisher(connIdentifier, bufferServer);
     return new HashMap.SimpleEntry<>(sinkIdentifier, new ComponentContextPair<>(publisher, bssc));
   }
 
