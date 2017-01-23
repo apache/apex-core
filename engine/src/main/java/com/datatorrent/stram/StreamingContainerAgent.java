@@ -51,6 +51,7 @@ import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.UnifierDeployInfo;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ShutdownType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.engine.OperatorContext;
@@ -96,7 +97,7 @@ public class StreamingContainerAgent
     this.dnmgr = dnmgr;
   }
 
-  boolean shutdownRequested = false;
+  ShutdownType shutdownRequest = null;
   boolean stackTraceRequested = false;
 
   Set<PTOperator> deployOpers = Sets.newHashSet();
@@ -484,4 +485,14 @@ public class StreamingContainerAgent
   }
 
   public volatile String containerStackTrace = null;
+
+  public void requestShutDown(ShutdownType type)
+  {
+    shutdownRequest = type;
+  }
+
+  public boolean isShutdownRequested()
+  {
+    return (shutdownRequest != null);
+  }
 }

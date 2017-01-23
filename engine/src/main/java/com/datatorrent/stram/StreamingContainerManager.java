@@ -134,6 +134,7 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHe
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ShutdownType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.engine.OperatorResponse;
@@ -761,7 +762,7 @@ public class StreamingContainerManager implements PlanContext
         for (PTContainer c : pendingAllocation) {
           LOG.warn("Waiting for resource: {}m priority: {} {}", c.getRequiredMemoryMB(), c.getResourceRequestPriority(), c);
         }
-        shutdownAllContainers(msg);
+        shutdownAllContainers(ShutdownType.ABORT, msg);
         this.forcedShutdown = true;
       } else {
         for (PTContainer c : pendingAllocation) {
@@ -1121,7 +1122,7 @@ public class StreamingContainerManager implements PlanContext
   public void scheduleContainerRestart(String containerId)
   {
     StreamingContainerAgent cs = this.getContainerAgent(containerId);
-    if (cs == null || cs.shutdownRequested) {
+    if (cs == null || cs.isShutdownRequested()) {
       // the container is no longer used / was released by us
       return;
     }
@@ -1428,7 +1429,7 @@ public class StreamingContainerManager implements PlanContext
       } else {
         String msg = String.format("Shutdown after reaching failure threshold for %s", oper);
         LOG.warn(msg);
-        shutdownAllContainers(msg);
+        shutdownAllContainers(ShutdownType.ABORT, msg);
         forcedShutdown = true;
       }
     } else {
@@ -1454,7 +1455,7 @@ public class StreamingContainerManager implements PlanContext
       // could be orphaned container that was replaced and needs to terminate
       LOG.error("Unknown container {}", heartbeat.getContainerId());
       ContainerHeartbeatResponse response = new ContainerHeartbeatResponse();
-      response.shutdown = true;
+      response.shutdown = ShutdownType.ABORT;
       return response;
     }
 
@@ -1771,11 +1772,11 @@ public class StreamingContainerManager implements PlanContext
 
     if (heartbeat.getContainerStats().operators.isEmpty() && isApplicationIdle()) {
       LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
-      rsp.shutdown = true;
+      rsp.shutdown = ShutdownType.ABORT;
     } else {
-      if (sca.shutdownRequested) {
+      if (sca.isShutdownRequested()) {
         LOG.info("requesting shutdown for container {}", heartbeat.getContainerId());
-        rsp.shutdown = true;
+        rsp.shutdown = sca.shutdownRequest;
       }
     }
 
@@ -2191,7 +2192,6 @@ public class StreamingContainerManager implements PlanContext
     int operatorCount = 0;
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, recovery, getCheckpointGroups());
     for (OperatorMeta logicalOperator : plan.getLogicalPlan().getRootOperators()) {
-      //LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator : operators) {
@@ -2257,14 +2257,15 @@ public class StreamingContainerManager implements PlanContext
    * If containers don't respond, the application can be forcefully terminated
    * via yarn using forceKillApplication.
    *
+   * @param type
    * @param message
    */
-  public void shutdownAllContainers(String message)
+  public void shutdownAllContainers(ShutdownType type, String message)
   {
     this.shutdownDiagnosticsMessage = message;
-    LOG.info("Initiating application shutdown: {}", message);
+    LOG.info("Initiating application shutdown: type {} {}", type, message);
     for (StreamingContainerAgent cs : this.containers.values()) {
-      cs.shutdownRequested = true;
+      cs.requestShutDown(type);
     }
   }
 
@@ -2372,7 +2373,7 @@ public class StreamingContainerManager implements PlanContext
           LOG.debug("Container marked for shutdown: {}", c);
           // container already removed from plan
           // TODO: monitor soft shutdown
-          sca.shutdownRequested = true;
+          sca.requestShutDown(ShutdownType.ABORT);
         }
       }
 

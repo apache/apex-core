@@ -84,6 +84,7 @@ import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.StreamingContainerAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.StringCodecs;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.ModuleMeta;
@@ -361,7 +362,7 @@ public class StramWebServices
   {
     init();
     LOG.debug("Shutdown requested");
-    dagManager.shutdownAllContainers("Shutdown requested externally.");
+    dagManager.shutdownAllContainers(StreamingContainerUmbilicalProtocol.ShutdownType.WAIT_TERMINATE, "Shutdown requested externally.");
     return new JSONObject();
   }
 

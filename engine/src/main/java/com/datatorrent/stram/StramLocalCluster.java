@@ -135,7 +135,7 @@ public class StramLocalCluster implements Runnable, Controller
     {
       if (injectShutdown.containsKey(msg.getContainerId())) {
         ContainerHeartbeatResponse r = new ContainerHeartbeatResponse();
-        r.shutdown = true;
+        r.shutdown = ShutdownType.ABORT;
         return r;
       }
       try {
@@ -466,7 +466,7 @@ public class StramLocalCluster implements Runnable, Controller
         StreamingContainer c = childContainers.get(containerIdStr);
         if (c != null) {
           ContainerHeartbeatResponse r = new ContainerHeartbeatResponse();
-          r.shutdown = true;
+          r.shutdown = StreamingContainerUmbilicalProtocol.ShutdownType.ABORT;
           c.processHeartbeatResponse(r);
         }
         dnmgr.containerStopRequests.remove(containerIdStr);

@@ -317,9 +317,18 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected ProcessingMode PROCESSING_MODE;
   protected volatile boolean shutdown;
 
-  public void shutdown()
+  /**
+   * Shutdown the current node.
+   * If processEndWindow is set to true, then after shutting down, endWindow is called and
+   * END_STREAM tuple is sent to downstream operators.
+   *
+   * @param processEndWindow
+   */
+  public void shutdown(boolean processEndWindow)
   {
-    shutdown = true;
+    if (!processEndWindow) {
+      shutdown = true;
+    }
 
     synchronized (this) {
       alive = false;
@@ -345,6 +354,11 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
+  public void shutdown()
+  {
+    shutdown(false);
+  }
+
   @Override
   public String toString()
   {
@@ -353,7 +367,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected void emitEndStream()
   {
-    // logger.debug("{} sending EndOfStream", this);
+    logger.info("{} sending EndOfStream", this);
     /*
      * since we are going away, we should let all the downstream operators know that.
      */
