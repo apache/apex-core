@@ -26,24 +26,28 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.BaseOperator;
 
 /**
  *
  */
-public class RecoverableInputOperator implements InputOperator, com.datatorrent.api.Operator.CheckpointListener
+public class RecoverableInputOperator implements InputOperator, Operator.CheckpointNotificationListener
 {
   public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<>();
   private long checkpointedWindowId;
-  boolean firstRun = true;
-  transient boolean first;
-  transient long windowId;
-  int maximumTuples = 20;
-  boolean simulateFailure;
+  private transient boolean firstRun = true;
+  private transient boolean first;
+  private transient long windowId;
+  private int maximumTuples = 20;
+  private boolean simulateFailure;
 
   private static final Map<Long, Long> idMap = new HashMap<>();
   private static long tuple = 0;
@@ -95,7 +99,7 @@ public class RecoverableInputOperator implements InputOperator, com.datatorrent.
   public void setup(OperatorContext context)
   {
     firstRun = (checkpointedWindowId == 0);
-    logger.debug("firstRun={} checkpointedWindowId={}", firstRun, Codec.getStringWindowId(checkpointedWindowId));
+    logger.debug("{}", this);
   }
 
   @Override
@@ -106,18 +110,12 @@ public class RecoverableInputOperator implements InputOperator, com.datatorrent.
   @Override
   public void checkpointed(long windowId)
   {
-    if (checkpointedWindowId == 0) {
-      checkpointedWindowId = windowId;
-      logger.debug("firstRun={} checkpointedWindowId={}", firstRun, Codec.getStringWindowId(checkpointedWindowId));
-    }
-
-    logger.debug("{} checkpointed at {}", this, Codec.getStringWindowId(windowId));
   }
 
   @Override
   public void committed(long windowId)
   {
-    logger.debug("{} committed at {} firstRun {}, checkpointedWindowId {}", this, Codec.getStringWindowId(windowId), firstRun, Codec.getStringWindowId(checkpointedWindowId));
+    logger.debug("{}, windowId={}", this, Codec.getStringWindowId(windowId));
     if (simulateFailure && firstRun && checkpointedWindowId > 0 && windowId > checkpointedWindowId) {
       throw new RuntimeException("Failure Simulation from " + this);
     }
@@ -133,5 +131,23 @@ public class RecoverableInputOperator implements InputOperator, com.datatorrent.
   void setSimulateFailure(boolean flag)
   {
     simulateFailure = flag;
+  }
+
+  @Override
+  public void beforeCheckpoint(long windowId)
+  {
+    if (checkpointedWindowId == 0) {
+      checkpointedWindowId = windowId;
+    }
+    logger.debug("{}, windowId={}", this, Codec.getStringWindowId(windowId));
+  }
+
+  @Override
+  public String toString()
+  {
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+            .append("firstRun", this.firstRun)
+            .append("checkpointedWindowId", Codec.getStringWindowId(checkpointedWindowId))
+            .toString();
   }
 }
