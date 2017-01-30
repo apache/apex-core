@@ -31,8 +31,7 @@ at the top level. You can then use the command line interface (CLI) from the bui
 ```
 Type help to list available commands. 
 
-Pre-built distributions (see [README](https://docs.datatorrent.com/installation)) are available from
-https://www.datatorrent.com/download/
+Pre-built distributions are listed on http://apex.apache.org/downloads.html
 
 ##Issue tracking
 
