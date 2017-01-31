@@ -103,6 +103,8 @@ import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.Slider;
 
+import static com.datatorrent.api.Context.PortContext.STREAM_CODEC;
+
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -307,6 +309,20 @@ public class LogicalPlan implements Serializable, DAG
       throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    public StreamCodec<?> getStreamCodec()
+    {
+      return attributes.get(STREAM_CODEC);
+    }
+
+    void setStreamCodec(StreamCodec<?> streamCodec)
+    {
+      if (streamCodec != null) {
+        StreamCodec<?> oldStreamCodec = attributes.put(STREAM_CODEC, streamCodec);
+        if (oldStreamCodec != null && oldStreamCodec != streamCodec) { // once input port codec is set, it is not expected that it will be changed.
+          LOG.warn("Operator {} input port {} stream codec was changed from {} to {}", getOperatorWrapper().getName(), getPortName(), oldStreamCodec, streamCodec);
+        }
+      }
+    }
   }
 
   public final class OutputPortMeta implements DAG.OutputPortMeta, Serializable
@@ -733,18 +749,14 @@ public class LogicalPlan implements Serializable, DAG
 
     private void addStreamCodec(InputPortMeta sinkToPersistPortMeta, InputPort<?> port)
     {
-      StreamCodec<Object> inputStreamCodec = sinkToPersistPortMeta.getValue(PortContext.STREAM_CODEC) != null
-          ? (StreamCodec<Object>)sinkToPersistPortMeta.getValue(PortContext.STREAM_CODEC)
-          : (StreamCodec<Object>)sinkToPersistPortMeta.getPortObject().getStreamCodec();
+      StreamCodec<Object> inputStreamCodec = (StreamCodec<Object>)sinkToPersistPortMeta.getStreamCodec();
       if (inputStreamCodec != null) {
         Map<InputPortMeta, StreamCodec<Object>> codecs = new HashMap<>();
         codecs.put(sinkToPersistPortMeta, inputStreamCodec);
         InputPortMeta persistOperatorPortMeta = assertGetPortMeta(port);
-        StreamCodec<Object> specifiedCodecForPersistOperator = (persistOperatorPortMeta.getValue(PortContext.STREAM_CODEC) != null)
-            ? (StreamCodec<Object>)persistOperatorPortMeta.getValue(PortContext.STREAM_CODEC)
-            : (StreamCodec<Object>)port.getStreamCodec();
+        StreamCodec<Object> specifiedCodecForPersistOperator = (StreamCodec<Object>)persistOperatorPortMeta.getStreamCodec();
         StreamCodecWrapperForPersistance<Object> codec = new StreamCodecWrapperForPersistance<Object>(codecs, specifiedCodecForPersistOperator);
-        setInputPortAttribute(port, PortContext.STREAM_CODEC, codec);
+        persistOperatorPortMeta.setStreamCodec(codec);
       }
     }
 
@@ -1065,6 +1077,12 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.adqAnnotation = adqAnnotation;
         inPortMap.put(portObject, metaPort);
         markInputPortIfHidden(metaPort.getPortName(), metaPort, field.getDeclaringClass());
+        if (metaPort.getStreamCodec() == null) {
+          metaPort.setStreamCodec(portObject.getStreamCodec());
+        } else if (portObject.getStreamCodec() != null) {
+          LOG.info("Operator {} input port {} attribute {} overrides codec {} with {} codec", metaPort.getOperatorWrapper().getName(),
+              metaPort.getPortName(), STREAM_CODEC.getSimpleName(), portObject.getStreamCodec(), metaPort.getStreamCodec());
+        }
       }
 
       @Override
@@ -1614,14 +1632,9 @@ public class LogicalPlan implements Serializable, DAG
     }
     for (StreamMeta n: this.streams.values()) {
       for (InputPortMeta sink : n.getSinks()) {
-        StreamCodec<?> streamCodec = sink.getValue(PortContext.STREAM_CODEC);
+        StreamCodec<?> streamCodec = sink.getStreamCodec();
         if (streamCodec != null) {
           classNames.add(streamCodec.getClass().getName());
-        } else {
-          StreamCodec<?> codec = sink.getPortObject().getStreamCodec();
-          if (codec != null) {
-            classNames.add(codec.getClass().getName());
-          }
         }
       }
     }
