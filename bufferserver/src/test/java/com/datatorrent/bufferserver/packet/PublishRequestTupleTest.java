@@ -18,9 +18,8 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-import org.testng.annotations.Test;
-
-import static org.testng.Assert.assertEquals;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  *
@@ -39,8 +38,8 @@ public class PublishRequestTupleTest
     byte[] serial = PublishRequestTuple.getSerializedRequest(null, pubId, windowId);
     PublishRequestTuple request = (PublishRequestTuple)Tuple.getTuple(serial, 0, serial.length);
 
-    assertEquals(request.identifier, pubId, "Identifier");
-    assertEquals((long)request.baseSeconds << 32 | request.windowId, windowId, "Window");
+    Assert.assertEquals("Identifier", request.identifier, pubId);
+    Assert.assertEquals((long)request.baseSeconds << 32 | request.windowId, windowId);
   }
 
 }

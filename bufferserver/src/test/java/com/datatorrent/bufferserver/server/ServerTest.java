@@ -22,11 +22,12 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.SecureRandom;
 
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
 
 import com.datatorrent.bufferserver.packet.BeginWindowTuple;
 import com.datatorrent.bufferserver.packet.EndWindowTuple;
@@ -36,11 +37,6 @@ import com.datatorrent.bufferserver.support.Controller;
 import com.datatorrent.bufferserver.support.Publisher;
 import com.datatorrent.bufferserver.support.Subscriber;
 import com.datatorrent.netlet.DefaultEventLoop;
-
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertFalse;
-import static org.testng.Assert.assertNotNull;
-import static org.testng.Assert.assertTrue;
 
 /**
  *
@@ -72,8 +68,8 @@ public class ServerTest
 
     instance = new Server(0, 4096,8);
     address = instance.run(eventloopServer);
-    assertTrue(address instanceof InetSocketAddress);
-    assertFalse(address.isUnresolved());
+    Assert.assertTrue(address instanceof InetSocketAddress);
+    Assert.assertFalse(address.isUnresolved());
 
     SecureRandom random = new SecureRandom();
     authToken = new byte[20];
@@ -87,7 +83,6 @@ public class ServerTest
     eventloopServer.stop();
   }
 
-  @Test
   public void testNoPublishNoSubscribe() throws InterruptedException
   {
     bsp = new Publisher("MyPublisher");
@@ -99,20 +94,25 @@ public class ServerTest
     bsp.activate(null, 0L);
     bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
 
-    synchronized (this) {
-      wait(100);
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+
+      if (bss.tupleCount.get() == 0) {
+        break;
+      }
     }
 
     eventloopClient.disconnect(bss);
     eventloopClient.disconnect(bsp);
 
-    assertEquals(bss.tupleCount.get(), 0);
+    Assert.assertEquals(bss.tupleCount.get(), 0);
   }
 
-  @Test(dependsOnMethods = {"testNoPublishNoSubscribe"}, timeOut = 50)
   @SuppressWarnings("SleepWhileInLoop")
   public void test1Window() throws InterruptedException
   {
+    testNoPublishNoSubscribe();
+
     bsp = new Publisher("MyPublisher");
     eventloopClient.connect(address, bsp);
 
@@ -140,13 +140,14 @@ public class ServerTest
     eventloopClient.disconnect(bss);
     eventloopClient.disconnect(bsp);
 
-    assertFalse(bss.resetPayloads.isEmpty());
+    Assert.assertFalse(bss.resetPayloads.isEmpty());
   }
 
-  @Test(dependsOnMethods = {"test1Window"})
   @SuppressWarnings("SleepWhileInLoop")
   public void testLateSubscriber() throws InterruptedException
   {
+    test1Window();
+
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address, bss);
 
@@ -162,14 +163,15 @@ public class ServerTest
 
     eventloopClient.disconnect(bss);
 
-    assertEquals(bss.tupleCount.get(), 1);
-    assertFalse(bss.resetPayloads.isEmpty());
+    Assert.assertEquals(bss.tupleCount.get(), 1);
+    Assert.assertFalse(bss.resetPayloads.isEmpty());
   }
 
-  @Test(dependsOnMethods = {"testLateSubscriber"})
   @SuppressWarnings("SleepWhileInLoop")
   public void testATonOfData() throws InterruptedException
   {
+    testLateSubscriber();
+
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address, bss);
     bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
@@ -202,9 +204,21 @@ public class ServerTest
 
     bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
+    windowId++;
+
+    bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
+
+    for (int i = 0; i < 100; i++) {
+      byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+      buff[buff.length - 1] = (byte)i;
+      bsp.publishMessage(buff);
+    }
+
+    bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
+
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() == 204 + bss.resetPayloads.size()) {
+      if (bss.tupleCount.get() == 306 + bss.resetPayloads.size()) {
         break;
       }
     }
@@ -213,13 +227,13 @@ public class ServerTest
     eventloopClient.disconnect(bsp);
     eventloopClient.disconnect(bss);
 
-    assertEquals(bss.tupleCount.get(), 204 + bss.resetPayloads.size());
+    Assert.assertEquals(bss.tupleCount.get(), 306 + bss.resetPayloads.size());
   }
 
-  @Test(dependsOnMethods = {"testATonOfData"})
   @SuppressWarnings("SleepWhileInLoop")
   public void testPurgeNonExistent() throws InterruptedException
   {
+    testATonOfData();
 
     bsc = new Controller("MyController");
     eventloopClient.connect(address, bsc);
@@ -233,26 +247,27 @@ public class ServerTest
     }
     eventloopClient.disconnect(bsc);
 
-    assertNotNull(bsc.data);
+    Assert.assertNotNull(bsc.data);
 
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address, bss);
     bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() == 205) {
+      if (bss.tupleCount.get() == 307) {
         break;
       }
     }
     Thread.sleep(10);
     eventloopClient.disconnect(bss);
-    assertEquals(bss.tupleCount.get(), 205);
+    Assert.assertEquals(bss.tupleCount.get(), 307);
   }
 
-  @Test(dependsOnMethods = {"testPurgeNonExistent"})
   @SuppressWarnings("SleepWhileInLoop")
   public void testPurgeSome() throws InterruptedException
   {
+    testPurgeNonExistent();
+
     bsc = new Controller("MyController");
     eventloopClient.connect(address, bsc);
 
@@ -265,7 +280,7 @@ public class ServerTest
     }
     eventloopClient.disconnect(bsc);
 
-    assertNotNull(bsc.data);
+    Assert.assertNotNull(bsc.data);
 
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address, bss);
@@ -277,13 +292,14 @@ public class ServerTest
       }
     }
     eventloopClient.disconnect(bss);
-    assertEquals(bss.tupleCount.get(), 103);
+    Assert.assertEquals(bss.tupleCount.get(), 205);
   }
 
-  @Test(dependsOnMethods = {"testPurgeSome"})
   @SuppressWarnings("SleepWhileInLoop")
   public void testPurgeAll() throws InterruptedException
   {
+    testPurgeSome();
+
     bsc = new Controller("MyController");
     eventloopClient.connect(address, bsc);
 
@@ -294,9 +310,11 @@ public class ServerTest
         break;
       }
     }
+
     eventloopClient.disconnect(bsc);
 
-    assertNotNull(bsc.data);
+    //TODO: Null because of the failure in flush
+    Assert.assertNotNull(bsc.data);
 
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address, bss);
@@ -310,19 +328,20 @@ public class ServerTest
     }
     Thread.sleep(10);
     eventloopClient.disconnect(bss);
-    assertEquals(bss.tupleCount.get(), 1);
+    Assert.assertEquals(bss.tupleCount.get(), 103);
   }
 
-  @Test(dependsOnMethods = {"testPurgeAll"})
   public void testRepublish() throws InterruptedException
   {
+    testPurgeAll();
     testATonOfData();
   }
 
-  @Test(dependsOnMethods = {"testRepublish"})
   @SuppressWarnings("SleepWhileInLoop")
   public void testRepublishLowerWindow() throws InterruptedException
   {
+    testRepublish();
+
     bsp = new Publisher("MyPublisher");
     eventloopClient.connect(address, bsp);
 
@@ -368,13 +387,14 @@ public class ServerTest
 
     eventloopClient.disconnect(bss);
 
-    assertEquals(bss.tupleCount.get(), 8);
+    Assert.assertEquals(bss.tupleCount.get(), 8);
   }
 
-  @Test(dependsOnMethods = {"testRepublishLowerWindow"})
   @SuppressWarnings("SleepWhileInLoop")
   public void testReset() throws InterruptedException
   {
+    testRepublishLowerWindow();
+
     bsc = new Controller("MyController");
     eventloopClient.connect(address, bsc);
 
@@ -387,7 +407,7 @@ public class ServerTest
     }
     eventloopClient.disconnect(bsc);
 
-    assertNotNull(bsc.data);
+    Assert.assertNotNull(bsc.data);
 
     bss = new Subscriber("MySubscriber");
     eventloopClient.connect(address, bss);
@@ -402,25 +422,26 @@ public class ServerTest
 
     eventloopClient.disconnect(bss);
 
-    assertEquals(bss.tupleCount.get(), 0);
+    Assert.assertEquals(bss.tupleCount.get(), 0);
   }
 
-  @Test(dependsOnMethods = {"testReset"})
   public void test1WindowAgain() throws InterruptedException
   {
+    testReset();
     test1Window();
   }
 
-  @Test(dependsOnMethods = {"test1WindowAgain"})
   public void testResetAgain() throws InterruptedException
   {
+    test1WindowAgain();
     testReset();
   }
 
-  @Test(dependsOnMethods = {"testResetAgain"})
   @SuppressWarnings("SleepWhileInLoop")
   public void testEarlySubscriberForLaterWindow() throws InterruptedException
   {
+    testResetAgain();
+
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address, bss);
     bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 49L, 0);
@@ -429,7 +450,6 @@ public class ServerTest
     Thread.sleep(100);
     bsp = new Publisher("MyPublisher");
     eventloopClient.connect(address, bsp);
-
 
     bsp.activate(null, 0, 0);
 
@@ -454,14 +474,15 @@ public class ServerTest
 
     eventloopClient.disconnect(bsp);
 
-    assertEquals(bss.tupleCount.get(), 150);
+    Assert.assertEquals(bss.tupleCount.get(), 150);
 
     eventloopClient.disconnect(bss);
   }
 
-  @Test(dependsOnMethods = {"testEarlySubscriberForLaterWindow"})
   public void testAuth() throws InterruptedException
   {
+    testEarlySubscriberForLaterWindow();
+
     instance.setAuthToken(authToken);
 
     bsp = new Publisher("MyPublisher");
@@ -490,13 +511,14 @@ public class ServerTest
     eventloopClient.disconnect(bss);
     eventloopClient.disconnect(bsp);
 
-    assertEquals(bss.tupleCount.get(), 1);
-    assertFalse(bss.resetPayloads.isEmpty());
+    Assert.assertEquals(bss.tupleCount.get(), 1);
+    Assert.assertFalse(bss.resetPayloads.isEmpty());
   }
 
-  @Test(dependsOnMethods = {"testAuth"})
   public void testAuthFailure() throws InterruptedException
   {
+    testAuth();
+
     byte[] authToken = ServerTest.authToken.clone();
     authToken[0] = (byte)(authToken[0] + 1);
 
@@ -526,8 +548,14 @@ public class ServerTest
     eventloopClient.disconnect(bss);
     eventloopClient.disconnect(bsp);
 
-    assertEquals(bss.tupleCount.get(), 0);
-    assertTrue(bss.resetPayloads.isEmpty());
+    Assert.assertEquals(bss.tupleCount.get(), 0);
+    Assert.assertTrue(bss.resetPayloads.isEmpty());
+  }
+
+  @Test
+  public void OneBigTest() throws InterruptedException
+  {
+    testAuthFailure();
   }
 
   private static final Logger logger = LoggerFactory.getLogger(ServerTest.class);
