@@ -807,11 +807,15 @@ public class StreamingContainer extends YarnContainerMain
       undeploy(rsp.undeployRequest);
     }
 
-    if (rsp.shutdown) {
-      logger.info("Received shutdown request");
-      processNodeRequests(false);
-      this.exitHeartbeatLoop = true;
-      return;
+    if (rsp.shutdown != null) {
+      logger.info("Received shutdown request type {}", rsp.shutdown);
+      if (rsp.shutdown == StreamingContainerUmbilicalProtocol.ShutdownType.ABORT) {
+        processNodeRequests(false);
+        this.exitHeartbeatLoop = true;
+        return;
+      } else if (rsp.shutdown == StreamingContainerUmbilicalProtocol.ShutdownType.WAIT_TERMINATE) {
+        stopInputNodes();
+      }
     }
 
     if (rsp.deployRequest != null) {
@@ -831,6 +835,20 @@ public class StreamingContainer extends YarnContainerMain
     }
 
     processNodeRequests(true);
+  }
+
+  private void stopInputNodes()
+  {
+    for (Entry<Integer, Node<?>> e : nodes.entrySet()) {
+      Node<?> node = e.getValue();
+      if (node instanceof InputNode) {
+        final Thread thread = e.getValue().context.getThread();
+        if (thread == null || !thread.isAlive()) {
+          continue;
+        }
+      }
+      node.shutdown(true);
+    }
   }
 
   private int getOutputQueueCapacity(List<OperatorDeployInfo> operatorList, int sourceOperatorId, String sourcePortName)

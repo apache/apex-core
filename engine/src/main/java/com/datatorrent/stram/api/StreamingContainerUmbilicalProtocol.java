@@ -341,6 +341,24 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
     }
   }
 
+  enum ShutdownType
+  {
+    /**
+     * WAIT_TERMINATE, when this value is set all input operators in the
+     * container terminates and send END_STREAM tuple to downstream
+     * operators. This type of shutdown make sure that data emitted by upstream
+     * operator before shutdown are processed by downstreams operator before
+     * they terminate.
+     */
+    WAIT_TERMINATE,
+    /**
+     * ABORT, In few cases we need to shutdown container forcefully such
+     * as resource allocation timeout, stale container or container without any operator.
+     * In such cases this flag will be used to send shutdown request to the container.
+     */
+    ABORT,
+  }
+
   /**
    *
    * Response from the stram to the container heartbeat
@@ -354,7 +372,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
     /**
      * Indicate container to exit heartbeat loop and shutdown.
      */
-    public boolean shutdown;
+    public ShutdownType shutdown;
 
     /**
      * Optional list of responses for operators in the container.

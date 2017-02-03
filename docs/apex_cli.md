@@ -266,3 +266,13 @@ submit
 
 *Note*:  To perform runtime logical plan changes, like ability to add new operators,
 they must be part of the jar files that were deployed at application launch time.
+
+*kill-app* terminates operators in undefined order, causing some operators to not process
+data emitted by input operators. Such application can be restarted from last checkpointed
+state using `launch -originalAppId` command. As application is relaunched from checkpointed
+state there will be no data loss.
+
+*shutdown-app* This command is to terminate the application while making sure that all data
+emitted by input operators are processed throughout the DAG. Application terminated with
+`shutdown-app` command can not be restarted, as application is considered to be completed
+successfully.
