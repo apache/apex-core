@@ -53,6 +53,9 @@ import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.Module;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StreamingApplication;
@@ -60,12 +63,15 @@ import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
 import com.datatorrent.common.codec.JsonStreamCodec;
+import com.datatorrent.common.partitioner.StatelessPartitioner;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.common.util.BasicContainerOptConfigurator;
 import com.datatorrent.stram.PartitioningTest.PartitionLoadWatch;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.SchemaTestOperator;
+import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
@@ -75,6 +81,9 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration.ConfElement;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration.ContextUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration.StramElement;
 import com.datatorrent.stram.plan.logical.LogicalPlanTest.ValidationTestOperator;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 
 import static org.junit.Assert.assertEquals;
@@ -597,6 +606,104 @@ public class LogicalPlanConfigurationTest
     Assert.assertNotNull(om);
     Assert.assertEquals("", Integer.valueOf(2), om.getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
     Assert.assertEquals("", Integer.valueOf(512), om.getValue(OperatorContext.MEMORY_MB));
+  }
+
+  @Test
+  @SuppressWarnings({"UnnecessaryBoxing", "AssertEqualsBetweenInconvertibleTypes"})
+  public void testModuleUnifierLevelAttributes()
+  {
+    class DummyOperator extends BaseOperator
+    {
+      int prop;
+
+      public transient DefaultInputPort<Integer> input = new DefaultInputPort<Integer>()
+      {
+        @Override
+        public void process(Integer tuple)
+        {
+          LOG.debug(tuple.intValue() + " processed");
+          output.emit(tuple);
+        }
+      };
+      public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
+    }
+
+    class DummyOutputOperator extends BaseOperator
+    {
+      int prop;
+
+      public transient DefaultInputPort<Integer> input = new DefaultInputPort<Integer>()
+      {
+        @Override
+        public void process(Integer tuple)
+        {
+          LOG.debug(tuple.intValue() + " processed");
+        }
+      };
+    }
+
+    class TestUnifierAttributeModule implements Module
+    {
+      public transient ProxyInputPort<Integer> moduleInput = new ProxyInputPort<Integer>();
+      public transient ProxyOutputPort<Integer> moduleOutput = new Module.ProxyOutputPort<Integer>();
+
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        DummyOperator dummyOperator = dag.addOperator("DummyOperator", new DummyOperator());
+        dag.setOperatorAttribute(dummyOperator, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<DummyOperator>(3));
+        dag.setUnifierAttribute(dummyOperator.output, OperatorContext.TIMEOUT_WINDOW_COUNT, 2);
+        moduleInput.set(dummyOperator.input);
+        moduleOutput.set(dummyOperator.output);
+      }
+    }
+
+    StreamingApplication app = new StreamingApplication()
+    {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        Module m1 = dag.addModule("TestModule", new TestUnifierAttributeModule());
+        DummyOutputOperator dummyOutputOperator = dag.addOperator("DummyOutputOperator", new DummyOutputOperator());
+        dag.addStream("Module To Operator", ((TestUnifierAttributeModule)m1).moduleOutput, dummyOutputOperator.input);
+      }
+    };
+
+    String appName = "UnifierApp";
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new MockStorageAgent());
+    dagBuilder.prepareDAG(dag, app, appName);
+    LogicalPlan.OperatorMeta ometa = dag.getOperatorMeta("TestModule$DummyOperator");
+    LogicalPlan.OperatorMeta om = null;
+    for (Map.Entry<LogicalPlan.OutputPortMeta, LogicalPlan.StreamMeta> entry : ometa.getOutputStreams().entrySet()) {
+      if (entry.getKey().getPortName().equals("output")) {
+        om = entry.getKey().getUnifierMeta();
+      }
+    }
+
+    /*
+     * Verify the attribute value after preparing DAG.
+     */
+    Assert.assertNotNull(om);
+    Assert.assertEquals("", Integer.valueOf(2), om.getValue(Context.OperatorContext.TIMEOUT_WINDOW_COUNT));
+
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    List<PTContainer> containers = plan.getContainers();
+    LogicalPlan.OperatorMeta operatorMeta = null;
+    for (PTContainer container : containers) {
+      List<PTOperator> operators = container.getOperators();
+      for (PTOperator operator : operators) {
+        if (operator.isUnifier()) {
+          operatorMeta = operator.getOperatorMeta();
+        }
+      }
+    }
+
+    /*
+     * Verify attribute after physical plan creation with partitioned operators.
+     */
+    Assert.assertEquals("", Integer.valueOf(2), operatorMeta.getValue(OperatorContext.TIMEOUT_WINDOW_COUNT));
   }
 
   @Test

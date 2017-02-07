@@ -31,7 +31,8 @@ public class MockStorageAgent implements StorageAgent
   @Override
   public void save(Object object, int operatorId, long windowId) throws IOException
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    // Do nothing for now
+    return;
   }
 
   @Override
