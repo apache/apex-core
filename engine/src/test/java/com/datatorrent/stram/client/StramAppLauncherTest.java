@@ -98,7 +98,7 @@ public class StramAppLauncherTest
     {
       Configuration conf = new Configuration(false);
       File storeKeytab = new File(dfsDir, "keytab2");
-      conf.set(StramClientUtils.KEY_TAB_FILE, storeKeytab.getPath());
+      conf.set(StramClientUtils.TOKEN_REFRESH_KEYTAB, storeKeytab.getPath());
       StramUserLogin.authenticate(principal, sourceKeytab.getPath());
       LogicalPlan dag = applyTokenRefreshKeytab(FileSystem.newInstance(conf), conf);
       Assert.assertEquals("Token refresh principal", principal, dag.getValue(LogicalPlan.PRINCIPAL));
