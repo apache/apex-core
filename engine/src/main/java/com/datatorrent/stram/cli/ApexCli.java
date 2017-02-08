@@ -2972,7 +2972,7 @@ public class ApexCli
   public static class GetOperatorClassesCommandLineOptions
   {
     final Options options = new Options();
-    final Option parent = add(new Option("parent", "Specify the parent class for the operators"));
+    final Option parent = add(new Option("parent", true, "Specify the parent class for the operators"));
 
     private Option add(Option opt)
     {
