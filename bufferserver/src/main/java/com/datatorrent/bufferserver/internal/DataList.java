@@ -71,7 +71,7 @@ public class DataList
   private final Set<AbstractClient> suspendedClients = newHashSet();
   private final AtomicInteger numberOfInMemBlockPermits;
   private MutableInt nextOffset = new MutableInt();
-  private Future<?> future;
+  private final ListenersNotifier listenersNotifier = new ListenersNotifier();
   private final boolean backPressureEnabled;
 
   public DataList(final String identifier, final int blockSize, final int numberOfCacheBlocks, final boolean backPressureEnabled)
@@ -291,22 +291,7 @@ public class DataList
 
   public void notifyListeners()
   {
-    if (future == null || future.isDone() || future.isCancelled()) {
-      future = autoFlushExecutor.submit(new Runnable()
-      {
-        @Override
-        public void run()
-        {
-          boolean atLeastOneListenerHasDataToSend = false;
-          for (DataListener dl : all_listeners) {
-            atLeastOneListenerHasDataToSend |= dl.addedData();
-          }
-          if (atLeastOneListenerHasDataToSend) {
-            future = autoFlushExecutor.submit(this);
-          }
-        }
-      });
-    }
+    listenersNotifier.moreDataAvailable();
   }
 
   public void setAutoFlushExecutor(final ExecutorService es)
@@ -1064,6 +1049,82 @@ public class DataList
       return getClass().getName() + '@' + Integer.toHexString(hashCode()) + "{da=" + da + '}';
     }
 
+  }
+
+  private class ListenersNotifier implements Runnable
+  {
+    private volatile Future<?> future;
+    private boolean isMoreDataAvailable = false;
+
+    private void moreDataAvailable()
+    {
+      final Future<?> future = this.future;
+      if (future == null || future.isDone() || future.isCancelled()) {
+        // Do not schedule a new task if there is an existing one that is still running or is waiting in the queue
+        this.future = autoFlushExecutor.submit(listenersNotifier);
+      } else {
+        synchronized (this) {
+          if (this.future == null) {
+            // future is set to null before run() exists, no need to check whether future isDone() or isCancelled()
+            this.future = autoFlushExecutor.submit(this);
+          } else {
+            isMoreDataAvailable = true;
+          }
+        }
+      }
+    }
+
+    private boolean addedData()
+    {
+      boolean doesAtLeastOneListenerHaveDataToSend = false;
+      for (DataListener dl : all_listeners) {
+        try {
+          doesAtLeastOneListenerHaveDataToSend |= dl.addedData(false);
+        } catch (RuntimeException e) {
+          logger.error("{}: removing DataListener {} due to exception", DataList.this, dl, e);
+          removeDataListener(dl);
+          break;
+        }
+      }
+      return doesAtLeastOneListenerHaveDataToSend;
+    }
+
+    private boolean checkIfListenersHaveDataToSendOnly()
+    {
+      for (DataListener dl : all_listeners) {
+        try {
+          if (dl.addedData(true)) {
+            return true;
+          }
+        } catch (RuntimeException e) {
+          logger.error("{}: removing DataListener {} due to exception", DataList.this, dl, e);
+          removeDataListener(dl);
+          return checkIfListenersHaveDataToSendOnly();
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public void run()
+    {
+      try {
+        if (addedData() || checkIfListenersHaveDataToSendOnly()) {
+          future = autoFlushExecutor.submit(this);
+        } else {
+          synchronized (this) {
+            if (isMoreDataAvailable) {
+              isMoreDataAvailable = false;
+              future = autoFlushExecutor.submit(this);
+            } else {
+              future = null;
+            }
+          }
+        }
+      } catch (Exception e) {
+        logger.error("{}", DataList.this, e);
+      }
+    }
   }
 
   private static final Logger logger = LoggerFactory.getLogger(DataList.class);

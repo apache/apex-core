@@ -221,7 +221,7 @@ public class LogicalNode implements DataListener
       }
 
       if (iterator.hasNext()) {
-        addedData();
+        addedData(false);
       }
     }
 
@@ -229,9 +229,9 @@ public class LogicalNode implements DataListener
   }
 
   @Override
-  public boolean addedData()
+  public boolean addedData(boolean checkIfListenerHaveDataToSendOnly)
   {
-    if (isReady()) {
+    if (!checkIfListenerHaveDataToSendOnly && isReady()) {
       if (caughtup) {
         try {
           /*
@@ -302,7 +302,7 @@ public class LogicalNode implements DataListener
         catchUp();
       }
     }
-    return !ready;
+    return iterator.hasNext();
   }
 
   /**

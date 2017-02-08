@@ -36,7 +36,7 @@ public interface DataListener
 
   /**
    */
-  boolean addedData();
+  boolean addedData(boolean checkIfListenerHaveDataToSendOnly);
 
   /**
    *
