@@ -97,7 +97,7 @@ public class ServerTest
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
 
-      if (bss.tupleCount.get() == 103) {
+      if (bss.tupleCount.get() == 0) {
         break;
       }
     }
@@ -105,14 +105,12 @@ public class ServerTest
     eventloopClient.disconnect(bss);
     eventloopClient.disconnect(bsp);
 
-    Assert.assertEquals(bss.tupleCount.get(), 103);
+    Assert.assertEquals(bss.tupleCount.get(), 0);
   }
 
   @SuppressWarnings("SleepWhileInLoop")
   public void test1Window() throws InterruptedException
   {
-    testNoPublishNoSubscribe();
-
     bsp = new Publisher("MyPublisher");
     eventloopClient.connect(address, bsp);
 
