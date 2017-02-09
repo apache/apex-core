@@ -2998,7 +2998,7 @@ public class ApexCli
   public static class GetOperatorClassesCommandLineOptions
   {
     final Options options = new Options();
-    final Option parent = add(new Option("parent", "Specify the parent class for the operators"));
+    final Option parent = add(new Option("parent", true, "Specify the parent class for the operators"));
 
     private Option add(Option opt)
     {
@@ -3010,13 +3010,13 @@ public class ApexCli
 
   private static GetOperatorClassesCommandLineOptions GET_OPERATOR_CLASSES_OPTIONS = new GetOperatorClassesCommandLineOptions();
 
-  private static class GetOperatorClassesCommandLineInfo
+  static class GetOperatorClassesCommandLineInfo
   {
     String parent;
     String[] args;
   }
 
-  private static GetOperatorClassesCommandLineInfo getGetOperatorClassesCommandLineInfo(String[] args) throws ParseException
+  static GetOperatorClassesCommandLineInfo getGetOperatorClassesCommandLineInfo(String[] args) throws ParseException
   {
     CommandLineParser parser = new PosixParser();
     GetOperatorClassesCommandLineInfo result = new GetOperatorClassesCommandLineInfo();
