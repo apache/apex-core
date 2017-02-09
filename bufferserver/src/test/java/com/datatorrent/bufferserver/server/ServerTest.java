@@ -97,7 +97,7 @@ public class ServerTest
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
 
-      if (bss.tupleCount.get() == 0) {
+      if (bss.tupleCount.get() == 103) {
         break;
       }
     }
@@ -105,7 +105,7 @@ public class ServerTest
     eventloopClient.disconnect(bss);
     eventloopClient.disconnect(bsp);
 
-    Assert.assertEquals(bss.tupleCount.get(), 0);
+    Assert.assertEquals(bss.tupleCount.get(), 103);
   }
 
   @SuppressWarnings("SleepWhileInLoop")
