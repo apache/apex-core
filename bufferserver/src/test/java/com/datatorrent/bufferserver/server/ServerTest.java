@@ -26,6 +26,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -550,7 +551,7 @@ public class ServerTest
     Assert.assertTrue(bss.resetPayloads.isEmpty());
   }
 
-  @Test
+  @Test (timeout = 60000)
   public void OneBigTest() throws InterruptedException
   {
     testAuthFailure();
