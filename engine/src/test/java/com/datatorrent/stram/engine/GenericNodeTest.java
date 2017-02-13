@@ -373,8 +373,8 @@ public class GenericNodeTest
     EventLoop eventloop = DefaultEventLoop.createEventLoop("StreamTestEventLoop");
 
     ((DefaultEventLoop)eventloop).start();
-    final Server bufferServer = new Server(0); // find random port
-    final int bufferServerPort = bufferServer.run(eventloop).getPort();
+    final Server bufferServer = new Server(eventloop, 0); // find random port
+    final int bufferServerPort = bufferServer.run().getPort();
 
     final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<Object>();
     final BlockingQueue<Object> tuples = new ArrayBlockingQueue<Object>(10);
@@ -478,7 +478,7 @@ public class GenericNodeTest
     Assert.assertEquals("Payload Tuple 3", 3, ((byte[])list.get(7))[5]);
 
     if (bufferServer != null) {
-      eventloop.stop(bufferServer);
+      bufferServer.stop();
     }
 
     ((DefaultEventLoop)eventloop).stop();
