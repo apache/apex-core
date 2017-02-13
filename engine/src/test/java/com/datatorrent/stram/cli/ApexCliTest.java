@@ -258,4 +258,18 @@ public class ApexCliTest
 
     Assert.fail("Cli failed throw multiple apps exception.");
   }
+
+  @Test
+  public void testGetOperatorClassesCommandLineInfo() throws Exception
+  {
+    String arg2 = "option value";
+    String arg3 = "regular parameter";
+
+    ApexCli.GetOperatorClassesCommandLineInfo commandLineOptions =
+        ApexCli.getGetOperatorClassesCommandLineInfo(new String[] {"-parent", arg2, arg3});
+
+    Assert.assertEquals(commandLineOptions.parent, arg2);
+    Assert.assertEquals(commandLineOptions.args.length, 1);
+    Assert.assertEquals(commandLineOptions.args[0], arg3);
+  }
 }
