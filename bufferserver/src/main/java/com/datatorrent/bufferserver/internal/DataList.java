@@ -72,8 +72,9 @@ public class DataList
   private final AtomicInteger numberOfInMemBlockPermits;
   private MutableInt nextOffset = new MutableInt();
   private Future<?> future;
+  private final boolean backPressureEnabled;
 
-  public DataList(final String identifier, final int blockSize, final int numberOfCacheBlocks)
+  public DataList(final String identifier, final int blockSize, final int numberOfCacheBlocks, final boolean backPressureEnabled)
   {
     if (numberOfCacheBlocks < 1) {
       throw new IllegalArgumentException("Invalid number of Data List Memory blocks " + numberOfCacheBlocks);
@@ -82,6 +83,7 @@ public class DataList
     numberOfInMemBlockPermits = new AtomicInteger(MAX_COUNT_OF_INMEM_BLOCKS - 1);
     this.identifier = identifier;
     this.blockSize = blockSize;
+    this.backPressureEnabled = backPressureEnabled;
     first = last = new Block(identifier, blockSize);
   }
 
@@ -91,7 +93,7 @@ public class DataList
      * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block
      * at a time to the filesystem. We will use default value of 8 block sizes to be cached in memory
      */
-    this(identifier, 64 * 1024 * 1024, 8);
+    this(identifier, 64 * 1024 * 1024, 8, true);
   }
 
   public int getBlockSize()
@@ -172,6 +174,7 @@ public class DataList
         }
       }
       first = last;
+      first.prev = null;
     }
     numberOfInMemBlockPermits.set(MAX_COUNT_OF_INMEM_BLOCKS - 1);
   }
@@ -188,6 +191,7 @@ public class DataList
         if (temp.ending_window > windowId || temp == last) {
           if (prev != null) {
             first = temp;
+            first.prev = null;
           }
           first.purge(windowId);
           break;
@@ -436,7 +440,8 @@ public class DataList
       logger.warn("Exceeded allowed memory block allocation by {}", -numberOfInMemBlockPermits);
     }
     last.next = new Block(identifier, array, last.ending_window, last.ending_window);
-    last.release(false);
+    last.next.prev = last;
+    last.release(false, true);
     last = last.next;
   }
 
@@ -553,6 +558,10 @@ public class DataList
      * the next in the chain.
      */
     Block next;
+    /**
+     * the previous in the chain
+     */
+    Block prev;
     /**
      * how count of references to this block.
      */
@@ -822,10 +831,10 @@ public class DataList
       };
     }
 
-    protected void release(boolean wait)
+    protected void release(boolean wait, boolean writer)
     {
       final int refCount = this.refCount.decrementAndGet();
-      if (refCount == 0 && storage != null) {
+      if (canEvict(refCount, writer)) {
         assert (next != null);
         final Runnable storer = getStorer(data, readingOffset, writingOffset, storage);
         if (future != null && future.cancel(false)) {
@@ -840,8 +849,37 @@ public class DataList
         } else {
           future = null;
         }
+      }
+    }
+
+    private boolean canEvict(final int refCount, boolean writer)
+    {
+      if (refCount == 0 && storage != null) {
+        if (backPressureEnabled) {
+          if (!writer) {
+            boolean evict = true;
+            int blocks = 0;
+            // Search backwards from current block as opposed to searching forward from first block till current block as
+
+            // it is more likely to find the match quicker. No need to search more than maximum number of in memory
+            // permits.
+            for (Block temp = this.prev; (blocks < (MAX_COUNT_OF_INMEM_BLOCKS - 1)) && (temp != null); temp = temp.prev, ++blocks) {
+              if (temp.refCount.get() != 0) {
+                evict = false;
+                break;
+              }
+            }
+            logger.debug("Block {} evict {}", this, evict);
+            return evict;
+          } else {
+            return false;
+          }
+        } else {
+          return true;
+        }
       } else {
         logger.debug("Holding {} in memory due to {} references.", this, refCount);
+        return false;
       }
     }
 
@@ -937,7 +975,7 @@ public class DataList
       }
       //logger.debug("{}: switching to the next block {}->{}", this, da, da.next);
       next.acquire(true);
-      da.release(false);
+      da.release(false, false);
       da = next;
       size = 0;
       buffer = da.data;
@@ -1008,7 +1046,7 @@ public class DataList
     public void close()
     {
       if (da != null) {
-        da.release(false);
+        da.release(false, false);
         da = null;
         buffer = null;
       }
