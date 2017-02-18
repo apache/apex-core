@@ -81,6 +81,7 @@ public class ResourceRequestHandler
          */
         if ((loopCounter - entry.getValue().getKey()) > NUMBER_MISSED_HEARTBEATS) {
           StreamingContainerAgent.ContainerStartRequest csr = entry.getKey();
+          LOG.debug("Request for container {} timed out. Re-requesting container", csr.container);
           removedContainerRequests.add(entry.getValue().getRight());
           ContainerRequest cr = resourceRequestor.createContainerRequest(csr, false);
           entry.getValue().setLeft(loopCounter);
