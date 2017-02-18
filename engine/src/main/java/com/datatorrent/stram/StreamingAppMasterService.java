@@ -699,7 +699,7 @@ public class StreamingAppMasterService extends CompositeService
     int loopCounter = -1;
     long nodeReportUpdateTime = 0;
     List<ContainerId> releasedContainers = new ArrayList<>();
-    int numTotalContainers = 0;
+
     // keep track of already requested containers to not request them again while waiting for allocation
     int numRequestedContainers = 0;
     int numReleasedContainers = 0;
@@ -723,7 +723,7 @@ public class StreamingAppMasterService extends CompositeService
         dnmgr.shutdownDiagnosticsMessage = String.format("Application master failed due to application %s with duplicate application name \"%s\" by the same user \"%s\" is already started.",
             ar.getApplicationId().toString(), ar.getName(), ar.getUser());
         LOG.info("Forced shutdown due to {}", dnmgr.shutdownDiagnosticsMessage);
-        finishApplication(FinalApplicationStatus.FAILED, numTotalContainers);
+        finishApplication(FinalApplicationStatus.FAILED);
         return;
       }
       resourceRequestor.updateNodeReports(clientRMService.getNodeReports());
@@ -823,7 +823,7 @@ public class StreamingAppMasterService extends CompositeService
 
       resourceRequestor.reissueContainerRequests(amRmClient, requestedResources, loopCounter, resourceRequestor, containerRequests, removedContainerRequests);
 
-     /* Remove nodes from blacklist after timeout */
+      /* Remove nodes from blacklist after timeout */
       List<String> blacklistRemovals = new ArrayList<>();
       for (String hostname : failedBlackListedNodes) {
         Long timeDiff = currentTimeMillis - failedContainerNodesMap.get(hostname).blackListAdditionTime;
@@ -838,8 +838,7 @@ public class StreamingAppMasterService extends CompositeService
         failedBlackListedNodes.removeAll(blacklistRemovals);
       }
 
-      numTotalContainers += containerRequests.size();
-      numRequestedContainers += containerRequests.size();
+      numRequestedContainers += containerRequests.size() - removedContainerRequests.size();
       AllocateResponse amResp = sendContainerAskToRM(containerRequests, removedContainerRequests, releasedContainers);
       if (amResp.getAMCommand() != null) {
         LOG.info(" statement executed:{}", amResp.getAMCommand());
@@ -878,7 +877,7 @@ public class StreamingAppMasterService extends CompositeService
           LOG.info("Releasing {} as resource with priority {} was already assigned", allocatedContainer.getId(), allocatedContainer.getPriority());
           releasedContainers.add(allocatedContainer.getId());
           numReleasedContainers++;
-          numRequestedContainers++;
+          numRequestedContainers--;
           continue;
         }
         if (csr != null) {
@@ -1019,23 +1018,24 @@ public class StreamingAppMasterService extends CompositeService
         appDone = true;
       }
 
-      LOG.debug("Current application state: loop=" + loopCounter + ", appDone=" + appDone + ", total=" + numTotalContainers + ", requested=" + numRequestedContainers + ", released=" + numReleasedContainers + ", completed=" + numCompletedContainers + ", failed=" + numFailedContainers + ", currentAllocated=" + allocatedContainers.size());
+      LOG.debug("Current application state: loop={}, appDone={}, requested={}, released={}, completed={}, failed={}, currentAllocated={}, dnmgr.containerStartRequests={}",
+          loopCounter, appDone, numRequestedContainers, numReleasedContainers, numCompletedContainers, numFailedContainers, allocatedContainers.size(), dnmgr.containerStartRequests);
 
       // monitor child containers
       dnmgr.monitorHeartbeat();
     }
 
-    finishApplication(finalStatus, numTotalContainers);
+    finishApplication(finalStatus);
   }
 
-  private void finishApplication(FinalApplicationStatus finalStatus, int numTotalContainers) throws YarnException, IOException
+  private void finishApplication(FinalApplicationStatus finalStatus) throws YarnException, IOException
   {
     LOG.info("Application completed. Signalling finish to RM");
     FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
     finishReq.setFinalApplicationStatus(finalStatus);
 
     if (finalStatus != FinalApplicationStatus.SUCCEEDED) {
-      String diagnostics = "Diagnostics." + ", total=" + numTotalContainers + ", completed=" + numCompletedContainers.get() + ", allocated=" + allocatedContainers.size() + ", failed=" + numFailedContainers.get();
+      String diagnostics = "Diagnostics." + " completed=" + numCompletedContainers.get() + ", allocated=" + allocatedContainers.size() + ", failed=" + numFailedContainers.get();
       if (!StringUtils.isEmpty(dnmgr.shutdownDiagnosticsMessage)) {
         diagnostics += "\n";
         diagnostics += dnmgr.shutdownDiagnosticsMessage;
@@ -1093,16 +1093,14 @@ public class StreamingAppMasterService extends CompositeService
   private AllocateResponse sendContainerAskToRM(List<ContainerRequest> containerRequests, List<ContainerRequest> removedContainerRequests, List<ContainerId> releasedContainers) throws YarnException, IOException
   {
     if (removedContainerRequests.size() > 0) {
-      LOG.info(" Removing container request: " + removedContainerRequests);
+      LOG.debug("Removing container request: {}", removedContainerRequests);
       for (ContainerRequest cr : removedContainerRequests) {
-        LOG.info("Removed container: {}", cr.toString());
         amRmClient.removeContainerRequest(cr);
       }
     }
     if (containerRequests.size() > 0) {
-      LOG.info("Asking RM for containers: " + containerRequests);
+      LOG.debug("Asking RM for containers: {}", containerRequests);
       for (ContainerRequest cr : containerRequests) {
-        LOG.info("Requested container: {} on host: [{}]", cr.toString(), StringUtils.join(cr.getNodes(), ", "));
         amRmClient.addContainerRequest(cr);
       }
     }
