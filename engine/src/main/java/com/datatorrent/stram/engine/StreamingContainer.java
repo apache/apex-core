@@ -297,10 +297,12 @@ public class StreamingContainer extends YarnContainerMain
 
     int exitStatus = 1; // interpreted as unrecoverable container failure
 
-    RecoverableRpcProxy rpcProxy = new RecoverableRpcProxy(appPath, new Configuration());
-    final StreamingContainerUmbilicalProtocol umbilical = rpcProxy.getProxy();
+    RecoverableRpcProxy rpcProxy = null;
+    StreamingContainerUmbilicalProtocol umbilical = null;
     final String childId = System.getProperty(StreamingApplication.DT_PREFIX + "cid");
     try {
+      rpcProxy = new RecoverableRpcProxy(appPath, new Configuration());
+      umbilical = rpcProxy.getProxy();
       StreamingContainerContext ctx = umbilical.getInitContext(childId);
       StreamingContainer stramChild = new StreamingContainer(childId, umbilical);
       logger.debug("Container Context = {}", ctx);
@@ -312,25 +314,24 @@ public class StreamingContainer extends YarnContainerMain
       } finally {
         stramChild.teardown();
       }
-    } catch (Error error) {
-      logger.error("Fatal error in container!", error);
+    } catch (Error | Exception e) {
+      logger.error("Fatal {} in container!", (e instanceof Error) ? "Error" : "Exception", e);
       /* Report back any failures, for diagnostic purposes */
-      String msg = ExceptionUtils.getStackTrace(error);
-      umbilical.reportError(childId, null, "FATAL: " + msg);
-    } catch (Exception exception) {
-      logger.error("Fatal exception in container!", exception);
-      /* Report back any failures, for diagnostic purposes */
-      String msg = ExceptionUtils.getStackTrace(exception);
-      umbilical.reportError(childId, null, msg);
+      try {
+        umbilical.reportError(childId, null, ExceptionUtils.getStackTrace(e));
+      } catch (Exception ex) {
+        logger.debug("Fail to log", ex);
+      }
     } finally {
-      rpcProxy.close();
+      if (rpcProxy != null) {
+        rpcProxy.close();
+      }
       DefaultMetricsSystem.shutdown();
       logger.info("Exit status for container: {}", exitStatus);
       LogManager.shutdown();
-    }
-
-    if (exitStatus != 0) {
-      System.exit(exitStatus);
+      if (exitStatus != 0) {
+        System.exit(exitStatus);
+      }
     }
   }
 
@@ -601,8 +602,8 @@ public class StreamingContainer extends YarnContainerMain
 
   public void heartbeatLoop() throws Exception
   {
-    umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     logger.debug("Entering heartbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
+    umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     final YarnConfiguration conf = new YarnConfiguration();
     long tokenLifeTime = (long)(containerContext.getValue(LogicalPlan.TOKEN_REFRESH_ANTICIPATORY_FACTOR) * containerContext.getValue(LogicalPlan.HDFS_TOKEN_LIFE_TIME));
     long expiryTime = System.currentTimeMillis();
@@ -718,7 +719,7 @@ public class StreamingContainer extends YarnContainerMain
       } while (rsp.hasPendingRequests);
 
     }
-    logger.debug("Exiting hearbeat loop");
+    logger.debug("[{}] Exiting heartbeat loop", containerId);
     umbilical.log(containerId, "[" + containerId + "] Exiting heartbeat loop..");
   }
 
@@ -827,7 +828,7 @@ public class StreamingContainer extends YarnContainerMain
         try {
           umbilical.log(this.containerId, "deploy request failed: " + rsp.deployRequest + " " + ExceptionUtils.getStackTrace(e));
         } catch (IOException ioe) {
-          // ignore
+          logger.debug("Fail to log", ioe);
         }
         this.exitHeartbeatLoop = true;
         throw new IllegalStateException("Deploy request failed: " + rsp.deployRequest, e);
@@ -1436,19 +1437,32 @@ public class StreamingContainer extends YarnContainerMain
               logger.error("Voluntary container termination due to an error in operator {}.", currentdi, error);
               operators = new int[]{currentdi.id};
             }
-            umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error));
-            System.exit(1);
+            try {
+              umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error));
+            } catch (Exception e) {
+              logger.debug("Fail to log", e);
+            } finally {
+              System.exit(1);
+            }
           } catch (Exception ex) {
             if (currentdi == null) {
               failedNodes.add(ndi.id);
               logger.error("Operator set {} stopped running due to an exception.", setOperators, ex);
               int[] operators = new int[]{ndi.id};
-              umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex));
+              try {
+                umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex));
+              } catch (Exception e) {
+                logger.debug("Fail to log", e);
+              }
             } else {
               failedNodes.add(currentdi.id);
               logger.error("Abandoning deployment of operator {} due to setup failure.", currentdi, ex);
               int[] operators = new int[]{currentdi.id};
-              umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex));
+              try {
+                umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex));
+              } catch (Exception e) {
+                logger.debug("Fail to log", e);
+              }
             }
           } finally {
             if (setOperators.contains(ndi)) {

@@ -105,13 +105,9 @@ public class StramLocalCluster implements Runnable, Controller
     }
 
     @Override
-    public void reportError(String containerId, int[] operators, String msg)
+    public void reportError(String containerId, int[] operators, String msg) throws IOException
     {
-      try {
-        log(containerId, msg);
-      } catch (IOException ex) {
-        // ignore
-      }
+      log(containerId, msg);
     }
 
     @Override
@@ -131,7 +127,7 @@ public class StramLocalCluster implements Runnable, Controller
     }
 
     @Override
-    public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg)
+    public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg) throws IOException
     {
       if (injectShutdown.containsKey(msg.getContainerId())) {
         ContainerHeartbeatResponse r = new ContainerHeartbeatResponse();

@@ -40,6 +40,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -474,7 +475,7 @@ public class StramRecoveryTest
 
     StreamingContainerUmbilicalProtocol impl = Mockito.mock(StreamingContainerUmbilicalProtocol.class, Mockito.withSettings().extraInterfaces(Closeable.class));
 
-    Mockito.doAnswer(new org.mockito.stubbing.Answer<Void>()
+    final Answer<Void> answer = new Answer<Void>()
     {
       @Override
       public Void answer(InvocationOnMock invocation)
@@ -491,8 +492,9 @@ public class StramRecoveryTest
         }
         return null;
       }
-    })
-    .when(impl).log("containerId", "timeout");
+    };
+    Mockito.doAnswer(answer).when(impl).log("containerId", "timeout");
+    Mockito.doAnswer(answer).when(impl).reportError("containerId", null, "timeout");
 
     Server server = new RPC.Builder(conf).setProtocol(StreamingContainerUmbilicalProtocol.class).setInstance(impl)
         .setBindAddress("0.0.0.0").setPort(0).setNumHandlers(1).setVerbose(false).build();
@@ -546,7 +548,7 @@ public class StramRecoveryTest
 
     rp = new RecoverableRpcProxy(appPath, conf);
     protocolProxy = rp.getProxy();
-    protocolProxy.log("containerId", "msg");
+    protocolProxy.reportError("containerId", null, "msg");
     try {
       protocolProxy.log("containerId", "timeout");
       Assert.fail("expected socket timeout");
@@ -562,7 +564,7 @@ public class StramRecoveryTest
     uri = RecoverableRpcProxy.toConnectURI(address);
     recoveryHandler.writeConnectUri(uri.toString());
 
-    protocolProxy.log("containerId", "timeout");
+    protocolProxy.reportError("containerId", null, "timeout");
     Assert.assertTrue("timedout", timedout.get());
 
     restoreSystemProperty(RecoverableRpcProxy.RPC_TIMEOUT, rpcTimeout);
