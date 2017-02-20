@@ -148,13 +148,6 @@ public class LogicalPlan implements Serializable, DAG
    * <code>SUBDIR_EVENTS="events"</code>
    */
   public static String SUBDIR_EVENTS = "events";
-
-  /**
-   * A flag to specify whether to use the fast publisher or not. This attribute was moved
-   * from DAGContext. This can be here till the fast publisher is fully tested and working as desired.
-   * Then it can be moved back to DAGContext.
-   */
-  public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<>(false);
   public static Attribute<Long> HDFS_TOKEN_LIFE_TIME = new Attribute<>(604800000L);
   public static Attribute<Long> RM_TOKEN_LIFE_TIME = new Attribute<>(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT);
   public static Attribute<String> PRINCIPAL = new Attribute<>(null, StringCodec.String2String.getInstance());
