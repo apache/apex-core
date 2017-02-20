@@ -49,6 +49,7 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
   private final Output data;
   private final Output state;
   private final Input input;
+  private final DataStatePair dataStatePair;
 
   @SuppressWarnings("OverridableMethodCallInConstructor")
   public DefaultStatefulStreamCodec()
@@ -63,10 +64,11 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
     classResolver = (ClassResolver)getClassResolver();
     this.pairs = classResolver.pairs;
     classResolver.init();
+    dataStatePair = new DataStatePair();
   }
 
   @Override
-  public Object fromDataStatePair(DataStatePair dspair)
+  public T fromDataStatePair(DataStatePair dspair)
   {
     if (dspair.state != null) {
       try {
@@ -93,7 +95,7 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
     // the following code does not need to be in the try-catch block. It can be
     // taken out of it, once the stability of the code is validated by 4/1/2014.
     try {
-      return readClassAndObject(input);
+      return (T)readClassAndObject(input);
     } catch (Throwable th) {
       logger.error("Catastrophic Error: Execution halted due to Kryo exception!", th);
       synchronized (this) {
@@ -110,7 +112,6 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
   @Override
   public DataStatePair toDataStatePair(T o)
   {
-    DataStatePair pair = new DataStatePair();
     data.setPosition(0);
     writeClassAndObject(data, o);
 
@@ -121,14 +122,13 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
       }
       pairs.clear();
 
-      // can we optimize this?
-      byte[] bytes = state.toBytes();
-      pair.state = new Slice(bytes, 0, bytes.length);
+      dataStatePair.state = new Slice(state.getBuffer(), 0, state.position());
+    } else {
+      dataStatePair.state = null;
     }
 
-    byte[] bytes = data.toBytes();
-    pair.data = new Slice(bytes, 0, bytes.length);
-    return pair;
+    dataStatePair.data = new Slice(data.getBuffer(), 0, data.position());
+    return dataStatePair;
   }
 
   @Override
@@ -149,13 +149,13 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
   @Override
   public Object fromByteArray(Slice fragment)
   {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public Slice toByteArray(T o)
   {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    throw new UnsupportedOperationException();
   }
 
   static class ClassIdPair

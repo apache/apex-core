@@ -63,10 +63,10 @@ public interface StatefulStreamCodec<T> extends StreamCodec<T>
   /**
    * Create POJO from the byte array for consumption by the downstream.
    *
-   * @param dspair
-   * @return plain old java object, the type is intentionally not T since the consumer does not care about it.
+   * @param dspair serialized representation of the object
+   * @return plain old java object
    */
-  Object fromDataStatePair(DataStatePair dspair);
+  T fromDataStatePair(DataStatePair dspair);
 
   /**
    * Serialize the POJO emitted by the upstream node to byte array so that

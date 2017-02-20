@@ -33,7 +33,10 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
 
-import com.datatorrent.netlet.util.Slice;
+import com.datatorrent.bufferserver.packet.DataTuple;
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.PayloadTuple;
+import com.datatorrent.bufferserver.packet.Tuple;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec.ClassIdPair;
 import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 
@@ -121,36 +124,41 @@ public class DefaultStatefulStreamCodecTest
   @Test
   public void testCustomObject()
   {
-    DefaultStatefulStreamCodec<Object> coder = new DefaultStatefulStreamCodec<Object>();
-    DefaultStatefulStreamCodec<Object> decoder = new DefaultStatefulStreamCodec<Object>();
+    DefaultStatefulStreamCodec<TestClass> coder = new DefaultStatefulStreamCodec<>();
+    DefaultStatefulStreamCodec<TestClass> decoder = coder.newInstance();
 
     TestClass tc = new TestClass("hello!", 42);
     //String tc = "hello";
 
-    DataStatePair dsp1 = coder.toDataStatePair(tc);
-    Slice state1 = dsp1.state;
-    DataStatePair dsp2 = coder.toDataStatePair(tc);
-    Slice state2 = dsp2.state;
-    assert (state1 != null);
-    assert (state2 == null);
-    Assert.assertEquals(dsp1.data, dsp2.data);
+    DataStatePair dsp = coder.toDataStatePair(tc);
+    Assert.assertNotNull(dsp.state);
+    byte[] state1 =  DataTuple.getSerializedTuple(MessageType.CODEC_STATE_VALUE, dsp.state);
+    byte[] data1 = PayloadTuple.getSerializedTuple(0, dsp.data);
 
-    Object tcObject1 = decoder.fromDataStatePair(dsp1);
-    assert (tc.equals(tcObject1));
+    dsp = coder.toDataStatePair(tc);
+    Assert.assertNull(dsp.state);
+    byte[] data2 = PayloadTuple.getSerializedTuple(0, dsp.data);
 
-    Object tcObject2 = decoder.fromDataStatePair(dsp2);
-    assert (tc.equals(tcObject2));
+    Assert.assertNotSame(data1, data2);
+    Assert.assertArrayEquals(data1, data2);
+
+    dsp.state = Tuple.getTuple(state1, 0, state1.length).getData();
+    dsp.data = Tuple.getTuple(data1, 0, data1.length).getData();
+    Assert.assertEquals(tc, decoder.fromDataStatePair(dsp));
+
+    dsp.state = null;
+    dsp.data = Tuple.getTuple(data2, 0, data2.length).getData();
+    Assert.assertEquals(tc, decoder.fromDataStatePair(dsp));
 
     coder.resetState();
 
-    dsp2 = coder.toDataStatePair(tc);
-    state2 = dsp2.state;
-    Assert.assertEquals(state1, state2);
+    dsp = coder.toDataStatePair(tc);
+    Assert.assertArrayEquals(state1, DataTuple.getSerializedTuple(MessageType.CODEC_STATE_VALUE, dsp.state));
 
-    dsp1 = coder.toDataStatePair(tc);
-    dsp2 = coder.toDataStatePair(tc);
-    Assert.assertEquals(dsp1.data, dsp2.data);
-    Assert.assertEquals(dsp1.state, dsp2.state);
+    Assert.assertNull(coder.toDataStatePair(tc).state);
+    data1 = PayloadTuple.getSerializedTuple(Integer.MAX_VALUE, coder.toDataStatePair(tc).data);
+    data2 = PayloadTuple.getSerializedTuple(Integer.MAX_VALUE, coder.toDataStatePair(tc).data);
+    Assert.assertArrayEquals(data1, data2);
   }
 
   public static class TestTuple
