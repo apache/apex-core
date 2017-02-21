@@ -24,6 +24,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.Collection;
 import java.util.List;
 
 import com.datatorrent.api.Stats.OperatorStats;
@@ -38,6 +39,7 @@ import com.datatorrent.api.Stats.OperatorStats;
  *
  * @since 0.9.1
  */
+@Deprecated
 public interface StatsListener
 {
   /**
@@ -115,23 +117,40 @@ public interface StatsListener
     List<OperatorResponse> getOperatorResponse();
   }
 
+  /**
+   * This is an interface to through wich {@link StatsListenerWithContext#processStats(BatchedOperatorStats, StatsListenerContext)}
+   * can access information about operator or other elements in the DAG. Currently we only provide method to
+   * extract the operator name based on the physical id of the operator. In future more methods can be added
+   * to provide additional information to the StatsHandlers.
+   */
+  interface StatsListenerContext
+  {
+    /**
+     * Return name of the operator given its id. Returns null if operator id is not found
+     * in the DAG.
+     *
+     * @param id Operator id
+     * @return name of the operator. null in case operator id is not found in DAG.
+     */
+    String getOperatorName(int id);
+  }
+
   class Response implements Serializable
   {
     /**
      * Set true to request repartition of the logical operator.
-     * The controller will call {@link PartitionableOperator#definePartitions(java.util.Collection, int)} if applicable.
+     * The controller will call {@link Partitioner#definePartitions(Collection, Partitioner.PartitioningContext)} if applicable.
      */
     public boolean repartitionRequired;
 
     /**
-     * Load indicator for the partition. See {@link PartitionableOperator.Partition#getLoad()}.
+     * Load indicator for the partition. See {@link Partitioner.Partition#getLoad()}.
      * Taken into consideration on repartition.
      */
     public int loadIndicator;
 
     /**
      * Note for repartition.  Should indicate the reason if there is a partition of the operator
-     *
      */
     public String repartitionNote;
 
@@ -153,6 +172,7 @@ public interface StatsListener
    * @param stats
    * @return
    */
+  @Deprecated
   Response processStats(BatchedOperatorStats stats);
 
   /**
@@ -162,5 +182,23 @@ public interface StatsListener
   @Retention(RetentionPolicy.RUNTIME)
   @interface DataQueueSize
   {
+  }
+
+  /**
+   * This interface extends existing {@link StatsListener} interface to provide addition argument of type
+   * {@link StatsListenerContext} to {@link StatsListener#processStats(BatchedOperatorStats)},
+   * Using this extra argument listener can get access to additional information about the DAG.
+   * The separate interface is created to maintain backward compatibility.
+   */
+  interface StatsListenerWithContext extends StatsListener
+  {
+    /**
+     * Called when new stats become available and status for the operator is updated.
+     *
+     * @param stats collected stats for the operator instance.
+     * @param context instance of StatsListenerContext
+     * @return response
+     */
+    Response processStats(BatchedOperatorStats stats, StatsListenerContext context);
   }
 }
