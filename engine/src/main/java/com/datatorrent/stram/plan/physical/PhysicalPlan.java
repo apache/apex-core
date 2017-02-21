@@ -66,6 +66,8 @@ import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StatsListener.OperatorRequest;
+import com.datatorrent.api.StatsListener.StatsListenerContext;
+import com.datatorrent.api.StatsListener.StatsListenerWithContext;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.Stateless;
@@ -137,6 +139,7 @@ public class PhysicalPlan implements Serializable
 
   private final AtomicInteger strCodecIdSequence = new AtomicInteger();
   private final Map<StreamCodec<?>, Integer> streamCodecIdentifiers = Maps.newHashMap();
+  private StatsListenerContext statsListenerContext = new StatsListenerContextImpl();
 
   private PTContainer getContainer(int index)
   {
@@ -190,7 +193,10 @@ public class PhysicalPlan implements Serializable
     void addOperatorRequest(PTOperator oper, StramToNodeRequest request);
   }
 
-  private static class StatsListenerProxy implements StatsListener, Serializable
+  /**
+   * Adapter for handling operator implementing StatsListener interface.
+   */
+  private static class StatsListenerProxy implements StatsListenerWithContext, Serializable
   {
     private static final long serialVersionUID = 201312112033L;
     private final OperatorMeta om;
@@ -205,6 +211,53 @@ public class PhysicalPlan implements Serializable
     {
       return ((StatsListener)om.getOperator()).processStats(stats);
     }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats, StatsListenerContext context)
+    {
+      StatsListener listener = (StatsListener)om.getOperator();
+      if (listener instanceof StatsListenerWithContext) {
+        return ((StatsListenerWithContext)listener).processStats(stats, context);
+      } else {
+        return processStats(stats);
+      }
+    }
+  }
+
+  /**
+   * Adapter for handling deprecated StatsListener. This implementation calls {@link StatsListener#processStats(BatchedOperatorStats)}
+   * of the old stats listener ignoring context.
+   */
+  private static class StatsListenerAdapterForStatsListener implements  StatsListener.StatsListenerWithContext, Serializable
+  {
+    private static final long serialVersionUID = 201312112345033L;
+    private final StatsListener listener;
+
+    private StatsListenerAdapterForStatsListener(StatsListener listener)
+    {
+      this.listener = listener;
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return listener.processStats(stats);
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats, StatsListenerContext context)
+    {
+      return listener.processStats(stats);
+    }
+  }
+
+  private static StatsListenerWithContext getStatsListenerAdapter(StatsListener listener)
+  {
+    if (listener instanceof StatsListenerWithContext) {
+      return (StatsListenerWithContext)listener;
+    } else {
+      return new StatsListenerAdapterForStatsListener(listener);
+    }
   }
 
   /**
@@ -217,7 +270,7 @@ public class PhysicalPlan implements Serializable
     private final OperatorMeta logicalOperator;
     private List<PTOperator> partitions = new LinkedList<>();
     private final Map<LogicalPlan.OutputPortMeta, StreamMapping> outputStreams = Maps.newHashMap();
-    private List<StatsListener> statsHandlers;
+    private List<StatsListenerWithContext> statsHandlers;
 
     /**
      * Operators that form a parallel partition
@@ -764,7 +817,9 @@ public class PhysicalPlan implements Serializable
       if (m.statsHandlers == null) {
         m.statsHandlers = new ArrayList<>(statsListeners.size());
       }
-      m.statsHandlers.addAll(statsListeners);
+      for (StatsListener sl : statsListeners) {
+        m.statsHandlers.add(getStatsListenerAdapter(sl));
+      }
     }
 
     if (m.logicalOperator.getOperator() instanceof StatsListener) {
@@ -1786,8 +1841,8 @@ public class PhysicalPlan implements Serializable
 
   public void onStatusUpdate(PTOperator oper)
   {
-    for (StatsListener l : oper.statsListeners) {
-      final StatsListener.Response rsp = l.processStats(oper.stats);
+    for (StatsListenerWithContext l : oper.statsListeners) {
+      final StatsListener.Response rsp = l.processStats(oper.stats, statsListenerContext);
       if (rsp != null) {
         //LOG.debug("Response to processStats = {}", rsp.repartitionRequired);
         oper.loadIndicator = rsp.loadIndicator;
@@ -1892,4 +1947,22 @@ public class PhysicalPlan implements Serializable
       return null;
     }
   }
+
+  /**
+   * An implementation for {@link StatsListenerContext} to access the DAG. Currently only method to extract
+   * operator name from operator instance id is provided. In future additional methods could be added.
+   */
+  private class StatsListenerContextImpl implements StatsListenerContext, Serializable
+  {
+    @Override
+    public String getOperatorName(int id)
+    {
+      PTOperator operator = getAllOperators().get(id);
+      if (operator != null) {
+        return operator.getName();
+      }
+      return null;
+    }
+  }
+
 }

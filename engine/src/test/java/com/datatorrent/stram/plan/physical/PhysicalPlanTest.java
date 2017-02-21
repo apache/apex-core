@@ -55,13 +55,16 @@ import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StatsListener.StatsListenerWithContext;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.stram.engine.GenericNodeTest;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
@@ -73,13 +76,15 @@ import com.datatorrent.stram.plan.physical.PhysicalPlan.LoadIndicator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 
+import static org.powermock.api.mockito.PowerMockito.mock;
+
 public class PhysicalPlanTest
 {
     /**
    * Stats listener for throughput based partitioning.
    * Used when thresholds are configured on operator through attributes.
    */
-  public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
+  public static class PartitionLoadWatch implements StatsListenerWithContext, java.io.Serializable
   {
     private static final Logger logger = LoggerFactory.getLogger(PartitionLoadWatch.class);
     private static final long serialVersionUID = 201312231633L;
@@ -110,7 +115,13 @@ public class PhysicalPlanTest
     }
 
     @Override
-    public Response processStats(BatchedOperatorStats status)
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return processStats(stats, null);
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats status, StatsListenerContext context)
     {
 
       long tps = status.getTuplesProcessedPSMA();
@@ -1625,7 +1636,6 @@ public class PhysicalPlanTest
 
     LogicalPlan dag = new LogicalPlan();
 
-    //TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     PartitioningTestOperator o1 = dag.addOperator("o1", PartitioningTestOperator.class);
     o1.partitionKeys = new Integer[] {0,1,2,3};
     o1.setPartitionCount(o1.partitionKeys.length);
@@ -1727,7 +1737,6 @@ public class PhysicalPlanTest
 
     LogicalPlan dag = new LogicalPlan();
 
-    //TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     PartitioningTestOperator o1 = dag.addOperator("o1", PartitioningTestOperator.class);
     o1.partitionKeys = new Integer[]{0, 1, 2, 3};
     o1.setPartitionCount(3);
@@ -2245,5 +2254,74 @@ public class PhysicalPlanTest
     dag.addStream("o2.outport1", o2.outport1, o3.inport1);
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 7, plan.getContainers().size());
+  }
+
+  static class StatsListenerOperatorOld extends BaseOperator implements StatsListener
+  {
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return null;
+    }
+  }
+
+  static class StatsListenerOperator extends GenericNodeTest.GenericOperator implements StatsListenerWithContext
+  {
+    @Override
+    public Response processStats(BatchedOperatorStats stats, StatsListenerContext context)
+    {
+      return null;
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return null;
+    }
+  }
+
+  /**
+   * Test that internally all stats listeners are handled through StatsListenerWithContext.
+   * Following cases are tested
+   *
+   * Operator implementing StatsListener
+   * Operator implementing StatsListenerWithContext
+   * Operator with STATS_LISTENERS attribute set to StatsListener
+   * Operator with STATS_LISTENERS attribute set to StatsListenerWithContext
+   */
+  @Test
+  public void testStatsListenerContextWrappers()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    StatsListenerOperator o1 = dag.addOperator("o1", new StatsListenerOperator());
+    GenericTestOperator o2 = dag.addOperator("o2", new GenericTestOperator());
+    dag.setAttribute(o2, OperatorContext.STATS_LISTENERS,
+        Lists.<StatsListener>newArrayList(mock(StatsListener.class)));
+
+    GenericTestOperator o3 = dag.addOperator("o3", new GenericTestOperator());
+    dag.setAttribute(o3, OperatorContext.STATS_LISTENERS,
+        Lists.<StatsListener>newArrayList(mock(StatsListenerWithContext.class)));
+
+    StatsListenerOperatorOld o4 = dag.addOperator("o4", new StatsListenerOperatorOld());
+
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+
+    PTOperator p1 = plan.getOperators(dag.getMeta(o1)).get(0);
+    StatsListener l = p1.statsListeners.get(0);
+    Assert.assertTrue("Operator stats listener is wrapped ", l instanceof StatsListenerWithContext);
+
+    PTOperator p2 = plan.getOperators(dag.getMeta(o2)).get(0);
+    l = p1.statsListeners.get(0);
+    Assert.assertTrue("Operator stats listener is wrapped ", l instanceof StatsListenerWithContext);
+
+    PTOperator p3 = plan.getOperators(dag.getMeta(o3)).get(0);
+    l = p1.statsListeners.get(0);
+    Assert.assertTrue("Operator stats listener is wrapped ", l instanceof StatsListenerWithContext);
+
+    PTOperator p4 = plan.getOperators(dag.getMeta(o4)).get(0);
+    l = p1.statsListeners.get(0);
+    Assert.assertTrue("Operator stats listener is wrapped ", l instanceof StatsListenerWithContext);
   }
 }

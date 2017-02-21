@@ -21,6 +21,7 @@ package com.datatorrent.stram.plan;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -43,7 +44,7 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
 
-public class TestPlanContext implements PlanContext, StorageAgent
+public class TestPlanContext implements PlanContext, StorageAgent, Serializable
 {
   public List<Runnable> events = new ArrayList<>();
   public Collection<PTOperator> undeploy;
