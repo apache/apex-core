@@ -20,12 +20,15 @@ package com.datatorrent.stram;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.log.LogFileInformation;
-
+import org.apache.apex.stram.GroupingManager;
+import org.apache.apex.stram.GroupingRequest;
+import org.apache.apex.stram.GroupingRequest.EventGroupId;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.ipc.ProtocolSignature;
@@ -176,18 +179,27 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
   @Override
   public void reportError(String containerId, int[] operators, String msg, LogFileInformation logFileInfo) throws IOException
   {
+    EventGroupId groupId = getGroupIdForNewGroupingRequest(containerId);
     if (operators == null || operators.length == 0) {
-      dagManager.recordEventAsync(new ContainerErrorEvent(containerId, msg, logFileInfo));
+      dagManager.recordEventAsync(new ContainerErrorEvent(containerId, msg, logFileInfo, groupId));
     } else {
       for (int operator : operators) {
         OperatorInfo operatorInfo = dagManager.getOperatorInfo(operator);
         if (operatorInfo != null) {
-          dagManager.recordEventAsync(new OperatorErrorEvent(operatorInfo.name, operator, containerId, msg,
-              logFileInfo));
+          dagManager.recordEventAsync(
+              new OperatorErrorEvent(operatorInfo.name, operator, containerId, msg, logFileInfo, groupId));
         }
       }
     }
     log(containerId, msg);
+  }
+
+  //create new group the deploy request, request data will be populated when sub-dag restart happens
+  private EventGroupId getGroupIdForNewGroupingRequest(String containerId)
+  {
+    GroupingManager groupingManager = GroupingManager.getGroupingManagerInstance();
+    GroupingRequest groupingRequest = groupingManager.addOrModifyGroupingRequest(containerId, Collections.EMPTY_SET);
+    return groupingRequest.getEventGroupId();
   }
 
   @Override

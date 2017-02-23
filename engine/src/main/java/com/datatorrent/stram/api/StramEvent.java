@@ -21,6 +21,7 @@ package com.datatorrent.stram.api;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.apex.log.LogFileInformation;
+import org.apache.apex.stram.GroupingRequest.EventGroupId;
 
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 
@@ -38,6 +39,7 @@ public abstract class StramEvent
   private String reason;
   private LogLevel logLevel;
   private LogFileInformation logFileInformation;
+  private EventGroupId groupId;
 
   public abstract String getType();
 
@@ -48,9 +50,15 @@ public abstract class StramEvent
 
   protected StramEvent(LogLevel logLevel, LogFileInformation logFileInformation)
   {
+    this(logLevel, logFileInformation, null);
+  }
+
+  protected StramEvent(LogLevel logLevel, LogFileInformation logFileInformation, EventGroupId groupId)
+  {
     id = nextId.getAndIncrement();
     this.logLevel = logLevel;
     this.logFileInformation = logFileInformation;
+    this.groupId = groupId;
   }
 
   public long getId()
@@ -98,6 +106,16 @@ public abstract class StramEvent
     this.logFileInformation = logFileInformation;
   }
 
+  public EventGroupId getGroupId()
+  {
+    return groupId;
+  }
+
+  public void setGroupId(EventGroupId groupId)
+  {
+    this.groupId = groupId;
+  }
+
   public static enum LogLevel
   {
     TRACE,
@@ -114,12 +132,12 @@ public abstract class StramEvent
 
     public OperatorEvent(String operatorName, LogLevel logLevel)
     {
-      this(operatorName, logLevel, null);
+      this(operatorName, logLevel, null, null);
     }
 
-    public OperatorEvent(String operatorName, LogLevel logLevel, LogFileInformation logFileInformation)
+    public OperatorEvent(String operatorName, LogLevel logLevel, LogFileInformation logFileInformation, EventGroupId groupId)
     {
-      super(logLevel, logFileInformation);
+      super(logLevel, logFileInformation, groupId);
       this.operatorName = operatorName;
     }
 
@@ -231,13 +249,18 @@ public abstract class StramEvent
 
     public PhysicalOperatorEvent(String operatorName, int operatorId, LogLevel logLevel)
     {
-      this(operatorName, operatorId, logLevel, null);
+      this(operatorName, operatorId, logLevel, null, null);
+    }
+
+    public PhysicalOperatorEvent(String operatorName, int operatorId, LogLevel logLevel, EventGroupId groupId)
+    {
+      this(operatorName, operatorId, logLevel, null, groupId);
     }
 
     public PhysicalOperatorEvent(String operatorName, int operatorId, LogLevel logLevel,
-        LogFileInformation logFileInformation)
+        LogFileInformation logFileInformation, EventGroupId groupId)
     {
-      super(operatorName, logLevel, logFileInformation);
+      super(operatorName, logLevel, logFileInformation, groupId);
       this.operatorId = operatorId;
     }
 
@@ -292,14 +315,14 @@ public abstract class StramEvent
   {
     private String containerId;
 
-    public StartOperatorEvent(String operatorName, int operatorId, String containerId)
+    public StartOperatorEvent(String operatorName, int operatorId, String containerId, EventGroupId groupId)
     {
-      this(operatorName, operatorId, containerId, LogLevel.INFO);
+      this(operatorName, operatorId, containerId, LogLevel.INFO, groupId);
     }
 
-    public StartOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel)
+    public StartOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel, EventGroupId groupId)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, groupId);
       this.containerId = containerId;
     }
 
@@ -325,14 +348,14 @@ public abstract class StramEvent
   {
     private String containerId;
 
-    public StopOperatorEvent(String operatorName, int operatorId, String containerId)
+    public StopOperatorEvent(String operatorName, int operatorId, String containerId, EventGroupId groupId)
     {
-      this(operatorName, operatorId, containerId, LogLevel.WARN);
+      this(operatorName, operatorId, containerId, LogLevel.WARN, groupId);
     }
 
-    public StopOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel)
+    public StopOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel,  EventGroupId groupId)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, groupId);
       this.containerId = containerId;
     }
 
@@ -404,14 +427,14 @@ public abstract class StramEvent
     String containerId;
     String containerNodeId;
 
-    public StartContainerEvent(String containerId, String containerNodeId)
+    public StartContainerEvent(String containerId, String containerNodeId, EventGroupId groupId)
     {
-      this(containerId, containerNodeId, LogLevel.INFO);
+      this(containerId, containerNodeId, LogLevel.INFO, groupId);
     }
 
-    public StartContainerEvent(String containerId, String containerNodeId, LogLevel logLevel)
+    public StartContainerEvent(String containerId, String containerNodeId, LogLevel logLevel, EventGroupId groupId)
     {
-      super(logLevel);
+      super(logLevel, null, groupId);
       this.containerId = containerId;
       this.containerNodeId = containerNodeId;
     }
@@ -449,14 +472,14 @@ public abstract class StramEvent
     String containerId;
     int exitStatus;
 
-    public StopContainerEvent(String containerId, int exitStatus)
+    public StopContainerEvent(String containerId, int exitStatus, EventGroupId groupId)
     {
-      this(containerId, exitStatus, LogLevel.WARN);
+      this(containerId, exitStatus, LogLevel.WARN, groupId);
     }
 
-    public StopContainerEvent(String containerId, int exitStatus, LogLevel logLevel)
+    public StopContainerEvent(String containerId, int exitStatus, LogLevel logLevel, EventGroupId groupId)
     {
-      super(logLevel);
+      super(logLevel, null, groupId);
       this.containerId = containerId;
       this.exitStatus = exitStatus;
     }
@@ -528,15 +551,15 @@ public abstract class StramEvent
     private String errorMessage;
 
     public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage,
-        LogFileInformation logFileInformation)
+        LogFileInformation logFileInformation, EventGroupId groupId)
     {
-      this(operatorName, operatorId, containerId, errorMessage, logFileInformation, LogLevel.ERROR);
+      this(operatorName, operatorId, containerId, errorMessage, logFileInformation, groupId, LogLevel.ERROR);
     }
 
     public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage,
-        LogFileInformation logFileInformation, LogLevel logLevel)
+        LogFileInformation logFileInformation, EventGroupId groupId, LogLevel logLevel)
     {
-      super(operatorName, operatorId, logLevel, logFileInformation);
+      super(operatorName, operatorId, logLevel, logFileInformation, groupId);
       this.containerId = containerId;
       this.errorMessage = errorMessage;
     }
@@ -574,15 +597,15 @@ public abstract class StramEvent
     private String containerId;
     private String errorMessage;
 
-    public ContainerErrorEvent(String containerId, String errorMessage, LogFileInformation logFileInformation)
+    public ContainerErrorEvent(String containerId, String errorMessage, LogFileInformation logFileInformation, EventGroupId groupId)
     {
-      this(containerId, errorMessage, logFileInformation, LogLevel.ERROR);
+      this(containerId, errorMessage, logFileInformation, groupId, LogLevel.ERROR);
     }
 
-    public ContainerErrorEvent(String containerId, String errorMessage, LogFileInformation logFileInformation,
+    public ContainerErrorEvent(String containerId, String errorMessage, LogFileInformation logFileInformation, EventGroupId groupId,
         LogLevel logLevel)
     {
-      super(logLevel, logFileInformation);
+      super(logLevel, logFileInformation, groupId);
       this.containerId = containerId;
       this.errorMessage = errorMessage;
     }
