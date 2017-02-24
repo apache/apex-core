@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InvalidClassException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -1943,6 +1944,8 @@ public class ApexCli
             AppPackage ap = null;
             try {
               ap = newAppPackageInstance(new File(fileName));
+            } catch (InvalidClassException iex) {
+              throw new CliException(iex.getMessage());
             } catch (Exception ex) {
               // It's not an app package
               if (requiredAppPackageName != null) {

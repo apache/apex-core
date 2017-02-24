@@ -20,6 +20,7 @@ package com.datatorrent.stram.client;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InvalidClassException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,6 +45,7 @@ import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.util.VersionInfo;
 
 import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
@@ -65,6 +67,7 @@ public class AppPackage extends JarFile
   public static final String ATTRIBUTE_CLASS_PATH = "Class-Path";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_DISPLAY_NAME = "DT-App-Package-Display-Name";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_DESCRIPTION = "DT-App-Package-Description";
+  public static final String ATTRIBUTE_BUILD_JDK_VERSION = "Build-Jdk";
 
   private final String appPackageName;
   private final String appPackageVersion;
@@ -72,6 +75,7 @@ public class AppPackage extends JarFile
   private final String dtEngineVersion;
   private final String appPackageDescription;
   private final String appPackageDisplayName;
+  private final String buildJdkVersion;
   private final ArrayList<String> classPath = new ArrayList<>();
   private final File directory;
 
@@ -153,9 +157,16 @@ public class AppPackage extends JarFile
     dtEngineVersion = attr.getValue(ATTRIBUTE_DT_ENGINE_VERSION);
     appPackageDisplayName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DISPLAY_NAME);
     appPackageDescription = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DESCRIPTION);
+    buildJdkVersion = attr.getValue(ATTRIBUTE_BUILD_JDK_VERSION);
     String classPathString = attr.getValue(ATTRIBUTE_CLASS_PATH);
     if (appPackageName == null || appPackageVersion == null || classPathString == null) {
       throw new IOException("Not a valid app package.  App Package Name or Version or Class-Path is missing from MANIFEST.MF");
+    }
+
+    String systemVersion = System.getProperty("java.version");
+    if (VersionInfo.compare(buildJdkVersion, systemVersion) > 0) {
+      throw new InvalidClassException("Application package build-jdk version " + buildJdkVersion
+        + " is greater than system java version " + systemVersion);
     }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
     extractToDirectory(directory, file);
@@ -275,6 +286,11 @@ public class AppPackage extends JarFile
   public String getDtEngineVersion()
   {
     return dtEngineVersion;
+  }
+
+  public String getAttributeBuildJdkVersion()
+  {
+    return buildJdkVersion;
   }
 
   public List<String> getClassPath()
