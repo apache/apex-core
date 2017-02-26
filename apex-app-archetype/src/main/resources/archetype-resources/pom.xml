@@ -13,7 +13,8 @@
 
   <properties>
     <!-- change this if you desire to use a different version of Apex Core -->
-    <apex.version>${archetypeVersion}</apex.version>
+    <apex.core.version>${apexCoreVersion}</apex.core.version>
+    <apex.malhar.version>${apexMalharVersion}</apex.malhar.version>
     <apex.apppackage.classpath>lib/*.jar</apex.apppackage.classpath>
   </properties>
 
@@ -102,7 +103,7 @@
                <archive>
                  <manifestEntries>
                    <Class-Path>${apex.apppackage.classpath}</Class-Path>
-                   <DT-Engine-Version>${apex.version}</DT-Engine-Version>
+                   <DT-Engine-Version>${apex.core.version}</DT-Engine-Version>
                    <DT-App-Package-Group-Id>${project.groupId}</DT-App-Package-Group-Id>
                    <DT-App-Package-Name>${project.artifactId}</DT-App-Package-Name>
                    <DT-App-Package-Version>${project.version}</DT-App-Package-Version>
@@ -260,7 +261,7 @@
     <dependency>
       <groupId>org.apache.apex</groupId>
       <artifactId>malhar-library</artifactId>
-      <version>3.6.0</version>
+      <version>${apex.malhar.version}</version>
       <!-- 
            If you know that your application does not need transitive dependencies pulled in by malhar-library,
            uncomment the following to reduce the size of your app package.
@@ -277,7 +278,7 @@
     <dependency>
       <groupId>org.apache.apex</groupId>
       <artifactId>apex-common</artifactId>
-      <version>${apex.version}</version>
+      <version>${apex.core.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -289,7 +290,7 @@
     <dependency>
       <groupId>org.apache.apex</groupId>
       <artifactId>apex-engine</artifactId>
-      <version>${apex.version}</version>
+      <version>${apex.core.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
