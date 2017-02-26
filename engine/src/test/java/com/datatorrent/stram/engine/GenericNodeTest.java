@@ -66,6 +66,7 @@ import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.stream.BufferServerPublisher;
 import com.datatorrent.stram.stream.BufferServerSubscriber;
+import com.datatorrent.stram.stream.QueueServerPublisher;
 import com.datatorrent.stram.tuple.EndStreamTuple;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -477,6 +478,128 @@ public class GenericNodeTest
 
     oss.put(new EndWindowTuple(0x3L));
     oss.put(new EndStreamTuple(0L));
+
+    BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId, 1024);
+    iss.setup(issContext);
+
+    gn.connectInputPort(GenericTestOperator.IPORT1, iss.acquireReservoir("testReservoir", 10));
+    gn.connectOutputPort(GenericTestOperator.OPORT1, output);
+
+    SweepableReservoir tupleWait = iss.acquireReservoir("testReservoir2", 10);
+
+    iss.activate(issContext);
+
+    while (tupleWait.sweep() == null) {
+      Thread.sleep(100);
+    }
+
+    gn.firstWindowMillis = 0;
+    gn.windowWidthMillis = 100;
+
+    Thread t = new Thread()
+    {
+      @Override
+      public void run()
+      {
+        gn.activate();
+        gn.run();
+        gn.deactivate();
+      }
+    };
+
+    t.start();
+    t.join();
+
+    Assert.assertEquals(10, tuples.size());
+
+    List<Object> list = new ArrayList<>(tuples);
+
+    Assert.assertEquals("Payload Tuple 1", 1, ((byte[])list.get(1))[5]);
+    Assert.assertEquals("Payload Tuple 2", 2, ((byte[])list.get(4))[5]);
+    Assert.assertEquals("Payload Tuple 3", 3, ((byte[])list.get(7))[5]);
+
+    if (bufferServer != null) {
+      eventloop.stop(bufferServer);
+    }
+
+    ((DefaultEventLoop)eventloop).stop();
+  }
+
+
+  @Test
+  public void testQueueServer() throws InterruptedException, IOException
+  {
+    final String streamName = "streamName";
+    final String upstreamNodeId = "upstreamNodeId";
+    final String  downstreamNodeId = "downStreamNodeId";
+
+    EventLoop eventloop = DefaultEventLoop.createEventLoop("StreamTestEventLoop");
+
+    ((DefaultEventLoop)eventloop).start();
+    final Server bufferServer = new Server(0); // find random port
+    final int bufferServerPort = bufferServer.run(eventloop).getPort();
+
+    final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<Object>();
+    final BlockingQueue<Object> tuples = new ArrayBlockingQueue<Object>(10);
+
+    GenericTestOperator go = new GenericTestOperator();
+    final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, "operator",
+        new DefaultAttributeMap(), null));
+    gn.setId(1);
+
+    Sink<Object> output = new Sink<Object>()
+    {
+      @Override
+      public void put(Object tuple)
+      {
+        tuples.add(tuple);
+      }
+
+      @Override
+      public int getCount(boolean reset)
+      {
+        return 0;
+      }
+    };
+
+    InetSocketAddress socketAddress = new InetSocketAddress("localhost", bufferServerPort);
+
+    StreamContext issContext = new StreamContext(streamName);
+    issContext.setSourceId(upstreamNodeId);
+    issContext.setSinkId(downstreamNodeId);
+    issContext.setFinishedWindowId(-1);
+    issContext.setBufferServerAddress(socketAddress);
+    issContext.put(StreamContext.CODEC, serde);
+    issContext.put(StreamContext.EVENT_LOOP, eventloop);
+
+    StreamContext ossContext = new StreamContext(streamName);
+    ossContext.setSourceId(upstreamNodeId);
+    ossContext.setSinkId(downstreamNodeId);
+    ossContext.setBufferServerAddress(socketAddress);
+    ossContext.put(StreamContext.CODEC, serde);
+    ossContext.put(StreamContext.EVENT_LOOP, eventloop);
+
+    QueueServerPublisher queueServerPublisher = new QueueServerPublisher(upstreamNodeId, bufferServer);
+    queueServerPublisher.setup(ossContext);
+    queueServerPublisher.activate(ossContext);
+
+    queueServerPublisher.put(new Tuple(MessageType.BEGIN_WINDOW, 0x1L));
+    byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+    buff[buff.length - 1] = (byte)1;
+    queueServerPublisher.put(buff);
+    queueServerPublisher.put(new EndWindowTuple(0x1L));
+    queueServerPublisher.put(new Tuple(MessageType.BEGIN_WINDOW, 0x2L));
+    buff = PayloadTuple.getSerializedTuple(0, 1);
+    buff[buff.length - 1] = (byte)2;
+    queueServerPublisher.put(buff);
+    queueServerPublisher.put(new EndWindowTuple(0x2L));
+    queueServerPublisher.put(new Tuple(MessageType.BEGIN_WINDOW, 0x3L));
+    buff = PayloadTuple.getSerializedTuple(0, 1);
+    buff[buff.length - 1] = (byte)3;
+    queueServerPublisher.put(buff);
+
+    queueServerPublisher.put(new EndWindowTuple(0x3L));
+    queueServerPublisher.put(new EndStreamTuple(0L));
 
     BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId, 1024);
     iss.setup(issContext);

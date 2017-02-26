@@ -101,12 +101,8 @@ public class DataList
     return blockSize;
   }
 
-  public void rewind(final int baseSeconds, final int windowId) throws IOException
+  public void rewind(final long longWindowId) throws IOException
   {
-    final long longWindowId = (long)baseSeconds << 32 | windowId;
-    logger.debug("Rewinding {} from window ID {} to window ID {}", this, Codec.getStringWindowId(last.ending_window),
-        Codec.getStringWindowId(longWindowId));
-
     int numberOfInMemBlockRewound = 0;
     synchronized (this) {
       for (Block temp = first; temp != null; temp = temp.next) {
@@ -151,6 +147,14 @@ public class DataList
     logger.debug("Discarded {} in memory blocks during rewind. Number of in memory blocks permits {} after" +
         " rewinding {}.", numberOfInMemBlockRewound, numberOfInMemBlockPermits, this);
 
+  }
+
+  public void rewind(final int baseSeconds, final int windowId) throws IOException
+  {
+    final long longWindowId = (long)baseSeconds << 32 | windowId;
+    logger.debug("Rewinding {} from window ID {} to window ID {}", this, Codec.getStringWindowId(last.ending_window),
+        Codec.getStringWindowId(longWindowId));
+    rewind(longWindowId);
   }
 
   public void reset()
@@ -229,64 +233,63 @@ public class DataList
 
   public void flush(final int writeOffset)
   {
-    //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset,
-    //    nextOffset.integer, writeOffset);
-    flush:
-    do {
-      while (size == 0) {
-        size = VarInt.read(last.data, processingOffset, writeOffset, nextOffset);
-        if (nextOffset.integer > -5 && nextOffset.integer < 1) {
-          if (writeOffset == last.data.length) {
-            nextOffset.integer = 0;
-            processingOffset = 0;
-            size = 0;
+    size = VarInt.read(last.data, processingOffset, writeOffset, nextOffset);
+
+    if (nextOffset.integer > -5 && nextOffset.integer < 1) {
+      if (writeOffset == last.data.length) {
+        nextOffset.integer = 0;
+        processingOffset = 0;
+        last.writingOffset = writeOffset;
+        return;
+      }
+    } else if (nextOffset.integer == -5) {
+      throw new RuntimeException("problemo!");
+    }
+
+    if (size == 0) {
+      nextOffset.integer = 0;
+      processingOffset = 0;
+      last.writingOffset = writeOffset;
+      return;
+    }
+
+    processingOffset = nextOffset.integer;
+
+    if (processingOffset + size <= writeOffset) {
+      switch (last.data[processingOffset]) {
+        case MessageType.BEGIN_WINDOW_VALUE:
+          Tuple bwt = Tuple.getTuple(last.data, processingOffset, size);
+          if (last.starting_window == -1) {
+            last.starting_window = baseSeconds | bwt.getWindowId();
+            last.ending_window = last.starting_window;
+            //logger.debug("assigned both window id {}", last);
+          } else {
+            last.ending_window = baseSeconds | bwt.getWindowId();
+            //logger.debug("assigned last window id {}", last);
           }
-          break flush;
-        } else if (nextOffset.integer == -5) {
-          throw new RuntimeException("problemo!");
-        }
+          break;
+
+        case MessageType.RESET_WINDOW_VALUE:
+          Tuple rwt = Tuple.getTuple(last.data, processingOffset, size);
+          baseSeconds = (long)rwt.getBaseSeconds() << 32;
+          break;
+
+        default:
+          break;
       }
-
-      processingOffset = nextOffset.integer;
-
-      if (processingOffset + size <= writeOffset) {
-        switch (last.data[processingOffset]) {
-          case MessageType.BEGIN_WINDOW_VALUE:
-            Tuple bwt = Tuple.getTuple(last.data, processingOffset, size);
-            if (last.starting_window == -1) {
-              last.starting_window = baseSeconds | bwt.getWindowId();
-              last.ending_window = last.starting_window;
-              //logger.debug("assigned both window id {}", last);
-            } else {
-              last.ending_window = baseSeconds | bwt.getWindowId();
-              //logger.debug("assigned last window id {}", last);
-            }
-            break;
-
-          case MessageType.RESET_WINDOW_VALUE:
-            Tuple rwt = Tuple.getTuple(last.data, processingOffset, size);
-            baseSeconds = (long)rwt.getBaseSeconds() << 32;
-            break;
-
-          default:
-            break;
-        }
-        processingOffset += size;
+      processingOffset += size;
+      size = 0;
+    } else {
+      if (writeOffset == last.data.length) {
+        nextOffset.integer = 0;
+        processingOffset = 0;
         size = 0;
-      } else {
-        if (writeOffset == last.data.length) {
-          nextOffset.integer = 0;
-          processingOffset = 0;
-          size = 0;
-        }
-        break;
       }
-    } while (true);
+    }
 
     last.writingOffset = writeOffset;
 
     notifyListeners();
-
   }
 
   public void notifyListeners()
