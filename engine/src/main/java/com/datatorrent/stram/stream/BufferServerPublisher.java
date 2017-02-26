@@ -24,6 +24,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.engine.serde.PartitionSerde;
+import org.apache.apex.engine.serde.SerializationBuffer;
+
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.bufferserver.client.Publisher;
 import com.datatorrent.bufferserver.packet.BeginWindowTuple;
@@ -36,6 +39,7 @@ import com.datatorrent.bufferserver.packet.ResetWindowTuple;
 import com.datatorrent.bufferserver.packet.WindowIdTuple;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.netlet.EventLoop;
+import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.codec.StatefulStreamCodec;
 import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 import com.datatorrent.stram.engine.ByteCounterStream;
@@ -72,9 +76,26 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
    *
    * @param payload
    */
+  private int implementor = 3;    //0: old implementation; 1: implementation 1 thread; 2: implementation 2 threads; 3: as batch
   @Override
-  @SuppressWarnings("SleepWhileInLoop")
   public void put(Object payload)
+  {
+    switch (implementor) {
+      case 0:
+        put_old(payload);
+        break;
+
+      case 1:
+        put_new(payload);
+        break;
+
+      default:
+        throw new RuntimeException("Invalid.");
+    }
+  }
+
+  @SuppressWarnings("SleepWhileInLoop")
+  public void put_old(Object payload)
   {
     count++;
     byte[] array;
@@ -146,6 +167,82 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   }
 
   /**
+   * serialize only, a dedicated thread response for write.
+   * As serialize is cpu concentrate and write should be I/O concentrate. two thread should increase the performance
+   * @param payload
+   */
+  private PartitionSerde partitionSerde = new PartitionSerde();
+  private SerializationBuffer serializationBuffer = SerializationBuffer.READ_BUFFER;
+  private int tupleCount = 0;
+  @SuppressWarnings({ "SleepWhileInLoop", "unchecked" })
+  public void put_new(Object payload)
+  {
+    count++;
+    byte[] array;
+    Slice slice = null;
+    if (payload instanceof Tuple) {
+      final Tuple t = (Tuple)payload;
+
+      switch (t.getType()) {
+        case CHECKPOINT:
+          if (statefulSerde != null) {
+            statefulSerde.resetState();
+          }
+          array = WindowIdTuple.getSerializedTuple((int)t.getWindowId());
+          array[0] = MessageType.CHECKPOINT_VALUE;
+          break;
+
+        case BEGIN_WINDOW:
+          array = BeginWindowTuple.getSerializedTuple((int)t.getWindowId());
+          break;
+
+        case END_WINDOW:
+          array = EndWindowTuple.getSerializedTuple((int)t.getWindowId());
+          break;
+
+        case END_STREAM:
+          array = EndStreamTuple.getSerializedTuple((int)t.getWindowId());
+          break;
+
+        case RESET_WINDOW:
+          com.datatorrent.stram.tuple.ResetWindowTuple rwt = (com.datatorrent.stram.tuple.ResetWindowTuple)t;
+          array = ResetWindowTuple.getSerializedTuple(rwt.getBaseSeconds(), rwt.getIntervalMillis());
+          break;
+
+        default:
+          throw new UnsupportedOperationException("this data type is not handled in the stream");
+      }
+
+
+      try {
+        while (!write(array)) {
+          sleep(5);
+        }
+        publishedByteCount.addAndGet(array.length);
+      } catch (InterruptedException ie) {
+        throw new RuntimeException(ie);
+      }
+
+    } else {
+      slice = partitionSerde.serialize(payload.hashCode(), payload, serializationBuffer);
+      try {
+        if (slice != null) {
+          while (!write(slice.buffer, slice.offset, slice.length)) {
+            sleep(5);
+          }
+          publishedByteCount.addAndGet(slice.length);
+        }
+      } catch (InterruptedException ie) {
+        throw new RuntimeException(ie);
+      }
+      if (++tupleCount == 1000) {
+        serializationBuffer.reset();
+        tupleCount = 0;
+      }
+    }
+  }
+
+  /**
    *
    * @param context
    */
@@ -174,6 +271,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   {
     throw new RuntimeException("OutputStream is not supposed to receive anything!");
   }
+
 
   @Override
   @SuppressWarnings("unchecked")
