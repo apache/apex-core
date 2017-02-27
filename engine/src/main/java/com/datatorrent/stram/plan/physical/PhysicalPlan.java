@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.common.util.AsyncStorageAgent;
 import org.apache.commons.lang.StringUtils;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -68,7 +69,6 @@ import com.datatorrent.api.StatsListener.OperatorRequest;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.Stateless;
-import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
@@ -1226,11 +1226,8 @@ public class PhysicalPlan implements Serializable
       long windowId = oper.isOperatorStateLess() ? Stateless.WINDOW_ID : checkpoint.windowId;
       StorageAgent agent = oper.operatorMeta.getValue(OperatorContext.STORAGE_AGENT);
       agent.save(oo, oper.id, windowId);
-      if (agent instanceof AsyncFSStorageAgent) {
-        AsyncFSStorageAgent asyncFSStorageAgent = (AsyncFSStorageAgent)agent;
-        if (!asyncFSStorageAgent.isSyncCheckpoint()) {
-          asyncFSStorageAgent.copyToHDFS(oper.id, windowId);
-        }
+      if (agent instanceof AsyncStorageAgent) {
+        ((AsyncStorageAgent)agent).finalize(oper.id, windowId);
       }
     } catch (IOException e) {
       // inconsistent state, no recovery option, requires shutdown

@@ -257,6 +257,7 @@ public class StramClient
   public void copyInitialState(Path origAppDir) throws IOException
   {
     // locate previous snapshot
+    long copyStart = System.currentTimeMillis();
     String newAppDir = this.dag.assertAppPath();
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(origAppDir.toString(), conf);
@@ -284,6 +285,7 @@ public class StramClient
     logOs.close();
     logIs.close();
 
+    List<String> excludeDirs = Arrays.asList(LogicalPlan.SUBDIR_CHECKPOINTS, LogicalPlan.SUBDIR_EVENTS, LogicalPlan.SUBDIR_STATS);
     // copy sub directories that are not present in target
     FileStatus[] lFiles = fs.listStatus(origAppDir);
 
@@ -298,19 +300,19 @@ public class StramClient
     String newAppDirPath = Path.getPathWithoutSchemeAndAuthority(new Path(newAppDir)).toString();
 
     for (FileStatus f : lFiles) {
-      if (f.isDirectory()) {
+      if (f.isDirectory() && !excludeDirs.contains(f.getPath().getName())) {
         String targetPath = f.getPath().toString().replace(origAppDirPath, newAppDirPath);
         if (!fs.exists(new Path(targetPath))) {
-          LOG.debug("Copying {} to {}", f.getPath(), targetPath);
+          LOG.debug("Copying {} size {} to {}", f.getPath(), f.getLen(), targetPath);
+          long start = System.currentTimeMillis();
           FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
-          //FSUtil.copy(fs, f, fs, new Path(targetPath), false, false, conf);
+          LOG.debug("Copying {} to {} took {} ms", f.getPath(), f.getLen(), targetPath, System.currentTimeMillis() - start);
         } else {
           LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
-          //FSUtil.setPermission(fs, new Path(targetPath), new FsPermission((short)0777));
         }
       }
     }
-
+    LOG.info("Copying initial state took {} ms", System.currentTimeMillis() - copyStart);
   }
 
   /**
