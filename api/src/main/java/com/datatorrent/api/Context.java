@@ -531,6 +531,11 @@ public interface Context
      */
     Attribute<String> LIBRARY_JARS = new Attribute<>(String2String.getInstance());
 
+    /**
+     * List of blacklisted nodes separated by comma.
+     */
+    Attribute<String> BLACKLISTED_NODES = new Attribute<String>(new String2String());
+
     @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(DAGContext.class);
   }

@@ -27,6 +27,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -715,6 +716,11 @@ public class StreamingAppMasterService extends CompositeService
 
     List<ContainerStartRequest> pendingContainerStartRequests = new LinkedList<>();
     YarnClient clientRMService = YarnClient.createYarnClient();
+
+    String blackListedNodes = dag.getValue(DAGContext.BLACKLISTED_NODES);
+    if (blackListedNodes != null && !blackListedNodes.isEmpty()) {
+      amRmClient.updateBlacklist(new ArrayList<>(Arrays.asList(blackListedNodes.split(","))), null);
+    }
 
     try {
       // YARN-435
