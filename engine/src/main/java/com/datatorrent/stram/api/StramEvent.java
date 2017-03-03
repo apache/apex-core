@@ -20,6 +20,8 @@ package com.datatorrent.stram.api;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.apex.log.LogFileInformation;
+
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 
 /**
@@ -35,13 +37,20 @@ public abstract class StramEvent
   private long timestamp = System.currentTimeMillis();
   private String reason;
   private LogLevel logLevel;
+  private LogFileInformation logFileInformation;
 
   public abstract String getType();
 
   protected StramEvent(LogLevel logLevel)
   {
+    this(logLevel, null);
+  }
+
+  protected StramEvent(LogLevel logLevel, LogFileInformation logFileInformation)
+  {
     id = nextId.getAndIncrement();
     this.logLevel = logLevel;
+    this.logFileInformation = logFileInformation;
   }
 
   public long getId()
@@ -74,6 +83,21 @@ public abstract class StramEvent
     return logLevel;
   }
 
+  public String getLogFileName()
+  {
+    return logFileInformation != null ? logFileInformation.fileName : null;
+  }
+
+  public long getLogFileOffset()
+  {
+    return logFileInformation != null ? logFileInformation.fileOffset : 0;
+  }
+
+  public void setLogFileInfomation(LogFileInformation logFileInformation)
+  {
+    this.logFileInformation = logFileInformation;
+  }
+
   public static enum LogLevel
   {
     TRACE,
@@ -90,7 +114,12 @@ public abstract class StramEvent
 
     public OperatorEvent(String operatorName, LogLevel logLevel)
     {
-      super(logLevel);
+      this(operatorName, logLevel, null);
+    }
+
+    public OperatorEvent(String operatorName, LogLevel logLevel, LogFileInformation logFileInformation)
+    {
+      super(logLevel, logFileInformation);
       this.operatorName = operatorName;
     }
 
@@ -202,7 +231,13 @@ public abstract class StramEvent
 
     public PhysicalOperatorEvent(String operatorName, int operatorId, LogLevel logLevel)
     {
-      super(operatorName, logLevel);
+      this(operatorName, operatorId, logLevel, null);
+    }
+
+    public PhysicalOperatorEvent(String operatorName, int operatorId, LogLevel logLevel,
+        LogFileInformation logFileInformation)
+    {
+      super(operatorName, logLevel, logFileInformation);
       this.operatorId = operatorId;
     }
 
@@ -492,14 +527,16 @@ public abstract class StramEvent
     private String containerId;
     private String errorMessage;
 
-    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage)
+    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage,
+        LogFileInformation logFileInformation)
     {
-      this(operatorName, operatorId, containerId, errorMessage, LogLevel.ERROR);
+      this(operatorName, operatorId, containerId, errorMessage, logFileInformation, LogLevel.ERROR);
     }
 
-    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage, LogLevel logLevel)
+    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage,
+        LogFileInformation logFileInformation, LogLevel logLevel)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, logFileInformation);
       this.containerId = containerId;
       this.errorMessage = errorMessage;
     }
@@ -537,14 +574,15 @@ public abstract class StramEvent
     private String containerId;
     private String errorMessage;
 
-    public ContainerErrorEvent(String containerId, String errorMessage)
+    public ContainerErrorEvent(String containerId, String errorMessage, LogFileInformation logFileInformation)
     {
-      this(containerId, errorMessage, LogLevel.ERROR);
+      this(containerId, errorMessage, logFileInformation, LogLevel.ERROR);
     }
 
-    public ContainerErrorEvent(String containerId, String errorMessage, LogLevel logLevel)
+    public ContainerErrorEvent(String containerId, String errorMessage, LogFileInformation logFileInformation,
+        LogLevel logLevel)
     {
-      super(logLevel);
+      super(logLevel, logFileInformation);
       this.containerId = containerId;
       this.errorMessage = errorMessage;
     }

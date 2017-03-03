@@ -23,6 +23,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.apex.log.LogFileInformation;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -430,8 +432,9 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
    * @param containerId
    * @param operators
    * @param msg
+   * @param logFileInfo
    */
-  void reportError(String containerId, int[] operators, String msg) throws IOException;
+  void reportError(String containerId, int[] operators, String msg, LogFileInformation logFileInfo) throws IOException;
 
   /**
    * To be called periodically by child for heartbeat protocol.

@@ -24,6 +24,8 @@ import java.net.InetSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.log.LogFileInformation;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.ipc.ProtocolSignature;
@@ -172,15 +174,16 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
   }
 
   @Override
-  public void reportError(String containerId, int[] operators, String msg) throws IOException
+  public void reportError(String containerId, int[] operators, String msg, LogFileInformation logFileInfo) throws IOException
   {
     if (operators == null || operators.length == 0) {
-      dagManager.recordEventAsync(new ContainerErrorEvent(containerId, msg));
+      dagManager.recordEventAsync(new ContainerErrorEvent(containerId, msg, logFileInfo));
     } else {
       for (int operator : operators) {
         OperatorInfo operatorInfo = dagManager.getOperatorInfo(operator);
         if (operatorInfo != null) {
-          dagManager.recordEventAsync(new OperatorErrorEvent(operatorInfo.name, operator, containerId, msg));
+          dagManager.recordEventAsync(new OperatorErrorEvent(operatorInfo.name, operator, containerId, msg,
+              logFileInfo));
         }
       }
     }
