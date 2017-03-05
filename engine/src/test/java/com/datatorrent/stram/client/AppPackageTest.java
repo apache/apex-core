@@ -125,7 +125,7 @@ public class AppPackageTest
   }
 
   @Test
-  public void testAppLevelRequiredProperties()
+  public void testAppLevelRequiredAndDefaultProperties()
   {
     List<AppPackage.AppInfo> applications = ap.getApplications();
     for (AppPackage.AppInfo app : applications) {
@@ -133,7 +133,8 @@ public class AppPackageTest
         String[] rp = app.requiredProperties.toArray(new String[]{});
         Assert.assertEquals("dt.test.required.2", rp[0]);
         Assert.assertEquals("dt.test.required.3", rp[1]);
-        Assert.assertEquals("app-default-for-required-1", app.defaultProperties.get("dt.test.required.1"));
+        Assert.assertEquals("app-default-for-required-1", app.defaultProperties.get("dt.test.required.1").value);
+        Assert.assertEquals("app-default-for-required-1-description", app.defaultProperties.get("dt.test.required.1").description);
         return;
       }
     }

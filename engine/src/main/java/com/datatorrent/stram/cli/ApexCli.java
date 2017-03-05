@@ -101,6 +101,7 @@ import com.datatorrent.stram.client.AppPackage.AppInfo;
 import com.datatorrent.stram.client.ConfigPackage;
 import com.datatorrent.stram.client.DTConfiguration;
 import com.datatorrent.stram.client.DTConfiguration.Scope;
+import com.datatorrent.stram.client.DTConfiguration.ValueEntry;
 import com.datatorrent.stram.client.RecordingsAgent;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
 import com.datatorrent.stram.client.StramAgent;
@@ -3728,11 +3729,11 @@ public class ApexCli
         break;
       }
     }
-    Map<String, String> defaultProperties = selectedApp == null ? ap.getDefaultProperties() : selectedApp.defaultProperties;
+    Map<String, ValueEntry> defaultProperties = selectedApp == null ? ap.getDefaultProperties() : selectedApp.defaultProperties;
     Set<String> requiredProperties = new TreeSet<>(selectedApp == null ? ap.getRequiredProperties() : selectedApp.requiredProperties);
 
-    for (Map.Entry<String, String> entry : defaultProperties.entrySet()) {
-      launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+    for (Map.Entry<String, ValueEntry> entry : defaultProperties.entrySet()) {
+      launchProperties.set(entry.getKey(), entry.getValue().value, Scope.TRANSIENT, entry.getValue().description);
       requiredProperties.remove(entry.getKey());
     }
 
