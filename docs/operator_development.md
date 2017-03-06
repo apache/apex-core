@@ -15,6 +15,7 @@ its internals. This document is intended to serve the following purposes
 1.  **[Apache Apex Operators](#apex_operators)** - Introduction to operator terminology and concepts.
 2.  **[Writing Custom Operators](#writing_custom_operators)** - Designing, coding and testing new operators from scratch.  Includes code examples.
 3.  **[Operator Reference](#operator_reference)** - Details of operator internals, lifecycle, and best practices and optimizations.
+4.  **[Advanced Features](#advanced_features)** - Advanced features in operator development and its capabilities.
 
 * * * * *
 
@@ -64,8 +65,8 @@ Types of Operators
 An operator works on one tuple at a time. These tuples may be supplied
 by other operators in the application or by external sources,
 such as a database or a message bus. Similarly, after the tuples are
-processed, these may be passed on to other operators, or stored into an external system. 
-Therea are 3 type of operators based on function: 
+processed, these may be passed on to other operators, or stored into an external system.
+There are 3 type of operators based on function:
 
 1.  **Input Adapter** - This is one of the starting points in
     the application DAG and is responsible for getting tuples from an
@@ -384,9 +385,9 @@ globalCounts = Maps.newHashMap();
 ```
 ### Setup call
 
-The setup method is called only once during an operator lifetime and its purpose is to allow 
+The setup method is called only once during an operator lifetime and its purpose is to allow
 the operator to set itself up for processing incoming streams. Transient objects in the operator are
-not serialized and checkpointed. Hence, it is essential that such objects initialized in the setup call. 
+not serialized and checkpointed. Hence, it is essential that such objects initialized in the setup call.
 In case of operator failure, the operator will be redeployed (most likely on a different container). The setup method called by the Apache Apex engine allows the operator to prepare for execution in the new container.
 
 The following tasks are executed as part of the setup call:
@@ -399,7 +400,7 @@ The following tasks are executed as part of the setup call:
 
 ### Begin Window call
 
-The begin window call signals the start of an application window. With 
+The begin window call signals the start of an application window. With
 regards to Word Count Operator, we are expecting updated counts for the most recent window of
 data if the sendPerTuple is set to false. Hence, we clear the updatedCounts variable in the begin window
 call and start accumulating the counts till the end window call.
@@ -448,6 +449,13 @@ ports.
 2. Copy state from checkpoint -- initialized values from step 1 are
 replaced.
 
+Advanced Features <a name="advanced_features"></a>
+====================================
+
+Control Tuple Support
+---------------------------
+Operators now also have the capability to emit control tuples. These control tuples are different from the control tuples used by the engine like BEGIN_WINDOW and END_WINDOW tuples. Operators can create and emit their own control tuples which can be used to communicate to the down stream operators regarding some event. Examples of such events can be BEGIN_FILE, or END_FILE.
+More details can be found at [Control Tuples](../control_tuples)
 
 Malhar Operator Library
 ==========================

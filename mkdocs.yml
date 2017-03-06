@@ -9,6 +9,7 @@ pages:
     - Packages: application_packages.md
     - Operators: operator_development.md
     - AutoMetric API: autometrics.md
+    - Custom Control Tuples: control_tuples.md
     - Best Practices: development_best_practices.md 
 - Operations:
     - Apex CLI : apex_cli.md
