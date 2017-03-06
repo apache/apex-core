@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.apex.api.ControlAwareDefaultInputPort;
 import org.apache.apex.api.ControlAwareDefaultOutputPort;
-import org.apache.apex.api.UserDefinedControlTuple;
+import org.apache.apex.api.operator.ControlTuple;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.Context;
@@ -122,7 +122,7 @@ public class CustomControlTupleTest
       }
 
       @Override
-      public boolean processControl(UserDefinedControlTuple tuple)
+      public boolean processControl(ControlTuple tuple)
       {
         output.emitControl(tuple);
         return true;
@@ -145,7 +145,7 @@ public class CustomControlTupleTest
     public final transient ControlAwareDefaultInputPort<Double> input = new ControlAwareDefaultInputPort<Double>()
     {
       @Override
-      public boolean processControl(UserDefinedControlTuple payload)
+      public boolean processControl(ControlTuple payload)
       {
         numControlTuples++;
         return false;
@@ -332,7 +332,7 @@ public class CustomControlTupleTest
     testApp(new Application5());
   }
 
-  public static class TestControlTuple implements UserDefinedControlTuple
+  public static class TestControlTuple implements ControlTuple
   {
     public long data;
     public boolean immediate;

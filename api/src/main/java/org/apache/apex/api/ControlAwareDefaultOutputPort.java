@@ -18,6 +18,7 @@
  */
 package org.apache.apex.api;
 
+import org.apache.apex.api.operator.ControlTuple;
 import org.apache.hadoop.classification.InterfaceStability;
 
 import com.datatorrent.api.ControlTupleEnabledSink;
@@ -25,8 +26,8 @@ import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Sink;
 
 /**
- * Default implementation for an output port which can emit a @{@link UserDefinedControlTuple}.
- * The {@link #emitControl(UserDefinedControlTuple)} method can be used to emit control tuples onto this output port
+ * Default implementation for an output port which can emit a @{@link ControlTuple}.
+ * The {@link #emitControl(ControlTuple)} method can be used to emit control tuples onto this output port
  */
 @InterfaceStability.Evolving
 public class ControlAwareDefaultOutputPort<T> extends DefaultOutputPort<T>
@@ -37,10 +38,10 @@ public class ControlAwareDefaultOutputPort<T> extends DefaultOutputPort<T>
   }
 
   /**
-   * Allows the operator to emit a @{@link UserDefinedControlTuple}
+   * Allows the operator to emit a @{@link ControlTuple}
    * @param {@link UserDefinedControlTuple}
    */
-  public void emitControl(UserDefinedControlTuple tuple)
+  public void emitControl(ControlTuple tuple)
   {
     verifyOperatorThread();
     ((ControlTupleEnabledSink)sink).putControl(tuple);

@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.apex.api.UserDefinedControlTuple;
+import org.apache.apex.api.operator.ControlTuple;
 
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.bufferserver.client.Publisher;
@@ -171,7 +171,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   }
 
   @Override
-  public boolean putControl(UserDefinedControlTuple payload)
+  public boolean putControl(ControlTuple payload)
   {
     put(new CustomControlTuple(payload));
     return false;

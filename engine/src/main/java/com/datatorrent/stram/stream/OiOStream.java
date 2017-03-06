@@ -18,7 +18,7 @@
  */
 package com.datatorrent.stram.stream;
 
-import org.apache.apex.api.UserDefinedControlTuple;
+import org.apache.apex.api.operator.ControlTuple;
 
 import com.datatorrent.api.Sink;
 import com.datatorrent.stram.engine.Stream;
@@ -80,7 +80,7 @@ public class OiOStream implements Stream
   }
 
   @Override
-  public boolean putControl(UserDefinedControlTuple payload)
+  public boolean putControl(ControlTuple payload)
   {
     put(new CustomControlTuple(payload));
     return false;

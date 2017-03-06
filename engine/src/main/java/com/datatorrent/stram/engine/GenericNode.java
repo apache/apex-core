@@ -32,7 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.api.ControlAwareDefaultInputPort;
-import org.apache.apex.api.UserDefinedControlTuple;
+import org.apache.apex.api.operator.ControlTuple;
 import org.apache.commons.lang.UnhandledException;
 
 import com.google.common.base.Throwables;
@@ -377,7 +377,7 @@ public class GenericNode extends Node<Operator>
                       if (activeSink instanceof ControlAwareDefaultInputPort) {
                         ControlTupleEnabledSink sink = (ControlTupleEnabledSink)activeSink;
                         for (CustomControlTuple cct : portSet.getValue()) {
-                          if (!sink.putControl((UserDefinedControlTuple)cct.getUserObject())) {
+                          if (!sink.putControl((ControlTuple)cct.getUserObject())) {
                             // operator cannot handle control tuple; forward to sinks
                             forwardToSinks(delay, cct);
                           }
@@ -407,11 +407,11 @@ public class GenericNode extends Node<Operator>
                 /* All custom control tuples are expected to be arriving in the current window only.*/
                 /* Buffer control tuples until end of the window */
                 CustomControlTuple cct = (CustomControlTuple)t;
-                UserDefinedControlTuple udct = (UserDefinedControlTuple)cct.getUserObject();
+                ControlTuple udct = (ControlTuple)cct.getUserObject();
                 boolean forward = false;
 
                 // Handle Immediate Delivery Control Tuples
-                if (udct.getDeliveryType().equals(UserDefinedControlTuple.DeliveryType.IMMEDIATE)) {
+                if (udct.getDeliveryType().equals(ControlTuple.DeliveryType.IMMEDIATE)) {
                   if (!isDuplicate(immediateDeliveryTuples.get(activePort), cct)) {
                     // Forward immediately
                     if (reservoirPortMap.isEmpty()) {
@@ -422,7 +422,7 @@ public class GenericNode extends Node<Operator>
                     // activeSink may not be null
                     if (activeSink instanceof ControlAwareDefaultInputPort) {
                       ControlTupleEnabledSink sink = (ControlTupleEnabledSink)activeSink;
-                      if (!sink.putControl((UserDefinedControlTuple)cct.getUserObject())) {
+                      if (!sink.putControl((ControlTuple)cct.getUserObject())) {
                         forward = true;
                       }
                     } else {

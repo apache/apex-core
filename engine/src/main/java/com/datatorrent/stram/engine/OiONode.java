@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.api.ControlAwareDefaultInputPort;
-import org.apache.apex.api.UserDefinedControlTuple;
+import org.apache.apex.api.operator.ControlTuple;
 import org.apache.commons.lang.UnhandledException;
 
 import com.google.common.collect.Sets;
@@ -98,7 +98,7 @@ public class OiONode extends GenericNode
             for (CustomControlTuple cct : endWindowControlTuples) {
               Sink sink = ((OiOStream.OiOReservoir)reservoir).getSink();
               if (sink instanceof ControlAwareDefaultInputPort) {
-                if (!((ControlAwareDefaultInputPort)sink).putControl((UserDefinedControlTuple)cct.getUserObject())) {
+                if (!((ControlAwareDefaultInputPort)sink).putControl((ControlTuple)cct.getUserObject())) {
                   // Operator will not handle; forward to sinks
                   forwardToSinks(false, cct);
                 }
@@ -116,13 +116,13 @@ public class OiONode extends GenericNode
 
         case CUSTOM_CONTROL:
           CustomControlTuple cct = ((CustomControlTuple)t);
-          UserDefinedControlTuple udct = (UserDefinedControlTuple)cct.getUserObject();
+          ControlTuple udct = (ControlTuple)cct.getUserObject();
 
-          if (udct.getDeliveryType().equals(UserDefinedControlTuple.DeliveryType.IMMEDIATE)) { // Immediate Delivery
+          if (udct.getDeliveryType().equals(ControlTuple.DeliveryType.IMMEDIATE)) { // Immediate Delivery
             if (!isDuplicate(immediateDeliveryControlTuples, cct)) {
               Sink sink = ((OiOStream.OiOReservoir)reservoir).getSink();
               if (sink instanceof ControlAwareDefaultInputPort) {
-                if (!((ControlAwareDefaultInputPort)sink).putControl((UserDefinedControlTuple)cct.getUserObject())) {
+                if (!((ControlAwareDefaultInputPort)sink).putControl((ControlTuple)cct.getUserObject())) {
                   // Operator will not handle; forward to sinks
                   forwardToSinks(false, cct);
                 }

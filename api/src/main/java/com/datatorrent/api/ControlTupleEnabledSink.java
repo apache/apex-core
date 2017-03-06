@@ -18,7 +18,7 @@
  */
 package com.datatorrent.api;
 
-import org.apache.apex.api.UserDefinedControlTuple;
+import org.apache.apex.api.operator.ControlTuple;
 import org.apache.hadoop.classification.InterfaceStability;
 
 /**
@@ -35,7 +35,7 @@ public interface ControlTupleEnabledSink<T> extends Sink<T>
     }
 
     @Override
-    public boolean putControl(UserDefinedControlTuple payload)
+    public boolean putControl(ControlTuple payload)
     {
       return true;
     }
@@ -52,5 +52,5 @@ public interface ControlTupleEnabledSink<T> extends Sink<T>
    *
    * @param payload the control tuple payload
    */
-  public boolean putControl(UserDefinedControlTuple payload);
+  public boolean putControl(ControlTuple payload);
 }

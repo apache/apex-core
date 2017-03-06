@@ -21,7 +21,7 @@ package com.datatorrent.stram.stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.apex.api.UserDefinedControlTuple;
+import org.apache.apex.api.operator.ControlTuple;
 
 import com.datatorrent.stram.engine.AbstractReservoir;
 import com.datatorrent.stram.engine.Stream;
@@ -102,7 +102,7 @@ public class InlineStream implements Stream
   }
 
   @Override
-  public boolean putControl(UserDefinedControlTuple payload)
+  public boolean putControl(ControlTuple payload)
   {
     put(new CustomControlTuple(payload));
     return false;
