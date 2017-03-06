@@ -44,9 +44,7 @@ public abstract class StreamingAppFactory implements StramAppLauncher.AppFactory
 
   protected LogicalPlan createApp(StreamingApplication app, LogicalPlanConfiguration planConfig)
   {
-    LogicalPlan dag = new LogicalPlan();
-    planConfig.prepareDAG(dag, app, getName());
-    return dag;
+    return planConfig.createFromStreamingApplication(app, getName());
   }
 
   public String getName()
