@@ -27,6 +27,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -720,7 +721,6 @@ public class StreamingAppMasterService extends CompositeService
 
     int loopCounter = -1;
     long nodeReportUpdateTime = 0;
-    List<ContainerId> releasedContainers = new ArrayList<>();
 
     // keep track of already requested containers to not request them again while waiting for allocation
     int numRequestedContainers = 0;
@@ -761,7 +761,7 @@ public class StreamingAppMasterService extends CompositeService
     // Running containers might take a while to register with the new app master and send the heartbeat signal.
     int waitForRecovery = containers.size() > 0 ? dag.getValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS) / 1000 : 0;
 
-    previouslyAllocatedContainers(containers);
+    List<ContainerId> releasedContainers = previouslyAllocatedContainers(containers);
     FinalApplicationStatus finalStatus = FinalApplicationStatus.SUCCEEDED;
     final InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
         YarnConfiguration.DEFAULT_RM_ADDRESS,
@@ -1089,13 +1089,52 @@ public class StreamingAppMasterService extends CompositeService
    * Check for containers that were allocated in a previous attempt.
    * If the containers are still alive, wait for them to check in via heartbeat.
    */
-  private void previouslyAllocatedContainers(List<Container> containers)
+  private List<ContainerId> previouslyAllocatedContainers(List<Container> containersListByYarn)
   {
-    for (Container container : containers) {
-      this.allocatedContainers.put(container.getId().toString(), new AllocatedContainer(container));
-      //check the status
-      nmClient.getContainerStatusAsync(container.getId(), container.getNodeId());
+    List<ContainerId> containersToRelease = new ArrayList<>();
+
+    if (containersListByYarn.size() != 0) {
+
+      LOG.debug("Containers list by YARN - {}", containersListByYarn);
+      LOG.debug("Containers list by Streaming Container Manger - {}", dnmgr.getPhysicalPlan().getContainers());
+
+      Map<String, Container> fromYarn = new HashMap<>();
+
+      for (Container container : containersListByYarn) {
+        fromYarn.put(container.getId().toString(), container);
+      }
+
+      for (PTContainer ptContainer : dnmgr.getPhysicalPlan().getContainers()) {
+
+        String containerId = ptContainer.getExternalId();
+
+        // SCM starts the container without external ID.
+        if (containerId == null) {
+          continue;
+        }
+
+        Container container = fromYarn.get(containerId);
+
+        if (container != null) {
+          allocatedContainers.put(containerId, new AllocatedContainer(container));
+          fromYarn.remove(containerId);
+        } else {
+          dnmgr.scheduleContainerRestart(containerId);
+        }
+      }
+
+      for (Container container : fromYarn.values()) {
+        containersToRelease.add(container.getId());
+      }
+
+      if (fromYarn.size() != 0) {
+        LOG.info("Containers list returned by YARN, has the following container(s) which are not present in PhysicalPlan {}", fromYarn);
+      }
+    } else {
+      dnmgr.deployAfterRestart();
     }
+
+    return containersToRelease;
   }
 
   /**

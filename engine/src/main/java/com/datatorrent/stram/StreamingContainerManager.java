@@ -2315,6 +2315,27 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
+  public void deployAfterRestart()
+  {
+    if (startedFromCheckpoint) {
+      try {
+        this.deployChangeInProgress.set(true);
+
+        for (PTContainer c : getPhysicalPlan().getContainers()) {
+          c.setState(PTContainer.State.NEW);
+          requestContainer(c);
+
+          for (PTOperator ptOperator : c.getOperators()) {
+            ptOperator.setState(State.PENDING_DEPLOY);
+          }
+        }
+      } finally {
+        this.deployChangeCnt++;
+        this.deployChangeInProgress.set(false);
+      }
+    }
+  }
+
   @Override
   public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy)
   {
@@ -3130,6 +3151,7 @@ public class StreamingContainerManager implements PlanContext
             scm.requestContainer(c);
           }
         }
+        scm.startedFromCheckpoint = true;
       }
       scm.recoveryHandler = rh;
       scm.checkpoint();
@@ -3138,6 +3160,8 @@ public class StreamingContainerManager implements PlanContext
       throw new IllegalStateException("Failed to read checkpointed state", e);
     }
   }
+
+  private boolean startedFromCheckpoint = false;
 
   private static class FinalVars implements java.io.Serializable
   {
