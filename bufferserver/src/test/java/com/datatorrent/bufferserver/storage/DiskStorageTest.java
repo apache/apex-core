@@ -125,6 +125,7 @@ public class DiskStorageTest
     eventloopClient.disconnect(bsp);
     eventloopClient.disconnect(bss);
 
+// TODO: This assert fails randomly
     Assert.assertEquals(bss.tupleCount.get(), 2004);
 
     bss = new Subscriber("MySubscriber");
