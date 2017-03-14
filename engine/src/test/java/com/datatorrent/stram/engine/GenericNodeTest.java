@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,7 +38,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
@@ -47,7 +45,6 @@ import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator;
-import com.datatorrent.api.Operator.CheckpointNotificationListener;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.Stats.OperatorStats;
@@ -240,46 +237,6 @@ public class GenericNodeTest
       if (numWindows++ < maxWindows) {
         distances.add(context.getWindowsFromCheckpoint());
       }
-    }
-  }
-
-  public static class GenericCheckpointOperator extends GenericOperator implements CheckpointNotificationListener
-  {
-    public Set<Long> checkpointedWindows = Sets.newHashSet();
-    public volatile boolean checkpointTwice = false;
-    public volatile int numWindows = 0;
-
-    public GenericCheckpointOperator()
-    {
-    }
-
-    @Override
-    public void beginWindow(long windowId)
-    {
-      super.beginWindow(windowId);
-    }
-
-    @Override
-    public void endWindow()
-    {
-      super.endWindow();
-      numWindows++;
-    }
-
-    @Override
-    public void checkpointed(long windowId)
-    {
-      checkpointTwice = checkpointTwice || !checkpointedWindows.add(windowId);
-    }
-
-    @Override
-    public void committed(long windowId)
-    {
-    }
-
-    @Override
-    public void beforeCheckpoint(long windowId)
-    {
     }
   }
 
