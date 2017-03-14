@@ -780,14 +780,22 @@ public class StreamingContainerManager implements PlanContext
           //LOG.debug("{} {} {}", c.getExternalId(), currentTms - sca.createdMillis, this.vars.heartbeatTimeoutMillis);
           // container allocated but process was either not launched or is not able to phone home
           if (currentTms - sca.createdMillis > 2 * this.vars.heartbeatTimeoutMillis) {
-            LOG.info("Container {}@{} startup timeout ({} ms).", c.getExternalId(), c.host, currentTms - sca.createdMillis);
+            LOG.error("Container {}@{} startup timeout ({} ms).", c.getExternalId(), c.host, currentTms - sca.createdMillis);
             containerStopRequests.put(c.getExternalId(), c.getExternalId());
           }
         } else {
           if (currentTms - sca.lastHeartbeatMillis > this.vars.heartbeatTimeoutMillis) {
             if (!isApplicationIdle()) {
+              // Check if the heartbeat for this agent has already been missed to raise the StramEvent only once
+              if (sca.lastHeartbeatMillis != -1) {
+                String info = String.format("Container %s@%s heartbeat timeout (%d%n ms).", c.getExternalId(), c.host, currentTms - sca.lastHeartbeatMillis);
+                LOG.error(info);
+                StramEvent stramEvent = new StramEvent.ContainerErrorEvent(c.getExternalId(), info, null);
+                stramEvent.setReason(info);
+                recordEventAsync(stramEvent);
+                sca.lastHeartbeatMillis = -1;
+              }
               // request stop (kill) as process may still be hanging around (would have been detected by Yarn otherwise)
-              LOG.info("Container {}@{} heartbeat timeout ({} ms).", c.getExternalId(), c.host, currentTms - sca.lastHeartbeatMillis);
               containerStopRequests.put(c.getExternalId(), c.getExternalId());
             }
           }
