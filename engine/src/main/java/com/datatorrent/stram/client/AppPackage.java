@@ -355,7 +355,6 @@ public class AppPackage extends JarFile
             appInfo.displayName = appFactory.getDisplayName();
             try {
               appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
-              appInfo.dag.validate();
             } catch (Throwable ex) {
               appInfo.error = ex.getMessage();
               appInfo.errorStackTrace = ExceptionUtils.getStackTrace(ex);
@@ -394,7 +393,6 @@ public class AppPackage extends JarFile
           appInfo.displayName = appFactory.getDisplayName();
           try {
             appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
-            appInfo.dag.validate();
           } catch (Throwable t) {
             appInfo.error = t.getMessage();
             appInfo.errorStackTrace = ExceptionUtils.getStackTrace(t);

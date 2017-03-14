@@ -918,6 +918,15 @@ public class OperatorDiscoveryTest
 
   }
 
+  public static class InputTestOperator<T, Z extends Map<String, Number>> extends TestOperator<T,Z> implements InputOperator
+  {
+    @Override
+    public void emitTuples()
+    {
+
+    }
+  }
+
   static class ExtendedOperator extends TestOperator<String, Map<String, Number>>
   {
   }
@@ -1047,7 +1056,7 @@ public class OperatorDiscoveryTest
   @Test
   public void testLogicalPlanConfiguration() throws Exception
   {
-    TestOperator<String, Map<String, Number>> bean = new TestOperator<String, Map<String, Number>>();
+    TestOperator<String, Map<String, Number>> bean = new InputTestOperator<String, Map<String, Number>>();
     bean.map.put("key1", new Structured());
     bean.stringArray = new String[]{"one", "two", "three"};
     bean.stringList = Lists.newArrayList("four", "five");
@@ -1074,7 +1083,7 @@ public class OperatorDiscoveryTest
     jsonPlan.put("streams", new JSONArray());
     JSONObject jsonOper = new JSONObject();
     jsonOper.put("name", "Test Operator");
-    jsonOper.put("class", TestOperator.class.getName());
+    jsonOper.put("class", InputTestOperator.class.getName());
     jsonOper.put("properties", jsonObj);
     jsonPlan.put("operators", new JSONArray(Lists.newArrayList(jsonOper)));
 
@@ -1083,9 +1092,9 @@ public class OperatorDiscoveryTest
     // create logical plan from the json
     LogicalPlan lp = lpc.createFromJson(jsonPlan, "jsontest");
     OperatorMeta om = lp.getOperatorMeta("Test Operator");
-    Assert.assertTrue(om.getOperator() instanceof TestOperator);
+    Assert.assertTrue(om.getOperator() instanceof InputTestOperator);
     @SuppressWarnings("rawtypes")
-    TestOperator beanBack = (TestOperator)om.getOperator();
+    TestOperator beanBack = (InputTestOperator)om.getOperator();
 
     // The operator deserialized back from json should be same as original operator
     Assert.assertEquals(bean.map, beanBack.map);
