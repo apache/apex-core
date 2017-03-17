@@ -29,12 +29,6 @@ import java.util.Set;
 
 import com.google.common.base.Throwables;
 
-import com.datatorrent.api.StringCodec.Boolean2String;
-import com.datatorrent.api.StringCodec.Enum2String;
-import com.datatorrent.api.StringCodec.Integer2String;
-import com.datatorrent.api.StringCodec.Long2String;
-import com.datatorrent.api.StringCodec.String2String;
-
 /**
  * Attribute represents the attribute which can be set on various components in the system.
  *
@@ -295,17 +289,7 @@ public class Attribute<T> implements Serializable
                 StringCodec<?> codec = null;
                 if (attribute.defaultValue != null) {
                   Class<?> klass = attribute.defaultValue.getClass();
-                  if (klass == String.class) {
-                    codec = new String2String();
-                  } else if (klass == Integer.class) {
-                    codec = new Integer2String();
-                  } else if (klass == Long.class) {
-                    codec = new Long2String();
-                  } else if (klass == Boolean.class) {
-                    codec = new Boolean2String();
-                  } else if (Enum.class.isAssignableFrom(klass)) {
-                    codec = new Enum2String(klass);
-                  }
+                  codec = StringCodec.Factory.getInstance(klass);
                 }
                 if (codec != null) {
                   Field codecField = Attribute.class.getDeclaredField("codec");

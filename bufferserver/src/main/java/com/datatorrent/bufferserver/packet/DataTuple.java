@@ -33,33 +33,15 @@ public class DataTuple extends Tuple
   }
 
   @Override
-  public int getWindowId()
+  public MessageType getType()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public int getPartition()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return MessageType.CODEC_STATE;
   }
 
   @Override
   public Slice getData()
   {
-    return new Slice(buffer, offset + 1, length - 1);
-  }
-
-  @Override
-  public int getBaseSeconds()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public int getWindowWidth()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return new Slice(buffer, offset, limit - offset);
   }
 
   public static byte[] getSerializedTuple(byte type, Slice f)

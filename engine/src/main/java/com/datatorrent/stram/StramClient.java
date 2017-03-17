@@ -36,6 +36,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.common.util.JarHelper;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
@@ -51,7 +53,6 @@ import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
@@ -204,25 +205,13 @@ public class StramClient
     }
 
     LinkedHashSet<String> localJarFiles = new LinkedHashSet<>(); // avoid duplicates
-    HashMap<String, String> sourceToJar = new HashMap<>();
+    JarHelper jarHelper = new JarHelper();
 
     for (Class<?> jarClass : jarClasses) {
-      if (jarClass.getProtectionDomain().getCodeSource() == null) {
-        // system class
-        continue;
+      String jar = jarHelper.getJar(jarClass);
+      if (jar != null) {
+        localJarFiles.add(jar);
       }
-      String sourceLocation = jarClass.getProtectionDomain().getCodeSource().getLocation().toString();
-      String jar = sourceToJar.get(sourceLocation);
-      if (jar == null) {
-        // don't create jar file from folders multiple times
-        jar = JarFinder.getJar(jarClass);
-        sourceToJar.put(sourceLocation, jar);
-        LOG.debug("added sourceLocation {} as {}", sourceLocation, jar);
-      }
-      if (jar == null) {
-        throw new AssertionError("Cannot resolve jar file for " + jarClass);
-      }
-      localJarFiles.add(jar);
     }
 
     String libJarsPath = dag.getValue(Context.DAGContext.LIBRARY_JARS);
@@ -296,9 +285,20 @@ public class StramClient
 
     // copy sub directories that are not present in target
     FileStatus[] lFiles = fs.listStatus(origAppDir);
+
+    // In case of MapR/MapR-FS, f.getPath().toString() returns path as maprfs:///<orig app dir>
+    // whereas origAppDir.toString & newAppDir are in maprfs:/<orig or new app dir> format
+    // e.g.
+    // f.getPath().toString -> maprfs:///user/dtadmin/datatorrent/apps/application_1481890072066_0004/checkpoints
+    // origAppDir -> maprfs:/user/dtadmin/datatorrent/apps/application_1481890072066_0004
+    // newAppDir -> maprfs:/user/dtadmin/datatorrent/apps/application_1481890072066_0005
+
+    String origAppDirPath = Path.getPathWithoutSchemeAndAuthority(origAppDir).toString();
+    String newAppDirPath = Path.getPathWithoutSchemeAndAuthority(new Path(newAppDir)).toString();
+
     for (FileStatus f : lFiles) {
       if (f.isDirectory()) {
-        String targetPath = f.getPath().toString().replace(origAppDir.toString(), newAppDir);
+        String targetPath = f.getPath().toString().replace(origAppDirPath, newAppDirPath);
         if (!fs.exists(new Path(targetPath))) {
           LOG.debug("Copying {} to {}", f.getPath(), targetPath);
           FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);

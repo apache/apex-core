@@ -42,6 +42,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 /**
  * An implementation of {@link YarnAppLauncher} to launch applications on Hadoop YARN.
+ *
+ * @since 3.5.0
  */
 public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.YarnAppHandleImpl>
 {

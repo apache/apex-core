@@ -173,13 +173,13 @@ public interface Context
      * that can be received on the port. If it is unspecified the engine may use
      * a generic codec.
      */
-    Attribute<StreamCodec<?>> STREAM_CODEC = new Attribute<StreamCodec<?>>(new Object2String<StreamCodec<?>>());
+    Attribute<StreamCodec<?>> STREAM_CODEC = new Attribute<>(Object2String.<StreamCodec<?>>getInstance());
 
     /**
      * Provides the tuple class which the port receives or emits. While this attribute is null by default,
      * whether it is needed or not is controlled through the port annotation.
      */
-    Attribute<Class<?>> TUPLE_CLASS = new Attribute<>(new Class2String<>());
+    Attribute<Class<?>> TUPLE_CLASS = new Attribute<>(Class2String.getInstance());
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(PortContext.class);
@@ -207,12 +207,12 @@ public interface Context
      * is equivalent to infinity; The operator hence will be attempted to be recovered indefinitely unless this value
      * is set to anything else.
      */
-    Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(new Integer2String());
+    Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<>(Integer2String.getInstance());
     /**
      * Specify a listener to process and optionally react to operator status updates.
      * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
      */
-    Attribute<Collection<StatsListener>> STATS_LISTENERS = new Attribute<Collection<StatsListener>>(new Collection2String<StatsListener>(",", new Object2String<StatsListener>(":")));
+    Attribute<Collection<StatsListener>> STATS_LISTENERS = new Attribute<>(Collection2String.getInstance(",", Object2String.<StatsListener>getInstance(":")));
     /**
      * Conveys whether the Operator is stateful or stateless. If the operator is stateless, no checkpointing is required
      * by the engine. The attribute is ignored when the operator was already declared stateless through the
@@ -231,7 +231,7 @@ public interface Context
     /**
      * The options to be pass to JVM when launching the operator. Options such as java maximum heap size can be specified here.
      */
-    Attribute<String> JVM_OPTIONS = new Attribute<String>(new String2String());
+    Attribute<String> JVM_OPTIONS = new Attribute<>(String2String.getInstance());
     /**
      * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
      */
@@ -241,7 +241,7 @@ public interface Context
      * slided by duration determined using value of this attribute. Default value is null which is equivalent to that of {@link #APPLICATION_WINDOW_COUNT}.
      * The value should range between  (0 - {@link #APPLICATION_WINDOW_COUNT})
      */
-    Attribute<Integer> SLIDE_BY_WINDOW_COUNT = new Attribute<Integer>(new Integer2String());
+    Attribute<Integer> SLIDE_BY_WINDOW_COUNT = new Attribute<>(Integer2String.getInstance());
 
     /**
      * Attribute of the operator that hints at the optimal checkpoint boundary.
@@ -257,15 +257,15 @@ public interface Context
      * For example, the user may wish to specify a locality constraint for an input operator relative to its data source.
      * The attribute can then be set to the host name that is specified in the operator specific connect string property.
      */
-    Attribute<String> LOCALITY_HOST = new Attribute<String>(new String2String());
+    Attribute<String> LOCALITY_HOST = new Attribute<>(String2String.getInstance());
     /**
      * Name of rack to directly control locality of an operator. Complementary to stream locality (RACK_LOCAL affinity).
      */
-    Attribute<String> LOCALITY_RACK = new Attribute<String>(new String2String());
+    Attribute<String> LOCALITY_RACK = new Attribute<>(String2String.getInstance());
     /**
      * The agent which can be used to checkpoint the windows.
      */
-    Attribute<StorageAgent> STORAGE_AGENT = new Attribute<StorageAgent>(new Object2String<StorageAgent>());
+    Attribute<StorageAgent> STORAGE_AGENT = new Attribute<>(Object2String.<StorageAgent>getInstance());
     /**
      * The payload processing mode for this operator - at most once, exactly once, or default at least once.
      * If the processing mode for an operator is specified as AT_MOST_ONCE and no processing mode is specified for the downstream
@@ -293,27 +293,26 @@ public interface Context
      * If the attribute is not set and the operator implements Partitioner interface, then the instance of the operator
      * is used otherwise default default partitioning is used.
      */
-    Attribute<Partitioner<? extends Operator>> PARTITIONER = new Attribute<Partitioner<? extends Operator>>(new Object2String<Partitioner<? extends Operator>>());
+    Attribute<Partitioner<? extends Operator>> PARTITIONER = new Attribute<>(Object2String.<Partitioner<? extends Operator>>getInstance());
 
     /**
      * Aggregates physical counters to a logical counter.
      * @deprecated  use {@link #METRICS_AGGREGATOR}
      */
     @Deprecated
-    Attribute<CountersAggregator> COUNTERS_AGGREGATOR = new Attribute<CountersAggregator>(new Object2String<CountersAggregator>());
+    Attribute<CountersAggregator> COUNTERS_AGGREGATOR = new Attribute<>(Object2String.<CountersAggregator>getInstance());
 
     /**
      * Aggregates metrics of physical instances of an operator. This handler is called with the metrics data of a
      * particular window from all the physical instances so that it can be aggregated into a logical view.
      */
-    Attribute<AutoMetric.Aggregator> METRICS_AGGREGATOR = new Attribute<AutoMetric.Aggregator>(new Object2String<AutoMetric.Aggregator>());
+    Attribute<AutoMetric.Aggregator> METRICS_AGGREGATOR = new Attribute<>(Object2String.<AutoMetric.Aggregator>getInstance());
 
     /**
      * Provides dimension aggregations and time buckets information for logical metrics. The information provided
      * by this construct is conveyed to tracker application and influences the aggregations done on it by the tracker.
      */
-    Attribute<AutoMetric.DimensionsScheme> METRICS_DIMENSIONS_SCHEME = new Attribute<AutoMetric.DimensionsScheme>(new
-        Object2String<AutoMetric.DimensionsScheme>());
+    Attribute<AutoMetric.DimensionsScheme> METRICS_DIMENSIONS_SCHEME = new Attribute<>(Object2String.<AutoMetric.DimensionsScheme>getInstance());
 
     /**
      * Return the operator runtime id.
@@ -353,7 +352,7 @@ public interface Context
     /**
      * URL to the application's documentation.
      */
-    Attribute<String> APPLICATION_DOC_LINK = new Attribute<String>(new String2String());
+    Attribute<String> APPLICATION_DOC_LINK = new Attribute<>(String2String.getInstance());
 
     /**
      * URL to the application's app data, if any. If not set, an empty string is the default.
@@ -364,12 +363,12 @@ public interface Context
      * <code>"http://mynetwork.net/my/appdata/dashboard?appId=application_1355713111917_0002"</code>.
      * </p>
      */
-    Attribute<String> APPLICATION_DATA_LINK = new Attribute<String>(new String2String());
+    Attribute<String> APPLICATION_DATA_LINK = new Attribute<>(String2String.getInstance());
     /**
      * Transport to push the stats and the metrics.
      * If using the built-in transport, please use an AutoMetricBuiltInTransport object
      */
-    Attribute<AutoMetric.Transport> METRICS_TRANSPORT = new Attribute<>(new Object2String<AutoMetric.Transport>());
+    Attribute<AutoMetric.Transport> METRICS_TRANSPORT = new Attribute<>(Object2String.<AutoMetric.Transport>getInstance());
     /**
      * Application instance identifier. An application with the same name can run in multiple instances, each with a
      * unique identifier. The identifier is set by the client that submits the application and can be used in operators
@@ -379,12 +378,12 @@ public interface Context
      * <code>application_1355713111917_0002</code>). Note that only the full id string uniquely identifies an application,
      * the integer offset will reset on RM restart.
      */
-    Attribute<String> APPLICATION_ID = new Attribute<String>(new String2String());
+    Attribute<String> APPLICATION_ID = new Attribute<>(String2String.getInstance());
     /**
      * Application package source. If the application is launched using an app package, this attribute contains the
      * information of the app package. It is in the format of {user}|{appPackageName}|{appPackageVersion}
      */
-    Attribute<String> APP_PACKAGE_SOURCE = new Attribute<String>(new String2String());
+    Attribute<String> APP_PACKAGE_SOURCE = new Attribute<>(String2String.getInstance());
     /**
      * Dump extra debug information in launcher, master and containers.
      */
@@ -392,7 +391,7 @@ public interface Context
     /**
      * The options to be pass to JVM when launching the containers. Options such as java maximum heap size can be specified here.
      */
-    Attribute<String> CONTAINER_JVM_OPTIONS = new Attribute<String>(new String2String());
+    Attribute<String> CONTAINER_JVM_OPTIONS = new Attribute<>(String2String.getInstance());
     /**
      * The amount of memory to be requested for the application master. Not used in local mode.
      * Default value is 1GB.
@@ -414,7 +413,7 @@ public interface Context
     /**
      * The path to store application dependencies, recording and other generated files for application master and containers.
      */
-    Attribute<String> APPLICATION_PATH = new Attribute<String>(new String2String());
+    Attribute<String> APPLICATION_PATH = new Attribute<>(String2String.getInstance());
     /**
      * The size limit for a file where tuple recordings are stored. When tuples are being recorded they are stored
      * in files. When a file size reaches this limit a new file is created and tuples start getting stored in the new file. Default value is 128k.
@@ -429,7 +428,7 @@ public interface Context
     /**
      * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt.gateway.listenAddress" in the configuration.
      */
-    Attribute<String> GATEWAY_CONNECT_ADDRESS = new Attribute<String>(new String2String());
+    Attribute<String> GATEWAY_CONNECT_ADDRESS = new Attribute<>(String2String.getInstance());
     /**
      * Whether or not gateway is expecting SSL connection.
      */
@@ -437,11 +436,11 @@ public interface Context
     /**
      * The username for logging in to the gateway, if authentication is enabled.
      */
-    Attribute<String> GATEWAY_USER_NAME = new Attribute<String>(new String2String());
+    Attribute<String> GATEWAY_USER_NAME = new Attribute<>(String2String.getInstance());
     /**
      * The password for logging in to the gateway, if authentication is enabled.
      */
-    Attribute<String> GATEWAY_PASSWORD = new Attribute<String>(new String2String());
+    Attribute<String> GATEWAY_PASSWORD = new Attribute<>(String2String.getInstance());
     /**
      * The timeout when connecting to the pubsub service in gateway
      */
@@ -494,18 +493,18 @@ public interface Context
     /**
      * The agent which can be used to find the jvm options for the container.
      */
-    Attribute<ContainerOptConfigurator> CONTAINER_OPTS_CONFIGURATOR = new Attribute<ContainerOptConfigurator>(new Object2String<ContainerOptConfigurator>());
+    Attribute<ContainerOptConfigurator> CONTAINER_OPTS_CONFIGURATOR = new Attribute<>(Object2String.<ContainerOptConfigurator>getInstance());
     /**
      * The policy for enabling stram web services authentication.<br/>
      * See {@link StramHTTPAuthentication} for the different options.<br/>
      * Default value is StramHTTPAuthentication.FOLLOW_HADOOP_AUTH
      */
-    Attribute<StramHTTPAuthentication> STRAM_HTTP_AUTHENTICATION = new Attribute<>(StramHTTPAuthentication.FOLLOW_HADOOP_AUTH, new StringCodec.Enum2String<>(StramHTTPAuthentication.class));
+    Attribute<StramHTTPAuthentication> STRAM_HTTP_AUTHENTICATION = new Attribute<>(StramHTTPAuthentication.FOLLOW_HADOOP_AUTH, StringCodec.Enum2String.getInstance(StramHTTPAuthentication.class));
     /**
      * The string codec map for classes that are to be set or get through properties as strings.
      * Only supports string codecs that have a constructor with no arguments
      */
-    Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>>(new Map2String<Class<?>, Class<? extends StringCodec<?>>>(",", "=", new Class2String<Object>(), new Class2String<StringCodec<?>>()));
+    Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<>(Map2String.getInstance(",", "=", Class2String.getInstance(), Class2String.<StringCodec<?>>getInstance()));
 
     /**
      * The number of consecutive container failures that should lead to
@@ -522,7 +521,7 @@ public interface Context
     /**
      * Affinity rules for specifying affinity and anti-affinity between logical operators
      */
-    Attribute<AffinityRulesSet> AFFINITY_RULES_SET = new Attribute<AffinityRulesSet>(new JsonStringCodec<AffinityRulesSet>(AffinityRulesSet.class));
+    Attribute<AffinityRulesSet> AFFINITY_RULES_SET = new Attribute<>(JsonStringCodec.getInstance(AffinityRulesSet.class));
 
     /**
      * Comma separated list of jar file dependencies to be deployed with the application.
@@ -530,7 +529,7 @@ public interface Context
      * that are made available through the distributed file system to application master
      * and child containers.
      */
-    Attribute<String> LIBRARY_JARS = new Attribute<>(new StringCodec.String2String());
+    Attribute<String> LIBRARY_JARS = new Attribute<>(String2String.getInstance());
 
     @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(DAGContext.class);

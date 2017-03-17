@@ -33,6 +33,8 @@ import com.datatorrent.api.StreamingApplication;
 /**
  * A class that provides an entry point for functionality to run applications in different environments such as current
  * Java VM, Hadoop YARN etc.
+ *
+ * @since 3.5.0
  */
 public abstract class Launcher<H extends Launcher.AppHandle>
 {

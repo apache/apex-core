@@ -58,7 +58,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PTOperator;
 
 /**
- * Launcher for topologies in local mode within a single process.
+ * Launcher for topologies in embedded mode within a single process.
  * Child containers are mapped to threads.
  *
  * @since 0.3.2
@@ -67,7 +67,7 @@ public class StramLocalCluster implements Runnable, Controller
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramLocalCluster.class);
   // assumes execution as unit test
-  private static File CLUSTER_WORK_DIR = new File("target", StramLocalCluster.class.getName());
+  private static final File DEFAULT_APP_DIR = new File("target", StramLocalCluster.class.getName());
   private static final String LOCALHOST_PROPERTY_KEY = "org.apache.apex.stram.StramLocalCluster.hostname";
   private static final String LOCALHOST = System.getProperty(LOCALHOST_PROPERTY_KEY, "localhost");
   protected final StreamingContainerManager dnmgr;
@@ -283,11 +283,24 @@ public class StramLocalCluster implements Runnable, Controller
     dag.validate();
     // ensure plan can be serialized
     cloneLogicalPlan(dag);
-    // convert to URI so we always write to local file system,
-    // even when the environment has a default HDFS location.
-    String pathUri = CLUSTER_WORK_DIR.toURI().toString();
+    final Path pathUri;
+    String appPath = dag.getAttributes().get(LogicalPlan.APPLICATION_PATH);
+    if (appPath == null) {
+      // convert to URI so we always write to local file system,
+      // even when the environment has a default HDFS location.
+      pathUri = new Path(DEFAULT_APP_DIR.toURI());
+      dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, pathUri.toString());
+    } else {
+      // should accept any valid path URI (or relative path) provided by user
+      Path tmp = new Path(appPath);
+      if (!tmp.isAbsolute()) {
+        pathUri = new Path(new File(appPath).toURI());
+      } else {
+        pathUri = tmp;
+      }
+    }
     try {
-      FileContext.getLocalFSFileContext().delete(new Path(pathUri/*CLUSTER_WORK_DIR.getAbsolutePath()*/), true);
+      FileContext.getLocalFSFileContext().delete(pathUri, true);
     } catch (IllegalArgumentException e) {
       throw e;
     } catch (IOException e) {
@@ -295,22 +308,11 @@ public class StramLocalCluster implements Runnable, Controller
     }
 
     dag.getAttributes().put(LogicalPlan.APPLICATION_ID, "app_local_" + System.currentTimeMillis());
-    if (dag.getAttributes().get(LogicalPlan.APPLICATION_PATH) == null) {
-      dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, pathUri);
-    }
     if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) {
       dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(new Path(pathUri, LogicalPlan.SUBDIR_CHECKPOINTS).toString(), null));
     }
     this.dnmgr = new StreamingContainerManager(dag);
     this.umbilical = new UmbilicalProtocolLocalImpl();
-
-    if (!perContainerBufferServer) {
-      StreamingContainer.eventloop.start();
-      bufferServer = new Server(0, 1024 * 1024,8);
-      bufferServer.setSpoolStorage(new DiskStorage());
-      bufferServerAddress = InetSocketAddress.createUnresolved(LOCALHOST, bufferServer.run(StreamingContainer.eventloop).getPort());
-      LOG.info("Buffer server started: {}", bufferServerAddress);
-    }
   }
 
   public static LogicalPlan cloneLogicalPlan(LogicalPlan lp) throws IOException, ClassNotFoundException
@@ -442,6 +444,18 @@ public class StramLocalCluster implements Runnable, Controller
   @SuppressWarnings({"SleepWhileInLoop", "ResultOfObjectAllocationIgnored"})
   public void run(long runMillis)
   {
+    if (!perContainerBufferServer) {
+      StreamingContainer.eventloop.start();
+      bufferServer = new Server(0, 1024 * 1024,8);
+      try {
+        bufferServer.setSpoolStorage(new DiskStorage());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      bufferServerAddress = InetSocketAddress.createUnresolved(LOCALHOST, bufferServer.run(StreamingContainer.eventloop).getPort());
+      LOG.info("Buffer server started: {}", bufferServerAddress);
+    }
+
     long endMillis = System.currentTimeMillis() + runMillis;
     List<Thread> containerThreads = new LinkedList<>();
 

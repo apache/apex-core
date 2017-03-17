@@ -16,29 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.datatorrent.bufferserver.packet;
-
 /**
- * <p>PublishRequestTuple class.</p>
- *
- * @since 0.3.2
+ * Shared utilities
  */
-public class PublishRequestTuple extends GenericRequestTuple
-{
-  public PublishRequestTuple(byte[] array, int offset, int len)
-  {
-    super(array, offset, len);
-  }
-
-  public MessageType getType()
-  {
-    return MessageType.PUBLISHER_REQUEST;
-  }
-
-  public static byte[] getSerializedRequest(final String version, final String identifier, final long startingWindowId)
-  {
-    return GenericRequestTuple.getSerializedRequest(version, identifier, startingWindowId,
-        MessageType.PUBLISHER_REQUEST_VALUE);
-  }
-
-}
+package org.apache.apex.common.util;

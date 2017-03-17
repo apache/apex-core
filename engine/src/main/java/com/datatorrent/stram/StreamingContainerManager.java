@@ -1838,7 +1838,7 @@ public class StreamingContainerManager implements PlanContext
 
   public long updateOperatorLatency(PTOperator oper, UpdateOperatorLatencyContext ctx)
   {
-    if (!oper.getInputs().isEmpty()) {
+    if (!oper.getInputs().isEmpty() && oper.stats.currentWindowId.get() > 0) {
       OperatorStatus status = oper.stats;
       long latency = Long.MAX_VALUE;
       PTOperator slowestUpstream = null;
@@ -1852,7 +1852,7 @@ public class StreamingContainerManager implements PlanContext
           if (upstreamOp.getOperatorMeta().getOperator() instanceof Operator.DelayOperator) {
             continue;
           }
-          if (upstreamOp.stats.currentWindowId.get() > oper.stats.currentWindowId.get()) {
+          if (upstreamOp.stats.currentWindowId.get() >= oper.stats.currentWindowId.get()) {
             long portLatency = WindowGenerator
                 .compareWindowId(upstreamOp.stats.currentWindowId.get(), oper.stats.currentWindowId.get(), windowWidthMillis) * windowWidthMillis;
             if (latency > portLatency) {
@@ -1893,7 +1893,7 @@ public class StreamingContainerManager implements PlanContext
         return latency;
       }
     }
-    return 0;
+    return -1;
   }
 
   private ContainerHeartbeatResponse getHeartbeatResponse(StreamingContainerAgent sca)
@@ -2188,16 +2188,24 @@ public class StreamingContainerManager implements PlanContext
    */
   private long updateCheckpoints(boolean recovery)
   {
+    int operatorCount = 0;
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, recovery, getCheckpointGroups());
     for (OperatorMeta logicalOperator : plan.getLogicalPlan().getRootOperators()) {
       //LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator : operators) {
+          operatorCount++;
           updateRecoveryCheckpoints(operator, ctx);
         }
       }
     }
+
+    // if no physical operators are available, then don't update committedWindowId
+    if (operatorCount == 0) {
+      return committedWindowId;
+    }
+
     purgeCheckpoints();
 
     for (PTOperator oper : ctx.blocked) {

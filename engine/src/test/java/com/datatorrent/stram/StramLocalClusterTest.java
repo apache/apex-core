@@ -40,6 +40,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.Context;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.LocalMode;
@@ -395,5 +396,21 @@ public class StramLocalClusterTest
     return new File(destDir, pojoClassName + ".jar").getAbsolutePath();
   }
 
+  @Test
+  public void testAppPath() throws Exception
+  {
+    // add operator for initial checkpoint
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    o1.setMaxTuples(1);
+    File relPath = new File(dag.getAttributes().get(DAGContext.APPLICATION_PATH));
+    String uriPath = relPath.toURI().toString();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, uriPath);
+    StramLocalCluster cluster = new StramLocalCluster(dag);
+    // no need for run(), just need the initial checkpoint
+    Assert.assertFalse(cluster.isFinished());
+    Assert.assertTrue("app path exists", relPath.exists() && relPath.isDirectory());
+    File checkPointDir = new File(relPath, LogicalPlan.SUBDIR_CHECKPOINTS);
+    Assert.assertTrue("checkpoint path exists", checkPointDir.exists() && checkPointDir.isDirectory());
+  }
 
 }
