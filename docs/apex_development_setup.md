@@ -23,7 +23,7 @@ After installing these tools, make sure that the directories containing the exec
 * **Linux and Mac** - Open a console/terminal window and enter the command `echo $PATH` to see the value of the `PATH` variable and verify that the above directories for Java, git, and maven executables are present.  If not, make sure software is downloaded and installed, and optionally PATH reference is added and exported  in a `~/.profile` or `~/.bash_profile`.  For example to add maven located in `/sfw/maven/apache-maven-3.3.3` to PATH add the line: `export PATH=$PATH:/sfw/maven/apache-maven-3.3.3/bin`
 
 
-Confirm by running the following commands and comparing with output that show in the table below:
+Confirm by running the following commands and comparing with output shown in the table below:
 
 <table>
 <colgroup>
@@ -65,12 +65,12 @@ Creating New Apex Project
 After development tools are configured, you can now use the maven archetype to create a basic Apache Apex project.  **Note:** When executing the commands below, replace `3.4.0` by [latest available version](http://apex.apache.org/downloads.html) of Apache Apex.
 
 
-* **Windows** - Create a new Windows command file called `newapp.cmd` by copying the lines below, and execute it.  When you run this file, the properties will be displayed and you will be prompted with `` Y: :``; just press **Enter** to complete the project generation.  The caret (^) at the end of some lines indicates that a continuation line follows. 
+* **Windows** - Create a new Windows command file called `newapp.cmd` by copying the lines below, and execute it.  When you run this file, the properties will be displayed and the project directory named `myapexapp` will be generated.  The caret (^) at the end of some lines indicates that a continuation line follows.
 
         @echo off
         @rem Script for creating a new application
         setlocal
-        mvn archetype:generate ^
+        mvn -B archetype:generate ^
          -DarchetypeGroupId=org.apache.apex ^
          -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.4.0 ^
          -DgroupId=com.example -Dpackage=com.example.myapexapp -DartifactId=myapexapp ^
@@ -80,7 +80,7 @@ After development tools are configured, you can now use the maven archetype to c
 
 * **Linux** - Execute the lines below in a terminal window.  New project will be created in the curent working directory.  The backslash (\\) at the end of the lines indicates continuation.
 
-        mvn archetype:generate \
+        mvn -B archetype:generate \
          -DarchetypeGroupId=org.apache.apex \
          -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.4.0 \
          -DgroupId=com.example -Dpackage=com.example.myapexapp -DartifactId=myapexapp \
