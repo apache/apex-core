@@ -1058,18 +1058,14 @@ public class DataList
 
     private void moreDataAvailable()
     {
-      final Future<?> future = this.future;
-      if (future == null || future.isDone() || future.isCancelled()) {
-        // Do not schedule a new task if there is an existing one that is still running or is waiting in the queue
-        this.future = autoFlushExecutor.submit(listenersNotifier);
-      } else {
-        synchronized (this) {
-          if (this.future == null) {
-            // future is set to null before run() exists, no need to check whether future isDone() or isCancelled()
-            this.future = autoFlushExecutor.submit(this);
-          } else {
-            isMoreDataAvailable = true;
-          }
+      // If checking the current future is not protected then we could be scheduling a new notification task while
+      // another is scheduled
+      synchronized (this) {
+        if (future == null || future.isDone() || future.isCancelled()) {
+          // Do not schedule a new task if there is an existing one that is still running or is waiting in the queue
+          this.future = autoFlushExecutor.submit(listenersNotifier);
+        } else {
+          isMoreDataAvailable = true;
         }
       }
     }
@@ -1110,7 +1106,9 @@ public class DataList
     {
       try {
         if (addedData() || checkIfListenersHaveDataToSendOnly()) {
-          future = autoFlushExecutor.submit(this);
+          synchronized (this) {
+            future = autoFlushExecutor.submit(this);
+          }
         } else {
           synchronized (this) {
             if (isMoreDataAvailable) {
