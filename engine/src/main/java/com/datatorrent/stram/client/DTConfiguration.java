@@ -70,7 +70,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
   private final Map<String, ValueEntry> map = new LinkedHashMap<>();
   private static final Logger LOG = LoggerFactory.getLogger(DTConfiguration.class);
 
-  public static class ValueEntry
+  private static class ValueEntry
   {
     public String value;
     public boolean isFinal = false;
@@ -275,36 +275,33 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     map.remove(key);
   }
 
-  public ValueEntry setInternal(String key, String value)
+  public void setInternal(String key, String value)
   {
-    ValueEntry valueEntry;
-    if (map.containsKey(key)) {
-      valueEntry = map.get(key);
+    ValueEntry valueEntry = map.get(key);
+    if (valueEntry != null) {
       valueEntry.value = value;
     } else {
       valueEntry = new ValueEntry();
       valueEntry.scope = isLocalKey(key) ? Scope.LOCAL : Scope.TRANSIENT;
+      valueEntry.value = value;
       map.put(key, valueEntry);
     }
-    return valueEntry;
   }
 
-  public ValueEntry set(String key, String value, Scope scope, String description) throws ConfigException
+  public void set(String key, String value, Scope scope, String description) throws ConfigException
   {
-    ValueEntry valueEntry;
-    if (map.containsKey(key)) {
-      valueEntry = map.get(key);
+    ValueEntry valueEntry = map.get(key);
+    if (valueEntry != null) {
       if (valueEntry.isFinal) {
         throw new ConfigException("Cannot set final property " + key);
       }
     } else {
       valueEntry = new ValueEntry();
+      map.put(key, valueEntry);
     }
     valueEntry.value = value;
     valueEntry.description = description;
     valueEntry.scope = isLocalKey(key) ? Scope.LOCAL : scope;
-    map.put(key, valueEntry);
-    return valueEntry;
   }
 
   public static boolean isLocalKey(String key)
