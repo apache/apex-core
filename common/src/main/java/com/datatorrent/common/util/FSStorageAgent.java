@@ -119,11 +119,18 @@ public class FSStorageAgent implements StorageAgent, Serializable
       } finally {
         if (stateSaved) {
           logger.debug("Saving {}: {}", operatorId, window);
-          fileContext.rename(lPath, new Path(path + Path.SEPARATOR + operatorIdStr + Path.SEPARATOR + window),
+          fileContext.rename(lPath, getCheckpointPath(operatorId, windowId),
               Options.Rename.OVERWRITE);
         }
       }
     }
+  }
+
+  public Path getCheckpointPath(int operatorId, long windowId)
+  {
+    String operatorIdStr = String.valueOf(operatorId);
+    String window = Long.toHexString(windowId);
+    return new Path(path + Path.SEPARATOR + operatorIdStr + Path.SEPARATOR + window);
   }
 
   @Override

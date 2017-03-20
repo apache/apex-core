@@ -81,6 +81,7 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BasicContainerOptConfigurator;
+import com.datatorrent.common.util.LeafStatelessStorageAgent;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.engine.StreamingContainer;
@@ -472,10 +473,20 @@ public class StramClient
         ((StorageAgent.ApplicationAwareStorageAgent)agent).setApplicationAttributes(dag.getAttributes());
       }
 
+      Path checkpointPath = new Path(appPath, LogicalPlan.SUBDIR_CHECKPOINTS);
       if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) { /* which would be the most likely case */
-        Path checkpointPath = new Path(appPath, LogicalPlan.SUBDIR_CHECKPOINTS);
+        checkpointPath = new Path(appPath, LogicalPlan.SUBDIR_CHECKPOINTS);
         // use conf client side to pickup any proxy settings from dt-site.xml
         dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(checkpointPath.toString(), conf));
+      }
+
+      StorageAgent emptyStorageAgent = new LeafStatelessStorageAgent(checkpointPath.toString(), conf);
+      List<LogicalPlan.OperatorMeta> leafOperators = dag.getLeafOperators();
+      for (LogicalPlan.OperatorMeta ometa : leafOperators) {
+        if (ometa.getAttributes().get(OperatorContext.STORAGE_AGENT) == null && ometa.isStateless()) {
+          LOG.info("Setting  LeafStatelessStorageAgent for operator {}", ometa.getName());
+          ometa.getAttributes().put(OperatorContext.STORAGE_AGENT, emptyStorageAgent);
+        }
       }
 
       if (dag.getAttributes().get(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR) == null) {

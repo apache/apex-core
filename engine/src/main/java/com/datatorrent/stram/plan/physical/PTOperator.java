@@ -42,8 +42,6 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener;
-import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
@@ -65,6 +63,11 @@ public class PTOperator implements java.io.Serializable
   private static final long serialVersionUID = 201312112033L;
 
   public static final Recoverable SET_OPERATOR_STATE = new SetOperatorState();
+
+  public boolean isLeafOperator()
+  {
+    return operatorMeta.isLeafOperator();
+  }
 
   public enum State
   {
@@ -428,11 +431,7 @@ public class PTOperator implements java.io.Serializable
 
   public boolean isOperatorStateLess()
   {
-    if (operatorMeta.getDAG().getValue(OperatorContext.STATELESS) || operatorMeta.getValue(OperatorContext.STATELESS)) {
-      return true;
-    }
-
-    return operatorMeta.getOperator().getClass().isAnnotationPresent(Stateless.class);
+    return operatorMeta.isStateless();
   }
 
   public Checkpoint addCheckpoint(long windowId, long startTime)
