@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InvalidClassException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -1944,8 +1943,6 @@ public class ApexCli
             AppPackage ap = null;
             try {
               ap = newAppPackageInstance(new File(fileName));
-            } catch (InvalidClassException iex) {
-              throw new CliException(iex.getMessage());
             } catch (Exception ex) {
               // It's not an app package
               if (requiredAppPackageName != null) {
@@ -1955,6 +1952,7 @@ public class ApexCli
 
             if (ap != null) {
               try {
+                checkJavaVersionCompatible(ap);
                 if (!commandLineInfo.force) {
                   checkPlatformCompatible(ap);
                   checkConfigPackageCompatible(ap, cp);
@@ -3073,7 +3071,7 @@ public class ApexCli
             }
 
             arr.put(oper);
-          } catch (Exception | NoClassDefFoundError ex) {
+          } catch (Exception | NoClassDefFoundError | UnsupportedClassVersionError ex) {
             // ignore this class
             final String cls = clazz;
             failed.put(cls, ex.toString());
@@ -3516,6 +3514,16 @@ public class ApexCli
     VersionInfo actualVersion = VersionInfo.APEX_VERSION;
     if (!VersionInfo.isCompatible(actualVersion.getVersion(), apVersion)) {
       throw new CliException("This App Package is compiled with Apache Apex Core API version " + apVersion + ", which is incompatible with this Apex Core version " + actualVersion.getVersion());
+    }
+  }
+
+  private void checkJavaVersionCompatible(AppPackage ap)
+  {
+    String buildJdkVersion = ap.getBuildJdkVersion();
+    String systemVersion = System.getProperty("java.version");
+    if (VersionInfo.compare(buildJdkVersion, systemVersion) > 0) {
+      throw new CliException("Application package build-jdk version " + buildJdkVersion
+          + " is greater than system java version " + systemVersion);
     }
   }
 

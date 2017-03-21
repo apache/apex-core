@@ -20,7 +20,6 @@ package com.datatorrent.stram.client;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InvalidClassException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,7 +44,6 @@ import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.util.VersionInfo;
 
 import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
@@ -163,11 +161,6 @@ public class AppPackage extends JarFile
       throw new IOException("Not a valid app package.  App Package Name or Version or Class-Path is missing from MANIFEST.MF");
     }
 
-    String systemVersion = System.getProperty("java.version");
-    if (VersionInfo.compare(buildJdkVersion, systemVersion) > 0) {
-      throw new InvalidClassException("Application package build-jdk version " + buildJdkVersion
-        + " is greater than system java version " + systemVersion);
-    }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
     extractToDirectory(directory, file);
 
@@ -288,7 +281,7 @@ public class AppPackage extends JarFile
     return dtEngineVersion;
   }
 
-  public String getAttributeBuildJdkVersion()
+  public String getBuildJdkVersion()
   {
     return buildJdkVersion;
   }
