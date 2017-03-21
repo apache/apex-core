@@ -39,7 +39,6 @@ import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StreamCodec;
 
 import com.datatorrent.common.util.Pair;
-import com.datatorrent.stram.StreamingContainerAgent;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -236,8 +235,7 @@ public class StreamMapping implements java.io.Serializable
       boolean separateUnifiers = false;
       Integer lastId = null;
       for (InputPortMeta ipm : streamMeta.getSinks()) {
-        StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(ipm);
-        Integer id = plan.getStreamCodecIdentifier(streamCodecInfo);
+        Integer id = plan.getStreamCodecIdentifier(ipm.getStreamCodec());
         if (lastId == null) {
           lastId = id;
         } else if (!id.equals(lastId)) {
@@ -255,10 +253,10 @@ public class StreamMapping implements java.io.Serializable
           unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
         } else {
           for (InputPortMeta ipm : streamMeta.getSinks()) {
-            StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(ipm);
-            if (!cascadeUnifierSourcesMap.containsKey(streamCodecInfo)) {
+            StreamCodec<?> streamCodec = ipm.getStreamCodec();
+            if (!cascadeUnifierSourcesMap.containsKey(streamCodec)) {
               unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
-              cascadeUnifierSourcesMap.put(streamCodecInfo, unifierSources);
+              cascadeUnifierSourcesMap.put(streamCodec, unifierSources);
             }
           }
         }
@@ -320,8 +318,7 @@ public class StreamMapping implements java.io.Serializable
             unifier.inputs.clear();
             List<PTOutput> doperUnifierSources = unifierSources;
             if (separateUnifiers) {
-              StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(doperEntry.second);
-              List<PTOutput> cascadeSources = cascadeUnifierSourcesMap.get(streamCodecInfo);
+              List<PTOutput> cascadeSources = cascadeUnifierSourcesMap.get(doperEntry.second.getStreamCodec());
               if (cascadeSources != null) {
                 doperUnifierSources = cascadeSources;
               }

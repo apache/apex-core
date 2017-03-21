@@ -994,7 +994,7 @@ public class StreamPersistanceTests
     assertTrue("persist operator should be part of the operators to be redeployed", operators.contains(persistOperatorContainer));
 
     LogicalPlan.StreamMeta s1 = (LogicalPlan.StreamMeta)s;
-    StreamCodec codec = s1.getPersistOperatorInputPort().getValue(PortContext.STREAM_CODEC);
+    StreamCodec codec = s1.getPersistOperatorInputPort().getStreamCodec();
 
     assertEquals("Codec should be instance of StreamCodecWrapper", codec instanceof StreamCodecWrapperForPersistance, true);
     StreamCodecWrapperForPersistance wrapperCodec = (StreamCodecWrapperForPersistance)codec;
