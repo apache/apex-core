@@ -40,6 +40,14 @@ import javax.xml.bind.annotation.XmlElement;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.apex.engine.api.DAGExecutionPlugin;
+import org.apache.apex.engine.api.PluginLocator;
+import org.apache.apex.engine.plugin.ApexPluginDispatcher;
+import org.apache.apex.engine.plugin.DefaultApexPluginDispatcher;
+import org.apache.apex.engine.plugin.loaders.ChainedPluginLocator;
+import org.apache.apex.engine.plugin.loaders.PropertyBasedPluginLocator;
+import org.apache.apex.engine.plugin.loaders.ServiceLoaderBasedPluginLocator;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -151,6 +159,7 @@ public class StreamingAppMasterService extends CompositeService
   private final ClusterAppStats stats = new ClusterAppStats();
   private StramDelegationTokenManager delegationTokenManager = null;
   private AppDataPushAgent appDataPushAgent;
+  private ApexPluginDispatcher apexPluginDispatcher;
 
   public StreamingAppMasterService(ApplicationAttemptId appAttemptID)
   {
@@ -575,8 +584,20 @@ public class StreamingAppMasterService extends CompositeService
       this.appDataPushAgent = new AppDataPushAgent(dnmgr, appContext);
       addService(this.appDataPushAgent);
     }
-    // initialize all services added above
+    initApexPluginDispatcher();
+
+    // Initialize all services added above
     super.serviceInit(conf);
+  }
+
+  public static final String PLUGINS_CONF_KEY = "apex.plugin.stram.plugins";
+  private void initApexPluginDispatcher()
+  {
+    PluginLocator<DAGExecutionPlugin> locator = new ChainedPluginLocator<>(new ServiceLoaderBasedPluginLocator<>(DAGExecutionPlugin.class),
+        new PropertyBasedPluginLocator<>(DAGExecutionPlugin.class, PLUGINS_CONF_KEY));
+    apexPluginDispatcher = new DefaultApexPluginDispatcher(locator, appContext, dnmgr, stats);
+    dnmgr.apexPluginDispatcher = apexPluginDispatcher;
+    addService(apexPluginDispatcher);
   }
 
   @Override

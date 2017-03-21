@@ -65,6 +65,8 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.engine.plugin.ApexPluginDispatcher;
+import org.apache.apex.engine.plugin.NoOpApexPluginDispatcher;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -175,6 +177,10 @@ import com.datatorrent.stram.webapp.StreamInfo;
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 
+import static org.apache.apex.engine.api.DAGExecutionPluginContext.COMMIT_EVENT;
+import static org.apache.apex.engine.api.DAGExecutionPluginContext.HEARTBEAT;
+import static org.apache.apex.engine.api.DAGExecutionPluginContext.STRAM_EVENT;
+
 /**
  * Tracks topology provisioning/allocation to containers<p>
  * <br>
@@ -231,6 +237,7 @@ public class StreamingContainerManager implements PlanContext
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<>();
   private final ConcurrentMap<PTOperator, PTOperator> slowestUpstreamOp = new ConcurrentHashMap<>();
   private long committedWindowId;
+  private long lastCommittedWindowId = Checkpoint.INITIAL_CHECKPOINT.getWindowId();
   // (operator id, port name) to timestamp
   private final Map<Pair<Integer, String>, Long> operatorPortLastEndWindowTimestamps = Maps.newConcurrentMap();
   private final Map<Integer, Long> operatorLastEndWindowTimestamps = Maps.newConcurrentMap();
@@ -252,6 +259,7 @@ public class StreamingContainerManager implements PlanContext
 
   //logical operator name to latest counters. exists for backward compatibility.
   private final Map<String, Object> latestLogicalCounters = Maps.newHashMap();
+  public transient ApexPluginDispatcher apexPluginDispatcher = new NoOpApexPluginDispatcher();
 
   private final LinkedHashMap<String, ContainerInfo> completedContainers = new LinkedHashMap<String, ContainerInfo>()
   {
@@ -807,6 +815,10 @@ public class StreamingContainerManager implements PlanContext
     processEvents();
 
     committedWindowId = updateCheckpoints(waitForRecovery);
+    if (lastCommittedWindowId != committedWindowId) {
+      apexPluginDispatcher.dispatch(COMMIT_EVENT, committedWindowId);
+      lastCommittedWindowId = committedWindowId;
+    }
     calculateEndWindowStats();
     if (this.vars.enableStatsRecording) {
       recordStats(currentTms);
@@ -1802,6 +1814,7 @@ public class StreamingContainerManager implements PlanContext
     rsp.stackTraceRequired = sca.stackTraceRequested;
     sca.stackTraceRequested = false;
 
+    apexPluginDispatcher.dispatch(HEARTBEAT, heartbeat);
     return rsp;
   }
 
@@ -2394,6 +2407,7 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public void recordEventAsync(StramEvent ev)
   {
+    apexPluginDispatcher.dispatch(STRAM_EVENT, ev);
     if (eventBus != null) {
       eventBus.publishAsync(ev);
     }
@@ -3299,4 +3313,8 @@ public class StreamingContainerManager implements PlanContext
     return latestLogicalCounters.get(operatorName);
   }
 
+  public void setApexPluginDispatcher(ApexPluginDispatcher manager)
+  {
+    this.apexPluginDispatcher = manager;
+  }
 }

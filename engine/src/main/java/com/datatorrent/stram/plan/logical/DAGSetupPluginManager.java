@@ -24,9 +24,8 @@ import java.util.List;
 import org.slf4j.Logger;
 
 import org.apache.apex.api.DAGSetupPlugin;
+import org.apache.apex.engine.plugin.loaders.PropertyBasedPluginLocator;
 import org.apache.hadoop.conf.Configuration;
-
-import com.datatorrent.stram.StramUtils;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -37,7 +36,7 @@ public class DAGSetupPluginManager
   private final transient List<DAGSetupPlugin> plugins = new ArrayList<>();
   private Configuration conf;
 
-  public static final String DAGSETUP_PLUGINS_CONF_KEY = "org.apache.apex.api";
+  public static final String DAGSETUP_PLUGINS_CONF_KEY = "apex.plugin.dag.setup";
   private DAGSetupPlugin.DAGSetupPluginContext contex;
 
   private void loadVisitors(Configuration conf)
@@ -47,20 +46,8 @@ public class DAGSetupPluginManager
       return;
     }
 
-    String classNamesStr = conf.get(DAGSETUP_PLUGINS_CONF_KEY);
-    if (classNamesStr == null) {
-      return;
-    }
-    String[] classNames = classNamesStr.split(",");
-    for (String className : classNames) {
-      try {
-        Class<? extends DAGSetupPlugin> plugin = StramUtils.classForName(className, DAGSetupPlugin.class);
-        plugins.add(StramUtils.newInstance(plugin));
-        LOG.info("Found DAG setup plugin {}", plugin);
-      } catch (IllegalArgumentException e) {
-        LOG.warn("Could not load plugin {}", className);
-      }
-    }
+    PropertyBasedPluginLocator<DAGSetupPlugin> locator = new PropertyBasedPluginLocator<>(DAGSetupPlugin.class, DAGSETUP_PLUGINS_CONF_KEY);
+    this.plugins.addAll(locator.discoverPlugins(conf));
   }
 
   public void setup(DAGSetupPlugin.DAGSetupPluginContext context)

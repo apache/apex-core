@@ -25,8 +25,6 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.Attribute;
-import com.datatorrent.api.Component;
-import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 
 /**
@@ -43,7 +41,7 @@ import com.datatorrent.api.DAG;
  * </ul>
  */
 @InterfaceStability.Evolving
-public interface DAGSetupPlugin extends Component<DAGSetupPlugin.DAGSetupPluginContext>, Serializable
+public interface DAGSetupPlugin extends ApexPlugin<DAGSetupPlugin.DAGSetupPluginContext>, Serializable
 {
 
   /**
@@ -89,7 +87,7 @@ public interface DAGSetupPlugin extends Component<DAGSetupPlugin.DAGSetupPluginC
    */
   void postValidateDAG();
 
-  public static class DAGSetupPluginContext implements Context
+  public static class DAGSetupPluginContext implements ApexPluginContext
   {
     private final DAG dag;
     private final Configuration conf;
