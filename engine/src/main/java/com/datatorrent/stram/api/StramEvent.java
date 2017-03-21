@@ -451,7 +451,7 @@ public abstract class StramEvent
 
     public StopContainerEvent(String containerId, int exitStatus)
     {
-      this(containerId, exitStatus, LogLevel.INFO);
+      this(containerId, exitStatus, LogLevel.WARN);
     }
 
     public StopContainerEvent(String containerId, int exitStatus, LogLevel logLevel)
