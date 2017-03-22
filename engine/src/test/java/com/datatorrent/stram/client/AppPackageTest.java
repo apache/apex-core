@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.codehaus.jackson.JsonGenerationException;
+import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.AfterClass;
@@ -34,6 +36,7 @@ import org.junit.Test;
 
 import org.apache.commons.io.IOUtils;
 
+import com.datatorrent.stram.client.AppPackage.PropertyInfo;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.util.JSONSerializationProvider;
 
@@ -139,5 +142,20 @@ public class AppPackageTest
       }
     }
     Assert.fail("Should consist of an app called MyFirstApplication");
+  }
+
+  @Test
+  public void testPropertyInfoSerializer() throws JsonGenerationException, JsonMappingException, IOException
+  {
+    AppPackage.PropertyInfo propertyInfo = new AppPackage.PropertyInfo("test-value", "test-description");
+    JSONSerializationProvider jomp = new JSONSerializationProvider();
+    jomp.addSerializer(PropertyInfo.class, new AppPackage.PropertyInfoSerializer(false));
+    String result = jomp.getContext(null).writeValueAsString(propertyInfo);
+    Assert.assertEquals("\"test-value\"", result);
+
+    jomp = new JSONSerializationProvider();
+    jomp.addSerializer(PropertyInfo.class, new AppPackage.PropertyInfoSerializer(true));
+    result = jomp.getContext(null).writeValueAsString(propertyInfo);
+    Assert.assertEquals("{\"value\":\"test-value\",\"description\":\"test-description\"}", result);
   }
 }

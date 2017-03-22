@@ -672,10 +672,11 @@ public class ApexCli
         null,
         new Arg[]{new FileArg("parameter-name")},
         "Get the configuration parameter"));
-    globalCommands.put("get-app-package-info", new CommandSpec(new GetAppPackageInfoCommand(),
+    globalCommands.put("get-app-package-info", new OptionsCommandSpec(new GetAppPackageInfoCommand(),
         new Arg[]{new FileArg("app-package-file")},
-        null,
-        "Get info on the app package file"));
+        new Arg[]{new Arg("-withDescription")},
+        "Get info on the app package file",
+        GET_APP_PACKAGE_INFO_OPTIONS));
     globalCommands.put("get-app-package-operators", new OptionsCommandSpec(new GetAppPackageOperatorsCommand(),
         new Arg[]{new FileArg("app-package-file")},
         new Arg[]{new Arg("search-term")},
@@ -2996,6 +2997,13 @@ public class ApexCli
     return tmpDir;
   }
 
+  private static Options GET_APP_PACKAGE_INFO_OPTIONS = new Options();
+
+  static {
+    GET_APP_PACKAGE_INFO_OPTIONS
+        .addOption(new Option("withDescription", false, "Get default properties with description"));
+  }
+
   public static class GetOperatorClassesCommandLineOptions
   {
     final Options options = new Options();
@@ -3010,6 +3018,20 @@ public class ApexCli
   }
 
   private static GetOperatorClassesCommandLineOptions GET_OPERATOR_CLASSES_OPTIONS = new GetOperatorClassesCommandLineOptions();
+
+  static class GetAppPackageInfoCommandLineInfo
+  {
+    boolean provideDescription;
+  }
+
+  static GetAppPackageInfoCommandLineInfo getGetAppPackageInfoCommandLineInfo(String[] args) throws ParseException
+  {
+    CommandLineParser parser = new PosixParser();
+    GetAppPackageInfoCommandLineInfo result = new GetAppPackageInfoCommandLineInfo();
+    CommandLine line = parser.parse(GET_APP_PACKAGE_INFO_OPTIONS, args);
+    result.provideDescription = line.hasOption("withDescription");
+    return result;
+  }
 
   static class GetOperatorClassesCommandLineInfo
   {
@@ -3474,8 +3496,13 @@ public class ApexCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
+      String[] tmpArgs = new String[args.length - 2];
+      System.arraycopy(args, 2, tmpArgs, 0, args.length - 2);
+      GetAppPackageInfoCommandLineInfo commandLineInfo = getGetAppPackageInfoCommandLineInfo(tmpArgs);
       try (AppPackage ap = newAppPackageInstance(new File(expandFileName(args[1], true)))) {
         JSONSerializationProvider jomp = new JSONSerializationProvider();
+        jomp.addSerializer(PropertyInfo.class,
+            new AppPackage.PropertyInfoSerializer(commandLineInfo.provideDescription));
         JSONObject apInfo = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
         apInfo.remove("name");
         printJson(apInfo);

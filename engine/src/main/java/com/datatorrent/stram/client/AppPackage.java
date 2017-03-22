@@ -34,6 +34,10 @@ import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.map.JsonSerializer;
+import org.codehaus.jackson.map.SerializerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,6 +132,31 @@ public class AppPackage extends JarFile
     public String getDescription()
     {
       return description;
+    }
+  }
+
+  public static class PropertyInfoSerializer extends JsonSerializer<PropertyInfo>
+  {
+    private boolean provideDescription;
+
+    public PropertyInfoSerializer(boolean provideDescription)
+    {
+      this.provideDescription = provideDescription;
+    }
+
+    @Override
+    public void serialize(
+        PropertyInfo propertyInfo, JsonGenerator jgen, SerializerProvider provider)
+      throws IOException, JsonProcessingException
+    {
+      if (provideDescription) {
+        jgen.writeStartObject();
+        jgen.writeStringField("value", propertyInfo.value);
+        jgen.writeStringField("description", propertyInfo.description);
+        jgen.writeEndObject();
+      } else {
+        jgen.writeString(propertyInfo.value);
+      }
     }
   }
 
