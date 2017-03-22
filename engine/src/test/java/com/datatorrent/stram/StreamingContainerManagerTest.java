@@ -875,7 +875,6 @@ public class StreamingContainerManagerTest
   private void testAppDataSources(boolean appendQIDToTopic) throws Exception
   {
     StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.runAsync();
     StreamingContainerManager dnmgr = lc.dnmgr;
     List<AppDataSource> appDataSources = dnmgr.getAppDataSources();
     Assert.assertEquals("There should be exactly one data source", 1, appDataSources.size());
@@ -890,7 +889,6 @@ public class StreamingContainerManagerTest
     Assert.assertEquals("Result topic verification", "xyz.result", result.topic);
     Assert.assertEquals("Result URL verification", "ws://123.123.123.124:9090/pubsub", result.url);
     Assert.assertEquals("Result QID append verification", appendQIDToTopic, result.appendQIDToTopic);
-    lc.shutdown();
   }
 
   @Test
