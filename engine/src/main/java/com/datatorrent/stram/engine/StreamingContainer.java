@@ -849,8 +849,8 @@ public class StreamingContainer extends YarnContainerMain
         if (thread == null || !thread.isAlive()) {
           continue;
         }
+        node.shutdown(true);
       }
-      node.shutdown(true);
     }
   }
 
