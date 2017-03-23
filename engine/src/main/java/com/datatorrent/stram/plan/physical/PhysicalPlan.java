@@ -64,7 +64,9 @@ import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StatsListener.ContextAwareStatsListener;
 import com.datatorrent.api.StatsListener.OperatorRequest;
+import com.datatorrent.api.StatsListener.StatsListenerContext;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.Stateless;
@@ -137,6 +139,7 @@ public class PhysicalPlan implements Serializable
 
   private final AtomicInteger strCodecIdSequence = new AtomicInteger();
   private final Map<StreamCodec<?>, Integer> streamCodecIdentifiers = Maps.newHashMap();
+  private final StatsListenerContext statsListenerContext = new StatsListenerContextImpl();
 
   private PTContainer getContainer(int index)
   {
@@ -190,7 +193,7 @@ public class PhysicalPlan implements Serializable
     void addOperatorRequest(PTOperator oper, StramToNodeRequest request);
   }
 
-  private static class StatsListenerProxy implements StatsListener, Serializable
+  private static class StatsListenerProxy implements StatsListener, Serializable, ContextAwareStatsListener
   {
     private static final long serialVersionUID = 201312112033L;
     private final OperatorMeta om;
@@ -204,6 +207,14 @@ public class PhysicalPlan implements Serializable
     public Response processStats(BatchedOperatorStats stats)
     {
       return ((StatsListener)om.getOperator()).processStats(stats);
+    }
+
+    @Override
+    public void setContext(StatsListenerContext context)
+    {
+      if (om.getOperator() instanceof ContextAwareStatsListener) {
+        ((ContextAwareStatsListener)om.getOperator()).setContext(context);
+      }
     }
   }
 
@@ -772,6 +783,14 @@ public class PhysicalPlan implements Serializable
         m.statsHandlers = new ArrayList<>(1);
       }
       m.statsHandlers.add(new StatsListenerProxy(m.logicalOperator));
+    }
+
+    if (m.statsHandlers != null) {
+      for (StatsListener listener : m.statsHandlers) {
+        if (listener instanceof StatsListener.ContextAwareStatsListener) {
+          ((StatsListener.ContextAwareStatsListener)(listener)).setContext(statsListenerContext);
+        }
+      }
     }
 
     // create operator instance per partition
@@ -1895,4 +1914,19 @@ public class PhysicalPlan implements Serializable
       return null;
     }
   }
+
+  public class StatsListenerContextImpl implements StatsListenerContext, Serializable
+  {
+
+    @Override
+    public String getOperatorName(int id)
+    {
+      PTOperator operator = getAllOperators().get(id);
+      if (operator != null) {
+        return operator.getName();
+      }
+      return null;
+    }
+  }
+
 }

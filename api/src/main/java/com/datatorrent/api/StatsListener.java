@@ -115,6 +115,28 @@ public interface StatsListener
     List<OperatorResponse> getOperatorResponse();
   }
 
+  /**
+   * An interface to the DAG. Stats listener can get information about
+   * operator or other elements in the DAG through this interface. currerntly
+   * we only provide method to extract the operator name based on the physical
+   * id of the operator. In future more methods can be added.
+   *
+   */
+  interface StatsListenerContext
+  {
+    String getOperatorName(int id);
+  }
+
+  /**
+   * If StatsListener implements ContextAwareStatsListener interface, then engine will
+   * provide a reference to StatsListenerContext using which listener can examine
+   * current state of the DAG.
+   */
+  interface ContextAwareStatsListener
+  {
+    void setContext(StatsListenerContext context);
+  }
+
   public class Response implements Serializable
   {
     /**
