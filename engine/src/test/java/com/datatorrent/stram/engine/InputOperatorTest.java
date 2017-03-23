@@ -33,6 +33,7 @@ import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.netlet.util.CircularBuffer;
@@ -51,10 +52,13 @@ public class InputOperatorTest
 
   public static class EvenOddIntegerGeneratorInputOperator implements InputOperator, com.datatorrent.api.Operator.ActivationListener<OperatorContext>
   {
+    @OutputPortFieldAnnotation(optional = true)
     public final transient DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>();
+    @OutputPortFieldAnnotation(optional = true)
     public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>();
     private final transient CircularBuffer<Integer> evenBuffer = new CircularBuffer<Integer>(1024);
     private final transient CircularBuffer<Integer> oddBuffer = new CircularBuffer<Integer>(1024);
+
     private volatile Thread dataGeneratorThread;
 
     @Override

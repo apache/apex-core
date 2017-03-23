@@ -1034,7 +1034,7 @@ public class LogicalPlan implements Serializable, DAG
      *
      * @param operatorMeta copy attribute from this OperatorMeta to the object.
      */
-    private void copyAttributesFrom(OperatorMeta operatorMeta)
+    public void copyAttributesFrom(OperatorMeta operatorMeta)
     {
       if (operator != operatorMeta.getOperator()) {
         throw new IllegalArgumentException("Operator meta is not for the same operator ");

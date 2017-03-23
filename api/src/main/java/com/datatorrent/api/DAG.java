@@ -359,4 +359,23 @@ public interface DAG extends DAGContext, Serializable
   {
 
   }
+
+  /**
+   * This class provides functionality to extend existing DAG. The type of extensions allowed are
+   *
+   * <li>Add a new operator</li>
+   * <li>Remove an existing operator</li>
+   * <li>Add an operator to stream</li>
+   * <li>Add an stream between existing operator and new opeartor</li>
+   */
+  interface DAGChangeSet extends DAG
+  {
+    void removeOperator(String name);
+
+    void removeStream(String name);
+
+    StreamMeta extendStream(String id, Operator.InputPort... ports);
+
+    StreamMeta addStream(String id, String operatorName, String portName, Operator.InputPort... ports);
+  }
 }
