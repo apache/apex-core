@@ -39,7 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.bufferserver.internal.DataList;
-import com.datatorrent.bufferserver.internal.FastDataList;
 import com.datatorrent.bufferserver.internal.LogicalNode;
 import com.datatorrent.bufferserver.packet.PayloadTuple;
 import com.datatorrent.bufferserver.packet.PublishRequestTuple;
@@ -268,9 +267,7 @@ public class Server implements ServerListener
            */
           DataList dl = publisherBuffers.get(upstream_identifier);
           if (dl == null) {
-            dl = Tuple.FAST_VERSION.equals(request.getVersion()) ?
-                new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED) :
-                new DataList(upstream_identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED);
+            dl = new DataList(upstream_identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED);
             DataList odl = publisherBuffers.putIfAbsent(upstream_identifier, dl);
             if (odl != null) {
               dl = odl;
@@ -391,9 +388,7 @@ public class Server implements ServerListener
         throw new RuntimeException(ie);
       }
     } else {
-      dl = Tuple.FAST_VERSION.equals(request.getVersion()) ?
-          new FastDataList(identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED) :
-          new DataList(identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED);
+      dl = new DataList(identifier, blockSize, numberOfCacheBlocks, BACK_PRESSURE_ENABLED);
       DataList odl = publisherBuffers.putIfAbsent(identifier, dl);
       if (odl != null) {
         dl = odl;
@@ -482,25 +477,7 @@ public class Server implements ServerListener
           DataList dl = handlePublisherRequest(publisherRequest, this);
           dl.setAutoFlushExecutor(serverHelperExecutor);
 
-          Publisher publisher;
-          if (publisherRequest.getVersion().equals(Tuple.FAST_VERSION)) {
-            publisher = new Publisher(dl, (long)request.getBaseSeconds() << 32 | request.getWindowId())
-            {
-              @Override
-              public int readSize()
-              {
-                if (writeOffset - readOffset < 2) {
-                  return -1;
-                }
-
-                short s = buffer[readOffset++];
-                return s | (buffer[readOffset++] << 8);
-              }
-
-            };
-          } else {
-            publisher = new Publisher(dl, (long)request.getBaseSeconds() << 32 | request.getWindowId());
-          }
+          Publisher publisher = new Publisher(dl, (long)request.getBaseSeconds() << 32 | request.getWindowId());
 
           key.attach(publisher);
           key.interestOps(SelectionKey.OP_READ);

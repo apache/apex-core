@@ -109,8 +109,6 @@ import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.stream.BufferServerPublisher;
 import com.datatorrent.stram.stream.BufferServerSubscriber;
-import com.datatorrent.stram.stream.FastPublisher;
-import com.datatorrent.stram.stream.FastSubscriber;
 import com.datatorrent.stram.stream.InlineStream;
 import com.datatorrent.stram.stream.MuxStream;
 import com.datatorrent.stram.stream.OiOStream;
@@ -157,7 +155,6 @@ public class StreamingContainer extends YarnContainerMain
   protected InetSocketAddress bufferServerAddress;
   protected com.datatorrent.bufferserver.server.Server bufferServer;
   private int checkpointWindowCount;
-  private boolean fastPublisherSubscriber;
   private StreamingContainerContext containerContext;
   private List<StramToNodeRequest> nodeRequests;
   private final HashMap<String, Object> singletons;
@@ -199,8 +196,6 @@ public class StreamingContainer extends YarnContainerMain
     firstWindowMillis = ctx.startWindowMillis;
     windowWidthMillis = ctx.getValue(Context.DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
     checkpointWindowCount = ctx.getValue(Context.DAGContext.CHECKPOINT_WINDOW_COUNT);
-
-    fastPublisherSubscriber = ctx.getValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER);
 
     Map<Class<?>, Class<? extends StringCodec<?>>> codecs = ctx.getValue(Context.DAGContext.STRING_CODECS);
     StringCodecs.loadConverters(codecs);
@@ -965,7 +960,7 @@ public class StreamingContainer extends YarnContainerMain
       bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
     }
 
-    Stream publisher = fastPublisherSubscriber ? new FastPublisher(connIdentifier, queueCapacity * 256) : new BufferServerPublisher(connIdentifier, queueCapacity);
+    Stream publisher = new BufferServerPublisher(connIdentifier, queueCapacity);
     return new HashMap.SimpleEntry<>(sinkIdentifier, new ComponentContextPair<>(publisher, bssc));
   }
 
@@ -1164,9 +1159,7 @@ public class StreamingContainer extends YarnContainerMain
             context.setSinkId(sinkIdentifier);
             context.setFinishedWindowId(checkpoint.windowId);
 
-            BufferServerSubscriber subscriber = fastPublisherSubscriber
-                ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity)
-                : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity);
+            BufferServerSubscriber subscriber = new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity);
             if (streamCodec instanceof StreamCodecWrapperForPersistance) {
               subscriber.acquireReservoirForPersistStream(sinkIdentifier, queueCapacity, streamCodec);
             }

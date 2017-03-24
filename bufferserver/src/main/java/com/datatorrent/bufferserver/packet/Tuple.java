@@ -34,7 +34,6 @@ import com.datatorrent.netlet.util.VarInt;
 public abstract class Tuple
 {
   public static final String CLASSIC_VERSION = "1.0";
-  public static final String FAST_VERSION = "1.1";
   protected final byte[] buffer;
   protected int offset;
   protected final int limit;
