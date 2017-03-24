@@ -25,6 +25,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +57,7 @@ import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
@@ -142,6 +144,31 @@ public class LogicalPlanTest
 
   }
 
+  void checkIfSorted(LogicalPlan dag)
+  {
+    dag.validate();
+    List<OperatorMeta> operators = dag.getOperatorsInOrder();
+
+    OperatorMeta first = operators.get(0);
+    Assert.assertTrue("First operator should be a root operator", dag.getRootOperators().contains(first));
+
+    OperatorMeta last = operators.get(operators.size() - 1);
+    Assert.assertTrue("Last operator should be a leaf operator ", dag.getLeafOperators().contains(last));
+
+    Set<OperatorMeta> visited = new LinkedHashSet<>();
+    for (OperatorMeta ometa : operators) {
+      // the current operator should not be in visited set.
+      Assert.assertFalse("Current operator should not be in visited set", visited.contains(ometa));
+      // the upstream of current operators should not be in visited set.
+      for (StreamMeta smeta : ometa.getInputStreams().values()) {
+        DAG.OperatorMeta upstreamMeta = smeta.getSource().getOperatorMeta();
+        Assert.assertFalse("Upstream operator should not be in visited set", visited.contains(ometa));
+      }
+      // add current operator to visited set.
+      visited.add(ometa);
+    }
+  }
+
   @Test
   public void testCycleDetectionWithDelay()
   {
@@ -168,6 +195,8 @@ public class LogicalPlanTest
     Assert.assertEquals("No invalid cycle", Collections.emptyList(), vc.invalidCycles);
     Set<OperatorMeta> exp = Sets.newHashSet(dag.getMeta(opDelay2), dag.getMeta(opDelay), dag.getMeta(opC), dag.getMeta(opB), dag.getMeta(opD));
     Assert.assertEquals("cycle", exp, vc.stronglyConnected.get(0));
+
+    checkIfSorted(dag);
   }
 
 

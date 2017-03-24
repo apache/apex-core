@@ -18,12 +18,17 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 
 import javax.validation.ValidationException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.api.Context.DAGContext;
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -46,7 +51,7 @@ import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
  */
 public class PlanModifier
 {
-
+  private static final Logger LOG = LoggerFactory.getLogger(PlanModifier.class);
   private final LogicalPlan logicalPlan;
   private final PhysicalPlan physicalPlan;
 
@@ -280,4 +285,47 @@ public class PlanModifier
     physicalPlan.deployChanges();
   }
 
+  public void applyDagChangeSet(DAG dagChanges)
+  {
+    LogicalPlan dag = (LogicalPlan)dagChanges;
+    Collection<OperatorMeta> orderedOperators = dag.getOperatorsInOrder();
+    for (OperatorMeta om : orderedOperators) {
+      LOG.info("Adding operator {}", om.getName());
+      logicalPlan.addOperator(om.getName(), om.getOperator());
+      OperatorMeta newMeta = logicalPlan.getMeta(om.getOperator());
+      newMeta.copyAttributesFrom(om);
+    }
+
+    for (StreamMeta streamMeta : dag.getAllStreams()) {
+      LOG.info("Adding stream {}", streamMeta.getName());
+      StreamMeta sm = logicalPlan.getStream(streamMeta.getName());
+      if (sm == null) {
+        sm = logicalPlan.addStream(streamMeta.getName());
+      }
+      sm.setSource(streamMeta.getSource().getPortObject());
+      for (InputPortMeta sink : streamMeta.getSinks()) {
+        sm.addSink(sink.getPortObject());
+      }
+      sm.setLocality(streamMeta.getLocality());
+    }
+
+    if (physicalPlan != null) {
+
+      // start physical plan change
+      for (OperatorMeta om : orderedOperators) {
+        OperatorMeta newMeta = logicalPlan.getOperatorMeta(om.getName());
+        physicalPlan.addLogicalOperator(newMeta);
+      }
+
+      for (StreamMeta streamMeta : logicalPlan.getAllStreams()) {
+        for (InputPortMeta ipm : streamMeta.getSinks()) {
+          physicalPlan.connectInput(ipm);
+        }
+      }
+    }
+
+    if (physicalPlan != null) {
+      physicalPlan.deployChanges();
+    }
+  }
 }
