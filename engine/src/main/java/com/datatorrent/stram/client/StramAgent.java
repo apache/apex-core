@@ -18,7 +18,6 @@
  */
 package com.datatorrent.stram.client;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -420,8 +419,9 @@ public class StramAgent extends FSAgent
       JSONObject permissionsInfo = null;
       try (FSDataInputStream is = fileSystem.open(new Path(appPath, "permissions.json"))) {
         permissionsInfo = new JSONObject(IOUtils.toString(is));
-      } catch (FileNotFoundException ex) {
+      } catch (IOException ex) {
         // ignore if file is not found
+        LOG.info("Exception in accessing permissions.json", ex);
       }
       return new StramWebServicesInfo(appMasterUrl, version, appPath, user, secToken, permissionsInfo);
     } catch (Exception ex) {
