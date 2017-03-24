@@ -18,15 +18,14 @@
  */
 package com.example.mydtapp;
 
-import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
 import com.datatorrent.common.util.BaseOperator;
 
-/**
- * This is a simple output operator that prints everything to stdout
- */
 
-public class StdoutOperator extends BaseOperator
+public class TestModuleOperator extends BaseOperator implements InputOperator
 {
+
   private String testInput;
 
   public String getTestInput()
@@ -39,14 +38,11 @@ public class StdoutOperator extends BaseOperator
     this.testInput = testInput;
   }
 
-  public final transient DefaultInputPort<Object> in = new DefaultInputPort<Object>()
-  {
-    @Override
-    @SuppressWarnings("UseOfSystemOutOrSystemErr")
-    public void process(Object t)
-    {
-      System.out.println(t.toString());
-    }
-  };
+  public final transient DefaultOutputPort<Object> out = new DefaultOutputPort<Object>();
 
+  @Override
+  public void emitTuples()
+  {
+
+  }
 }

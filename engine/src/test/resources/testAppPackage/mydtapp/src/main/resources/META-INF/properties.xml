@@ -50,4 +50,12 @@
   <property>
     <name>dt.test.required.2</name>
   </property>
+  <property>
+    <name>dt.operator.testModule.prop.testInput</name>
+    <value>default-value-1</value>
+  </property>
+  <property>
+    <name>dt.operator.stdout.prop.testInput</name>
+    <value>default-value-1</value>
+  </property>
 </configuration>

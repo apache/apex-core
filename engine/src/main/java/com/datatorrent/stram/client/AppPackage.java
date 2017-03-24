@@ -380,6 +380,10 @@ public class AppPackage extends JarFile
 
     Configuration config = new Configuration();
 
+    for (Map.Entry<String, PropertyInfo> entry : defaultProperties.entrySet()) {
+      config.set(entry.getKey(), entry.getValue().getValue());
+    }
+
     List<String> absClassPath = new ArrayList<>(classPath);
     for (int i = 0; i < absClassPath.size(); i++) {
       String path = absClassPath.get(i);

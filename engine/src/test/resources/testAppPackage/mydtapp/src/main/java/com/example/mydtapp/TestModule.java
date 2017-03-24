@@ -16,30 +16,42 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package com.example.mydtapp;
 
 import org.apache.hadoop.conf.Configuration;
-
-import com.datatorrent.api.Module;
-import com.datatorrent.api.annotation.ApplicationAnnotation;
-import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
-import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.Module;
 
-@ApplicationAnnotation(name = "MyFirstApplication")
-public class Application implements StreamingApplication
+/**
+ * This is a test module which can be added to DAG . It will add one dummy operator as well.
+ */
+public class TestModule implements Module
 {
+  private String testInput;
+
+  public final transient ProxyOutputPort<String> outputs = new ProxyOutputPort<String>();
+
+  public final transient ProxyInputPort<String> inputs = new ProxyInputPort<String>();
 
   @Override
-  public void populateDAG(DAG dag, Configuration conf)
+  public void populateDAG(DAG dag, Configuration configuration)
   {
-    // Sample DAG with 2 operators
-    // Replace this code with the DAG you want to build
+    if (testInput == null) {
+      throw new NullPointerException();
+    }
 
-    RandomNumberGenerator rand = dag.addOperator("rand", RandomNumberGenerator.class);
-    StdoutOperator stdout = dag.addOperator("stdout", new StdoutOperator());
-    // This module will be added to dag for testing purpose but will not be connected in a dag.
-    Module testModule = dag.addModule("testModule", com.example.mydtapp.TestModule.class);
-    dag.addStream("data", rand.out, stdout.in).setLocality(Locality.CONTAINER_LOCAL);
+    TestModuleOperator testModuleOperator = dag.addOperator("testModuleOperator", TestModuleOperator.class);
+    testModuleOperator.setTestInput(this.getTestInput());
+  }
+
+  public String getTestInput()
+  {
+    return testInput;
+  }
+
+  public void setTestInput(String testInput)
+  {
+    this.testInput = testInput;
   }
 }
