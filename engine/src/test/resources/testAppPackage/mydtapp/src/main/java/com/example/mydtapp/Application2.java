@@ -25,7 +25,7 @@ import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAG.Locality;
 
-@ApplicationAnnotation(name="MySecondApplication")
+@ApplicationAnnotation(name = "MySecondApplication")
 public class Application2 implements StreamingApplication
 {
 
