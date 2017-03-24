@@ -20,9 +20,10 @@ package com.datatorrent.bufferserver.storage;
 
 import java.net.InetSocketAddress;
 
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import com.datatorrent.bufferserver.packet.BeginWindowTuple;
 import com.datatorrent.bufferserver.packet.EndWindowTuple;
@@ -34,8 +35,6 @@ import com.datatorrent.bufferserver.support.Subscriber;
 import com.datatorrent.netlet.DefaultEventLoop;
 
 import static java.lang.Thread.sleep;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertFalse;
 
 /**
  *
@@ -64,7 +63,7 @@ public class DiskStorageTest
     instance.setSpoolStorage(new DiskStorage());
 
     address = instance.run(eventloopServer);
-    assertFalse(address.isUnresolved());
+    Assert.assertFalse(address.isUnresolved());
 
     bsp = new Publisher("MyPublisher");
     eventloopClient.connect(address, bsp);
@@ -126,7 +125,8 @@ public class DiskStorageTest
     eventloopClient.disconnect(bsp);
     eventloopClient.disconnect(bss);
 
-    assertEquals(bss.tupleCount.get(), 2004);
+// TODO: This assert fails randomly
+    Assert.assertEquals(bss.tupleCount.get(), 2004);
 
     bss = new Subscriber("MySubscriber");
     eventloopClient.connect(address, bss);
@@ -142,8 +142,6 @@ public class DiskStorageTest
     Thread.sleep(10); // wait some more to receive more tuples if possible
     eventloopClient.disconnect(bss);
 
-    assertEquals(bss.tupleCount.get(), 2004);
-
+    Assert.assertEquals(bss.tupleCount.get(), 2004);
   }
-
 }

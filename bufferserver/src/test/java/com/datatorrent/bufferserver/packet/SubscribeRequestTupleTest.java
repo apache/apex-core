@@ -19,12 +19,11 @@
 package com.datatorrent.bufferserver.packet;
 
 import java.util.ArrayList;
-import org.testng.annotations.Test;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import static com.datatorrent.bufferserver.packet.SubscribeRequestTuple.getSerializedRequest;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
-import static org.testng.Assert.assertNull;
 
 /**
  *
@@ -49,26 +48,26 @@ public class SubscribeRequestTupleTest
     byte[] serial = getSerializedRequest(null, id, down_type, upstream_id, mask, partitions, startingWindowId, 32 * 1024);
     SubscribeRequestTuple tuple = (SubscribeRequestTuple)Tuple.getTuple(serial, 0, serial.length);
 
-    assertEquals(tuple.getIdentifier(), id, "Identifier");
-    assertEquals(tuple.getStreamType(), down_type, "UpstreamType");
-    assertEquals(tuple.getUpstreamIdentifier(), upstream_id, "UpstreamId");
-    assertEquals(tuple.getMask(), mask, "Mask");
-    assertEquals(tuple.getBufferSize(), 32 * 1024, "BufferSize");
+    Assert.assertEquals("identifier", tuple.getIdentifier(), id);
+    Assert.assertEquals("UpstreamType", tuple.getStreamType(), down_type);
+    Assert.assertEquals("UpstreamId", tuple.getUpstreamIdentifier(), upstream_id);
+    Assert.assertEquals("mask", tuple.getMask(), mask);
+    Assert.assertEquals("BufferSize", tuple.getBufferSize(), 32 * 1024);
     int[] parts = tuple.getPartitions();
-    assertNotNull(parts);
-    assertEquals(parts.length, 1);
-    assertEquals(parts[0], 5);
-    assertEquals((long)tuple.getBaseSeconds() << 32 | tuple.getWindowId(), startingWindowId, "Window");
+    Assert.assertNotNull(parts);
+    Assert.assertEquals(parts.length, 1);
+    Assert.assertEquals(parts[0], 5);
+    Assert.assertEquals("Windows", (long)tuple.getBaseSeconds() << 32 | tuple.getWindowId(), startingWindowId);
 
     serial = getSerializedRequest(null, id, down_type, upstream_id, 0, null, startingWindowId, 32 * 1024);
     tuple = (SubscribeRequestTuple)Tuple.getTuple(serial, 0, serial.length);
 
-    assertEquals(tuple.getIdentifier(), id, "Identifier");
-    assertEquals(tuple.getStreamType(), down_type, "UpstreamType");
-    assertEquals(tuple.getUpstreamIdentifier(), upstream_id, "UpstreamId");
-    assertEquals(tuple.getMask(), 0, "Mask");
-    assertEquals(tuple.getBufferSize(), 32 * 1024, "BufferSize");
-    assertNull(tuple.getPartitions());
-    assertEquals((long)tuple.getBaseSeconds() << 32 | tuple.getWindowId(), startingWindowId, "Window");
+    Assert.assertEquals( "SubscriberId", tuple.getIdentifier(), id);
+    Assert.assertEquals("UpstreamType", tuple.getStreamType(), down_type);
+    Assert.assertEquals("UpstreamId", tuple.getUpstreamIdentifier(), upstream_id);
+    Assert.assertEquals("Mask", tuple.getMask(), 0);
+    Assert.assertEquals("BufferSize", tuple.getBufferSize(), 32 * 1024);
+    Assert.assertNull(tuple.getPartitions());
+    Assert.assertEquals("Window", (long)tuple.getBaseSeconds() << 32 | tuple.getWindowId(), startingWindowId);
   }
 }
