@@ -41,8 +41,6 @@ import com.datatorrent.stram.client.AppPackage.PropertyInfo;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.util.JSONSerializationProvider;
 
-import net.lingala.zip4j.exception.ZipException;
-
 /**
  *
  */
@@ -57,24 +55,17 @@ public class AppPackageTest
   String appPackageDir = "src/test/resources/testAppPackage/mydtapp";
 
   @BeforeClass
-  public static void starting()
+  public static void starting() throws IOException, JSONException
   {
+    File file = StramTestSupport.createAppPackageFile();
+    // Set up test instance
+    ap = new AppPackage(file, true);
     try {
-      File file = StramTestSupport.createAppPackageFile();
-      // Set up test instance
-      ap = new AppPackage(file, true);
       // set up another instance
       File testfolder = new File("target/testapp");
       yap = new AppPackage(file, testfolder, false);
       jomp = new JSONSerializationProvider();
       json = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
-
-    } catch (ZipException e) {
-      throw new RuntimeException(e);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    } catch (JSONException e) {
-      throw new RuntimeException(e);
     } finally {
       IOUtils.closeQuietly(ap);
       IOUtils.closeQuietly(yap);

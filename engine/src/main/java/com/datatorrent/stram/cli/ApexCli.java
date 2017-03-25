@@ -20,6 +20,7 @@ package com.datatorrent.stram.cli;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -139,7 +140,6 @@ import jline.console.completer.StringsCompleter;
 import jline.console.history.FileHistory;
 import jline.console.history.History;
 import jline.console.history.MemoryHistory;
-import net.lingala.zip4j.exception.ZipException;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
@@ -460,7 +460,26 @@ public class ApexCli
     }
   }
 
-  AppPackage newAppPackageInstance(File f) throws IOException, ZipException
+  AppPackage newAppPackageInstance(URI uri, boolean suppressOutput) throws IOException
+  {
+    PrintStream outputStream = suppressOutput ? suppressOutput() : null;
+    try {
+      final String scheme = uri.getScheme();
+      if (scheme == null || scheme.equals("file")) {
+        return new AppPackage(new FileInputStream(new File(expandFileName(uri.getPath(), true))), true);
+      } else {
+        try (FileSystem fs = FileSystem.newInstance(uri, conf)) {
+          return new AppPackage(fs.open(new Path(uri.getPath())), true);
+        }
+      }
+    } finally {
+      if (outputStream != null) {
+        restoreOutput(outputStream);
+      }
+    }
+  }
+
+  AppPackage newAppPackageInstance(File f) throws IOException
   {
     PrintStream outputStream = suppressOutput();
     try {
@@ -609,7 +628,7 @@ public class ApexCli
         "Connect to an app"));
     globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(),
         new Arg[]{},
-        new Arg[]{new FileArg("jar-file/json-file/properties-file/app-package-file"), new Arg("matching-app-name")},
+        new Arg[]{new FileArg("jar-file/json-file/properties-file/app-package-file-path/app-package-file-uri"), new Arg("matching-app-name")},
         "Launch an app", LAUNCH_OPTIONS.options));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
         new Arg[]{new Arg("app-id")},
@@ -673,17 +692,17 @@ public class ApexCli
         new Arg[]{new FileArg("parameter-name")},
         "Get the configuration parameter"));
     globalCommands.put("get-app-package-info", new OptionsCommandSpec(new GetAppPackageInfoCommand(),
-        new Arg[]{new FileArg("app-package-file")},
+        new Arg[]{new FileArg("app-package-file-path/app-package-file-uri")},
         new Arg[]{new Arg("-withDescription")},
         "Get info on the app package file",
         GET_APP_PACKAGE_INFO_OPTIONS));
     globalCommands.put("get-app-package-operators", new OptionsCommandSpec(new GetAppPackageOperatorsCommand(),
-        new Arg[]{new FileArg("app-package-file")},
+        new Arg[]{new FileArg("app-package-file-path/app-package-file-uri")},
         new Arg[]{new Arg("search-term")},
         "Get operators within the given app package",
         GET_OPERATOR_CLASSES_OPTIONS.options));
     globalCommands.put("get-app-package-operator-properties", new CommandSpec(new GetAppPackageOperatorPropertiesCommand(),
-        new Arg[]{new FileArg("app-package-file"), new Arg("operator-class")},
+        new Arg[]{new FileArg("app-package-file-path/app-package-file-uri"), new Arg("operator-class")},
         null,
         "Get operator properties within the given app package"));
     globalCommands.put("list-default-app-attributes", new CommandSpec(new ListDefaultAttributesCommand(AttributesType.APPLICATION),
@@ -771,7 +790,7 @@ public class ApexCli
         "Begin Logical Plan Change"));
     connectedCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
         null,
-        new Arg[]{new FileArg("jar-file/app-package-file"), new Arg("class-name")},
+        new Arg[]{new FileArg("jar-file/app-package-file-path/app-package-file-uri"), new Arg("class-name")},
         "Show logical plan of an app class",
         getShowLogicalPlanCommandLineOptions()));
     connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(),
@@ -1944,7 +1963,7 @@ public class ApexCli
             // see if it's an app package
             AppPackage ap = null;
             try {
-              ap = newAppPackageInstance(new File(fileName));
+              ap = newAppPackageInstance(new URI(fileName), true);
             } catch (Exception ex) {
               // It's not an app package
               if (requiredAppPackageName != null) {
@@ -2842,18 +2861,15 @@ public class ApexCli
       }
 
       if (commandLineInfo.args.length > 0) {
-        String filename = expandFileName(commandLineInfo.args[0], true);
-
         // see if the first argument is actually an app package
-        try {
-          AppPackage ap = new AppPackage(new File(filename));
-          ap.close();
+        try (AppPackage ap = newAppPackageInstance(new URI(commandLineInfo.args[0]), false)) {
           new ShowLogicalPlanAppPackageCommand().execute(args, reader);
           return;
         } catch (Exception ex) {
           // fall through
         }
 
+        String filename = expandFileName(commandLineInfo.args[0], true);
         if (commandLineInfo.args.length >= 2) {
           String appName = commandLineInfo.args[1];
           StramAppLauncher submitApp = getStramAppLauncher(filename, config, commandLineInfo.ignorePom);
@@ -2938,8 +2954,7 @@ public class ApexCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String jarfile = expandFileName(args[1], true);
-      try (AppPackage ap = newAppPackageInstance(new File(jarfile))) {
+      try (AppPackage ap = newAppPackageInstance(new URI(args[1]), true)) {
         List<AppInfo> applications = ap.getApplications();
 
         if (args.length >= 3) {
@@ -3499,7 +3514,7 @@ public class ApexCli
       String[] tmpArgs = new String[args.length - 2];
       System.arraycopy(args, 2, tmpArgs, 0, args.length - 2);
       GetAppPackageInfoCommandLineInfo commandLineInfo = getGetAppPackageInfoCommandLineInfo(tmpArgs);
-      try (AppPackage ap = newAppPackageInstance(new File(expandFileName(args[1], true)))) {
+      try (AppPackage ap = newAppPackageInstance(new URI(args[1]), true)) {
         JSONSerializationProvider jomp = new JSONSerializationProvider();
         jomp.addSerializer(PropertyInfo.class,
             new AppPackage.PropertyInfoSerializer(commandLineInfo.provideDescription));
@@ -3877,7 +3892,7 @@ public class ApexCli
       String[] tmpArgs = new String[args.length - 1];
       System.arraycopy(args, 1, tmpArgs, 0, args.length - 1);
       GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(tmpArgs);
-      try (AppPackage ap = newAppPackageInstance(new File(expandFileName(commandLineInfo.args[0], true)))) {
+      try (AppPackage ap = newAppPackageInstance(new URI(commandLineInfo.args[0]), true)) {
         List<String> newArgs = new ArrayList<>();
         List<String> jars = new ArrayList<>();
         for (String jar : ap.getAppJars()) {
@@ -3907,7 +3922,7 @@ public class ApexCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      try (AppPackage ap = newAppPackageInstance(new File(expandFileName(args[1], true)))) {
+      try (AppPackage ap = newAppPackageInstance(new URI(args[1]), true)) {
         List<String> newArgs = new ArrayList<>();
         List<String> jars = new ArrayList<>();
         for (String jar : ap.getAppJars()) {
