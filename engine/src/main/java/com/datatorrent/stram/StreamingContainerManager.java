@@ -2082,6 +2082,8 @@ public class StreamingContainerManager implements PlanContext
     if (checkpointGroup.size() > 1) {
       for (OperatorMeta om : checkpointGroup) {
         Collection<PTOperator> operators = plan.getAllOperators(om);
+        Collection<PTOperator> unifiers = getUnifiersInCheckpointGroup(operators);
+        operators.addAll(unifiers);
         for (PTOperator groupOper : operators) {
           synchronized (groupOper.checkpoints) {
             commonCheckpoints.retainAll(groupOper.checkpoints);
@@ -2175,6 +2177,22 @@ public class StreamingContainerManager implements PlanContext
 
   }
 
+  private static Collection<PTOperator> getUnifiersInCheckpointGroup(Collection<PTOperator> operators)
+  {
+    Set<PTOperator> unifiers = Sets.newHashSet();
+    for (PTOperator op : operators) {
+      for (PTOperator.PTOutput out : op.getOutputs()) {
+        for (PTOperator.PTInput in : out.sinks) {
+          PTOperator target = in.target;
+          if (target.isUnifier()) {
+            unifiers.add(target);
+          }
+        }
+      }
+    }
+    return unifiers;
+  }
+
   public long windowIdToMillis(long windowId)
   {
     int widthMillis = plan.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS);
@@ -2186,7 +2204,7 @@ public class StreamingContainerManager implements PlanContext
     return this.vars.windowStartMillis;
   }
 
-  private Map<OperatorMeta, Set<OperatorMeta>> getCheckpointGroups()
+  protected Map<OperatorMeta, Set<OperatorMeta>> getCheckpointGroups()
   {
     if (this.checkpointGroups == null) {
       this.checkpointGroups = new HashMap<>();

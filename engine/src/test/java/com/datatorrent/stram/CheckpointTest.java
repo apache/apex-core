@@ -39,6 +39,7 @@ import org.apache.hadoop.yarn.util.SystemClock;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultOutputPort;
@@ -46,8 +47,10 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.annotation.Stateless;
+import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BaseOperator;
+import com.datatorrent.common.util.DefaultDelayOperator;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.MockContainer.MockOperatorStats;
 import com.datatorrent.stram.StreamingContainerManager.UpdateCheckpointsContext;
@@ -55,6 +58,7 @@ import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -279,6 +283,57 @@ public class CheckpointTest
     dnm.addCheckpoint(o2p1, new Checkpoint(5L, 0, 0));
     Assert.assertEquals("add latest", getCheckpoints(2L, 3L, 4L, 5L), o2p1.checkpoints);
 
+  }
+
+  @Test
+  public void testUpdateRecoveryCheckpointWithCycle() throws Exception
+  {
+    Clock clock = new SystemClock();
+
+    dag.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+
+    // Simulate a DAG with a loop which has a unifier operator
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+    GenericTestOperator o4 = dag.addOperator("o4", GenericTestOperator.class);
+    DefaultDelayOperator d = dag.addOperator("d", DefaultDelayOperator.class);
+
+    dag.addStream("o1.output1", o1.outport, o2.inport1);
+    dag.addStream("o2.output1", o2.outport1, o3.inport1);
+    dag.addStream("o3.output1", o3.outport1, o4.inport1);
+    dag.addStream("o4.output1", o4.outport1, d.input);
+    dag.addStream("d.output", d.output, o2.inport2);
+    dag.setOperatorAttribute(o3, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<Operator>(2));
+
+    dag.validate();
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    for (PTOperator oper : plan.getAllOperators().values()) {
+      Assert.assertEquals("Initial activation windowId" + oper, Checkpoint.INITIAL_CHECKPOINT, oper.getRecoveryCheckpoint());
+      Assert.assertEquals("Checkpoints empty" + oper, Collections.emptyList(), oper.checkpoints);
+    }
+
+    Checkpoint cp1 = new Checkpoint(1L, 0, 0);
+    Checkpoint cp2 = new Checkpoint(2L, 0, 0);
+
+    Map<OperatorMeta, Set<OperatorMeta>> checkpointGroups = dnm.getCheckpointGroups();
+
+    Map<Integer, PTOperator> allOperators = plan.getAllOperators();
+    for (PTOperator operator: allOperators.values()) {
+      operator.setState(PTOperator.State.ACTIVE);
+      operator.checkpoints.add(cp1);
+      dnm.updateRecoveryCheckpoints(operator,
+          new UpdateCheckpointsContext(clock, false, checkpointGroups), false);
+    }
+
+    List<PTOperator> physicalO1 = plan.getOperators(dag.getOperatorMeta("o1"));
+    physicalO1.get(0).checkpoints.add(cp2);
+    dnm.updateRecoveryCheckpoints(physicalO1.get(0),
+        new UpdateCheckpointsContext(clock, false, checkpointGroups), false);
+
+    Assert.assertEquals("Recovery checkpoint updated ", physicalO1.get(0).getRecoveryCheckpoint(), cp1);
   }
 
   @Test
