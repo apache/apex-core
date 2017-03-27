@@ -155,7 +155,7 @@ public class StreamingContainer extends YarnContainerMain
   private long firstWindowMillis;
   private int windowWidthMillis;
   protected InetSocketAddress bufferServerAddress;
-  protected com.datatorrent.bufferserver.server.Server bufferServer;
+  protected Server bufferServer;
   private int checkpointWindowCount;
   private boolean fastPublisherSubscriber;
   private StreamingContainerContext containerContext;
@@ -224,12 +224,12 @@ public class StreamingContainer extends YarnContainerMain
           blockCount = bufferServerRAM / blocksize;
         }
         // start buffer server, if it was not set externally
-        bufferServer = new Server(0, blocksize * 1024 * 1024, blockCount);
+        bufferServer = new Server(eventloop, 0, blocksize * 1024 * 1024, blockCount);
         bufferServer.setAuthToken(ctx.getValue(StreamingContainerContext.BUFFER_SERVER_TOKEN));
         if (ctx.getValue(Context.DAGContext.BUFFER_SPOOLING)) {
           bufferServer.setSpoolStorage(new DiskStorage());
         }
-        bufferServerAddress = NetUtils.getConnectAddress(bufferServer.run(eventloop));
+        bufferServerAddress = NetUtils.getConnectAddress(bufferServer.run());
         logger.debug("Buffer server started: {}", bufferServerAddress);
       }
     } catch (IOException ex) {
@@ -588,7 +588,7 @@ public class StreamingContainer extends YarnContainerMain
     }
 
     if (bufferServer != null) {
-      eventloop.stop(bufferServer);
+      bufferServer.stop();
       eventloop.stop();
     }
 

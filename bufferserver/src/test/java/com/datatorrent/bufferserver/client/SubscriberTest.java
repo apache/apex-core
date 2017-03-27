@@ -66,8 +66,8 @@ public class SubscriberTest
     eventloopServer.start();
     eventloopClient.start();
 
-    instance = new Server(0, 64, 2);
-    address = instance.run(eventloopServer);
+    instance = new Server(eventloopServer, 0, 64, 2);
+    address = instance.run();
     assertTrue(address instanceof InetSocketAddress);
     assertFalse(address.isUnresolved());
   }
@@ -75,7 +75,7 @@ public class SubscriberTest
   @AfterClass
   public static void teardownServerAndClients()
   {
-    eventloopServer.stop(instance);
+    instance.stop();
     eventloopServer.stop();
     eventloopClient.stop();
   }

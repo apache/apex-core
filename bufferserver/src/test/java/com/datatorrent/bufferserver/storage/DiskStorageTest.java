@@ -60,10 +60,10 @@ public class DiskStorageTest
     eventloopClient = DefaultEventLoop.createEventLoop("client");
     eventloopClient.start();
 
-    instance = new Server(0, 1024, 8);
+    instance = new Server(eventloopServer, 0, 1024, 8);
     instance.setSpoolStorage(new DiskStorage());
 
-    address = instance.run(eventloopServer);
+    address = instance.run();
     assertFalse(address.isUnresolved());
 
     bsp = new Publisher("MyPublisher");
@@ -79,7 +79,7 @@ public class DiskStorageTest
   @AfterClass
   public static void teardownServerAndClients()
   {
-    eventloopServer.stop(instance);
+    instance.stop();
     eventloopClient.stop();
     eventloopServer.stop();
   }

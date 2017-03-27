@@ -70,8 +70,8 @@ public class FastStreamTest
   public static void setup() throws InterruptedException, IOException, Exception
   {
     ((DefaultEventLoop)eventloop).start();
-    bufferServer = new Server(0); // find random port
-    InetSocketAddress bindAddr = bufferServer.run(eventloop);
+    bufferServer = new Server(eventloop, 0); // find random port
+    InetSocketAddress bindAddr = bufferServer.run();
     bufferServerPort = bindAddr.getPort();
   }
 
@@ -79,7 +79,7 @@ public class FastStreamTest
   public static void tearDown() throws IOException
   {
     if (bufferServer != null) {
-      eventloop.stop(bufferServer);
+      bufferServer.stop();
     }
     ((DefaultEventLoop)eventloop).stop();
   }
