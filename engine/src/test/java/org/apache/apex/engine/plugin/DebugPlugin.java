@@ -18,9 +18,8 @@
  */
 package org.apache.apex.engine.plugin;
 
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
 import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext;
@@ -38,8 +37,7 @@ public class DebugPlugin implements DAGExecutionPlugin
   private int eventCount = 0;
   private int heartbeatCount = 0;
   private int commitCount = 0;
-  private final Lock lock = new ReentrantLock();
-  final Condition events  = lock.newCondition();
+  CountDownLatch latch = new CountDownLatch(3);
 
   @Override
   public void setup(DAGExecutionPluginContext context)
@@ -49,10 +47,8 @@ public class DebugPlugin implements DAGExecutionPlugin
       @Override
       public void handle(StramEvent stramEvent)
       {
-        lock();
         eventCount++;
-        events.signal();
-        unlock();
+        latch.countDown();
       }
     });
 
@@ -61,10 +57,8 @@ public class DebugPlugin implements DAGExecutionPlugin
       @Override
       public void handle(StreamingContainerUmbilicalProtocol.ContainerHeartbeat heartbeat)
       {
-        lock();
         heartbeatCount++;
-        events.signal();
-        unlock();
+        latch.countDown();
       }
     });
 
@@ -73,10 +67,8 @@ public class DebugPlugin implements DAGExecutionPlugin
       @Override
       public void handle(Long aLong)
       {
-        lock();
         commitCount++;
-        events.signal();
-        unlock();
+        latch.countDown();
       }
     });
   }
@@ -102,13 +94,8 @@ public class DebugPlugin implements DAGExecutionPlugin
     return commitCount;
   }
 
-  void lock()
+  public void waitForEventDelivery(long timeout) throws InterruptedException
   {
-    this.lock.lock();
-  }
-
-  void unlock()
-  {
-    this.lock.unlock();
+    latch.await(timeout, TimeUnit.SECONDS);
   }
 }

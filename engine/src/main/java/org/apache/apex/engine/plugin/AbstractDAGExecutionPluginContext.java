@@ -53,6 +53,9 @@ public abstract class AbstractDAGExecutionPluginContext implements DAGExecutionP
   }
 
   @Override
+  public abstract DAG getDAG();
+
+  @Override
   public StramAppContext getApplicationContext()
   {
     return appContext;
@@ -62,12 +65,6 @@ public abstract class AbstractDAGExecutionPluginContext implements DAGExecutionP
   public AppInfo.AppStats getApplicationStats()
   {
     return stats;
-  }
-
-  @Override
-  public DAG getDAG()
-  {
-    return dnmgr.getLogicalPlan();
   }
 
   @Override

@@ -43,7 +43,7 @@ import com.datatorrent.stram.webapp.AppInfo;
  * service to process the event asynchronously. A separate task {@link DefaultApexPluginDispatcher.ProcessEventTask}
  * is created to process an event and then submitted to the executor for execution.
  */
-public class DefaultApexPluginDispatcher extends ApexPluginManager implements ApexPluginDispatcher
+public class DefaultApexPluginDispatcher extends AbstractApexPluginDispatcher
 {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultApexPluginDispatcher.class);
   private int qsize = 4098;
@@ -56,7 +56,7 @@ public class DefaultApexPluginDispatcher extends ApexPluginManager implements Ap
   }
 
   @Override
-  public <T> void dispatch(RegistrationType<T> registrationType, T data)
+  protected <T> void dispatchEvent(RegistrationType<T> registrationType, T data)
   {
     if (executorService != null) {
       executorService.submit(new ProcessEventTask<>(registrationType, data));
