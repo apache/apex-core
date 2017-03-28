@@ -39,6 +39,16 @@ import org.apache.hadoop.conf.Configuration;
  */
 public interface StreamingApplication
 {
+  /**
+   * Prefix used in configuration keys.
+   */
+  String APEX_PREFIX = "apex.";
+
+  /**
+   * Legacy prefix, to be removed in future release,
+   * when all code dependencies are upgraded.
+   */
+  @Deprecated
   String DT_PREFIX = "dt.";
   /**
    * Launch mode for the application.

@@ -92,7 +92,6 @@ import org.apache.tools.ant.DirectoryScanner;
 import com.google.common.base.Preconditions;
 import com.sun.jersey.api.client.WebResource;
 
-import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG.GenericOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
@@ -112,6 +111,7 @@ import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.requests.AddStreamSinkRequest;
 import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.requests.CreateStreamRequest;
@@ -2108,13 +2108,11 @@ public class ApexCli
 
         if (appFactory != null) {
           if (!commandLineInfo.localMode) {
-
             // see whether there is an app with the same name and user name running
-            String appNameAttributeName = StreamingApplication.DT_PREFIX + Context.DAGContext.APPLICATION_NAME.getName();
-            String appName = config.get(appNameAttributeName, appFactory.getName());
+            String appName = config.get(LogicalPlanConfiguration.KEY_APPLICATION_NAME, appFactory.getName());
             ApplicationReport duplicateApp = StramClientUtils.getStartedAppInstanceByName(yarnClient, appName, UserGroupInformation.getLoginUser().getUserName(), null);
             if (duplicateApp != null) {
-              throw new CliException("Application with the name \"" + duplicateApp.getName() + "\" already running under the current user \"" + duplicateApp.getUser() + "\". Please choose another name. You can change the name by setting " + appNameAttributeName);
+              throw new CliException("Application with the name \"" + duplicateApp.getName() + "\" already running under the current user \"" + duplicateApp.getUser() + "\". Please choose another name. You can change the name by setting " + LogicalPlanConfiguration.KEY_APPLICATION_NAME);
             }
 
             // This is for suppressing System.out printouts from applications so that the user of CLI will not be confused by those printouts
@@ -3788,9 +3786,11 @@ public class ApexCli
       while (it.hasNext()) {
         Entry<String, String> entry = it.next();
         // filter relevant entries
-        if (entry.getKey().startsWith(StreamingApplication.DT_PREFIX)) {
-          launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
-          requiredProperties.remove(entry.getKey());
+        String key = entry.getKey();
+        if (key.startsWith(StreamingApplication.DT_PREFIX)
+            || key.startsWith(StreamingApplication.APEX_PREFIX)) {
+          launchProperties.set(key, entry.getValue(), Scope.TRANSIENT, null);
+          requiredProperties.remove(key);
         }
       }
     }

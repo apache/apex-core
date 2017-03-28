@@ -709,7 +709,7 @@ public class TestModuleExpansion
     JSONObject json = new JSONObject(writer.toString());
 
     Configuration conf = new Configuration(false);
-    conf.set(StreamingApplication.DT_PREFIX + "operator.operator3.prop.myStringProperty", "o3StringFromConf");
+    conf.set(StreamingApplication.APEX_PREFIX + "operator.operator3.prop.myStringProperty", "o3StringFromConf");
 
     LogicalPlanConfiguration planConf = new LogicalPlanConfiguration(conf);
     LogicalPlan dag = planConf.createFromJson(json, "testLoadFromJson");

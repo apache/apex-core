@@ -1255,15 +1255,15 @@ For example `myApplication.properties`
 
 ```
 # input operator that reads from a file
-dt.operator.inputOp.classname=com.acme.SampleInputOperator
-dt.operator.inputOp.fileName=somefile.txt
+apex.operator.inputOp.classname=com.acme.SampleInputOperator
+apex.operator.inputOp.fileName=somefile.txt
 
 # output operator that writes to the console
-dt.operator.outputOp.classname=com.acme.ConsoleOutputOperator
+apex.operator.outputOp.classname=com.acme.ConsoleOutputOperator
 
 # stream connecting both operators
-dt.stream.inputStream.source=inputOp.outputPort
-dt.stream.inputStream.sinks=outputOp.inputPort
+apex.stream.inputStream.source=inputOp.outputPort
+apex.stream.inputStream.sinks=outputOp.inputPort
 ```
 
 
@@ -1776,7 +1776,7 @@ The last configurable parameter for affinity rules is strict or preferred rule. 
 The same set of rules can also be added from properties.xml by setting value for attribute DAGContext.AFFINITY_RULES_SET as JSON string.  For example:
 ```xml
 <property>
-    <name>dt.application.AffinityRulesSampleApplication.attr.AFFINITY_RULES_SET</name>
+    <name>apex.application.AffinityRulesSampleApplication.attr.AFFINITY_RULES_SET</name>
     <value>
     {
       "affinityRules": [

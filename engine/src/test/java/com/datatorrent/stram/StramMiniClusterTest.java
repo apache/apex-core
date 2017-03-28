@@ -200,31 +200,25 @@ public class StramMiniClusterTest
     Properties dagProps = new Properties();
 
     // input module (ensure shutdown works while windows are generated)
-    dagProps.put(StreamingApplication.DT_PREFIX + "operator.numGen.classname", TestGeneratorInputOperator.class.getName());
-    dagProps.put(StreamingApplication.DT_PREFIX + "operator.numGen.maxTuples", "1");
+    dagProps.put(StreamingApplication.APEX_PREFIX + "operator.numGen.classname", TestGeneratorInputOperator.class.getName());
+    dagProps.put(StreamingApplication.APEX_PREFIX + "operator.numGen.maxTuples", "1");
 
-    // fake output adapter - to be ignored when determine shutdown
-    //props.put(DAGContext.DT_PREFIX + "stream.output.classname", HDFSOutputStream.class.getName());
-    //props.put(DAGContext.DT_PREFIX + "stream.output.inputNode", "module2");
-    //props.put(DAGContext.DT_PREFIX + "stream.output.filepath", "miniclustertest-testSetupShutdown.out");
+    dagProps.put(StreamingApplication.APEX_PREFIX + "operator.module1.classname", GenericTestOperator.class.getName());
 
-    dagProps.put(StreamingApplication.DT_PREFIX + "operator.module1.classname", GenericTestOperator.class.getName());
+    dagProps.put(StreamingApplication.APEX_PREFIX + "operator.module2.classname", GenericTestOperator.class.getName());
 
-    dagProps.put(StreamingApplication.DT_PREFIX + "operator.module2.classname", GenericTestOperator.class.getName());
+    dagProps.put(StreamingApplication.APEX_PREFIX + "stream.fromNumGen.source", "numGen.outport");
+    dagProps.put(StreamingApplication.APEX_PREFIX + "stream.fromNumGen.sinks", "module1.inport1");
 
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.source", "numGen.outport");
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.sinks", "module1.inport1");
+    dagProps.put(StreamingApplication.APEX_PREFIX + "stream.n1n2.source", "module1.outport1");
+    dagProps.put(StreamingApplication.APEX_PREFIX + "stream.n1n2.sinks", "module2.inport1");
 
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.source", "module1.outport1");
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.sinks", "module2.inport1");
-
-    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
-    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.CONTAINER_JVM_OPTIONS.getName(), "-Dlog4j.properties=custom_log4j.properties");
-    dagProps.setProperty(StreamingApplication.DT_PREFIX + "operator.*." + OperatorContext.MEMORY_MB.getName(), "64");
-    dagProps.setProperty(StreamingApplication.DT_PREFIX + "operator.*." + OperatorContext.VCORES.getName(), "1");
-    dagProps.setProperty(StreamingApplication.DT_PREFIX + "operator.*.port.*." + Context.PortContext.BUFFER_MEMORY_MB.getName(), "32");
-    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.DEBUG.getName(), "true");
-    //dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.CONTAINERS_MAX_COUNT.getName(), "2");
+    dagProps.setProperty(StreamingApplication.APEX_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
+    dagProps.setProperty(StreamingApplication.APEX_PREFIX + LogicalPlan.CONTAINER_JVM_OPTIONS.getName(), "-Dlog4j.properties=custom_log4j.properties");
+    dagProps.setProperty(StreamingApplication.APEX_PREFIX + "operator.*." + OperatorContext.MEMORY_MB.getName(), "64");
+    dagProps.setProperty(StreamingApplication.APEX_PREFIX + "operator.*." + OperatorContext.VCORES.getName(), "1");
+    dagProps.setProperty(StreamingApplication.APEX_PREFIX + "operator.*.port.*." + Context.PortContext.BUFFER_MEMORY_MB.getName(), "32");
+    dagProps.setProperty(StreamingApplication.APEX_PREFIX + LogicalPlan.DEBUG.getName(), "true");
     LOG.info("dag properties: {}", dagProps);
 
     LOG.info("Initializing Client");
@@ -272,9 +266,9 @@ public class StramMiniClusterTest
 
     // single container topology of inline input and module
     Properties props = new Properties();
-    props.put(StreamingApplication.DT_PREFIX + "stream.input.classname", TestGeneratorInputOperator.class.getName());
-    props.put(StreamingApplication.DT_PREFIX + "stream.input.outputNode", "module1");
-    props.put(StreamingApplication.DT_PREFIX + "module.module1.classname", GenericTestOperator.class.getName());
+    props.put(StreamingApplication.APEX_PREFIX + "stream.input.classname", TestGeneratorInputOperator.class.getName());
+    props.put(StreamingApplication.APEX_PREFIX + "stream.input.outputNode", "module1");
+    props.put(StreamingApplication.APEX_PREFIX + "module.module1.classname", GenericTestOperator.class.getName());
 
     LOG.info("Initializing Client");
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));

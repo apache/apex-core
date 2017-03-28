@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <configuration>
   <property>
-    <name>dt.attr.MASTER_MEMORY_MB</name>
+    <name>apex.attr.MASTER_MEMORY_MB</name>
     <value>1024</value>
   </property>
   <property>
-    <name>dt.application.MyFirstApplication.operator.randomGenerator.prop.numTuples</name>
+    <name>apex.application.MyFirstApplication.operator.randomGenerator.prop.numTuples</name>
     <value>1000</value>
   </property>
 </configuration>

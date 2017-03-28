@@ -23,26 +23,26 @@ line, or using your favorite IDE.
 
 First, change to the directory where you put your projects, and create
 an Apex application project using Maven by running the following
-command.  Replace "com.example", "mydtapp" and "1.0-SNAPSHOT" with the
+command.  Replace "com.example", "myapp" and "1.0-SNAPSHOT" with the
 appropriate values (make sure this is all on one line):
 
     $ mvn archetype:generate \
      -DarchetypeGroupId=org.apache.apex \
      -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.4.0 \
-     -DgroupId=com.example -Dpackage=com.example.mydtapp -DartifactId=mydtapp \
+     -DgroupId=com.example -Dpackage=com.example.myapp -DartifactId=myapp \
      -Dversion=1.0-SNAPSHOT
 
-This creates a Maven project named "mydtapp". Open it with your favorite
+This creates a Maven project named "myapp". Open it with your favorite
 IDE (e.g. NetBeans, Eclipse, IntelliJ IDEA). In the project, there is a
 sample DAG that generates a number of tuples with a random number and
 prints out "hello world" and the random number in the tuples.  The code
 that builds the DAG is in
-src/main/java/com/example/mydtapp/Application.java, and the code that
+src/main/java/com/example/myapp/Application.java, and the code that
 runs the unit test for the DAG is in
-src/test/java/com/example/mydtapp/ApplicationTest.java. Try it out by
+src/test/java/com/example/myapp/ApplicationTest.java. Try it out by
 running the following command:
 
-    $cd mydtapp; mvn package
+    $cd myapp; mvn package
 
 This builds the App Package runs the unit test of the DAG.  You should
 be getting test output similar to this:
@@ -52,7 +52,7 @@ be getting test output similar to this:
   TESTS
  -------------------------------------------------------
 
- Running com.example.mydtapp.ApplicationTest
+ Running com.example.myapp.ApplicationTest
  hello world: 0.8015370953286478
  hello world: 0.9785359225545481
  hello world: 0.6322611586644047
@@ -76,7 +76,7 @@ be getting test output similar to this:
 ```
 
 The "mvn package" command creates the App Package file in target
-directory as target/mydtapp-1.0-SNAPSHOT.apa. You will be able to use
+directory as target/myapp-1.0-SNAPSHOT.apa. You will be able to use
 that App Package file to launch this sample application in your actual
 Apex installation.
 
@@ -132,7 +132,7 @@ the default pom.xml:
 ```
 
 By default, as shown above, the default dependencies include
-malhar-library in compile scope, dt-engine in provided scope, and junit
+malhar-library in compile scope, apex-engine in provided scope, and junit
 in test scope.  Do not remove these three dependencies since they are
 necessary for any Apex application.  You can, however, exclude
 transitive dependencies from malhar-library to reduce the size of your
@@ -191,14 +191,14 @@ as name value pairs, in XML format, like the following.
 
 Application attributes are used to specify the platform behavior for the
 application. They can be specified using the parameter
-```dt.attr.<attribute>```. The prefix “dt” is a constant, “attr” is a
+```apex.attr.<attribute>```. The prefix “apex” is a constant, “attr” is a
 constant denoting an attribute is being specified and ```<attribute>```
 specifies the name of the attribute. Below is an example snippet setting
 the streaming windows size of the application to be 1000 milliseconds.
 
 ```
   <property>
-     <name>dt.attr.STREAMING_WINDOW_SIZE_MILLIS</name>
+     <name>apex.attr.STREAMING_WINDOW_SIZE_MILLIS</name>
      <value>1000</value>
   </property>
 ```
@@ -213,7 +213,7 @@ be specified in the format described above.
 
 Operator attributes are used to specify the platform behavior for the
 operator. They can be specified using the parameter
-```dt.operator.<operator-name>.attr.<attribute>```. The prefix “dt” is a
+```apex.operator.<operator-name>.attr.<attribute>```. The prefix “apex” is a
 constant, “operator” is a constant denoting that an operator is being
 specified, ```<operator-name>``` denotes the name of the operator, “attr” is
 the constant denoting that an attribute is being specified and
@@ -225,7 +225,7 @@ application window of an operator named “input” to be 10
 
 ```
 <property>
-  <name>dt.operator.input.attr.APPLICATION_WINDOW_COUNT</name>
+  <name>apex.operator.input.attr.APPLICATION_WINDOW_COUNT</name>
   <value>10</value>
 </property>
 ```
@@ -240,7 +240,7 @@ can be specified in the format described above.
 
 Operators can be configured using operator specific properties. The
 properties can be specified using the parameter
-```dt.operator.<operator-name>.prop.<property-name>```. The difference
+```apex.operator.<operator-name>.prop.<property-name>```. The difference
 between this and the operator attribute specification described above is
 that the keyword “prop” is used to denote that it is a property and
 ```<property-name>``` specifies the property name.  An example illustrating
@@ -249,7 +249,7 @@ redis server for a “redis” output operator.
 
 ```
   <property>
-    <name>dt.operator.redis.prop.host</name>
+    <name>apex.operator.redis.prop.host</name>
     <value>127.0.0.1</value>
   </property>
 ```
@@ -265,8 +265,8 @@ will be called on the “redis” operator with “127.0.0.1” as the argument.
 
 ### Port attributes
 Port attributes are used to specify the platform behavior for input and
-output ports. They can be specified using the parameter ```dt.operator.<operator-name>.inputport.<port-name>.attr.<attribute>```
-for input port and ```dt.operator.<operator-name>.outputport.<port-name>.attr.<attribute>```
+output ports. They can be specified using the parameter ```apex.operator.<operator-name>.inputport.<port-name>.attr.<attribute>```
+for input port and ```apex.operator.<operator-name>.outputport.<port-name>.attr.<attribute>```
 for output port. The keyword “inputport” is used to denote an input port
 and “outputport” to denote an output port. The rest of the specification
 follows the conventions described in other specifications above. An
@@ -276,7 +276,7 @@ be 4k.
 
 ```
 <property>
-  <name>dt.operator.range.inputport.input.attr.QUEUE_CAPACITY</name>
+  <name>apex.operator.range.inputport.input.attr.QUEUE_CAPACITY</name>
   <value>4000</value>
 </property>
 ```
@@ -297,7 +297,7 @@ specification described below.
 
 Streams can be configured using stream properties. The properties can be
 specified using the parameter
-```dt.stream.<stream-name>.prop.<property-name>```  The constant “stream”
+```apex.stream.<stream-name>.prop.<property-name>```  The constant “stream”
 specifies that it is a stream, ```<stream-name>``` specifies the name of the
 stream and ```<property-name>``` the name of the property. The name of the
 stream is the same name that is passed when the stream is added to the
@@ -308,7 +308,7 @@ connecting be run in the same container.
 
 ```
   <property>
-    <name>dt.stream.stream1.prop.locality</name>
+    <name>apex.stream.stream1.prop.locality</name>
     <value>CONTAINER_LOCAL</value>
   </property>
 ```
@@ -339,7 +339,7 @@ example, to specify an attribute for all ports of an operator it can be
 done as follows
 ```
 <property>
-  <name>dt.operator.range.port.*.attr.QUEUE_CAPACITY</name>
+  <name>apex.operator.range.port.*.attr.QUEUE_CAPACITY</name>
   <value>4000</value>
 </property>
 ```
@@ -372,13 +372,13 @@ project. The properties.xml may look like:
 
 The name of an application-specific property takes the form of:
 
-```dt.operator.{opName}.prop.{propName} ```
+```apex.operator.{opName}.prop.{propName} ```
 
 The first represents the property with name propName of operator opName.
  Or you can set the application name at run time by setting this
 property:
 
-        dt.attr.APPLICATION_NAME
+        apex.attr.APPLICATION_NAME
 
 
 In this example, property some_name_1 is a required property which
@@ -531,12 +531,12 @@ additional files to be packaged, you can use an Apex Configuration Package.
 ## Creating Configuration Packages
 
 Creating Configuration Packages is similar to creating Application Packages. You can create a configuration 
-package project using Maven by running the following command. Replace "com.example", "mydtconfig" and "1.0-SNAPSHOT" with the appropriate values:
+package project using Maven by running the following command. Replace "com.example", "myconfig" and "1.0-SNAPSHOT" with the appropriate values:
 
 ```
 $ mvn archetype:generate -DarchetypeGroupId=org.apache.apex \
   -DarchetypeArtifactId=apex-conf-archetype -DarchetypeVersion=3.4.0 \
-  -DgroupId=com.example -Dpackage=com.example.mydtconfig -DartifactId=mydtconfig \
+  -DgroupId=com.example -Dpackage=com.example.myconfig -DartifactId=myconfig \
   -Dversion=1.0-SNAPSHOT
 ```
 
@@ -547,7 +547,7 @@ $ mvn package
 ```
 
 The "mvn package" command creates the Config Package file in target
-directory as target/mydtconfig.apc. You will be able to use that
+directory as target/myconfig.apc. You will be able to use that
 Configuration Package file to launch an Apache Apex application.
 
 ## Assembling your own configuration package
@@ -568,7 +568,7 @@ Example:
 ```xml
   <groupId>com.example</groupId>
   <version>1.0.0</version>
-  <artifactId>mydtconf</artifactId>
+  <artifactId>myconfig</artifactId>
   <packaging>jar</packaging>
   <!-- change these to the appropriate values -->
   <name>My Apex Application Configuration</name>
@@ -661,7 +661,7 @@ files
 
 `-conf` option of the launch command in CLI supports specifying configuration package in the local filesystem.  Example:
 
-    dt\> launch mydtapp-1.0.0.apa -conf mydtconfig.apc
+    apex\> launch myapp-1.0.0.apa -conf myconfig.apc
 
 This command expects both the application package and the configuration package to be in the local file system.
 

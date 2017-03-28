@@ -2,22 +2,22 @@
 <configuration>
   <!-- 
   <property>
-    <name>dt.application.{appName}.operator.{opName}.prop.{propName}</name>
+    <name>apex.application.{appName}.operator.{opName}.prop.{propName}</name>
     <value>some-default-value (if value is not specified, it is required from the user or custom config when launching)</value>
   </property>
   -->
   <!-- memory assigned to app master
   <property>
-    <name>dt.attr.MASTER_MEMORY_MB</name>
+    <name>apex.attr.MASTER_MEMORY_MB</name>
     <value>1024</value>
   </property>
   -->
   <property>
-    <name>dt.application.MyFirstApplication.operator.randomGenerator.prop.numTuples</name>
+    <name>apex.application.MyFirstApplication.operator.randomGenerator.prop.numTuples</name>
     <value>1000</value>
   </property>
   <property>
-    <name>dt.application.MyFirstApplication.operator.console.prop.stringFormat</name>
+    <name>apex.application.MyFirstApplication.operator.console.prop.stringFormat</name>
     <value>hello world: %s</value>
   </property>
 </configuration>

@@ -426,7 +426,7 @@ public interface Context
      */
     Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<>(30 * 60 * 60 * 1000);
     /**
-     * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt.gateway.listenAddress" in the configuration.
+     * Address of optional web-socket pub-sub gateway to emit application events, in the form of host:port.
      */
     Attribute<String> GATEWAY_CONNECT_ADDRESS = new Attribute<>(String2String.getInstance());
     /**
