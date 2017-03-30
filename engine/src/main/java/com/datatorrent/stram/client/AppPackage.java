@@ -18,8 +18,12 @@
  */
 package com.datatorrent.stram.client;
 
+import java.io.Closeable;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,7 +35,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.jar.Attributes;
+import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 
 import org.codehaus.jackson.JsonGenerator;
@@ -42,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -60,7 +67,7 @@ import net.lingala.zip4j.model.ZipParameters;
  *
  * @since 1.0.3
  */
-public class AppPackage extends JarFile
+public class AppPackage implements Closeable
 {
   public static final String ATTRIBUTE_DT_ENGINE_VERSION = "DT-Engine-Version";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_NAME = "DT-App-Package-Name";
@@ -160,9 +167,14 @@ public class AppPackage extends JarFile
     }
   }
 
-  public AppPackage(File file) throws IOException, ZipException
+  public AppPackage(File file) throws IOException
   {
-    this(file, false);
+    this(new FileInputStream(file));
+  }
+
+  public AppPackage(InputStream input) throws IOException
+  {
+    this(input, false);
   }
 
   /**
@@ -178,11 +190,29 @@ public class AppPackage extends JarFile
    * @param contentFolder  the folder that the app package will be extracted to
    * @param processAppDirectory
    * @throws java.io.IOException
-   * @throws net.lingala.zip4j.exception.ZipException
    */
-  public AppPackage(File file, File contentFolder, boolean processAppDirectory) throws IOException, ZipException
+  public AppPackage(File file, File contentFolder, boolean processAppDirectory) throws IOException
   {
-    super(file);
+    this(new FileInputStream(file), contentFolder, processAppDirectory);
+  }
+
+  /**
+   * Creates an App Package object.
+   *
+   * If app directory is to be processed, there may be resource leak in the class loader. Only pass true for short-lived
+   * applications
+   *
+   * If contentFolder is not null, it will try to create the contentFolder, file will be retained on disk after App Package is closed
+   * If contentFolder is null, temp folder will be created and will be cleaned on close()
+   *
+   * @param input
+   * @param contentFolder  the folder that the app package will be extracted to
+   * @param processAppDirectory
+   * @throws java.io.IOException
+   */
+  public AppPackage(InputStream input, File contentFolder, boolean processAppDirectory) throws IOException
+  {
+    final JarInputStream jarInputStream = new JarInputStream(input);
 
     if (contentFolder != null) {
       FileUtils.forceMkdir(contentFolder);
@@ -193,7 +223,7 @@ public class AppPackage extends JarFile
     }
     directory = contentFolder;
 
-    Manifest manifest = getManifest();
+    Manifest manifest = jarInputStream.getManifest();
     if (manifest == null) {
       throw new IOException("Not a valid app package. MANIFEST.MF is not present.");
     }
@@ -209,7 +239,7 @@ public class AppPackage extends JarFile
       throw new IOException("Not a valid app package.  App Package Name or Version or Class-Path is missing from MANIFEST.MF");
     }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
-    extractToDirectory(directory, file);
+    extractToDirectory(directory, jarInputStream);
 
     File confDirectory = new File(directory, "conf");
     if (confDirectory.exists()) {
@@ -251,23 +281,56 @@ public class AppPackage extends JarFile
    * @param file
    * @param processAppDirectory
    * @throws java.io.IOException
-   * @throws net.lingala.zip4j.exception.ZipException
    */
-  public AppPackage(File file, boolean processAppDirectory) throws IOException, ZipException
+  public AppPackage(File file, boolean processAppDirectory) throws IOException
   {
-    this(file, null, processAppDirectory);
+    this(new FileInputStream(file), processAppDirectory);
   }
 
-  public static void extractToDirectory(File directory, File appPackageFile) throws ZipException
+  /**
+   * Creates an App Package object.
+   *
+   * If app directory is to be processed, there may be resource leak in the class loader. Only pass true for short-lived
+   * applications
+   *
+   * Files in app package will be extracted to tmp folder and will be cleaned on close()
+   * The close() method could be explicitly called or implicitly called by GC finalize()
+   *
+   * @param input
+   * @param processAppDirectory
+   * @throws java.io.IOException
+   */
+  public AppPackage(InputStream input, boolean processAppDirectory) throws IOException
   {
-    ZipFile zipFile = new ZipFile(appPackageFile);
+    this(input, null, processAppDirectory);
+  }
 
-    if (zipFile.isEncrypted()) {
-      throw new ZipException("Encrypted app package not supported yet");
+  public static void extractToDirectory(File directory, File appPackageFile) throws IOException
+  {
+    extractToDirectory(directory, new JarInputStream(new FileInputStream(appPackageFile)));
+  }
+
+  private static void extractToDirectory(File directory, JarInputStream input) throws IOException
+  {
+    File manifestFile = new File(directory, JarFile.MANIFEST_NAME);
+    manifestFile.getParentFile().mkdirs();
+    try (FileOutputStream output = new FileOutputStream(manifestFile)) {
+      input.getManifest().write(output);
     }
 
-    directory.mkdirs();
-    zipFile.extractAll(directory.getAbsolutePath());
+    JarEntry entry = input.getNextJarEntry();
+    while (entry != null) {
+      File newFile = new File(directory, entry.getName());
+      if (entry.isDirectory()) {
+        newFile.mkdirs();
+      } else {
+        try (FileOutputStream output = new FileOutputStream(newFile)) {
+          IOUtils.copy(input, output);
+        }
+      }
+      input.closeEntry();
+      entry = input.getNextJarEntry();
+    }
   }
 
   public static void createAppPackageFile(File fileToBeCreated, File directory) throws ZipException
@@ -286,7 +349,6 @@ public class AppPackage extends JarFile
   @Override
   public void close() throws IOException
   {
-    super.close();
     if (cleanOnClose) {
       cleanContent();
     }
