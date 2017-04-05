@@ -79,9 +79,7 @@ public class EmbeddedAppLauncherImpl extends LocalMode<EmbeddedAppLauncherImpl.E
           throw new LauncherException(e);
         }
       }
-      if (StramUtils.getValueWithDefault(launchParameters, HEARTBEAT_MONITORING)) {
-        lc.setHeartbeatMonitoringEnabled(true);
-      }
+      lc.setHeartbeatMonitoringEnabled(StramUtils.getValueWithDefault(launchParameters, HEARTBEAT_MONITORING));
       if (StramUtils.getValueWithDefault(launchParameters, RUN_ASYNC)) {
         lc.runAsync();
         launched = true;
