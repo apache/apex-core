@@ -50,7 +50,7 @@ public class SerializableObjectTest
       }
 
     };
-    public final transient OutputPort<T> output = new DefaultOutputPort<T>();
+    public final transient OutputPort<T> output = new DefaultOutputPort<>();
     private int i;
 
     public void setI(int i)
@@ -109,7 +109,7 @@ public class SerializableObjectTest
   @Test
   public void testReadResolve() throws Exception
   {
-    SerializableOperator<Object> pre = new SerializableOperator<Object>();
+    SerializableOperator<Object> pre = new SerializableOperator<>();
     pre.setI(10);
 
     FileOutputStream fos = new FileOutputStream(filename);

@@ -41,9 +41,9 @@ public class TestGeneratorInputOperator implements InputOperator
   private int emitInterval = 1000;
   private final int spinMillis = 50;
   private String myStringProperty;
-  private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<String>();
+  private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<>();
   @OutputPortFieldAnnotation(optional = true)
-  public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
+  public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<>();
 
   public int getMaxTuples()
   {

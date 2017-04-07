@@ -31,7 +31,7 @@ import com.datatorrent.netlet.EventLoop;
  */
 public class System
 {
-  private static final HashMap<String, DefaultEventLoop> eventloops = new HashMap<String, DefaultEventLoop>();
+  private static final HashMap<String, DefaultEventLoop> eventloops = new HashMap<>();
 
   public static void startup(String identifier)
   {

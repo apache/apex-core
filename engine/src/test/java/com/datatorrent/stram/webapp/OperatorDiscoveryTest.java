@@ -109,9 +109,9 @@ public class OperatorDiscoveryTest
     };
 
     @OutputPortFieldAnnotation(optional = false, error = true)
-    public final transient DefaultOutputPort<String> output = new DefaultOutputPort<String>();
+    public final transient DefaultOutputPort<String> output = new DefaultOutputPort<>();
 
-    public final transient DefaultOutputPort<Double> output1 = new DefaultOutputPort<Double>();
+    public final transient DefaultOutputPort<Double> output1 = new DefaultOutputPort<>();
 
     @Override
     public String getName()
@@ -417,7 +417,7 @@ public class OperatorDiscoveryTest
   {
     String classpath = System.getProperty("java.class.path");
     String[] paths = classpath.split(":");
-    List<String> fnames = new LinkedList<String>();
+    List<String> fnames = new LinkedList<>();
     for (String cp : paths) {
       File f = new File(cp);
       if (!f.isDirectory()) {
@@ -480,7 +480,7 @@ public class OperatorDiscoveryTest
   @Test
   public void testValueSerialization() throws Exception
   {
-    TestOperator<String, Map<String, Number>> bean = new TestOperator<String, Map<String, Number>>();
+    TestOperator<String, Map<String, Number>> bean = new TestOperator<>();
     bean.map.put("key1", new Structured());
     bean.stringArray = new String[]{"one", "two", "three"};
     bean.stringList = Lists.newArrayList("four", "five");
@@ -491,7 +491,7 @@ public class OperatorDiscoveryTest
     bean.structuredArray[0].name = "s1";
     bean.color = Color.BLUE;
     bean.booleanProp = true;
-    bean.nestedList = new LinkedList<OperatorDiscoveryTest.Structured>();
+    bean.nestedList = new LinkedList<>();
     Structured st = new Structured();
     st.name = "nestedone";
     st.size = 10;
@@ -640,15 +640,15 @@ public class OperatorDiscoveryTest
     private List<Structured> nestedList;
     private Properties props;
     private Structured nested;
-    private Map<String, Structured> map = new HashMap<String, Structured>();
+    private Map<String, Structured> map = new HashMap<>();
     private String[] stringArray;
     private Color color;
     private Structured[] structuredArray;
     private T[] genericArray;
-    private Map<String, List<Map<String, Number>>> nestedParameterizedType = new HashMap<String, List<Map<String, Number>>>();
+    private Map<String, List<Map<String, Number>>> nestedParameterizedType = new HashMap<>();
     private Map<?, ? super Long> wildcardType = new HashMap<Object, Number>();
-    private List<int[]> listofIntArray = new LinkedList<int[]>();
-    private List<T> parameterizedTypeVariable = new LinkedList<T>();
+    private List<int[]> listofIntArray = new LinkedList<>();
+    private List<T> parameterizedTypeVariable = new LinkedList<>();
     private Z genericType;
     private int[][] multiDimensionPrimitiveArray;
     private Structured[][] multiDimensionComplexArray;
@@ -1056,7 +1056,7 @@ public class OperatorDiscoveryTest
   @Test
   public void testLogicalPlanConfiguration() throws Exception
   {
-    TestOperator<String, Map<String, Number>> bean = new InputTestOperator<String, Map<String, Number>>();
+    TestOperator<String, Map<String, Number>> bean = new InputTestOperator<>();
     bean.map.put("key1", new Structured());
     bean.stringArray = new String[]{"one", "two", "three"};
     bean.stringList = Lists.newArrayList("four", "five");
@@ -1113,12 +1113,12 @@ public class OperatorDiscoveryTest
   public static class SchemaRequiredOperator extends BaseOperator implements InputOperator
   {
     @OutputPortFieldAnnotation(schemaRequired = true)
-    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<>();
 
     @OutputPortFieldAnnotation(schemaRequired = false)
-    public final transient DefaultOutputPort<Object> output1 = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> output1 = new DefaultOutputPort<>();
 
-    public final transient DefaultOutputPort<Object> output2 = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> output2 = new DefaultOutputPort<>();
 
     @Override
     public void emitTuples()

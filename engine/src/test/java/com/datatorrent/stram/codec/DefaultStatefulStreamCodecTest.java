@@ -112,8 +112,8 @@ public class DefaultStatefulStreamCodecTest
   @Test
   public void testString()
   {
-    StatefulStreamCodec<Object> coder = new DefaultStatefulStreamCodec<Object>();
-    StatefulStreamCodec<Object> decoder = new DefaultStatefulStreamCodec<Object>();
+    StatefulStreamCodec<Object> coder = new DefaultStatefulStreamCodec<>();
+    StatefulStreamCodec<Object> decoder = new DefaultStatefulStreamCodec<>();
 
     String hello = "hello";
 
@@ -182,7 +182,7 @@ public class DefaultStatefulStreamCodecTest
   public void testFinalFieldSerialization() throws Exception
   {
     TestTuple t1 = new TestTuple(5);
-    DefaultStatefulStreamCodec<Object> c = new DefaultStatefulStreamCodec<Object>();
+    DefaultStatefulStreamCodec<Object> c = new DefaultStatefulStreamCodec<>();
     DataStatePair dsp = c.toDataStatePair(t1);
     TestTuple t2 = (TestTuple)c.fromDataStatePair(dsp);
     Assert.assertEquals("", t1.finalField, t2.finalField);
@@ -208,7 +208,7 @@ public class DefaultStatefulStreamCodecTest
     Object inner = outer.new InnerClass();
 
     for (Object o: new Object[] {outer, inner}) {
-      DefaultStatefulStreamCodec<Object> c = new DefaultStatefulStreamCodec<Object>();
+      DefaultStatefulStreamCodec<Object> c = new DefaultStatefulStreamCodec<>();
       DataStatePair dsp = c.toDataStatePair(o);
       c.fromDataStatePair(dsp);
 

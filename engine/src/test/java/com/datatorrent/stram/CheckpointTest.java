@@ -78,7 +78,7 @@ public class CheckpointTest
   private static class MockInputOperator extends BaseOperator implements InputOperator, Operator.CheckpointNotificationListener
   {
     @OutputPortFieldAnnotation( optional = true)
-    public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<>();
     private transient int windowCount;
 
     private int checkpointState;
@@ -326,7 +326,7 @@ public class CheckpointTest
 
   public List<Checkpoint> getCheckpoints(Long... windowIds)
   {
-    List<Checkpoint> list = new ArrayList<Checkpoint>(windowIds.length);
+    List<Checkpoint> list = new ArrayList<>(windowIds.length);
     for (Long windowId : windowIds) {
       list.add(new Checkpoint(windowId, 0, 0));
     }

@@ -34,7 +34,7 @@ public class ApexCliMiscTest
 {
   ApexCli cli;
 
-  static Map<String, String> env = new HashMap<String, String>();
+  static Map<String, String> env = new HashMap<>();
   static String userHome;
 
   @Before

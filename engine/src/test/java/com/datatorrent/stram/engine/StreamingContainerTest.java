@@ -93,7 +93,7 @@ public class StreamingContainerTest
   private static class CommitAwareOperator extends BaseOperator implements CheckpointListener, InputOperator
   {
     private transient String name;
-    public final transient DefaultOutputPort<String> output = new DefaultOutputPort<String>();
+    public final transient DefaultOutputPort<String> output = new DefaultOutputPort<>();
 
     @InputPortFieldAnnotation(optional = true)
     public final transient DefaultInputPort<String> input = new DefaultInputPort<String>()

@@ -41,7 +41,7 @@ public class GenericOperatorPropertyCodecTest
   public void testGenericOperatorPropertyCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = new HashMap<Class<?>, Class<? extends StringCodec<?>>>();
+    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = new HashMap<>();
     codecs.put(GenericOperatorProperty.class, GenericOperatorProperty.GenericOperatorPropertyStringCodec.class);
     dag.setAttribute(com.datatorrent.api.Context.DAGContext.STRING_CODECS, codecs);
     dag.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());

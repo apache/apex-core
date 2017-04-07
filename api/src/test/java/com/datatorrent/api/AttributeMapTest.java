@@ -51,7 +51,7 @@ public class AttributeMapTest
 
   interface iface
   {
-    Attribute<Greeting> greeting = new Attribute<Greeting>(Greeting.hello);
+    Attribute<Greeting> greeting = new Attribute<>(Greeting.hello);
   }
 
   @Test

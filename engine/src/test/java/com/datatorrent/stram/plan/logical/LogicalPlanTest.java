@@ -173,9 +173,9 @@ public class LogicalPlanTest
 
   public static class ValidationOperator extends BaseOperator
   {
-    public final transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<>();
 
-    public final transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<>();
   }
 
   public static class CounterOperator extends BaseOperator
@@ -641,7 +641,7 @@ public class LogicalPlanTest
 
   private class TestAnnotationsOperator2 extends BaseOperator implements InputOperator
   {
-    public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<>();
 
     @Override
     public void emitTuples()
@@ -653,9 +653,9 @@ public class LogicalPlanTest
   private class TestAnnotationsOperator3 extends BaseOperator implements InputOperator
   {
     @OutputPortFieldAnnotation(optional = true)
-    public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<>();
     @OutputPortFieldAnnotation(optional = true)
-    public final transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<>();
 
     @Override
     public void emitTuples()
@@ -773,7 +773,7 @@ public class LogicalPlanTest
   public void testAttributeValuesSerializableCheck() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException
   {
     LogicalPlan dag = new LogicalPlan();
-    Attribute<Object> attr = new Attribute<Object>(new TestAttributeValue(), new Object2String());
+    Attribute<Object> attr = new Attribute<>(new TestAttributeValue(), new Object2String());
     Field nameField = Attribute.class.getDeclaredField("name");
     nameField.setAccessible(true);
     nameField.set(attr, "Test_Attribute");

@@ -32,17 +32,17 @@ public interface SecurityContext extends Context
   /**
    * Attribute for the user name for login.
    */
-  Attribute<String> USER_NAME = new Attribute<String>((String)null);
+  Attribute<String> USER_NAME = new Attribute<>((String)null);
 
   /**
    * Attribute for the password for login.
    */
 
-  Attribute<char[]> PASSWORD = new Attribute<char[]>((char[])null);
+  Attribute<char[]> PASSWORD = new Attribute<>((char[])null);
 
   /**
    * Attribute for the realm for login.
    */
-  Attribute<String> REALM = new Attribute<String>((String)null);
+  Attribute<String> REALM = new Attribute<>((String)null);
 
 }

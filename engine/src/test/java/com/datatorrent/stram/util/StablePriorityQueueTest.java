@@ -65,7 +65,7 @@ public class StablePriorityQueueTest
   @Test
   public void testElement()
   {
-    StablePriorityQueue<Integer> instance = new StablePriorityQueue<Integer>(1);
+    StablePriorityQueue<Integer> instance = new StablePriorityQueue<>(1);
     Integer i = 10;
     instance.add(i);
     Object result = instance.element();
@@ -78,7 +78,7 @@ public class StablePriorityQueueTest
   @Test
   public void testOffer()
   {
-    StablePriorityQueue<Integer> instance = new StablePriorityQueue<Integer>(1);
+    StablePriorityQueue<Integer> instance = new StablePriorityQueue<>(1);
     Integer i = 10;
     assertTrue(instance.offer(i));
     Object result = instance.peek();

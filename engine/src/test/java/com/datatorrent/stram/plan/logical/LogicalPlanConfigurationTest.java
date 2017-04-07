@@ -625,7 +625,7 @@ public class LogicalPlanConfigurationTest
           output.emit(tuple);
         }
       };
-      public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
+      public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<>();
     }
 
     class DummyOutputOperator extends BaseOperator
@@ -644,8 +644,8 @@ public class LogicalPlanConfigurationTest
 
     class TestUnifierAttributeModule implements Module
     {
-      public transient ProxyInputPort<Integer> moduleInput = new ProxyInputPort<Integer>();
-      public transient ProxyOutputPort<Integer> moduleOutput = new Module.ProxyOutputPort<Integer>();
+      public transient ProxyInputPort<Integer> moduleInput = new ProxyInputPort<>();
+      public transient ProxyOutputPort<Integer> moduleOutput = new Module.ProxyOutputPort<>();
 
       @Override
       public void populateDAG(DAG dag, Configuration conf)

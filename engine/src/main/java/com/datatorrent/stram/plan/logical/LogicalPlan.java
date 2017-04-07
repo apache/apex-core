@@ -760,7 +760,7 @@ public class LogicalPlan implements Serializable, DAG
         codecs.put(sinkToPersistPortMeta, inputStreamCodec);
         InputPortMeta persistOperatorPortMeta = assertGetPortMeta(port);
         StreamCodec<Object> specifiedCodecForPersistOperator = (StreamCodec<Object>)persistOperatorPortMeta.getStreamCodec();
-        StreamCodecWrapperForPersistance<Object> codec = new StreamCodecWrapperForPersistance<Object>(codecs, specifiedCodecForPersistOperator);
+        StreamCodecWrapperForPersistance<Object> codec = new StreamCodecWrapperForPersistance<>(codecs, specifiedCodecForPersistOperator);
         persistOperatorPortMeta.setStreamCodec(codec);
       }
     }
@@ -1907,14 +1907,14 @@ public class LogicalPlan implements Serializable, DAG
     HashMap<OperatorPair, AffinityRule> antiAffinities = new HashMap<>();
     HashMap<OperatorPair, AffinityRule> threadLocalAffinities = new HashMap<>();
 
-    List<String> operatorNames = new ArrayList<String>();
+    List<String> operatorNames = new ArrayList<>();
 
     for (OperatorMeta operator : getAllOperators()) {
       operatorNames.add(operator.getName());
-      Set<String> containerSet = new HashSet<String>();
+      Set<String> containerSet = new HashSet<>();
       containerSet.add(operator.getName());
       containerAffinities.put(operator.getName(), containerSet);
-      Set<String> nodeSet = new HashSet<String>();
+      Set<String> nodeSet = new HashSet<>();
       nodeSet.add(operator.getName());
       nodeAffinities.put(operator.getName(), nodeSet);
 
@@ -2073,7 +2073,7 @@ public class LogicalPlan implements Serializable, DAG
    */
   public void convertRegexToList(List<String> operatorNames, AffinityRule rule)
   {
-    List<String> operators = new LinkedList<String>();
+    List<String> operators = new LinkedList<>();
     Pattern p = Pattern.compile(rule.getOperatorRegex());
     for (String name : operatorNames) {
       if (p.matcher(name).matches()) {

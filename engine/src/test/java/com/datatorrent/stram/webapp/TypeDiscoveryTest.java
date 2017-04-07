@@ -87,10 +87,10 @@ public class TypeDiscoveryTest
       {
       }
     };
-    final OutputPort<T2> outportT2 = new DefaultOutputPort<T2>();
-    final OutputPort<Number> outportNumberParam = new DefaultOutputPort<Number>();
+    final OutputPort<T2> outportT2 = new DefaultOutputPort<>();
+    final OutputPort<Number> outportNumberParam = new DefaultOutputPort<>();
     final StringOutputPort outportString = new StringOutputPort(this);
-    final OutputPort<List<T0>> outportList = new DefaultOutputPort<List<T0>>();
+    final OutputPort<List<T0>> outportList = new DefaultOutputPort<>();
     final GenericSubClassOutputPort outClassObject = new GenericSubClassOutputPort(this);
   }
 
@@ -107,8 +107,8 @@ public class TypeDiscoveryTest
       {
       }
     };
-    final OutputPort<Map<String, Number>> outportT2 = new DefaultOutputPort<Map<String, Number>>();
-    final OutputPort<Number> outportNumberParam = new DefaultOutputPort<Number>();
+    final OutputPort<Map<String, Number>> outportT2 = new DefaultOutputPort<>();
+    final OutputPort<Number> outportNumberParam = new DefaultOutputPort<>();
     final StringOutputPort outportString = new StringOutputPort(this);
   }
 
@@ -163,7 +163,7 @@ public class TypeDiscoveryTest
 
   static class ParameterizedTypeOperator<T> extends BaseOperator
   {
-    final OutputPort<T> output = new DefaultOutputPort<T>();
+    final OutputPort<T> output = new DefaultOutputPort<>();
   }
 
   static class StringParameterOperator extends ParameterizedTypeOperator<String>

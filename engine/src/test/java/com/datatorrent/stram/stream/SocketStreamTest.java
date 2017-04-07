@@ -149,7 +149,7 @@ public class SocketStreamTest
   @Before
   public void init()
   {
-    final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<Object>();
+    final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<>();
     messageCount = new AtomicInteger(0);
 
     Sink<Object> sink = new Sink<Object>()

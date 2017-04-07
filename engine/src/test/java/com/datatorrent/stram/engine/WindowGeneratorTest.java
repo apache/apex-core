@@ -256,7 +256,7 @@ public class WindowGeneratorTest
 
   static class RandomNumberGenerator implements InputOperator
   {
-    public final transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
+    public final transient DefaultOutputPort<Integer> output = new DefaultOutputPort<>();
 
     @Override
     public void emitTuples()

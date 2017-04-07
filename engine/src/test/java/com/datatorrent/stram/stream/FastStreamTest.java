@@ -94,7 +94,7 @@ public class FastStreamTest
   @SuppressWarnings({"SleepWhileInLoop"})
   public void testBufferServerStream() throws Exception
   {
-    final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<Object>();
+    final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<>();
     final AtomicInteger messageCount = new AtomicInteger();
     Sink<Object> sink = new Sink<Object>()
     {

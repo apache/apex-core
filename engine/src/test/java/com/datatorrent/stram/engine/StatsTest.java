@@ -83,7 +83,7 @@ public class StatsTest
     public static class TestInputStatsListener implements StatsListener, Serializable
     {
       private static final long serialVersionUID = 1L;
-      private List<OperatorStats> inputOperatorStats = new ArrayList<OperatorStats>();
+      private List<OperatorStats> inputOperatorStats = new ArrayList<>();
 
       @Override
       public Response processStats(BatchedOperatorStats stats)
@@ -101,7 +101,7 @@ public class StatsTest
   public static class TestCollector extends GenericTestOperator implements StatsListener
   {
     transient long windowId;
-    List<OperatorStats> collectorOperatorStats = new ArrayList<OperatorStats>();
+    List<OperatorStats> collectorOperatorStats = new ArrayList<>();
 
     @Override
     public Response processStats(BatchedOperatorStats stats)
@@ -129,7 +129,7 @@ public class StatsTest
     public static class TestCollectorStatsListener implements StatsListener, Serializable
     {
       private static final long serialVersionUID = 1L;
-      List<OperatorStats> collectorOperatorStats = new ArrayList<OperatorStats>();
+      List<OperatorStats> collectorOperatorStats = new ArrayList<>();
 
       @Override
       public Response processStats(BatchedOperatorStats stats)

@@ -59,7 +59,7 @@ public class ApexCliTest
   static TemporaryFolder testFolder = new TemporaryFolder();
   ApexCli cli;
 
-  static Map<String, String> env = new HashMap<String, String>();
+  static Map<String, String> env = new HashMap<>();
   static String userHome;
 
   @BeforeClass

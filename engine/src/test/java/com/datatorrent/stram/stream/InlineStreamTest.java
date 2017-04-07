@@ -55,13 +55,13 @@ public class InlineStreamTest
   {
     final int totalTupleCount = 5000;
 
-    final PassThroughNode<Object> operator1 = new PassThroughNode<Object>();
+    final PassThroughNode<Object> operator1 = new PassThroughNode<>();
     final GenericNode node1 = new GenericNode(operator1, new OperatorContext(1, "operator1", new DefaultAttributeMap(),
         null));
     node1.setId(1);
     operator1.setup(node1.context);
 
-    final PassThroughNode<Object> operator2 = new PassThroughNode<Object>();
+    final PassThroughNode<Object> operator2 = new PassThroughNode<>();
     final GenericNode node2 = new GenericNode(operator2, new OperatorContext(2, "operator2", new DefaultAttributeMap(),
         null));
     node2.setId(2);
@@ -115,7 +115,7 @@ public class InlineStreamTest
     AbstractReservoir reservoir1 = AbstractReservoir.newReservoir("input", 1024 * 5);
     node1.connectInputPort("input", reservoir1);
 
-    Map<Integer, Node<?>> activeNodes = new ConcurrentHashMap<Integer, Node<?>>();
+    Map<Integer, Node<?>> activeNodes = new ConcurrentHashMap<>();
     launchNodeThread(node1, activeNodes);
     launchNodeThread(node2, activeNodes);
     stream.activate(streamContext);
@@ -206,7 +206,7 @@ public class InlineStreamTest
       }
 
     };
-    public final DefaultOutputPort<T> output = new DefaultOutputPort<T>();
+    public final DefaultOutputPort<T> output = new DefaultOutputPort<>();
     private boolean logMessages = false;
 
     public boolean isLogMessages()

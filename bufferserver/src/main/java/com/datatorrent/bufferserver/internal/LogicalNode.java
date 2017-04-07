@@ -71,8 +71,8 @@ public class LogicalNode implements DataListener
     this.identifier = identifier;
     this.upstream = upstream;
     this.group = group;
-    this.physicalNodes = new HashSet<PhysicalNode>();
-    this.partitions = new HashSet<BitVector>();
+    this.physicalNodes = new HashSet<>();
+    this.partitions = new HashSet<>();
     this.iterator = iterator;
     this.skipWindowId = skipWindowId;
     this.eventloop = eventloop;

@@ -336,14 +336,14 @@ public class DataList
   {
     all_listeners.add(dl);
     //logger.debug("total {} listeners {} -> {}", all_listeners.size(), dl, this);
-    ArrayList<BitVector> partitions = new ArrayList<BitVector>();
+    ArrayList<BitVector> partitions = new ArrayList<>();
     if (dl.getPartitions(partitions) > 0) {
       for (BitVector partition : partitions) {
         HashSet<DataListener> set;
         if (listeners.containsKey(partition)) {
           set = listeners.get(partition);
         } else {
-          set = new HashSet<DataListener>();
+          set = new HashSet<>();
           listeners.put(partition, set);
         }
         set.add(dl);
@@ -353,7 +353,7 @@ public class DataList
       if (listeners.containsKey(DataListener.NULL_PARTITION)) {
         set = listeners.get(DataListener.NULL_PARTITION);
       } else {
-        set = new HashSet<DataListener>();
+        set = new HashSet<>();
         listeners.put(DataListener.NULL_PARTITION, set);
       }
 
@@ -363,7 +363,7 @@ public class DataList
 
   public void removeDataListener(DataListener dl)
   {
-    ArrayList<BitVector> partitions = new ArrayList<BitVector>();
+    ArrayList<BitVector> partitions = new ArrayList<>();
     if (dl.getPartitions(partitions) > 0) {
       for (BitVector partition : partitions) {
         if (listeners.containsKey(partition)) {
@@ -459,7 +459,7 @@ public class DataList
 
     // When the number of subscribers becomes high or the number of blocks becomes high, consider optimize it.
     Block b = first;
-    Map<Block, Integer> indices = new HashMap<Block, Integer>();
+    Map<Block, Integer> indices = new HashMap<>();
     int i = 0;
     while (b != null) {
       indices.put(b, i++);

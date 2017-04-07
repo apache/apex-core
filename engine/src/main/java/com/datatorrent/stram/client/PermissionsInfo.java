@@ -32,10 +32,10 @@ import org.codehaus.jettison.json.JSONObject;
 public class PermissionsInfo
 {
 
-  private final Set<String> readOnlyRoles = new TreeSet<String>();
-  private final Set<String> readOnlyUsers = new TreeSet<String>();
-  private final Set<String> readWriteRoles = new TreeSet<String>();
-  private final Set<String> readWriteUsers = new TreeSet<String>();
+  private final Set<String> readOnlyRoles = new TreeSet<>();
+  private final Set<String> readOnlyUsers = new TreeSet<>();
+  private final Set<String> readWriteRoles = new TreeSet<>();
+  private final Set<String> readWriteUsers = new TreeSet<>();
   private boolean readOnlyEveryone = false;
   private boolean readWriteEveryone = false;
 

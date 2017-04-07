@@ -116,10 +116,10 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public PubSubWebSocketClient()
   {
-    throwable = new AtomicReference<Throwable>();
+    throwable = new AtomicReference<>();
     ioThreadMultiplier = 1;
     mapper = (new JacksonObjectMapperProvider()).getContext(null);
-    codec = new PubSubMessageCodec<Object>(mapper);
+    codec = new PubSubMessageCodec<>(mapper);
 
     AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
     config.setIoThreadMultiplier(ioThreadMultiplier);

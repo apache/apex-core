@@ -148,7 +148,7 @@ public class CompactUtil
     List<CompactAnnotationNode> annotations = new LinkedList<>();
     for (Object visibleAnnotation : fn.visibleAnnotations) {
       CompactAnnotationNode node = new CompactAnnotationNode();
-      Map<String, Object> annotationMap = new HashMap<String, Object>();
+      Map<String, Object> annotationMap = new HashMap<>();
       if (visibleAnnotation instanceof AnnotationNode) {
         AnnotationNode annotation = (AnnotationNode)visibleAnnotation;
         if (annotation.desc.contains("InputPortFieldAnnotation")

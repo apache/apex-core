@@ -121,17 +121,17 @@ public interface Context
     /**
      * Number of tuples the poll buffer can cache without blocking the input stream to the port.
      */
-    Attribute<Integer> QUEUE_CAPACITY = new Attribute<Integer>(1024);
+    Attribute<Integer> QUEUE_CAPACITY = new Attribute<>(1024);
     /**
      * The amount of buffer memory this port requires. There is a buffer server in each container. This is used to calculate total buffer server memory for container.
      * Also due to the nature of the application, if buffer server needs to use more RAM, from time to time, this number may
      * not be adhered to.
      */
-    Attribute<Integer> BUFFER_MEMORY_MB = new Attribute<Integer>(8 * 64);
+    Attribute<Integer> BUFFER_MEMORY_MB = new Attribute<>(8 * 64);
     /**
      * Poll period in milliseconds when the port buffer reaches its limits.
      */
-    Attribute<Integer> SPIN_MILLIS = new Attribute<Integer>(10);
+    Attribute<Integer> SPIN_MILLIS = new Attribute<>(10);
     /**
      * Input port attribute. Extend partitioning of an upstream operator w/o intermediate merge.
      * Can be used to form parallel partitions that span a group of operators.
@@ -139,7 +139,7 @@ public interface Context
      * If multiple ports of an operator have the setting, incoming streams must track back to
      * a common root partition, i.e. the operator join forks of the same origin.
      */
-    Attribute<Boolean> PARTITION_PARALLEL = new Attribute<Boolean>(false);
+    Attribute<Boolean> PARTITION_PARALLEL = new Attribute<>(false);
     /**
      * Attribute of output port to specify how many partitions should be merged by a single unifier instance. If the
      * number of partitions exceeds the limit set, a cascading unifier plan will be created. For example, 4 partitions
@@ -147,7 +147,7 @@ public interface Context
      * network I/O or other resource requirement for each unifier container (depends on the specific functionality of
      * the unifier), enabling horizontal scale by overcoming the single unifier bottleneck.
      */
-    Attribute<Integer> UNIFIER_LIMIT = new Attribute<Integer>(Integer.MAX_VALUE);
+    Attribute<Integer> UNIFIER_LIMIT = new Attribute<>(Integer.MAX_VALUE);
 
     /**
      * Attribute to specify that the final unifier be always a single unifier. This is useful when in MxN partitioning
@@ -158,16 +158,16 @@ public interface Context
      * the inputs. In this case the default unifier behavior can be specified on the output port and individual
      * exceptions can be specified on the corresponding input ports.
      */
-    Attribute<Boolean> UNIFIER_SINGLE_FINAL = new Attribute<Boolean>(Boolean.FALSE);
+    Attribute<Boolean> UNIFIER_SINGLE_FINAL = new Attribute<>(Boolean.FALSE);
     /**
      * Whether or not to auto record the tuples
      */
-    Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);
+    Attribute<Boolean> AUTO_RECORD = new Attribute<>(false);
     /**
      * Whether the output is unified.
      * This is a read-only attribute to query that whether the output of the operator from multiple instances is being unified.
      */
-    Attribute<Boolean> IS_OUTPUT_UNIFIED = new Attribute<Boolean>(false);
+    Attribute<Boolean> IS_OUTPUT_UNIFIED = new Attribute<>(false);
     /**
      * Provide the codec which can be used to serialize or deserialize the data
      * that can be received on the port. If it is unspecified the engine may use
@@ -193,13 +193,13 @@ public interface Context
      * of the operator. On subsequent run, it's the windowId of the checkpoint from which the operator state
      * is recovered.
      */
-    Attribute<Long> ACTIVATION_WINDOW_ID = new Attribute<Long>(Stateless.WINDOW_ID);
+    Attribute<Long> ACTIVATION_WINDOW_ID = new Attribute<>(Stateless.WINDOW_ID);
     /**
      * It is a maximum poll period in milliseconds when there are no tuples available on any of the input ports of the
      * operator. Platform uses the heuristic to change poll period from 0 to SPIN_MILLIS seconds.
      * Default value is 10 milliseconds.
      */
-    Attribute<Integer> SPIN_MILLIS = new Attribute<Integer>(10);
+    Attribute<Integer> SPIN_MILLIS = new Attribute<>(10);
     /**
      * The maximum number of attempts to restart a failing operator before shutting down the application.
      * Until this number is reached, when an operator fails to start it is re-spawned in a new container. Once all the
@@ -218,15 +218,15 @@ public interface Context
      * by the engine. The attribute is ignored when the operator was already declared stateless through the
      * {@link Stateless} annotation.
      */
-    Attribute<Boolean> STATELESS = new Attribute<Boolean>(false);
+    Attribute<Boolean> STATELESS = new Attribute<>(false);
     /**
      * Memory resource that the operator requires for optimal functioning. Used to calculate total memory requirement for containers.
      */
-    Attribute<Integer> MEMORY_MB = new Attribute<Integer>(1024);
+    Attribute<Integer> MEMORY_MB = new Attribute<>(1024);
     /**
      * CPU Cores that the operator requires for optimal functioning. Used to calculate total CPU Cores requirement for containers.
      */
-    Attribute<Integer> VCORES = new Attribute<Integer>(0);
+    Attribute<Integer> VCORES = new Attribute<>(0);
 
     /**
      * The options to be pass to JVM when launching the operator. Options such as java maximum heap size can be specified here.
@@ -235,7 +235,7 @@ public interface Context
     /**
      * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
      */
-    Attribute<Integer> APPLICATION_WINDOW_COUNT = new Attribute<Integer>(1);
+    Attribute<Integer> APPLICATION_WINDOW_COUNT = new Attribute<>(1);
     /**
      * When set it changes the computation to sliding window computation where duration is determined using {@link #APPLICATION_WINDOW_COUNT} that is
      * slided by duration determined using value of this attribute. Default value is null which is equivalent to that of {@link #APPLICATION_WINDOW_COUNT}.
@@ -251,7 +251,7 @@ public interface Context
      * value. Typically user would define this value to be the same as that of APPLICATION_WINDOW_COUNT so checkpointing
      * will be done at application window boundary.
      */
-    Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(1);
+    Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<>(1);
     /**
      * Name of host to directly control locality of an operator. Complementary to stream locality (NODE_LOCAL affinity).
      * For example, the user may wish to specify a locality constraint for an input operator relative to its data source.
@@ -274,18 +274,18 @@ public interface Context
      * If the processing mode for an operator is specified as EXACTLY_ONCE then the processing mode for all downstream operators
      * should be specified as AT_MOST_ONCE otherwise it will result in an error.
      */
-    Attribute<Operator.ProcessingMode> PROCESSING_MODE = new Attribute<Operator.ProcessingMode>(ProcessingMode.AT_LEAST_ONCE);
+    Attribute<Operator.ProcessingMode> PROCESSING_MODE = new Attribute<>(ProcessingMode.AT_LEAST_ONCE);
     /**
      * Timeout to identify stalled processing, specified as count of streaming windows. If the last processed
      * window does not advance within the specified timeout count, the operator will be considered stuck and the
      * container restart. There are multiple reasons this could happen: clock drift, hardware issue, networking issue,
      * blocking operator logic, etc.
      */
-    Attribute<Integer> TIMEOUT_WINDOW_COUNT = new Attribute<Integer>(120);
+    Attribute<Integer> TIMEOUT_WINDOW_COUNT = new Attribute<>(120);
     /**
      * Whether or not to auto record the tuples
      */
-    Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);
+    Attribute<Boolean> AUTO_RECORD = new Attribute<>(false);
     /**
      * How the operator distributes its state and share the input can be influenced by setting the Partitioner attribute.
      * If this attribute is set to non null value, the instance of the partitioner is used to partition and merge the
@@ -348,7 +348,7 @@ public interface Context
      * Name under which the application will be shown in the resource manager.
      * If not set, the default is the configuration Java class or property file name.
      */
-    Attribute<String> APPLICATION_NAME = new Attribute<String>("unknown-application-name");
+    Attribute<String> APPLICATION_NAME = new Attribute<>("unknown-application-name");
     /**
      * URL to the application's documentation.
      */
@@ -387,7 +387,7 @@ public interface Context
     /**
      * Dump extra debug information in launcher, master and containers.
      */
-    Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
+    Attribute<Boolean> DEBUG = new Attribute<>(false);
     /**
      * The options to be pass to JVM when launching the containers. Options such as java maximum heap size can be specified here.
      */
@@ -396,20 +396,20 @@ public interface Context
      * The amount of memory to be requested for the application master. Not used in local mode.
      * Default value is 1GB.
      */
-    Attribute<Integer> MASTER_MEMORY_MB = new Attribute<Integer>(1024);
+    Attribute<Integer> MASTER_MEMORY_MB = new Attribute<>(1024);
     /**
      * Where to spool the data once the buffer server capacity is reached.
      */
-    Attribute<Boolean> BUFFER_SPOOLING = new Attribute<Boolean>(true);
+    Attribute<Boolean> BUFFER_SPOOLING = new Attribute<>(true);
     /**
      * The streaming window size to use for the application. It is specified in milliseconds. Default value is 500ms.
      */
-    Attribute<Integer> STREAMING_WINDOW_SIZE_MILLIS = new Attribute<Integer>(500);
+    Attribute<Integer> STREAMING_WINDOW_SIZE_MILLIS = new Attribute<>(500);
     /**
      * The time interval for saving the operator state. It is specified as a multiple of streaming windows. The operator
      * state is saved periodically with interval equal to the checkpoint interval. Default value is 60 streaming windows.
      */
-    Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(60);
+    Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<>(60);
     /**
      * The path to store application dependencies, recording and other generated files for application master and containers.
      */
@@ -418,13 +418,13 @@ public interface Context
      * The size limit for a file where tuple recordings are stored. When tuples are being recorded they are stored
      * in files. When a file size reaches this limit a new file is created and tuples start getting stored in the new file. Default value is 128k.
      */
-    Attribute<Integer> TUPLE_RECORDING_PART_FILE_SIZE = new Attribute<Integer>(128 * 1024);
+    Attribute<Integer> TUPLE_RECORDING_PART_FILE_SIZE = new Attribute<>(128 * 1024);
     /**
      * The time limit for a file where tuple recordings are stored. When tuples are being recorded they are stored
      * in files. When a tuple recording file creation time falls beyond the time limit window from the current time a new file
      * is created and the tuples start getting stored in the new file. Default value is 30hrs.
      */
-    Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<Integer>(30 * 60 * 60 * 1000);
+    Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<>(30 * 60 * 60 * 1000);
     /**
      * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt.gateway.listenAddress" in the configuration.
      */
@@ -432,7 +432,7 @@ public interface Context
     /**
      * Whether or not gateway is expecting SSL connection.
      */
-    Attribute<Boolean> GATEWAY_USE_SSL = new Attribute<Boolean>(false);
+    Attribute<Boolean> GATEWAY_USE_SSL = new Attribute<>(false);
     /**
      * The username for logging in to the gateway, if authentication is enabled.
      */
@@ -448,48 +448,48 @@ public interface Context
     /**
      * Maximum number of simultaneous heartbeat connections to process. Default value is 30.
      */
-    Attribute<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new Attribute<Integer>(30);
+    Attribute<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new Attribute<>(30);
     /**
      * How frequently should operators heartbeat to stram. Recommended setting is
      * 1000ms. Value 0 will disable heartbeat (for unit testing). Default value is 1000ms.
      */
-    Attribute<Integer> HEARTBEAT_INTERVAL_MILLIS = new Attribute<Integer>(1000);
+    Attribute<Integer> HEARTBEAT_INTERVAL_MILLIS = new Attribute<>(1000);
     /**
      * Timeout for master to identify a hung container (full GC etc.). Timeout will result in container restart.
      * Default value is 30s.
      */
-    Attribute<Integer> HEARTBEAT_TIMEOUT_MILLIS = new Attribute<Integer>(30 * 1000);
+    Attribute<Integer> HEARTBEAT_TIMEOUT_MILLIS = new Attribute<>(30 * 1000);
     /**
      * Timeout for allocating container resources. Default value is 60s.
      */
-    Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<Integer>(Integer.MAX_VALUE);
+    Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<>(Integer.MAX_VALUE);
     /**
      * Maximum number of windows that can be pending for statistics calculation. Statistics are computed when
      * the metrics are available from all operators for a window. If the information is not available from all operators then
      * the window is pending. When the number of pending windows reaches this limit the information for the oldest window
      * is purged. Default value is 1000 windows.
      */
-    Attribute<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new Attribute<Integer>(1000);
+    Attribute<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new Attribute<>(1000);
     /**
      * Whether or not we record statistics. The statistics are recorded for each heartbeat if enabled. The default value is false.
      */
-    Attribute<Boolean> ENABLE_STATS_RECORDING = new Attribute<Boolean>(false);
+    Attribute<Boolean> ENABLE_STATS_RECORDING = new Attribute<>(false);
     /**
      * The time interval for throughput calculation. The throughput is periodically calculated with interval greater than or
      * equal to the throughput calculation interval. The default value is 10s.
      */
-    Attribute<Integer> THROUGHPUT_CALCULATION_INTERVAL = new Attribute<Integer>(10000);
+    Attribute<Integer> THROUGHPUT_CALCULATION_INTERVAL = new Attribute<>(10000);
     /**
      * The maximum number of samples to use when calculating throughput. In practice fewer samples may be used
      * if the THROUGHPUT_CALCULATION_INTERVAL is exceeded. Default value is 1000 samples.
      */
-    Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
+    Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<>(1000);
     /**
      * The number of samples to use when using RPC latency to compensate for clock skews and network latency when
      * calculating stats. Specify 0 if RPC latency should not be used at all to calculate stats. Default value is 100
      * samples.
      */
-    Attribute<Integer> RPC_LATENCY_COMPENSATION_SAMPLES = new Attribute<Integer>(100);
+    Attribute<Integer> RPC_LATENCY_COMPENSATION_SAMPLES = new Attribute<>(100);
     /**
      * The agent which can be used to find the jvm options for the container.
      */
@@ -511,12 +511,12 @@ public interface Context
      * blacklisting of nodes by application master
      * Blacklisting for nodes is disabled for the default value
      */
-    Attribute<Integer> MAX_CONSECUTIVE_CONTAINER_FAILURES_FOR_BLACKLIST = new Attribute<Integer>(Integer.MAX_VALUE);
+    Attribute<Integer> MAX_CONSECUTIVE_CONTAINER_FAILURES_FOR_BLACKLIST = new Attribute<>(Integer.MAX_VALUE);
 
     /**
      * The amount of time to wait before removing failed nodes from blacklist
      */
-    Attribute<Long> BLACKLISTED_NODE_REMOVAL_TIME_MILLIS = new Attribute<Long>(new Long(60 * 60 * 1000));
+    Attribute<Long> BLACKLISTED_NODE_REMOVAL_TIME_MILLIS = new Attribute<>(new Long(60 * 60 * 1000));
 
     /**
      * Affinity rules for specifying affinity and anti-affinity between logical operators

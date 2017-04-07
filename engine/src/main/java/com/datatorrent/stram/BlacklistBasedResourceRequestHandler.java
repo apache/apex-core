@@ -73,7 +73,7 @@ public class BlacklistBasedResourceRequestHandler extends ResourceRequestHandler
       for (ContainerRequest cr : requests) {
         ContainerStartRequest csr = hostSpecificRequests.get(cr);
         ContainerRequest newCr = new ContainerRequest(cr.getCapability(), null, null, cr.getPriority());
-        MutablePair<Integer, ContainerRequest> pair = new MutablePair<Integer, ContainerRequest>(loopCounter, newCr);
+        MutablePair<Integer, ContainerRequest> pair = new MutablePair<>(loopCounter, newCr);
         requestedResources.put(csr, pair);
         containerRequests.add(newCr);
         hostSpecificRequests.remove(cr);
@@ -91,7 +91,7 @@ public class BlacklistBasedResourceRequestHandler extends ResourceRequestHandler
         for (Entry<ContainerRequest, ContainerStartRequest> entry : otherContainerRequests.entrySet()) {
           ContainerRequest cr = entry.getKey();
           ContainerStartRequest csr = entry.getValue();
-          MutablePair<Integer, ContainerRequest> pair = new MutablePair<Integer, ContainerRequest>(loopCounter, cr);
+          MutablePair<Integer, ContainerRequest> pair = new MutablePair<>(loopCounter, cr);
           requestedResources.put(csr, pair);
           containerRequests.add(cr);
         }

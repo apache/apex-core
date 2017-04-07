@@ -55,9 +55,9 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
     this.objectMapper = new ObjectMapper();
     objectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
     objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
-    module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
-    module.addSerializer(JSONObject.class, new RawSerializer<Object>(Object.class));
-    module.addSerializer(JSONArray.class, new RawSerializer<Object>(Object.class));
+    module.addSerializer(ObjectMapperString.class, new RawSerializer<>(Object.class));
+    module.addSerializer(JSONObject.class, new RawSerializer<>(Object.class));
+    module.addSerializer(JSONArray.class, new RawSerializer<>(Object.class));
     objectMapper.registerModule(module);
   }
 

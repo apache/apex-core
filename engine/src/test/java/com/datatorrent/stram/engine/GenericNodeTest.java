@@ -197,7 +197,7 @@ public class GenericNodeTest
 
     };
     @OutputPortFieldAnnotation( optional = true)
-    DefaultOutputPort<Object> op = new DefaultOutputPort<Object>();
+    DefaultOutputPort<Object> op = new DefaultOutputPort<>();
 
     @Override
     public void beginWindow(long windowId)
@@ -226,7 +226,7 @@ public class GenericNodeTest
 
   public static class CheckpointDistanceOperator extends GenericOperator
   {
-    List<Integer> distances = new ArrayList<Integer>();
+    List<Integer> distances = new ArrayList<>();
     int numWindows = 0;
     int maxWindows = 0;
 
@@ -245,7 +245,7 @@ public class GenericNodeTest
   public void testSynchingLogic() throws InterruptedException
   {
     long sleeptime = 25L;
-    final ArrayList<Object> list = new ArrayList<Object>();
+    final ArrayList<Object> list = new ArrayList<>();
     GenericOperator go = new GenericOperator();
     final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, "operator",
         new DefaultAttributeMap(), null));
@@ -376,8 +376,8 @@ public class GenericNodeTest
     final Server bufferServer = new Server(eventloop, 0); // find random port
     final int bufferServerPort = bufferServer.run().getPort();
 
-    final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<Object>();
-    final BlockingQueue<Object> tuples = new ArrayBlockingQueue<Object>(10);
+    final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<>();
+    final BlockingQueue<Object> tuples = new ArrayBlockingQueue<>(10);
 
     GenericTestOperator go = new GenericTestOperator();
     final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, "operator",
@@ -905,7 +905,7 @@ public class GenericNodeTest
     CheckpointDistanceOperator go = new CheckpointDistanceOperator();
     go.maxWindows = maxWindows;
 
-    List<Integer> checkpoints = new ArrayList<Integer>();
+    List<Integer> checkpoints = new ArrayList<>();
 
     int window = 0;
     while (window < maxWindows) {

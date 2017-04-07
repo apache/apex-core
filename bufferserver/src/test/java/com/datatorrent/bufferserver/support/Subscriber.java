@@ -32,7 +32,7 @@ import com.datatorrent.bufferserver.packet.Tuple;
  */
 public class Subscriber extends com.datatorrent.bufferserver.client.Subscriber
 {
-  public final ArrayList<Object> resetPayloads = new ArrayList<Object>();
+  public final ArrayList<Object> resetPayloads = new ArrayList<>();
   public AtomicInteger tupleCount = new AtomicInteger(0);
   public WindowIdHolder firstPayload;
   public WindowIdHolder lastPayload;

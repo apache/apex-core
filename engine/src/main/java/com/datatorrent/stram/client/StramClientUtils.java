@@ -271,7 +271,7 @@ public class StramClientUtils
       }
       Text rmTokenService = new Text(Joiner.on(',').join(services));
 
-      return new Token<RMDelegationTokenIdentifier>(
+      return new Token<>(
           rmDelegationToken.getIdentifier().array(),
           rmDelegationToken.getPassword().array(),
           new Text(rmDelegationToken.getKind()),

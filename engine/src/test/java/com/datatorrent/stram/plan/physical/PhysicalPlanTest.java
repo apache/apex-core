@@ -476,7 +476,7 @@ public class PhysicalPlanTest
 
     OperatorMeta o1Meta = dag.getMeta(o1);
     dag.setOperatorAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
-    TestPartitioner<TestInputOperator<Object>> partitioner = new TestPartitioner<TestInputOperator<Object>>();
+    TestPartitioner<TestInputOperator<Object>> partitioner = new TestPartitioner<>();
     dag.setOperatorAttribute(o1, OperatorContext.PARTITIONER, partitioner);
 
     TestPlanContext ctx = new TestPlanContext();
@@ -497,7 +497,7 @@ public class PhysicalPlanTest
     plan.onStatusUpdate(o1p1);
     Assert.assertEquals("scale up triggered", 1, ctx.events.size());
     // add another partition, keep existing as is
-    partitioner.extraPartitions.add(new DefaultPartition<TestInputOperator<Object>>(o1));
+    partitioner.extraPartitions.add(new DefaultPartition<>(o1));
     Runnable r = ctx.events.remove(0);
     r.run();
     partitioner.extraPartitions.clear();
@@ -745,7 +745,7 @@ public class PhysicalPlanTest
       partitions.add(new DefaultPartition<Operator>(operator, p1Keys, 1, null));
     }
 
-    ArrayList<Partition<Operator>> lowLoadPartitions = new ArrayList<Partition<Operator>>();
+    ArrayList<Partition<Operator>> lowLoadPartitions = new ArrayList<>();
     for (Partition<Operator> p : partitions) {
       lowLoadPartitions.add(new DefaultPartition<>(p.getPartitionedInstance(), p.getPartitionKeys(), -1, null));
     }
@@ -793,7 +793,7 @@ public class PhysicalPlanTest
     for (Set<PartitionKeys> expectedKeys: expectedKeysSets) {
       List<Partition<Operator>> clonePartitions = Lists.newArrayList();
       for (PartitionKeys pks: twoBitPartitionKeys) {
-        Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
+        Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<>();
         p1Keys.put(operator.inport1, pks);
         int load = expectedKeys.contains(pks) ? 0 : -1;
         clonePartitions.add(new DefaultPartition<Operator>(operator, p1Keys, load, null));
@@ -876,7 +876,7 @@ public class PhysicalPlanTest
 
     Assert.assertEquals("operators container 0", 1, plan.getContainers().get(0).getOperators().size());
     Set<OperatorMeta> c2ExpNodes = Sets.newHashSet(dag.getMeta(o2), dag.getMeta(o3));
-    Set<OperatorMeta> c2ActNodes = new HashSet<OperatorMeta>();
+    Set<OperatorMeta> c2ActNodes = new HashSet<>();
     PTContainer c2 = plan.getContainers().get(1);
     for (PTOperator pNode : c2.getOperators()) {
       c2ActNodes.add(pNode.getOperatorMeta());
@@ -1139,7 +1139,7 @@ public class PhysicalPlanTest
     LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
-    TestPartitioner<TestGeneratorInputOperator> o1Partitioner = new TestPartitioner<TestGeneratorInputOperator>();
+    TestPartitioner<TestGeneratorInputOperator> o1Partitioner = new TestPartitioner<>();
     o1Partitioner.setPartitionCount(2);
     dag.setOperatorAttribute(o1, OperatorContext.PARTITIONER, o1Partitioner);
     dag.setOperatorAttribute(o1, OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
@@ -1312,7 +1312,7 @@ public class PhysicalPlanTest
       }
 
       Assert.assertEquals("repartition event", 1, ctx.events.size());
-      o1Partitioner.extraPartitions.add(new DefaultPartition<TestGeneratorInputOperator>(o1));
+      o1Partitioner.extraPartitions.add(new DefaultPartition<>(o1));
       ctx.events.remove(0).run();
       o1Partitioner.extraPartitions.clear();
 
@@ -1607,7 +1607,7 @@ public class PhysicalPlanTest
       }
       T paritionable = first.getPartitionedInstance();
       for (int i = partitions.size(); i < numTotal; ++i) {
-        newPartitions.add(new DefaultPartition<T>(paritionable));
+        newPartitions.add(new DefaultPartition<>(paritionable));
       }
       return newPartitions;
     }
@@ -1767,7 +1767,7 @@ public class PhysicalPlanTest
 
     List<PTOperator> o1Unifiers = plan.getMergeOperators(o1Meta);
     Assert.assertEquals("o1Unifiers " + o1Meta, 3, o1Unifiers.size()); // 2 cascadingUnifiers and one-downstream partition unifier
-    List<PTOperator> finalUnifiers = new ArrayList<PTOperator>();
+    List<PTOperator> finalUnifiers = new ArrayList<>();
     for (PTOperator o : o1Unifiers) {
       Assert.assertEquals("inputs " + o, 2, o.getInputs().size());
       Assert.assertEquals("outputs " + o, 1, o.getOutputs().size());
@@ -2054,7 +2054,7 @@ public class PhysicalPlanTest
       if (context.getParallelPartitionCount() > 0 && newPartitions.size() < context.getParallelPartitionCount()) {
         // parallel partitioned, fill to requested count
         for (int i = newPartitions.size(); i < context.getParallelPartitionCount(); i++) {
-          newPartitions.add(new DefaultPartition<T>(partitions.iterator().next().getPartitionedInstance()));
+          newPartitions.add(new DefaultPartition<>(partitions.iterator().next().getPartitionedInstance()));
         }
       }
       return newPartitions;
@@ -2215,9 +2215,9 @@ public class PhysicalPlanTest
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
     dag.setOperatorAttribute(o1, OperatorContext.APPLICATION_WINDOW_COUNT, 4);
     dag.setOperatorAttribute(o1, OperatorContext.SLIDE_BY_WINDOW_COUNT, 2);
-    dag.setOperatorAttribute(o1, OperatorContext.PARTITIONER, new StatelessPartitioner<Operator>(2));
+    dag.setOperatorAttribute(o1, OperatorContext.PARTITIONER, new StatelessPartitioner<>(2));
     dag.getOperatorMeta("o1").getMeta(o1.outport1).getUnifierMeta().getAttributes().put(OperatorContext.MEMORY_MB, 1024);
-    dag.setOperatorAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<Operator>(2));
+    dag.setOperatorAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<>(2));
     dag.setOperatorAttribute(o2, OperatorContext.SLIDE_BY_WINDOW_COUNT, 2);
     dag.setOperatorAttribute(o2, OperatorContext.APPLICATION_WINDOW_COUNT, 4);
 
@@ -2237,7 +2237,7 @@ public class PhysicalPlanTest
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
     dag.setOperatorAttribute(o1, OperatorContext.SLIDE_BY_WINDOW_COUNT, 2);
-    dag.setOperatorAttribute(o1, OperatorContext.PARTITIONER, new StatelessPartitioner<Operator>(2));
+    dag.setOperatorAttribute(o1, OperatorContext.PARTITIONER, new StatelessPartitioner<>(2));
     dag.setInputPortAttribute(o2.inport1, PortContext.PARTITION_PARALLEL, true);
     dag.setOperatorAttribute(o1, OperatorContext.APPLICATION_WINDOW_COUNT, 4);
 

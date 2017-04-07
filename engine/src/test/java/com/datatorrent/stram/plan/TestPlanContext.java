@@ -45,7 +45,7 @@ import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
 
 public class TestPlanContext implements PlanContext, StorageAgent
 {
-  public List<Runnable> events = new ArrayList<Runnable>();
+  public List<Runnable> events = new ArrayList<>();
   public Collection<PTOperator> undeploy;
   public Collection<PTOperator> deploy;
   public Set<PTContainer> releaseContainers;

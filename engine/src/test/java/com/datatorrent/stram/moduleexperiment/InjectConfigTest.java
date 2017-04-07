@@ -220,7 +220,7 @@ public class InjectConfigTest
     public transient String transientProperty = "transientProperty";
 
     public java.util.concurrent.ConcurrentHashMap<String, String> mapProperty = new java.util.concurrent
-        .ConcurrentHashMap<String, String>();
+        .ConcurrentHashMap<>();
 
     public java.util.concurrent.ConcurrentHashMap<String, String> getMapProperty()
     {

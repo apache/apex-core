@@ -102,7 +102,7 @@ public class ResourceRequestHandler
    */
   public void addContainerRequest(Map<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> requestedResources, int loopCounter, List<ContainerRequest> containerRequests, StreamingContainerAgent.ContainerStartRequest csr, ContainerRequest cr)
   {
-    MutablePair<Integer, ContainerRequest> pair = new MutablePair<Integer, ContainerRequest>(loopCounter, cr);
+    MutablePair<Integer, ContainerRequest> pair = new MutablePair<>(loopCounter, cr);
     requestedResources.put(csr, pair);
     containerRequests.add(cr);
   }
@@ -164,7 +164,7 @@ public class ResourceRequestHandler
 
   public List<String> getNodesExceptHost(List<String> hostNames)
   {
-    List<String> nodesList = new ArrayList<String>();
+    List<String> nodesList = new ArrayList<>();
     Set<String> hostNameSet = Sets.newHashSet();
     hostNameSet.addAll(hostNames);
     for (String host : nodeReportMap.keySet()) {

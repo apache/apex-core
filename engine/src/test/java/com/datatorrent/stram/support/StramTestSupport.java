@@ -322,7 +322,7 @@ public abstract class StramTestSupport
   public static class TestHomeDirectory extends TestWatcher
   {
 
-    Map<String, String> env = new HashMap<String, String>();
+    Map<String, String> env = new HashMap<>();
     String userHome;
 
     @Override
@@ -444,7 +444,7 @@ public abstract class StramTestSupport
       private static final long serialVersionUID = 201404091805L;
     }
 
-    transient HashMap<OperatorWindowIdPair, Object> store = new HashMap<OperatorWindowIdPair, Object>();
+    transient HashMap<OperatorWindowIdPair, Object> store = new HashMap<>();
 
     @Override
     public synchronized void save(Object object, int operatorId, long windowId) throws IOException
@@ -467,7 +467,7 @@ public abstract class StramTestSupport
     @Override
     public synchronized long[] getWindowIds(int operatorId) throws IOException
     {
-      ArrayList<Long> windowIds = new ArrayList<Long>();
+      ArrayList<Long> windowIds = new ArrayList<>();
       for (OperatorWindowIdPair key : store.keySet()) {
         if (key.operatorId == operatorId) {
           windowIds.add(key.windowId);
