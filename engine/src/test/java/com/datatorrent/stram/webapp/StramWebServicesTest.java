@@ -113,7 +113,7 @@ public class StramWebServicesTest extends JerseyTest
         lastRequests = requests;
 
         // delegate processing to dispatch thread
-        FutureTask<Object> future = new FutureTask<Object>(new Callable<Object>()
+        FutureTask<Object> future = new FutureTask<>(new Callable<Object>()
         {
           @Override
           public Object call() throws Exception
@@ -351,7 +351,7 @@ public class StramWebServicesTest extends JerseyTest
   @Test
   public void testSubmitLogicalPlanChange() throws JSONException, Exception
   {
-    List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
+    List<LogicalPlanRequest> requests = new ArrayList<>();
     WebResource r = resource();
 
     CreateOperatorRequest request1 = new CreateOperatorRequest();
@@ -366,7 +366,7 @@ public class StramWebServicesTest extends JerseyTest
     requests.add(request2);
 
     ObjectMapper mapper = new ObjectMapper();
-    final Map<String, Object> m = new HashMap<String, Object>();
+    final Map<String, Object> m = new HashMap<>();
     m.put("requests", requests);
     final JSONObject jsonRequest = new JSONObject(mapper.writeValueAsString(m));
 

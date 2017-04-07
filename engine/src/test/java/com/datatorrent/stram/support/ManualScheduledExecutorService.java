@@ -37,7 +37,7 @@ public class ManualScheduledExecutorService extends ScheduledThreadPoolExecutor 
     public long time;
   }
 
-  PriorityQueue<TimedRunnable> queue = new PriorityQueue<TimedRunnable>(16, new Comparator<TimedRunnable>()
+  PriorityQueue<TimedRunnable> queue = new PriorityQueue<>(16, new Comparator<TimedRunnable>()
   {
     @Override
     public int compare(TimedRunnable o1, TimedRunnable o2)

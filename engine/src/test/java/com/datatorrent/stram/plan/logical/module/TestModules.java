@@ -49,10 +49,10 @@ public class TestModules
     public volatile Object inport1Tuple = null;
 
     @OutputPortFieldAnnotation(optional = true)
-    public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<>();
 
     @OutputPortFieldAnnotation(optional = true)
-    public final transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<>();
 
     private String emitFormat;
 

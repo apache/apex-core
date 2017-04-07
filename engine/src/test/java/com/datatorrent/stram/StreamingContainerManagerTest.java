@@ -124,14 +124,14 @@ public class StreamingContainerManagerTest
     input.portName = "inputPortNameOnNode";
     input.sourceNodeId = 99;
 
-    ndi.inputs = new ArrayList<OperatorDeployInfo.InputDeployInfo>();
+    ndi.inputs = new ArrayList<>();
     ndi.inputs.add(input);
 
     OperatorDeployInfo.OutputDeployInfo output = new OperatorDeployInfo.OutputDeployInfo();
     output.declaredStreamId = "streamFromNode";
     output.portName = "outputPortNameOnNode";
 
-    ndi.outputs = new ArrayList<OperatorDeployInfo.OutputDeployInfo>();
+    ndi.outputs = new ArrayList<>();
     ndi.outputs.add(output);
 
     ContainerHeartbeatResponse scc = new ContainerHeartbeatResponse();

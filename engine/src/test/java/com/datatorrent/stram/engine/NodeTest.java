@@ -171,7 +171,7 @@ public class NodeTest
 
     }
 
-    static final ArrayList<Call> calls = new ArrayList<Call>();
+    static final ArrayList<Call> calls = new ArrayList<>();
 
     @Override
     public void save(Object object, int operatorId, long windowId) throws IOException

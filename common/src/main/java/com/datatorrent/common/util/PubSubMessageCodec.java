@@ -53,7 +53,7 @@ public class PubSubMessageCodec<T>
    */
   public static <T> String constructPublishMessage(String topic, T data, PubSubMessageCodec<T> codec) throws IOException
   {
-    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<>();
     pubSubMessage.setType(PubSubMessageType.PUBLISH);
     pubSubMessage.setTopic(topic);
     pubSubMessage.setData(data);
@@ -72,7 +72,7 @@ public class PubSubMessageCodec<T>
    */
   public static <T> String constructSubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
   {
-    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<>();
     pubSubMessage.setType(PubSubMessageType.SUBSCRIBE);
     pubSubMessage.setTopic(topic);
 
@@ -90,7 +90,7 @@ public class PubSubMessageCodec<T>
    */
   public static <T> String constructUnsubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
   {
-    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<>();
     pubSubMessage.setType(PubSubMessageType.UNSUBSCRIBE);
     pubSubMessage.setTopic(topic);
 
@@ -108,7 +108,7 @@ public class PubSubMessageCodec<T>
    */
   public static <T> String constructSubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
   {
-    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<>();
     pubSubMessage.setType(PubSubMessageType.SUBSCRIBE_NUM_SUBSCRIBERS);
     pubSubMessage.setTopic(topic);
 
@@ -126,7 +126,7 @@ public class PubSubMessageCodec<T>
    */
   public static <T> String constructUnsubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
   {
-    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<>();
     pubSubMessage.setType(PubSubMessageType.UNSUBSCRIBE_NUM_SUBSCRIBERS);
     pubSubMessage.setTopic(topic);
 
@@ -135,7 +135,7 @@ public class PubSubMessageCodec<T>
 
   public String formatMessage(PubSubMessage<T> pubSubMessage) throws IOException
   {
-    HashMap<String, Object> map = new HashMap<String, Object>();
+    HashMap<String, Object> map = new HashMap<>();
     map.put(PubSubMessage.TYPE_KEY, pubSubMessage.getType().getIdentifier());
     map.put(PubSubMessage.TOPIC_KEY, pubSubMessage.getTopic());
     T data = pubSubMessage.getData();
@@ -156,7 +156,7 @@ public class PubSubMessageCodec<T>
   public PubSubMessage<T> parseMessage(String message) throws IOException
   {
     HashMap<String, Object> map = mapper.readValue(message, HashMap.class);
-    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<>();
     pubSubMessage.setType(PubSubMessageType.getPubSubMessageType((String)map.get(PubSubMessage.TYPE_KEY)));
     pubSubMessage.setTopic((String)map.get(PubSubMessage.TOPIC_KEY));
     pubSubMessage.setData((T)map.get(PubSubMessage.DATA_KEY));

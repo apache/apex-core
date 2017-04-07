@@ -477,13 +477,13 @@ public class PhysicalPlan implements Serializable
     // Log container anti-affinity
     if (LOG.isDebugEnabled()) {
       for (PTContainer container : containers) {
-        List<String> antiOperators = new ArrayList<String>();
+        List<String> antiOperators = new ArrayList<>();
         for (PTContainer c : container.getStrictAntiPrefs()) {
           for (PTOperator operator : c.getOperators()) {
             antiOperators.add(operator.getName());
           }
         }
-        List<String> containerOperators = new ArrayList<String>();
+        List<String> containerOperators = new ArrayList<>();
         for (PTOperator operator : container.getOperators()) {
           containerOperators.add(operator.getName());
         }

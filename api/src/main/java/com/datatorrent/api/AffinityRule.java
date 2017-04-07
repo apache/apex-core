@@ -92,7 +92,7 @@ public class AffinityRule implements Serializable
   public AffinityRule(Type type, Locality locality, boolean relaxLocality, String firstOperator, String... otherOperators)
   {
     this(type, locality, relaxLocality);
-    LinkedList<String> operators = new LinkedList<String>();
+    LinkedList<String> operators = new LinkedList<>();
     if (firstOperator != null && otherOperators.length >= 1) {
       operators.add(firstOperator);
 

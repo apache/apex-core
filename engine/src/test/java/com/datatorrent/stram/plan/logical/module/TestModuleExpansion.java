@@ -59,7 +59,7 @@ public class TestModuleExpansion
     private int inputOperatorProp = 0;
 
     Random r = new Random();
-    public transient DefaultOutputPort<Integer> out = new DefaultOutputPort<Integer>();
+    public transient DefaultOutputPort<Integer> out = new DefaultOutputPort<>();
 
     @Override
     public void emitTuples()

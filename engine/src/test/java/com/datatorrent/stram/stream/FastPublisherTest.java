@@ -50,7 +50,7 @@ public class FastPublisherTest
     byte[] buffer = publisher.consume();
 
     FastSubscriber subscriber = new FastSubscriber("subscriber", 1024);
-    subscriber.serde = subscriber.statefulSerde = new DefaultStatefulStreamCodec<Object>();
+    subscriber.serde = subscriber.statefulSerde = new DefaultStatefulStreamCodec<>();
     SweepableReservoir sr = subscriber.acquireReservoir("res", 1024);
     sr.setSink(new Sink<Object>()
     {

@@ -42,7 +42,7 @@ public class SubscribeRequestTupleTest
     String down_type = "SubscriberId/StreamType";
     String upstream_id = "PublisherId";
     int mask = 7;
-    ArrayList<Integer> partitions = new ArrayList<Integer>();
+    ArrayList<Integer> partitions = new ArrayList<>();
     partitions.add(5);
     long startingWindowId = 0xcafebabe00000078L;
 

@@ -50,8 +50,8 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   private final int id;
   private final String name;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
-  private final CircularBuffer<ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<ContainerStats.OperatorStats>(1024);
-  private final CircularBuffer<OperatorRequest> requests = new CircularBuffer<OperatorRequest>(1024);
+  private final CircularBuffer<ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<>(1024);
+  private final CircularBuffer<OperatorRequest> requests = new CircularBuffer<>(1024);
   public final boolean stateless;
   private int windowsFromCheckpoint;
 

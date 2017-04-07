@@ -1007,7 +1007,7 @@ public class StreamCodecTest
       lastId = assignNewContainers(dnm, lastId);
 
       List<PTOperator> operators = plan.getOperators(n2meta);
-      List<PTOperator> upstreamOperators = new ArrayList<PTOperator>();
+      List<PTOperator> upstreamOperators = new ArrayList<>();
       for (PTOperator operator : operators) {
         upstreamOperators.addAll(operator.upstreamMerge.values());
         /*
@@ -1036,7 +1036,7 @@ public class StreamCodecTest
       lastId = assignNewContainers(dnm, lastId);
 
       List<PTOperator> operators = plan.getOperators(n3meta);
-      List<PTOperator> upstreamOperators = new ArrayList<PTOperator>();
+      List<PTOperator> upstreamOperators = new ArrayList<>();
       for (PTOperator operator : operators) {
         upstreamOperators.addAll(operator.upstreamMerge.values());
       }
@@ -1063,7 +1063,7 @@ public class StreamCodecTest
       lastId = assignNewContainers(dnm, lastId);
 
       List<PTOperator> operators = plan.getOperators(n2meta);
-      List<PTOperator> upstreamOperators = new ArrayList<PTOperator>();
+      List<PTOperator> upstreamOperators = new ArrayList<>();
       for (PTOperator operator : operators) {
         upstreamOperators.addAll(operator.upstreamMerge.values());
         /*
@@ -1144,7 +1144,7 @@ public class StreamCodecTest
 
   private Set<PTOperator> getUnifiers(PhysicalPlan plan)
   {
-    Set<PTOperator> unifiers = new HashSet<PTOperator>();
+    Set<PTOperator> unifiers = new HashSet<>();
     for (PTContainer container : plan.getContainers()) {
       for (PTOperator operator : container.getOperators()) {
         if (operator.isUnifier()) {

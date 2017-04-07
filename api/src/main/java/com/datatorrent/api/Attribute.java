@@ -236,11 +236,11 @@ public class Attribute<T> implements Serializable
      */
     public static class AttributeInitializer
     {
-      static final HashMap<Class<?>, Set<Attribute<Object>>> map = new HashMap<Class<?>, Set<Attribute<Object>>>();
+      static final HashMap<Class<?>, Set<Attribute<Object>>> map = new HashMap<>();
 
       public static Map<Attribute<Object>, Object> getAllAttributes(Context context, Class<?> clazz)
       {
-        Map<Attribute<Object>, Object> result = new HashMap<Attribute<Object>, Object>();
+        Map<Attribute<Object>, Object> result = new HashMap<>();
         try {
           for (Field f: clazz.getDeclaredFields()) {
             if (Modifier.isStatic(f.getModifiers()) && Attribute.class.isAssignableFrom(f.getType())) {
@@ -273,7 +273,7 @@ public class Attribute<T> implements Serializable
         if (map.containsKey(clazz)) {
           return 0;
         }
-        Set<Attribute<Object>> set = new HashSet<Attribute<Object>>();
+        Set<Attribute<Object>> set = new HashSet<>();
         try {
           for (Field f: clazz.getDeclaredFields()) {
             if (Modifier.isStatic(f.getModifiers()) && Attribute.class.isAssignableFrom(f.getType())) {

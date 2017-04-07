@@ -41,7 +41,7 @@ public class StatelessPartitionerTest
 
   public static class DummyOperator implements Operator
   {
-    public final DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
+    public final DefaultOutputPort<Integer> output = new DefaultOutputPort<>();
 
     private Integer value;
 
@@ -93,10 +93,10 @@ public class StatelessPartitionerTest
   public void partition1Test()
   {
     DummyOperator dummyOperator = new DummyOperator(5);
-    StatelessPartitioner<DummyOperator> statelessPartitioner = new StatelessPartitioner<DummyOperator>();
+    StatelessPartitioner<DummyOperator> statelessPartitioner = new StatelessPartitioner<>();
 
     Collection<Partition<DummyOperator>> partitions = Lists.newArrayList();
-    DefaultPartition<DummyOperator> defaultPartition = new DefaultPartition<DummyOperator>(dummyOperator);
+    DefaultPartition<DummyOperator> defaultPartition = new DefaultPartition<>(dummyOperator);
     partitions.add(defaultPartition);
 
     Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions, new PartitioningContextImpl(null, 0));
@@ -111,10 +111,10 @@ public class StatelessPartitionerTest
   public void partition5Test()
   {
     DummyOperator dummyOperator = new DummyOperator(5);
-    StatelessPartitioner<DummyOperator> statelessPartitioner = new StatelessPartitioner<DummyOperator>(5);
+    StatelessPartitioner<DummyOperator> statelessPartitioner = new StatelessPartitioner<>(5);
 
     Collection<Partition<DummyOperator>> partitions = Lists.newArrayList();
-    DefaultPartition<DummyOperator> defaultPartition = new DefaultPartition<DummyOperator>(dummyOperator);
+    DefaultPartition<DummyOperator> defaultPartition = new DefaultPartition<>(dummyOperator);
     partitions.add(defaultPartition);
 
     Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions, new PartitioningContextImpl(null, 0));
@@ -137,10 +137,10 @@ public class StatelessPartitionerTest
   public void testParallelPartitionScaleUP()
   {
     DummyOperator dummyOperator = new DummyOperator(5);
-    StatelessPartitioner<DummyOperator> statelessPartitioner = new StatelessPartitioner<DummyOperator>();
+    StatelessPartitioner<DummyOperator> statelessPartitioner = new StatelessPartitioner<>();
 
     Collection<Partition<DummyOperator>> partitions = Lists.newArrayList();
-    partitions.add(new DefaultPartition<DummyOperator>(dummyOperator));
+    partitions.add(new DefaultPartition<>(dummyOperator));
 
     Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions,
         new PartitioningContextImpl(null, 5));
@@ -151,12 +151,12 @@ public class StatelessPartitionerTest
   public void testParallelPartitionScaleDown()
   {
     DummyOperator dummyOperator = new DummyOperator(5);
-    StatelessPartitioner<DummyOperator> statelessPartitioner = new StatelessPartitioner<DummyOperator>();
+    StatelessPartitioner<DummyOperator> statelessPartitioner = new StatelessPartitioner<>();
 
     Collection<Partition<DummyOperator>> partitions = Lists.newArrayList();
 
     for (int i = 5; i-- > 0; ) {
-      partitions.add(new DefaultPartition<DummyOperator>(dummyOperator));
+      partitions.add(new DefaultPartition<>(dummyOperator));
     }
 
     Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions,

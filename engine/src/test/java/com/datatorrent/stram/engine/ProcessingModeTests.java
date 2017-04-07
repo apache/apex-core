@@ -152,8 +152,8 @@ public class ProcessingModeTests
 
   public static class CollectorOperator extends BaseOperator implements com.datatorrent.api.Operator.CheckpointListener
   {
-    public static HashSet<Long> collection = new HashSet<Long>(20);
-    public static ArrayList<Long> duplicates = new ArrayList<Long>();
+    public static HashSet<Long> collection = new HashSet<>(20);
+    public static ArrayList<Long> duplicates = new ArrayList<>();
     private boolean simulateFailure;
     private long checkPointWindowId;
     public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>()
@@ -211,7 +211,7 @@ public class ProcessingModeTests
   {
     public final transient MyInputPort input1 = new MyInputPort(100);
     public final transient MyInputPort input2 = new MyInputPort(200);
-    public final transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
+    public final transient DefaultOutputPort<Integer> output = new DefaultOutputPort<>();
 
     public class MyInputPort extends DefaultInputPort<Integer>
     {
@@ -255,7 +255,7 @@ public class ProcessingModeTests
   @SuppressWarnings("SleepWhileInLoop")
   public void testNonLinearOperatorRecovery() throws InterruptedException
   {
-    final HashSet<Object> collection = new HashSet<Object>();
+    final HashSet<Object> collection = new HashSet<>();
     com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap map = new com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap();
     map.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 0);
     map.put(OperatorContext.PROCESSING_MODE, processingMode);

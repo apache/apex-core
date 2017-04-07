@@ -114,7 +114,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
       newPartitions = Lists.newArrayList();
 
       for (int partitionCounter = 0; partitionCounter < newPartitionCount; partitionCounter++) {
-        newPartitions.add(new DefaultPartition<T>(partition.getPartitionedInstance()));
+        newPartitions.add(new DefaultPartition<>(partition.getPartitionedInstance()));
       }
 
       // partition the stream that was first connected in the DAG and send full data to remaining input ports
@@ -156,8 +156,8 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
    */
   public static <T extends Operator> Collection<Partition<T>> repartition(Collection<Partition<T>> partitions)
   {
-    List<Partition<T>> newPartitions = new ArrayList<Partition<T>>();
-    HashMap<Integer, Partition<T>> lowLoadPartitions = new HashMap<Integer, Partition<T>>();
+    List<Partition<T>> newPartitions = new ArrayList<>();
+    HashMap<Integer, Partition<T>> lowLoadPartitions = new HashMap<>();
     for (Partition<T> p: partitions) {
       int load = p.getLoad();
       if (load < 0) {
@@ -201,7 +201,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
         }
 
         for (int key: newKeys) {
-          Partition<T> newPartition = new DefaultPartition<T>(p.getPartitionedInstance());
+          Partition<T> newPartition = new DefaultPartition<>(p.getPartitionedInstance());
           newPartition.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key)));
           newPartitions.add(newPartition);
         }
@@ -224,8 +224,8 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
    */
   public static <T extends Operator> Collection<Partition<T>> repartitionInputOperator(Collection<Partition<T>> partitions)
   {
-    List<Partition<T>> newPartitions = new ArrayList<Partition<T>>();
-    List<Partition<T>> lowLoadPartitions = new ArrayList<Partition<T>>();
+    List<Partition<T>> newPartitions = new ArrayList<>();
+    List<Partition<T>> lowLoadPartitions = new ArrayList<>();
     for (Partition<T> p: partitions) {
       int load = p.getLoad();
       if (load < 0) {
@@ -235,8 +235,8 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
           lowLoadPartitions.add(p);
         }
       } else if (load > 0) {
-        newPartitions.add(new DefaultPartition<T>(p.getPartitionedInstance()));
-        newPartitions.add(new DefaultPartition<T>(p.getPartitionedInstance()));
+        newPartitions.add(new DefaultPartition<>(p.getPartitionedInstance()));
+        newPartitions.add(new DefaultPartition<>(p.getPartitionedInstance()));
       } else {
         newPartitions.add(p);
       }
@@ -274,7 +274,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
       T anOperator = newPartitions.iterator().next().getPartitionedInstance();
 
       while (morePartitionsToCreate-- > 0) {
-        DefaultPartition<T> partition = new DefaultPartition<T>(anOperator);
+        DefaultPartition<T> partition = new DefaultPartition<>(anOperator);
         newPartitions.add(partition);
       }
     }

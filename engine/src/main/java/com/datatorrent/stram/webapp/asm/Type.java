@@ -87,7 +87,7 @@ public interface Type
 
     char boundChar;
 
-    ArrayList<Type> bounds = new ArrayList<Type>();
+    ArrayList<Type> bounds = new ArrayList<>();
 
     public Type[] getUpperBounds()
     {
@@ -154,7 +154,7 @@ public interface Type
   class ParameterizedTypeNode extends TypeNode
   {
 
-    ArrayList<Type> actualTypeArguments = new ArrayList<Type>();
+    ArrayList<Type> actualTypeArguments = new ArrayList<>();
 
     public Type[] getActualTypeArguments()
     {

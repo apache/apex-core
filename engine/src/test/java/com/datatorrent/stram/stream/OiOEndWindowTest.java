@@ -47,7 +47,7 @@ public class OiOEndWindowTest
 
   public static class TestInputOperator extends BaseOperator implements InputOperator
   {
-    public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
+    public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<>();
 
     @Override
     public void emitTuples()
@@ -60,7 +60,7 @@ public class OiOEndWindowTest
   public static class FirstGenericOperator extends BaseOperator
   {
     public static long endwindowCount;
-    public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
+    public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<>();
     public final transient DefaultInputPort<Number> input = new DefaultInputPort<Number>()
     {
       @Override

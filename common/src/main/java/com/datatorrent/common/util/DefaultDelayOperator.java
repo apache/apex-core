@@ -48,7 +48,7 @@ public class DefaultDelayOperator<T> extends BaseOperator implements Operator.De
     }
   };
 
-  public transient DefaultOutputPort<T> output = new DefaultOutputPort<T>();
+  public transient DefaultOutputPort<T> output = new DefaultOutputPort<>();
 
   protected List<T> lastWindowTuples = new ArrayList<>();
 

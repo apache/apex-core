@@ -36,17 +36,17 @@ public abstract class YarnAppLauncher<H extends YarnAppLauncher.YarnAppHandle> e
   /**
    * Parameter to specify extra jars for launch.
    */
-  public static final Attribute<String> LIB_JARS = new Attribute<String>(new StringCodec.String2String());
+  public static final Attribute<String> LIB_JARS = new Attribute<>(new StringCodec.String2String());
 
   /**
    * Parameter to specify the previous application id to use to resume launch from.
    */
-  public static final Attribute<String> ORIGINAL_APP_ID = new Attribute<String>(new StringCodec.String2String());
+  public static final Attribute<String> ORIGINAL_APP_ID = new Attribute<>(new StringCodec.String2String());
 
   /**
    * Parameter to specify the queue name to use for launch.
    */
-  public static final Attribute<String> QUEUE_NAME = new Attribute<String>(new StringCodec.String2String());
+  public static final Attribute<String> QUEUE_NAME = new Attribute<>(new StringCodec.String2String());
 
   static {
     Attribute.AttributeMap.AttributeInitializer.initialize(YarnAppLauncher.class);

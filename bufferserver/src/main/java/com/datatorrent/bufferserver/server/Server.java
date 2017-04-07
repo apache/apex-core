@@ -260,7 +260,7 @@ public class Server extends AbstractServer
   }
 
   private final ConcurrentHashMap<String, DataList> publisherBuffers = new ConcurrentHashMap<>(1, 0.75f, 1);
-  private final ConcurrentHashMap<String, LogicalNode> subscriberGroups = new ConcurrentHashMap<String, LogicalNode>();
+  private final ConcurrentHashMap<String, LogicalNode> subscriberGroups = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, AbstractLengthPrependerClient> publisherChannels = new ConcurrentHashMap<>();
   private final int blockSize;
   private final int numberOfCacheBlocks;
@@ -883,7 +883,7 @@ public class Server extends AbstractServer
         }
       }
 
-      ArrayList<LogicalNode> list = new ArrayList<LogicalNode>();
+      ArrayList<LogicalNode> list = new ArrayList<>();
       String publisherIdentifier = datalist.getIdentifier();
       Iterator<LogicalNode> iterator = subscriberGroups.values().iterator();
       while (iterator.hasNext()) {

@@ -47,7 +47,7 @@ public class SliderTest
       emit = true;
     }
 
-    public final transient DefaultOutputPort<Integer> defaultOutputPort = new DefaultOutputPort<Integer>();
+    public final transient DefaultOutputPort<Integer> defaultOutputPort = new DefaultOutputPort<>();
 
     @Override
     public void emitTuples()

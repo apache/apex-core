@@ -51,10 +51,10 @@ public class InputOperatorTest
 
   public static class EvenOddIntegerGeneratorInputOperator implements InputOperator, com.datatorrent.api.Operator.ActivationListener<OperatorContext>
   {
-    public final transient DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>();
-    public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>();
-    private final transient CircularBuffer<Integer> evenBuffer = new CircularBuffer<Integer>(1024);
-    private final transient CircularBuffer<Integer> oddBuffer = new CircularBuffer<Integer>(1024);
+    public final transient DefaultOutputPort<Integer> even = new DefaultOutputPort<>();
+    public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<>();
+    private final transient CircularBuffer<Integer> evenBuffer = new CircularBuffer<>(1024);
+    private final transient CircularBuffer<Integer> oddBuffer = new CircularBuffer<>(1024);
     private volatile Thread dataGeneratorThread;
 
     @Override
@@ -179,7 +179,7 @@ public class InputOperatorTest
     public void setConnected(boolean flag)
     {
       if (flag) {
-        collections.put(id, list = new ArrayList<T>());
+        collections.put(id, list = new ArrayList<>());
       }
     }
   }

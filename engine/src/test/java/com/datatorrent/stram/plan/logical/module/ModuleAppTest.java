@@ -50,7 +50,7 @@ public class ModuleAppTest
   {
 
     Random r = new Random();
-    public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
+    public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<>();
 
     @Override
     public void emitTuples()
@@ -73,7 +73,7 @@ public class ModuleAppTest
         output.emit(tuple);
       }
     };
-    public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
+    public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<>();
   }
 
   /*
@@ -92,7 +92,7 @@ public class ModuleAppTest
         output.emit(tuple);
       }
     };
-    public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
+    public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<>();
   }
 
   /*
@@ -118,8 +118,8 @@ public class ModuleAppTest
   static class TestModule implements Module
   {
 
-    public transient ProxyInputPort<Integer> moduleInput = new ProxyInputPort<Integer>();
-    public transient ProxyOutputPort<Integer> moduleOutput = new Module.ProxyOutputPort<Integer>();
+    public transient ProxyInputPort<Integer> moduleInput = new ProxyInputPort<>();
+    public transient ProxyOutputPort<Integer> moduleOutput = new Module.ProxyOutputPort<>();
 
     @Override
     public void populateDAG(DAG dag, Configuration conf)

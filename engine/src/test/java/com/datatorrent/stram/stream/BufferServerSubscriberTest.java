@@ -41,7 +41,7 @@ public class BufferServerSubscriberTest
   @Test
   public void testEmergencySinks() throws InterruptedException
   {
-    final List<Object> list = new ArrayList<Object>();
+    final List<Object> list = new ArrayList<>();
     final StreamCodec<Object> myserde = new StreamCodec<Object>()
     {
       @Override

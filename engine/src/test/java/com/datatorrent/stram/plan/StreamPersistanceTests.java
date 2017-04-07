@@ -570,12 +570,12 @@ public class StreamPersistanceTests
       }
     };
 
-    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<>();
 
     @Override
     public Collection definePartitions(Collection partitions, PartitioningContext context)
     {
-      Collection<Partition> newPartitions = new ArrayList<Partition>();
+      Collection<Partition> newPartitions = new ArrayList<>();
 
       // Mostly for 1 partition we dont need to do this
       int partitionBits = (Integer.numberOfLeadingZeros(0) - Integer.numberOfLeadingZeros(1));
@@ -590,7 +590,7 @@ public class StreamPersistanceTests
         // No partitioning done so far..
         // Single partition again, but with only even numbers ok?
         PassThruOperatorWithCodec newInstance = new PassThruOperatorWithCodec();
-        Partition partition = new DefaultPartition<PassThruOperatorWithCodec>(newInstance);
+        Partition partition = new DefaultPartition<>(newInstance);
 
         // Consider partitions are 1 & 2 and we are sending only 1 partition
         // Partition 1 = even numbers
@@ -796,7 +796,7 @@ public class StreamPersistanceTests
       }
     };
 
-    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>();
+    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<>();
 
     @Override
     public Collection definePartitions(Collection partitions, PartitioningContext context)

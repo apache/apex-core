@@ -302,7 +302,7 @@ public interface StringCodec<T>
           return clazz.getConstructor(String.class).newInstance(parts[1]);
         } else {
           T object = clazz.getConstructor(String.class).newInstance(parts[1]);
-          HashMap<String, String> hashMap = new HashMap<String, String>();
+          HashMap<String, String> hashMap = new HashMap<>();
           for (int i = 2; i < parts.length; i++) {
             String[] keyValPair = parts[i].split(propertySeparator, 2);
             hashMap.put(keyValPair[0], keyValPair[1]);
@@ -365,11 +365,11 @@ public interface StringCodec<T>
       }
 
       if (string.isEmpty()) {
-        return new HashMap<K, V>();
+        return new HashMap<>();
       }
 
       String[] parts = string.split(separator);
-      HashMap<K, V> map = new HashMap<K, V>();
+      HashMap<K, V> map = new HashMap<>();
       for (String part : parts) {
         String[] kvpair = part.split(equal, 2);
         map.put(keyCodec.fromString(kvpair[0]), valueCodec.fromString(kvpair[1]));
@@ -433,7 +433,7 @@ public interface StringCodec<T>
       }
 
       String[] parts = string.split(separator);
-      ArrayList<T> arrayList = new ArrayList<T>(parts.length);
+      ArrayList<T> arrayList = new ArrayList<>(parts.length);
       for (String part : parts) {
         arrayList.add(codec.fromString(part));
       }
