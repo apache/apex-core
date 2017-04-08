@@ -1580,6 +1580,62 @@ public class PhysicalPlanTest
     Assert.assertEquals("undeployed opertors", expUndeploy, ctx.undeploy);
   }
 
+  /**
+   * Test covering scenario when there is only single partition at initial launch and
+   * new partitions are added during dynamic partitioning then there are changes to existing partition mapping
+   */
+  @Test
+  public void testDynamicPartitioning()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    dag.setOperatorAttribute(o1, OperatorContext.PARTITIONER, new TestAugmentingPartitioner<TestGeneratorInputOperator>(1));
+    dag.setOperatorAttribute(o1, OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
+    OperatorMeta o1Meta = dag.getMeta(o1);
+
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    OperatorMeta o2Meta = dag.getMeta(o2);
+
+    dag.addStream("o1.outport1", o1.outport, o2.inport1);
+
+    int maxContainers = 10;
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
+
+    TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    plan.setAvailableResources(maxContainers * o1Meta.getValue(OperatorContext.MEMORY_MB));
+    Assert.assertEquals("number of containers", 2, plan.getContainers().size());
+
+    List<PTOperator> o1ops = plan.getOperators(o1Meta);
+    Assert.assertEquals("number of o1 operators", 1, o1ops.size());
+
+    List<PTOperator> o2ops = plan.getOperators(o2Meta);
+    Assert.assertEquals("number of o2 operators", 1, o2ops.size());
+
+    List<PTOperator> uops = plan.getMergeOperators(o1Meta);
+
+    Set<PTOperator> expUndeploy = Sets.newLinkedHashSet();
+    expUndeploy.addAll(plan.getOperators(o1Meta));
+    expUndeploy.addAll(plan.getOperators(o2Meta));
+    expUndeploy.addAll(uops);
+    PartitioningTest.PartitionLoadWatch.put(o1ops.get(0), 2);
+    plan.onStatusUpdate(o1ops.get(0));
+
+    ctx.backupRequests = 0;
+    ctx.events.remove(0).run();
+
+    Assert.assertEquals("number of containers", 5, plan.getContainers().size());
+    Assert.assertEquals("undeployed opertors", expUndeploy, ctx.undeploy);
+    Object[] undep = ctx.undeploy.toArray();
+    PTOperator o1Op = (PTOperator)undep[0];
+    Assert.assertEquals("number of sinks", 1, o1Op.outputs.iterator().next().sinks.size());
+    PTOperator o2Op = (PTOperator)undep[1];
+    Assert.assertEquals("number of inputs", 1, o2Op.inputs.size());
+  }
+
   private class TestAugmentingPartitioner<T> implements Partitioner<T>
   {
 
