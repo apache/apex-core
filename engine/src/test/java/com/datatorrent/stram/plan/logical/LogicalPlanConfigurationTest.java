@@ -33,6 +33,7 @@ import javax.validation.ValidationException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +59,7 @@ import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Module;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.StringCodec.Integer2String;
@@ -609,49 +611,31 @@ public class LogicalPlanConfigurationTest
   }
 
   @Test
-  @SuppressWarnings({"UnnecessaryBoxing", "AssertEqualsBetweenInconvertibleTypes"})
   public void testModuleUnifierLevelAttributes()
   {
     class DummyOperator extends BaseOperator
     {
-      int prop;
-
       public transient DefaultInputPort<Integer> input = new DefaultInputPort<Integer>()
       {
         @Override
         public void process(Integer tuple)
         {
-          LOG.debug(tuple.intValue() + " processed");
           output.emit(tuple);
         }
       };
-      public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
-    }
-
-    class DummyOutputOperator extends BaseOperator
-    {
-      int prop;
-
-      public transient DefaultInputPort<Integer> input = new DefaultInputPort<Integer>()
-      {
-        @Override
-        public void process(Integer tuple)
-        {
-          LOG.debug(tuple.intValue() + " processed");
-        }
-      };
+      public transient DefaultOutputPort<Integer> output = new DefaultOutputPort<>();
     }
 
     class TestUnifierAttributeModule implements Module
     {
-      public transient ProxyInputPort<Integer> moduleInput = new ProxyInputPort<Integer>();
-      public transient ProxyOutputPort<Integer> moduleOutput = new Module.ProxyOutputPort<Integer>();
+      public transient ProxyInputPort<Integer> moduleInput = new ProxyInputPort<>();
+      public transient ProxyOutputPort<Integer> moduleOutput = new ProxyOutputPort<>();
 
       @Override
       public void populateDAG(DAG dag, Configuration conf)
       {
         DummyOperator dummyOperator = dag.addOperator("DummyOperator", new DummyOperator());
-        dag.setOperatorAttribute(dummyOperator, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<DummyOperator>(3));
+        dag.setOperatorAttribute(dummyOperator, OperatorContext.PARTITIONER, new StatelessPartitioner<DummyOperator>(3));
         dag.setUnifierAttribute(dummyOperator.output, OperatorContext.TIMEOUT_WINDOW_COUNT, 2);
         moduleInput.set(dummyOperator.input);
         moduleOutput.set(dummyOperator.output);
@@ -663,47 +647,45 @@ public class LogicalPlanConfigurationTest
       @Override
       public void populateDAG(DAG dag, Configuration conf)
       {
-        Module m1 = dag.addModule("TestModule", new TestUnifierAttributeModule());
-        DummyOutputOperator dummyOutputOperator = dag.addOperator("DummyOutputOperator", new DummyOutputOperator());
-        dag.addStream("Module To Operator", ((TestUnifierAttributeModule)m1).moduleOutput, dummyOutputOperator.input);
+        TestUnifierAttributeModule inputModule = dag.addModule("TestModule", new TestUnifierAttributeModule());
+        DummyOperator dummyOutputOperator = dag.addOperator("DummyOutputOperator", new DummyOperator());
+        dag.addStream("Module To Operator", inputModule.moduleOutput, dummyOutputOperator.input);
       }
     };
 
     String appName = "UnifierApp";
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new MockStorageAgent());
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, Mockito.mock(StorageAgent.class));
     dagBuilder.prepareDAG(dag, app, appName);
-    LogicalPlan.OperatorMeta ometa = dag.getOperatorMeta("TestModule$DummyOperator");
-    LogicalPlan.OperatorMeta om = null;
-    for (Map.Entry<LogicalPlan.OutputPortMeta, LogicalPlan.StreamMeta> entry : ometa.getOutputStreams().entrySet()) {
-      if (entry.getKey().getPortName().equals("output")) {
-        om = entry.getKey().getUnifierMeta();
-      }
-    }
+    OperatorMeta ometa = dag.getOperatorMeta("TestModule$DummyOperator");
 
     /*
      * Verify the attribute value after preparing DAG.
      */
-    Assert.assertNotNull(om);
-    Assert.assertEquals("", Integer.valueOf(2), om.getValue(Context.OperatorContext.TIMEOUT_WINDOW_COUNT));
-
-    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
-    List<PTContainer> containers = plan.getContainers();
-    LogicalPlan.OperatorMeta operatorMeta = null;
-    for (PTContainer container : containers) {
-      List<PTOperator> operators = container.getOperators();
-      for (PTOperator operator : operators) {
-        if (operator.isUnifier()) {
-          operatorMeta = operator.getOperatorMeta();
-        }
+    for (OutputPortMeta portMeta : ometa.getOutputStreams().keySet()) {
+      if (portMeta.getPortName().equals("output")) {
+        OperatorMeta om = portMeta.getUnifierMeta();
+        Assert.assertEquals("Unifier attribute value incorrect after logical plan creation.",
+            Integer.valueOf(2), om.getValue(Context.OperatorContext.TIMEOUT_WINDOW_COUNT));
       }
     }
 
     /*
      * Verify attribute after physical plan creation with partitioned operators.
      */
-    Assert.assertEquals("", Integer.valueOf(2), operatorMeta.getValue(OperatorContext.TIMEOUT_WINDOW_COUNT));
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    List<PTContainer> containers = plan.getContainers();
+    for (PTContainer container : containers) {
+      List<PTOperator> operators = container.getOperators();
+      for (PTOperator operator : operators) {
+        if (operator.isUnifier()) {
+          OperatorMeta operatorMeta = operator.getOperatorMeta();
+          Assert.assertEquals("Unifier attribute value incorrect after physical plan creation.",
+              Integer.valueOf(2), operatorMeta.getValue(OperatorContext.TIMEOUT_WINDOW_COUNT));
+        }
+      }
+    }
   }
 
   @Test
