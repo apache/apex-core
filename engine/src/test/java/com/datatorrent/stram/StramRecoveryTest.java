@@ -44,6 +44,7 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.common.util.CascadeStorageAgent;
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.hadoop.conf.Configuration;
@@ -428,6 +429,7 @@ public class StramRecoveryTest
     o1p1.getContainer().setExternalId("cid1");
     scm.writeJournal(o1p1.getContainer().getSetContainerState());
 
+    /* simulate application restart from app1 */
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath2);
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId2);
@@ -447,9 +449,50 @@ public class StramRecoveryTest
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
     assertEquals("journal copied", "cid1", o1p1.getContainer().getExternalId());
 
-    ids = new FSStorageAgent(appPath2 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, new Configuration()).getWindowIds(o1p1.getId());
+    CascadeStorageAgent csa = (CascadeStorageAgent)dag.getAttributes().get(OperatorContext.STORAGE_AGENT);
+    Assert.assertEquals("storage agent is replaced by cascade", csa.getClass(), CascadeStorageAgent.class);
+    Assert.assertEquals("current storage agent is of same type", csa.getCurrentStorageAgent().getClass(), agent.getClass());
+    Assert.assertEquals("parent storage agent is of same type ", csa.getParentStorageAgent().getClass(), agent.getClass());
+    /* parent and current points to expected location */
+    Assert.assertEquals(true, ((FSStorageAgent)csa.getParentStorageAgent()).path.contains("app1"));
+    Assert.assertEquals(true, ((FSStorageAgent)csa.getCurrentStorageAgent()).path.contains("app2"));
+
+    ids = csa.getWindowIds(o1p1.getId());
     Assert.assertArrayEquals("checkpoints copied", new long[] {o1p1.getRecoveryCheckpoint().getWindowId()}, ids);
 
+
+    /* simulate another application restart from app2 */
+    String appId3 = "app3";
+    String appPath3 = testMeta.getPath() + "/" + appId3;
+    dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath3);
+    dag.setAttribute(LogicalPlan.APPLICATION_ID, appId3);
+    sc = new StramClient(new Configuration(), dag);
+    try {
+      sc.start();
+      sc.copyInitialState(new Path(appPath2)); // copy state from app2.
+    } finally {
+      sc.stop();
+    }
+    scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
+    plan = scm.getPhysicalPlan();
+    dag = plan.getLogicalPlan();
+
+    csa = (CascadeStorageAgent)dag.getAttributes().get(OperatorContext.STORAGE_AGENT);
+    Assert.assertEquals("storage agent is replaced by cascade", csa.getClass(), CascadeStorageAgent.class);
+    Assert.assertEquals("current storage agent is of same type", csa.getCurrentStorageAgent().getClass(), agent.getClass());
+    Assert.assertEquals("parent storage agent is of same type ", csa.getParentStorageAgent().getClass(), CascadeStorageAgent.class);
+
+    CascadeStorageAgent parent = (CascadeStorageAgent)csa.getParentStorageAgent();
+    Assert.assertEquals("current storage agent is of same type ", parent.getCurrentStorageAgent().getClass(), agent.getClass());
+    Assert.assertEquals("parent storage agent is cascade ", parent.getParentStorageAgent().getClass(), agent.getClass());
+    /* verify paths */
+    Assert.assertEquals(true, ((FSStorageAgent)parent.getParentStorageAgent()).path.contains("app1"));
+    Assert.assertEquals(true, ((FSStorageAgent)parent.getCurrentStorageAgent()).path.contains("app2"));
+    Assert.assertEquals(true, ((FSStorageAgent)csa.getCurrentStorageAgent()).path.contains("app3"));
+
+    ids = csa.getWindowIds(o1p1.getId());
+    Assert.assertArrayEquals("checkpoints copied", new long[] {o1p1.getRecoveryCheckpoint().getWindowId()}, ids);
   }
 
   @Test

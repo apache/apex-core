@@ -65,6 +65,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.common.util.CascadeStorageAgent;
 import org.apache.apex.engine.plugin.ApexPluginDispatcher;
 import org.apache.apex.engine.plugin.NoOpApexPluginDispatcher;
 import org.apache.commons.io.IOUtils;
@@ -3238,23 +3239,43 @@ public class StreamingContainerManager implements PlanContext
 
       this.finals = new FinalVars(finals, lp);
       StorageAgent sa = lp.getValue(OperatorContext.STORAGE_AGENT);
-      if (sa instanceof AsyncFSStorageAgent) {
-        // replace the default storage agent, if present
-        AsyncFSStorageAgent fssa = (AsyncFSStorageAgent)sa;
-        if (fssa.path.contains(oldAppId)) {
-          fssa = new AsyncFSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
-          lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
-        }
-      } else if (sa instanceof FSStorageAgent) {
-        // replace the default storage agent, if present
-        FSStorageAgent fssa = (FSStorageAgent)sa;
-        if (fssa.path.contains(oldAppId)) {
-          fssa = new FSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
-          lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
-        }
+      lp.setAttribute(OperatorContext.STORAGE_AGENT, updateStorageAgent(sa, oldAppId, appId, conf));
+    }
+  }
+
+  private static StorageAgent updateStorageAgent(StorageAgent sa, String oldAppId, String appId, Configuration conf)
+  {
+    if (sa instanceof AsyncFSStorageAgent || sa instanceof FSStorageAgent) {
+      FSStorageAgent newAgent = (FSStorageAgent)updateFSStorageAgent(sa, oldAppId, appId, conf);
+      if (newAgent != sa) {
+        return new CascadeStorageAgent(sa, newAgent);
+      }
+    } else if (sa instanceof CascadeStorageAgent) {
+      CascadeStorageAgent csa = (CascadeStorageAgent)sa;
+      StorageAgent currentStorageAgent = csa.getCurrentStorageAgent();
+      return new CascadeStorageAgent(csa, updateFSStorageAgent(currentStorageAgent, oldAppId, appId, conf));
+    }
+    return sa;
+  }
+
+  /**
+   * Return updated FileSystem based storage agent. Storage agent is updated only when
+   * they use application directory to store the checkpoints.
+   */
+  private static StorageAgent updateFSStorageAgent(StorageAgent sa, String oldAppId, String appId, Configuration conf)
+  {
+    if (sa instanceof AsyncFSStorageAgent) {
+      AsyncFSStorageAgent fssa = (AsyncFSStorageAgent)sa;
+      if (fssa.path.contains(oldAppId)) {
+        return new AsyncFSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
+      }
+    } else if (sa instanceof FSStorageAgent) {
+      FSStorageAgent fssa = (FSStorageAgent)sa;
+      if (fssa.path.contains(oldAppId)) {
+        return new FSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
       }
     }
-
+    return sa;
   }
 
   public interface RecoveryHandler

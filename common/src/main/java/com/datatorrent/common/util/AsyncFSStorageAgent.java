@@ -30,6 +30,7 @@ import java.util.EnumSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.common.util.AsyncStorageAgent;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -45,7 +46,7 @@ import com.google.common.base.Throwables;
  *
  * @since 3.1.0
  */
-public class AsyncFSStorageAgent extends FSStorageAgent
+public class AsyncFSStorageAgent extends FSStorageAgent implements AsyncStorageAgent
 {
   private final transient Configuration conf;
   private transient volatile String localBasePath;
@@ -146,6 +147,16 @@ public class AsyncFSStorageAgent extends FSStorageAgent
   }
 
   @Override
+  public void finalize(int operatorId, long windowId) throws IOException
+  {
+    // Checkpoint already present in HDFS during save, when syncCheckpoint is true.
+    if (isSyncCheckpoint()) {
+      return;
+    }
+    copyToHDFS(operatorId, windowId);
+  }
+
+  @Override
   public Object readResolve() throws ObjectStreamException
   {
     AsyncFSStorageAgent asyncFSStorageAgent = new AsyncFSStorageAgent(this.path, null);
@@ -153,6 +164,7 @@ public class AsyncFSStorageAgent extends FSStorageAgent
     return asyncFSStorageAgent;
   }
 
+  @Override
   public boolean isSyncCheckpoint()
   {
     return syncCheckpoint;

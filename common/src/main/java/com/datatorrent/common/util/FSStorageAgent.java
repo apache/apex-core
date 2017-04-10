@@ -18,6 +18,7 @@
  */
 package com.datatorrent.common.util;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectStreamException;
@@ -153,6 +154,16 @@ public class FSStorageAgent implements StorageAgent, Serializable
   public long[] getWindowIds(int operatorId) throws IOException
   {
     Path lPath = new Path(path + Path.SEPARATOR + String.valueOf(operatorId));
+    try {
+      FileStatus status = fileContext.getFileStatus(lPath);
+      if (!status.isDirectory()) {
+        throw new IOException("Checkpoint location is not a directory ");
+      }
+    } catch (FileNotFoundException ex) {
+      // During initialization this directory may not exists.
+      // return an empty array.
+      return new long[0];
+    }
 
     RemoteIterator<FileStatus> fileStatusRemoteIterator = fileContext.listStatus(lPath);
     if (!fileStatusRemoteIterator.hasNext()) {
