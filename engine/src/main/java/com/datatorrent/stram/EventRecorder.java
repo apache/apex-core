@@ -27,6 +27,6 @@ import com.datatorrent.stram.api.StramEvent;
  */
 public interface EventRecorder
 {
-  public void recordEventAsync(StramEvent event);
+  void recordEventAsync(StramEvent event);
 
 }

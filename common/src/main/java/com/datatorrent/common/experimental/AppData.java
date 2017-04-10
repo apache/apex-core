@@ -50,7 +50,7 @@ public interface AppData
      * null then this Store should have a separate query operator connected to it.
      * @return The query connector which is used by the store operator to receive queries.
      */
-    public EmbeddableQueryInfoProvider<QUERY_TYPE> getEmbeddableQueryInfoProvider();
+    EmbeddableQueryInfoProvider<QUERY_TYPE> getEmbeddableQueryInfoProvider();
 
     /**
      * Sets the query connector which is used by the store operator to receive queries. The store operator will call
@@ -58,7 +58,7 @@ public interface AppData
      * its {@link Operator#setup} method is called.
      * @param embeddableQueryInfoProvider The query connector which is used by the store operator to receive queries.
      */
-    public void setEmbeddableQueryInfoProvider(EmbeddableQueryInfoProvider<QUERY_TYPE> embeddableQueryInfoProvider);
+    void setEmbeddableQueryInfoProvider(EmbeddableQueryInfoProvider<QUERY_TYPE> embeddableQueryInfoProvider);
   }
 
   /**
@@ -77,7 +77,7 @@ public interface AppData
      * Gets the output port for queries.
      * @return The output port for queries.
      */
-    public DefaultOutputPort<QUERY_TYPE> getOutputPort();
+    DefaultOutputPort<QUERY_TYPE> getOutputPort();
 
     /**
      * If this method is called at least once then this operator will work as if it were embedded in an {@link AppData.Store}.
@@ -85,7 +85,7 @@ public interface AppData
      * is set on an {@link AppData.Store} then the {@link AppData.Store} will call the {@link EmbeddableQueryInfoProvider#enableEmbeddedMode}
      * method once before the {@link Operator.setup} is called.
      */
-    public void enableEmbeddedMode();
+    void enableEmbeddedMode();
   }
 
   /**
@@ -97,13 +97,13 @@ public interface AppData
      * Returns the connection url used by the appdata Query or Result operator.
      * @return The connection url used by the AppData Query or Result operator.
      */
-    public String getAppDataURL();
+    String getAppDataURL();
 
     /**
      * Returns the topic that the appdata Query or Result operator sends data to.
      * @return The topic that the appdata Query or Result operator sends data to.
      */
-    public String getTopic();
+    String getTopic();
   }
 
   /**
@@ -113,7 +113,7 @@ public interface AppData
   @Target(ElementType.TYPE)
   @Retention(RetentionPolicy.RUNTIME)
   @Inherited
-  public @interface AppendQueryIdToTopic
+  @interface AppendQueryIdToTopic
   {
     boolean value() default false;
   }
@@ -124,7 +124,7 @@ public interface AppData
   @Documented
   @Target(ElementType.FIELD)
   @Retention(RetentionPolicy.RUNTIME)
-  public @interface QueryPort
+  @interface QueryPort
   {
   }
 
@@ -134,7 +134,7 @@ public interface AppData
   @Documented
   @Target(ElementType.FIELD)
   @Retention(RetentionPolicy.RUNTIME)
-  public @interface ResultPort
+  @interface ResultPort
   {
   }
 }

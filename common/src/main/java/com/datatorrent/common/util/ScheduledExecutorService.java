@@ -29,5 +29,5 @@ public interface ScheduledExecutorService extends java.util.concurrent.Scheduled
    *
    * @return long
    */
-  public long getCurrentTimeMillis();
+  long getCurrentTimeMillis();
 }

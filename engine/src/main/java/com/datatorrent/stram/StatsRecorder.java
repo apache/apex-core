@@ -31,8 +31,8 @@ import com.datatorrent.stram.webapp.OperatorInfo;
  */
 public interface StatsRecorder
 {
-  public void recordContainers(Map<String, StreamingContainerAgent> containerMap, long timestamp) throws IOException;
+  void recordContainers(Map<String, StreamingContainerAgent> containerMap, long timestamp) throws IOException;
 
-  public void recordOperators(List<OperatorInfo> operatorList, long timestamp) throws IOException;
+  void recordOperators(List<OperatorInfo> operatorList, long timestamp) throws IOException;
 
 }

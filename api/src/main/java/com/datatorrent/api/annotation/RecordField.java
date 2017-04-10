@@ -37,7 +37,7 @@ public @interface RecordField
    /**
     * <p>type.</p>
     */
-   public String type();
+   String type();
 
-   public boolean publish() default true;
+   boolean publish() default true;
 }

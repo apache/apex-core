@@ -32,13 +32,13 @@ public interface Component<CONTEXT extends Context>
    * It's recommended to use this separator to create scoped names for the components.
    * e.g. Port p on Operator o can be identified as o.concat(CONCAT_SEPARATOR).concat(p).
    */
-  public static final String CONCAT_SEPARATOR = ".";
+  String CONCAT_SEPARATOR = ".";
   /**
    * It's recommended to use this separator to split the scoped names into individual components.
    * e.g. o.concat(CONCAT_SEPARATOR).concat(p).split(SPLIT_SEPARATOR) will return String[]{o, p}.
    *
    */
-  public static final String SPLIT_SEPARATOR = "\\.";
+  String SPLIT_SEPARATOR = "\\.";
 
   /**
    * Callback to give the component a chance to perform tasks required as part of setting itself up.
@@ -47,13 +47,13 @@ public interface Component<CONTEXT extends Context>
    *
    * @param context - context in which the operator executues.
    */
-  public void setup(CONTEXT context);
+  void setup(CONTEXT context);
 
   /**
    * Callback to give the component a chance to perform tasks required as part of tearing itself down.
    * A recommended practice is to reciprocate the tasks in setup by doing exactly opposite.
    */
-  public void teardown();
+  void teardown();
 
   /**
    * A utility class to club component along with the entity such as context or configuration.
@@ -65,7 +65,7 @@ public interface Component<CONTEXT extends Context>
    * @param <COMPLEMENT>
    * @since 0.3.2
    */
-  public abstract static class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
+  abstract class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
   {
     public final COMPONENT component;
 

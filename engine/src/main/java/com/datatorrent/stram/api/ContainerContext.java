@@ -29,10 +29,10 @@ import com.datatorrent.api.Context;
  */
 public interface ContainerContext extends Context
 {
-  public static final Attribute<String> IDENTIFIER = new Attribute<>("unknown_container_id");
-  public static final Attribute<Integer> BUFFER_SERVER_MB = new Attribute<>(8 * 64);
-  public static final Attribute<byte[]> BUFFER_SERVER_TOKEN = new Attribute<>(null, null);
-  public static final Attribute<RequestFactory> REQUEST_FACTORY = new Attribute<>(null, null);
+  Attribute<String> IDENTIFIER = new Attribute<>("unknown_container_id");
+  Attribute<Integer> BUFFER_SERVER_MB = new Attribute<>(8 * 64);
+  Attribute<byte[]> BUFFER_SERVER_TOKEN = new Attribute<>(null, null);
+  Attribute<RequestFactory> REQUEST_FACTORY = new Attribute<>(null, null);
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(ContainerContext.class);
 }

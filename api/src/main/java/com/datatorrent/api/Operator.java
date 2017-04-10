@@ -199,7 +199,7 @@ public interface Operator extends Component<OperatorContext>, GenericOperator
    * window and then call deactivate method on it if present.
    *
    */
-  static class ShutdownException extends RuntimeException
+  class ShutdownException extends RuntimeException
   {
     private static final long serialVersionUID = 201401081529L;
 
@@ -223,20 +223,20 @@ public interface Operator extends Component<OperatorContext>, GenericOperator
    * @param <CONTEXT> Context for the current run during which the operator is getting de/activated.
    * @since 0.3.2
    */
-  public static interface ActivationListener<CONTEXT extends Context>
+  interface ActivationListener<CONTEXT extends Context>
   {
     /**
      * Do the operations just before the operator starts processing tasks within the windows.
      * e.g. establish a network connection.
      * @param context - the context in which the operator is executing.
      */
-    public void activate(CONTEXT context);
+    void activate(CONTEXT context);
 
     /**
      * Do the opposite of the operations the operator did during activate.
      * e.g. close the network connection.
      */
-    public void deactivate();
+    void deactivate();
 
   }
 
@@ -247,21 +247,21 @@ public interface Operator extends Component<OperatorContext>, GenericOperator
    * @deprecated Use {@link CheckpointNotificationListener} instead
    * @since 0.3.2
    */
-  public static interface CheckpointListener
+  interface CheckpointListener
   {
     /**
      * Inform the operator that it's checkpointed.
      *
      * @param windowId Id of the window after which the operator was checkpointed.
      */
-    public void checkpointed(long windowId);
+    void checkpointed(long windowId);
 
     /**
      * Inform the operator that a particular windowId is processed successfully by all the operators in the DAG.
      *
      * @param windowId Id of the window which is processed by each operator.
      */
-    public void committed(long windowId);
+    void committed(long windowId);
 
   }
 
@@ -280,14 +280,14 @@ public interface Operator extends Component<OperatorContext>, GenericOperator
    *
    * @since 0.3.2
    */
-  public static interface IdleTimeHandler
+  interface IdleTimeHandler
   {
     /**
      * Callback for operators to implement if they are interested in using the idle cycles to do auxiliary processing.
      * If this method detects that it does not have any work to do, it should block the call for a short duration
      * to prevent busy loop. handleIdleTime is called over and over until operator has tuples to process.
      */
-    public void handleIdleTime();
+    void handleIdleTime();
 
   }
 

@@ -54,7 +54,7 @@ import com.datatorrent.stram.util.AbstractWritableAdapter;
 @InterfaceStability.Stable
 public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
 {
-  public static final long versionID = 201208081755L;
+  long versionID = 201208081755L;
 
   /**
    * Initialization parameters for StramChild container. Container

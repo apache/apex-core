@@ -35,9 +35,9 @@ import com.datatorrent.api.Sink;
  */
 public interface Stream extends Component<StreamContext>, ActivationListener<StreamContext>, ControlTupleEnabledSink<Object>
 {
-  public interface MultiSinkCapableStream extends Stream
+  interface MultiSinkCapableStream extends Stream
   {
-    public void setSink(String id, Sink<Object> sink);
+    void setSink(String id, Sink<Object> sink);
   }
 
 }

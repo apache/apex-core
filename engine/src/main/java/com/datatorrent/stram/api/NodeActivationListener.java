@@ -32,13 +32,13 @@ public interface NodeActivationListener
    *
    * @param node node which got activated.
    */
-  public void activated(Node<?> node);
+  void activated(Node<?> node);
 
   /**
    * Callback to notify the listner that the node has been activated.
    *
    * @param node node which got deactivated.
    */
-  public void deactivated(Node<?> node);
+  void deactivated(Node<?> node);
 
 }

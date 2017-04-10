@@ -42,7 +42,7 @@ public @interface AutoMetric
   /**
    * Represents collection of physical metrics.
    */
-  public static interface PhysicalMetricsContext
+  interface PhysicalMetricsContext
   {
     /**
      * @return map of metric name to value
@@ -60,7 +60,7 @@ public @interface AutoMetric
    * An aggregator is provided as operator attribute. By default, when there isn't any aggregator set explicitly,
    * the application master sums up all the number metrics.
    */
-  public static interface Aggregator
+  interface Aggregator
   {
     /**
      * Aggregates values of a specific metric.
@@ -77,7 +77,7 @@ public @interface AutoMetric
    * Application data tracker by default does certain aggregations for 1m, 1h,& 1d time buckets unless it overridden by
    * the app developer by providing a dimension scheme as operator attribute.
    */
-  public static interface DimensionsScheme
+  interface DimensionsScheme
   {
     /**
      * Time buckets for eg. {1m, 1h}. Application data tracker by default does 1m, 1h & 1d aggregations but this

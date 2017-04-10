@@ -197,7 +197,7 @@ public class StramClientUtils
       this.conf = conf;
     }
 
-    public static interface AppStatusCallback
+    public interface AppStatusCallback
     {
       boolean exitLoop(ApplicationReport report);
 

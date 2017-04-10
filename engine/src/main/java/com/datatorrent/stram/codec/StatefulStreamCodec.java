@@ -32,7 +32,7 @@ public interface StatefulStreamCodec<T> extends StreamCodec<T>
   /**
    * A convenience class which is used to hold 2 different values associated with each serialize/deserialize operation.
    */
-  public class DataStatePair
+  class DataStatePair
   {
     /**
      * This byte array corresponds to serialized form of the tuple of type T.
@@ -85,7 +85,7 @@ public interface StatefulStreamCodec<T> extends StreamCodec<T>
    * should not be confused with the resetState operation of upstream operator.
    *
    */
-  public void resetState();
+  void resetState();
 
   /**
    * Provide a new instance of the current object.
@@ -96,5 +96,5 @@ public interface StatefulStreamCodec<T> extends StreamCodec<T>
    *
    * @return new instance of this codec for which the state has been reset.
    */
-  public StatefulStreamCodec<T> newInstance();
+  StatefulStreamCodec<T> newInstance();
 }

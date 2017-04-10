@@ -39,7 +39,7 @@ public @interface InputPortFieldAnnotation
    *
    * @return - true if port is optional, false otherwise.
    */
-  public boolean optional() default false;
+  boolean optional() default false;
 
   /**
    * Whether this port needs to know the tuple class. When true, application will have to set
@@ -47,5 +47,5 @@ public @interface InputPortFieldAnnotation
    *
    * @return true if schema is required; false otherwise.
    */
-  public boolean schemaRequired() default false;
+  boolean schemaRequired() default false;
 }

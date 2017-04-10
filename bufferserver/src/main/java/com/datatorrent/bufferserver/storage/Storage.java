@@ -43,7 +43,7 @@ public interface Storage
    * @return instance of storage.
    * @throws IOException
    */
-  public Storage getInstance() throws IOException;
+  Storage getInstance() throws IOException;
 
   /**
    * Store memory block represented by block in non memory storage.
@@ -60,7 +60,7 @@ public interface Storage
    * @param end - the offset of the last byte in the array.
    * @return unique identifier for the stored block.
    */
-  public int store(String Identifier, byte[] bytes, int start, int end);
+  int store(String Identifier, byte[] bytes, int start, int end);
 
   /**
    *
@@ -68,7 +68,7 @@ public interface Storage
    * @param uniqueIdentifier secondary and unique identifier of the block which needs to be retrived.
    * @return memory block which was stored with the passed parameters as identifying information.
    */
-  public byte[] retrieve(String identifier, int uniqueIdentifier);
+  byte[] retrieve(String identifier, int uniqueIdentifier);
 
   /**
    * Discard the block stored from the secondary storage.
@@ -76,5 +76,5 @@ public interface Storage
    * @param identifier
    * @param uniqueIdentifier
    */
-  public void discard(String identifier, int uniqueIdentifier);
+  void discard(String identifier, int uniqueIdentifier);
 }

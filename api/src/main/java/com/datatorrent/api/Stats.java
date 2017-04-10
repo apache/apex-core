@@ -29,7 +29,7 @@ import java.util.Map;
  */
 public interface Stats extends Serializable
 {
-  public static final long INVALID_TIME_MILLIS = -1;
+  long INVALID_TIME_MILLIS = -1;
 
   interface Checkpoint extends Serializable
   {
@@ -48,7 +48,7 @@ public interface Stats extends Serializable
     }
   }
 
-  public static class OperatorStats implements Stats
+  class OperatorStats implements Stats
   {
     public long windowId;
     public Checkpoint checkpoint;

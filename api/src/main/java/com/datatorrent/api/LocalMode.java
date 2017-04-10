@@ -39,15 +39,15 @@ public abstract class LocalMode<H extends EmbeddedAppLauncher.EmbeddedAppHandle>
 
   public interface Controller
   {
-    public void run();
+    void run();
 
-    public void run(long runMillis);
+    void run(long runMillis);
 
-    public void runAsync();
+    void runAsync();
 
-    public void shutdown();
+    void shutdown();
 
-    public void setHeartbeatMonitoringEnabled(boolean enabled);
+    void setHeartbeatMonitoringEnabled(boolean enabled);
 
   }
 

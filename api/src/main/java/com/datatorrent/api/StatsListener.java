@@ -44,7 +44,7 @@ public interface StatsListener
    * Command to be executed at subsequent end of window on the operator instance that is deployed in the container.
    * Provides the opportunity to define operator specific actions such as method invocation or property set.
    */
-  public interface OperatorRequest
+  interface OperatorRequest
   {
     /**
      * Execute the command.
@@ -54,14 +54,14 @@ public interface StatsListener
      * @param windowId
      * @throws IOException
      */
-    public OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException;
+    OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException;
   }
 
   /**
    * Use {@link OperatorRequest}
    */
   @Deprecated
-  public interface OperatorCommand
+  interface OperatorCommand
   {
     /**
      * Execute the command.
@@ -71,28 +71,28 @@ public interface StatsListener
      * @param windowId
      * @throws IOException
      */
-    public void execute(Operator operator, int operatorId, long windowId) throws IOException;
+    void execute(Operator operator, int operatorId, long windowId) throws IOException;
   }
 
-  public interface OperatorResponse
+  interface OperatorResponse
   {
 
     /*
      * The Object to identify the response
      */
-    public Object getResponseId();
+    Object getResponseId();
 
     /*
      * The data payload that needs to be sent back
      */
-    public Object getResponse();
+    Object getResponse();
 
   }
 
   /**
    * List of recent, per window operator stats and moving averages.
    */
-  public interface BatchedOperatorStats
+  interface BatchedOperatorStats
   {
     /**
       Stats list will typically contain multiple entries, depending on streaming window size and heartbeat interval.
@@ -115,7 +115,7 @@ public interface StatsListener
     List<OperatorResponse> getOperatorResponse();
   }
 
-  public class Response implements Serializable
+  class Response implements Serializable
   {
     /**
      * Set true to request repartition of the logical operator.
@@ -160,7 +160,7 @@ public interface StatsListener
    */
   @Target(ElementType.TYPE)
   @Retention(RetentionPolicy.RUNTIME)
-  public @interface DataQueueSize
+  @interface DataQueueSize
   {
   }
 }

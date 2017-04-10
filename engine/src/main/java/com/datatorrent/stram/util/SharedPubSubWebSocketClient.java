@@ -51,9 +51,9 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
 
   public interface Handler
   {
-    public void onMessage(String type, String topic, Object data);
+    void onMessage(String type, String topic, Object data);
 
-    public void onClose();
+    void onClose();
 
   }
 

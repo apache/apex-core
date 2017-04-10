@@ -30,40 +30,40 @@ public interface NumberAggregate
    *
    * @return The min
    */
-  public Number getMin();
+  Number getMin();
 
   /**
    * Gets the maximum of the given numbers
    *
    * @return The max
    */
-  public Number getMax();
+  Number getMax();
 
   /**
    * Gets the sum of the given numbers
    *
    * @return The sum
    */
-  public Number getSum();
+  Number getSum();
 
   /**
    * Gets the average of the given numbers
    *
    * @return The avg
    */
-  public Number getAvg();
+  Number getAvg();
 
   /**
    * Add a long to the number set
    *
    * @param num the number
    */
-  public void addNumber(Number num);
+  void addNumber(Number num);
 
   /**
    * This is the aggregate class for Long.
    */
-  public static class LongAggregate implements NumberAggregate
+  class LongAggregate implements NumberAggregate
   {
     private int count = 0;
     private long min = Long.MAX_VALUE;
@@ -134,7 +134,7 @@ public interface NumberAggregate
   /**
    * This is the aggregate class for Double.
    */
-  public static class DoubleAggregate implements NumberAggregate
+  class DoubleAggregate implements NumberAggregate
   {
     private int count = 0;
     private double min = Double.MAX_VALUE;

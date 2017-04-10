@@ -39,7 +39,7 @@ public @interface OperatorAnnotation
    * Default value is true indicating operator can be partitioned.
    * @return Whether operator can be partitioned or not
    */
-  public boolean partitionable() default true;
+  boolean partitionable() default true;
 
   /**
    * Element specifying whether an operator can be check-pointed in the middle of an application window.
@@ -48,5 +48,5 @@ public @interface OperatorAnnotation
    *
    * @return whether operator can be checkpointed in middle of an application window.
    */
-  public boolean checkpointableWithinAppWindow() default true;
+  boolean checkpointableWithinAppWindow() default true;
 }

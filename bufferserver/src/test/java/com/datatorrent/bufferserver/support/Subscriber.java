@@ -134,15 +134,15 @@ public class Subscriber extends com.datatorrent.bufferserver.client.Subscriber
 
   public interface WindowIdHolder
   {
-    public int getWindowId();
+    int getWindowId();
 
   }
 
   public interface ResetHolder
   {
-    public int getBaseSeconds();
+    int getBaseSeconds();
 
-    public int getWindowWidth();
+    int getWindowWidth();
 
   }
 

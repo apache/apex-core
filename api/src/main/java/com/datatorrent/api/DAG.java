@@ -47,9 +47,9 @@ public interface DAG extends DAGContext, Serializable
      * Return port object represented by this InputPortMeta
      * @return
      */
-    public Operator.InputPort<?> getPort();
+    Operator.InputPort<?> getPort();
 
-    public <T extends OperatorMeta> T getOperatorMeta();
+    <T extends OperatorMeta> T getOperatorMeta();
   }
 
   interface OutputPortMeta extends Serializable, PortContext
@@ -60,9 +60,9 @@ public interface DAG extends DAGContext, Serializable
      * Return port object represented by this OutputPortMeta
      * @return
      */
-    public Operator.OutputPort<?> getPort();
+    Operator.OutputPort<?> getPort();
 
-    public <T extends OperatorMeta> T getOperatorMeta();
+    <T extends OperatorMeta> T getOperatorMeta();
   }
 
   /**
@@ -105,15 +105,15 @@ public interface DAG extends DAGContext, Serializable
   /**
    * Representation of streams in the logical layer. Instances are created through {@link DAG#addStream}.
    */
-  public interface StreamMeta extends Serializable
+  interface StreamMeta extends Serializable
   {
-    public String getName();
+    String getName();
 
     /**
      * Returns the locality for this stream.
      * @return locality for this stream, default is null.
      */
-    public Locality getLocality();
+    Locality getLocality();
 
     /**
      * Set locality for the stream. The setting is best-effort, engine can
@@ -122,11 +122,11 @@ public interface DAG extends DAGContext, Serializable
      * @param locality
      * @return Object that describes the meta for the stream.
      */
-    public StreamMeta setLocality(Locality locality);
+    StreamMeta setLocality(Locality locality);
 
-    public StreamMeta setSource(Operator.OutputPort<?> port);
+    StreamMeta setSource(Operator.OutputPort<?> port);
 
-    public StreamMeta addSink(Operator.InputPort<?> port);
+    StreamMeta addSink(Operator.InputPort<?> port);
 
     /**
      * Persist entire stream using operator passed.
@@ -136,7 +136,7 @@ public interface DAG extends DAGContext, Serializable
      * @param Input port to use for persisting
      * @return Object that describes the meta for the stream.
      */
-    public StreamMeta persistUsing(String name, Operator persistOperator, Operator.InputPort<?> persistOperatorInputPort);
+    StreamMeta persistUsing(String name, Operator persistOperator, Operator.InputPort<?> persistOperatorInputPort);
 
     /**
      * Set locality for the stream. The setting is best-effort, engine can
@@ -146,7 +146,7 @@ public interface DAG extends DAGContext, Serializable
      * @param Operator to use for persisting
      * @return Object that describes the meta for the stream.
      */
-    public StreamMeta persistUsing(String name, Operator persistOperator);
+    StreamMeta persistUsing(String name, Operator persistOperator);
 
     /**
      * Set locality for the stream. The setting is best-effort, engine can
@@ -158,35 +158,35 @@ public interface DAG extends DAGContext, Serializable
      * @param Sink to persist
      * @return Object that describes the meta for the stream.
      */
-    public StreamMeta persistUsing(String name, Operator persistOperator, Operator.InputPort<?> persistOperatorInputPort, Operator.InputPort<?> sinkToPersist);
+    StreamMeta persistUsing(String name, Operator persistOperator, Operator.InputPort<?> persistOperatorInputPort, Operator.InputPort<?> sinkToPersist);
 
     /**
      * Return source of the stream.
      * @param <T>
      * @return
      */
-    public <T extends OutputPortMeta> T getSource();
+    <T extends OutputPortMeta> T getSource();
 
     /**
      * Return all sinks connected to this stream.
      * @param <T>
      * @return
      */
-    public <T extends InputPortMeta> Collection<T> getSinks();
+    <T extends InputPortMeta> Collection<T> getSinks();
   }
 
   /**
    * Operator meta object.
    */
-  public interface OperatorMeta extends Serializable, Context
+  interface OperatorMeta extends Serializable, Context
   {
-    public String getName();
+    String getName();
 
-    public Operator getOperator();
+    Operator getOperator();
 
-    public InputPortMeta getMeta(Operator.InputPort<?> port);
+    InputPortMeta getMeta(Operator.InputPort<?> port);
 
-    public OutputPortMeta getMeta(Operator.OutputPort<?> port);
+    OutputPortMeta getMeta(Operator.OutputPort<?> port);
 
     /**
      * Return collection of stream which are connected to this operator's
@@ -194,7 +194,7 @@ public interface DAG extends DAGContext, Serializable
      * @param <T>
      * @return
      */
-    public <K extends InputPortMeta, V extends StreamMeta> Map<K, V> getInputStreams();
+    <K extends InputPortMeta, V extends StreamMeta> Map<K, V> getInputStreams();
 
     /**
      * Return collection of stream which are connected to this operator's
@@ -202,7 +202,7 @@ public interface DAG extends DAGContext, Serializable
      * @param <T>
      * @return
      */
-    public <K extends OutputPortMeta, V extends StreamMeta> Map<K, V> getOutputStreams();
+    <K extends OutputPortMeta, V extends StreamMeta> Map<K, V> getOutputStreams();
   }
 
   /**
@@ -216,7 +216,7 @@ public interface DAG extends DAGContext, Serializable
    * @param clazz Concrete class with default constructor so that instance of it can be initialized and added to the DAG.
    * @return Instance of the operator that has been added to the DAG.
    */
-  public abstract <T extends Operator> T addOperator(String name, Class<T> clazz);
+  <T extends Operator> T addOperator(String name, Class<T> clazz);
 
   /**
    * <p>addOperator.</p>
@@ -225,7 +225,7 @@ public interface DAG extends DAGContext, Serializable
    * @param operator Instance of the operator that needs to be added to the DAG
    * @return Instance of the operator that has been added to the DAG.
    */
-  public abstract <T extends Operator> T addOperator(String name, T operator);
+  <T extends Operator> T addOperator(String name, T operator);
 
   @InterfaceStability.Evolving
   <T extends Module> T addModule(String name, Class<T> moduleClass);
@@ -238,7 +238,7 @@ public interface DAG extends DAGContext, Serializable
    * @param id Identifier of the stream that will be used to identify stream in DAG
    * @return
    */
-  public abstract StreamMeta addStream(String id);
+  StreamMeta addStream(String id);
 
   /**
    * Add identified stream for given source and sinks. Multiple sinks can be
@@ -256,7 +256,7 @@ public interface DAG extends DAGContext, Serializable
    * @param sinks
    * @return StreamMeta
    */
-  public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks);
+  <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks);
 
   /**
    * Overload varargs version to avoid generic array type safety warnings in calling code.
@@ -269,24 +269,24 @@ public interface DAG extends DAGContext, Serializable
    * @param sink1
    * @return StreamMeta
    */
-  public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1);
+  <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1);
 
   /**
    * <p>addStream.</p>
    */
-  public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2);
+  <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2);
 
   /**
    * <p>setAttribute.</p>
    */
-  public abstract <T> void setAttribute(Attribute<T> key, T value);
+  <T> void setAttribute(Attribute<T> key, T value);
 
   /**
    * @Deprecated
    * Use {@link #setOperatorAttribute} instead
    */
   @Deprecated
-  public abstract <T> void setAttribute(Operator operator, Attribute<T> key, T value);
+  <T> void setAttribute(Operator operator, Attribute<T> key, T value);
 
   /**
    * Set an attribute for an operator.
@@ -295,12 +295,12 @@ public interface DAG extends DAGContext, Serializable
    * @param key The attribute which needs to be tuned.
    * @param value The new value of the attribute.
    */
-  public abstract <T> void setOperatorAttribute(Operator operator, Attribute<T> key, T value);
+  <T> void setOperatorAttribute(Operator operator, Attribute<T> key, T value);
 
   /**
    * <p>setOutputPortAttribute.</p>
    */
-  public abstract <T> void setOutputPortAttribute(Operator.OutputPort<?> port, Attribute<T> key, T value);
+  <T> void setOutputPortAttribute(Operator.OutputPort<?> port, Attribute<T> key, T value);
 
   /**
    * Set an attribute on the unifier for an output of an operator.
@@ -309,29 +309,29 @@ public interface DAG extends DAGContext, Serializable
    * @param key The attribute which needs to be tuned.
    * @param value The new value of the attribute.
    */
-  public abstract <T> void setUnifierAttribute(Operator.OutputPort<?> port, Attribute<T> key, T value);
+  <T> void setUnifierAttribute(Operator.OutputPort<?> port, Attribute<T> key, T value);
 
   /**
    * <p>setInputPortAttribute.</p>
    */
-  public abstract <T> void setInputPortAttribute(Operator.InputPort<?> port, Attribute<T> key, T value);
+  <T> void setInputPortAttribute(Operator.InputPort<?> port, Attribute<T> key, T value);
 
   /**
    * <p>getOperatorMeta.</p>
    */
-  public abstract OperatorMeta getOperatorMeta(String operatorId);
+  OperatorMeta getOperatorMeta(String operatorId);
 
   /**
    * <p>getMeta.</p>
    */
-  public abstract OperatorMeta getMeta(Operator operator);
+  OperatorMeta getMeta(Operator operator);
 
   /**
    * Return all operators present in the DAG.
    * @param <T>
    * @return
    */
-  public <T extends OperatorMeta> Collection<T> getAllOperatorsMeta();
+  <T extends OperatorMeta> Collection<T> getAllOperatorsMeta();
 
   /**
    * Get all input operators in the DAG. This method returns operators which are
@@ -342,14 +342,14 @@ public interface DAG extends DAGContext, Serializable
    * @param <T>
    * @return list of {@see OperatorMeta} for root operators in the DAG.
    */
-  public <T extends OperatorMeta> Collection<T> getRootOperatorsMeta();
+  <T extends OperatorMeta> Collection<T> getRootOperatorsMeta();
 
   /**
    * Returns all Streams present in the DAG.
    * @param <T>
    * @return
    */
-  public <T extends StreamMeta> Collection<T> getAllStreamsMeta();
+  <T extends StreamMeta> Collection<T> getAllStreamsMeta();
 
   /**
    * Marker interface for the Node in the DAG. Any object which can be added as a Node in the DAG

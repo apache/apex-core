@@ -27,7 +27,7 @@ import org.apache.hadoop.ipc.VersionedProtocol;
  */
 public interface LicensingProtocol extends VersionedProtocol
 {
-  public static final long versionID = 201401310447L;
+  long versionID = 201401310447L;
 
-  public byte[] processRequest(byte[] request);
+  byte[] processRequest(byte[] request);
 }

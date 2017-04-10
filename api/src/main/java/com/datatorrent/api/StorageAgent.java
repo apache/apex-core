@@ -42,7 +42,7 @@ public interface StorageAgent
    * @param windowId - Identifier for the specific state of the operator.
    * @throws IOException
    */
-  public void save(Object object, int operatorId, long windowId) throws IOException;
+  void save(Object object, int operatorId, long windowId) throws IOException;
 
   /**
    * Get the input stream from which can be used to retrieve the stored objects back.
@@ -52,7 +52,7 @@ public interface StorageAgent
    * @return object (or a copy of it) which was saved earlier using the save call.
    * @throws IOException
    */
-  public Object load(int operatorId, long windowId) throws IOException;
+  Object load(int operatorId, long windowId) throws IOException;
 
   /**
    * Delete the artifacts related to store call of the operatorId and the windowId.
@@ -64,7 +64,7 @@ public interface StorageAgent
    * @param windowId
    * @throws IOException
    */
-  public void delete(int operatorId, long windowId) throws IOException;
+  void delete(int operatorId, long windowId) throws IOException;
 
   /**
    * Return an array windowId for which the object was saved but not deleted.
@@ -77,13 +77,13 @@ public interface StorageAgent
    * @return Collection of windowIds for available states that can be retrieved through load.
    * @throws IOException
    */
-  public long[] getWindowIds(int operatorId) throws IOException;
+  long[] getWindowIds(int operatorId) throws IOException;
 
   /**
    * Interface to pass application attributes to storage agent
    *
    */
-  public interface ApplicationAwareStorageAgent extends StorageAgent
+  interface ApplicationAwareStorageAgent extends StorageAgent
   {
 
     /**
@@ -91,7 +91,7 @@ public interface StorageAgent
      *
      * @param map attributes of application
      */
-    public void setApplicationAttributes(AttributeMap map);
+    void setApplicationAttributes(AttributeMap map);
   }
 
 }

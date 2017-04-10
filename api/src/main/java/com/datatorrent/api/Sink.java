@@ -38,7 +38,7 @@ public interface Sink<T>
    * pass null otherwise.
    */
   @SuppressWarnings("unchecked")
-  public static final Sink<Object>[] NO_SINKS = (Sink<Object>[])Array.newInstance(Sink.class, 0);
+  Sink<Object>[] NO_SINKS = (Sink<Object>[])Array.newInstance(Sink.class, 0);
   /**
    * Constant
    * <code>BLACKHOLE</code>
@@ -46,7 +46,7 @@ public interface Sink<T>
    * This sink discards anything that's put into it silently. Use this sink if you need a sink that
    * discards everything with super low cost.
    */
-  public static final Sink<Object> BLACKHOLE = new Sink<Object>()
+  Sink<Object> BLACKHOLE = new Sink<Object>()
   {
     @Override
     public void put(Object tuple)
@@ -66,7 +66,7 @@ public interface Sink<T>
    *
    * @param tuple payload to be processed by this sink.
    */
-  public void put(T tuple);
+  void put(T tuple);
 
   /**
    * Give the count of the tuples processed since the last reset.
@@ -74,6 +74,6 @@ public interface Sink<T>
    * @param reset reset the count if true.
    * @return the count of tuples processed since the last reset.
    */
-  public int getCount(boolean reset);
+  int getCount(boolean reset);
 
 }

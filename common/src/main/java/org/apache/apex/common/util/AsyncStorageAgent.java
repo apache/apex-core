@@ -41,7 +41,7 @@ public interface AsyncStorageAgent extends StorageAgent
    * @param windowId
    * @throws IOException
    */
-  public void finalize(int operatorId, long windowId) throws IOException;
+  void finalize(int operatorId, long windowId) throws IOException;
 
   /**
    * Check if StorageAgent is configured to take synchronous checkpoints.
@@ -49,6 +49,6 @@ public interface AsyncStorageAgent extends StorageAgent
    * @return true if StorageAgent is configured to take synchronous checkpoints.
    * @return false otherwise.
    */
-  public boolean isSyncCheckpoint();
+  boolean isSyncCheckpoint();
 
 }

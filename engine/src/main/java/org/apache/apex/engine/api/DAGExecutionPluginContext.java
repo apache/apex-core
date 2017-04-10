@@ -69,21 +69,21 @@ public interface DAGExecutionPluginContext extends Context
     void handle(T data);
   }
 
-  public StramAppContext getApplicationContext();
+  StramAppContext getApplicationContext();
 
-  public AppInfo.AppStats getApplicationStats();
+  AppInfo.AppStats getApplicationStats();
 
-  public Configuration getLaunchConfig();
+  Configuration getLaunchConfig();
 
-  public DAG getDAG();
+  DAG getDAG();
 
-  public String getOperatorName(int id);
+  String getOperatorName(int id);
 
-  public BatchedOperatorStats getPhysicalOperatorStats(int id);
+  BatchedOperatorStats getPhysicalOperatorStats(int id);
 
-  public List<LogicalOperatorInfo> getLogicalOperatorInfoList();
+  List<LogicalOperatorInfo> getLogicalOperatorInfoList();
 
-  public Queue<Pair<Long, Map<String, Object>>> getWindowMetrics(String operatorName);
+  Queue<Pair<Long, Map<String, Object>>> getWindowMetrics(String operatorName);
 
-  public long windowIdToMillis(long windowId);
+  long windowIdToMillis(long windowId);
 }

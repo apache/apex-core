@@ -87,7 +87,7 @@ public interface DAGSetupPlugin extends ApexPlugin<DAGSetupPlugin.DAGSetupPlugin
    */
   void postValidateDAG();
 
-  public static class DAGSetupPluginContext implements ApexPluginContext
+  class DAGSetupPluginContext implements ApexPluginContext
   {
     private final DAG dag;
     private final Configuration conf;

@@ -38,11 +38,11 @@ public @interface OutputPortFieldAnnotation
   /**
    * <p>optional.</p>
    */
-  public boolean optional() default true;
+  boolean optional() default true;
   /**
    * <p>error.</p>
    */
-  public boolean error() default false;
+  boolean error() default false;
 
   /**
    * Whether this port needs to know the tuple class. When true, application will have to set
@@ -50,6 +50,6 @@ public @interface OutputPortFieldAnnotation
    *
    * @return  true if schema is required; false otherwise.
    */
-  public boolean schemaRequired() default false;
+  boolean schemaRequired() default false;
 }
 

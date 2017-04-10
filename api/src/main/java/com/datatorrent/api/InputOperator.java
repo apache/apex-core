@@ -40,6 +40,6 @@ public interface InputOperator extends Operator
    * engine will make sure to call emitTuples multiple times within a giving streaming
    * window if it can. When it cannot, it will call endWindow.
    */
-  public void emitTuples();
+  void emitTuples();
 
 }

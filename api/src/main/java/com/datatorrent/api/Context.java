@@ -48,7 +48,7 @@ public interface Context
    *
    * @return attributes defined for the current context.
    */
-  public AttributeMap getAttributes();
+  AttributeMap getAttributes();
 
   /**
    * Get the value of the attribute associated with the current key by recursively traversing the contexts upwards to
@@ -58,7 +58,7 @@ public interface Context
    * @param key - Attribute to identify the attribute.
    * @return The value for the attribute if found or the defaultValue passed in as argument.
    */
-  public <T> T getValue(Attribute<T> key);
+  <T> T getValue(Attribute<T> key);
 
   /**
    * Custom stats provided by the operator implementation. Reported as part of operator stats in the context of the
@@ -92,7 +92,7 @@ public interface Context
   /**
    * The interface to control the container JVM Opts based on the operator(s) configuration
    */
-  public interface ContainerOptConfigurator extends Serializable
+  interface ContainerOptConfigurator extends Serializable
   {
     /**
      * Get the container JVM opts based on the operator(s) configuration.
@@ -116,7 +116,7 @@ public interface Context
     ENABLE, FOLLOW_HADOOP_AUTH, FOLLOW_HADOOP_HTTP_AUTH, DISABLE
   }
 
-  public interface PortContext extends Context
+  interface PortContext extends Context
   {
     /**
      * Number of tuples the poll buffer can cache without blocking the input stream to the port.
@@ -185,7 +185,7 @@ public interface Context
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(PortContext.class);
   }
 
-  public interface OperatorContext extends Context
+  interface OperatorContext extends Context
   {
     /**
      * The windowId at which the operator's current run got activated.

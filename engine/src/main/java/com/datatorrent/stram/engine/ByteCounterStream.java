@@ -25,5 +25,5 @@ package com.datatorrent.stram.engine;
  */
 public interface ByteCounterStream extends Stream
 {
-  public long getByteCount(boolean reset);
+  long getByteCount(boolean reset);
 }

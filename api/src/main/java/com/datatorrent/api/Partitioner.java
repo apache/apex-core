@@ -52,7 +52,7 @@ public interface Partitioner<T>
    * @return New partitioning. Partitions from input list which should not be
    * changed can be returned as they are.
    */
-  public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, PartitioningContext context);
+  Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, PartitioningContext context);
 
   /**
    * The engine calls this method to notify partitioner of the changes to partitioning.
@@ -64,7 +64,7 @@ public interface Partitioner<T>
    */
   void partitioned(Map<Integer, Partition<T>> partitions);
 
-  public class PartitionKeys implements java.io.Serializable
+  class PartitionKeys implements java.io.Serializable
   {
     private static final long serialVersionUID = 201312271835L;
     public final int mask;
@@ -109,7 +109,7 @@ public interface Partitioner<T>
 
   }
 
-  public interface Partition<T>
+  interface Partition<T>
   {
     /**
      * Return the partition keys for this partition.
@@ -117,7 +117,7 @@ public interface Partitioner<T>
      *
      * @return Map<InputPort<?>, PartitionKeys>
      */
-    public Map<InputPort<?>, PartitionKeys> getPartitionKeys();
+    Map<InputPort<?>, PartitionKeys> getPartitionKeys();
 
     /**
      * Get an indication of the load handled by this partition. The indicator
@@ -129,7 +129,7 @@ public interface Partitioner<T>
      *
      * @return Integer indicative of the load handled by the partition.
      */
-    public int getLoad();
+    int getLoad();
 
     /**
      * Get the latest statistics for this partition. Null when no stats have been collected yet.
@@ -140,14 +140,14 @@ public interface Partitioner<T>
      *
      * @return
      */
-    public BatchedOperatorStats getStats();
+    BatchedOperatorStats getStats();
 
     /**
      * Get the frozen state of the operator which is currently handling the partition.
      *
      * @return frozen operator instance
      */
-    public T getPartitionedInstance();
+    T getPartitionedInstance();
 
     /**
      * Get the attributes associated with this partition.
@@ -155,14 +155,14 @@ public interface Partitioner<T>
      *
      * @return attributes defined for the current context.
      */
-    public com.datatorrent.api.Attribute.AttributeMap getAttributes();
+    com.datatorrent.api.Attribute.AttributeMap getAttributes();
 
   }
 
   /**
    * Contextual information presented to the partitioner.
    */
-  public interface PartitioningContext
+  interface PartitioningContext
   {
     /**
      * Number of partitions required for an operator that was configured to be parallel partitioned.

@@ -39,7 +39,7 @@ import com.datatorrent.common.util.BaseOperator;
 public class TypeDiscoveryTest
 {
 
-  private static interface GenericInterface<T>
+  private interface GenericInterface<T>
   {
   }
 

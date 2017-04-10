@@ -27,7 +27,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 @InterfaceStability.Evolving
 public interface ControlTupleEnabledSink<T> extends Sink<T>
 {
-  public static final ControlTupleEnabledSink<Object> BLACKHOLE = new ControlTupleEnabledSink<Object>()
+  ControlTupleEnabledSink<Object> BLACKHOLE = new ControlTupleEnabledSink<Object>()
   {
     @Override
     public void put(Object tuple)
@@ -52,5 +52,5 @@ public interface ControlTupleEnabledSink<T> extends Sink<T>
    *
    * @param payload the control tuple payload
    */
-  public boolean putControl(ControlTuple payload);
+  boolean putControl(ControlTuple payload);
 }
