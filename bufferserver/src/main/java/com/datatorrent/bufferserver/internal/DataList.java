@@ -390,12 +390,7 @@ public class DataList
   {
     boolean resumedSuspendedClients = false;
     if (numberOfInMemBlockPermits > 0) {
-      synchronized (suspendedClients) {
-        for (AbstractClient client : suspendedClients) {
-          resumedSuspendedClients |= client.resumeReadIfSuspended();
-        }
-        suspendedClients.clear();
-      }
+      resumedSuspendedClients = resumeSuspendedClients();
     } else {
       logger.debug("Keeping clients: {} suspended, numberOfInMemBlockPermits={}, Listeners: {}", suspendedClients,
           numberOfInMemBlockPermits, all_listeners);
@@ -403,9 +398,46 @@ public class DataList
     return resumedSuspendedClients;
   }
 
+  private boolean resumeSuspendedClients()
+  {
+    boolean resumedSuspendedClients = false;
+    synchronized (suspendedClients) {
+      for (AbstractClient client : suspendedClients) {
+        resumedSuspendedClients |= client.resumeReadIfSuspended();
+      }
+      suspendedClients.clear();
+    }
+    return resumedSuspendedClients;
+  }
+
   public boolean isMemoryBlockAvailable()
   {
-    return (storage == null) || (numberOfInMemBlockPermits.get() > 0);
+    return (numberOfInMemBlockPermits.get() > 0);
+  }
+
+  public boolean areSubscribersBehindByMax()
+  {
+    boolean behind = false;
+    if (backPressureEnabled) {
+      // Seek to max blocks and see if any block is in use beyond that
+      int count = 0;
+      synchronized (this) {
+        Block curr = last.prev;
+        // go back the max number of blocks
+        while ((curr != null) && (++count < (MAX_COUNT_OF_INMEM_BLOCKS - 2))) {
+          curr = curr.prev;
+        }
+        // check if any block is in use
+        while (!behind && (curr != null)) {
+          // Since acquire happens before release, because of concurrency, in a corner case scenario we might still count a
+          // subscriber as being max behind when it is transitioning over to the next block but that is ok as it will only
+          // result in publisher blocking for some time and resuming
+          behind = (curr.refCount.get() != 0);
+          curr = curr.prev;
+        }
+      }
+    }
+    return behind;
   }
 
   public byte[] newBuffer(final int size)
@@ -821,37 +853,47 @@ public class DataList
       final int refCount = this.refCount.decrementAndGet();
       if (canEvict(refCount, writer)) {
         assert (next != null);
-        final Runnable storer = getStorer(data, readingOffset, writingOffset, storage);
-        if (future != null && future.cancel(false)) {
-          logger.debug("Block {} future is cancelled", this);
-        }
-        final int numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.get();
-        if (wait && numberOfInMemBlockPermits == 0) {
-          future = null;
-          storer.run();
-        } else if (numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS / 2) {
-          future = storageExecutor.submit(storer);
+        if (storage != null) {
+          evictBlock(wait);
         } else {
-          future = null;
+          if (!isPublisherAheadByMax()) {
+            resumeSuspendedClients();
+          }
         }
+      }
+    }
+
+    private void evictBlock(boolean wait)
+    {
+      final Runnable storer = getStorer(data, readingOffset, writingOffset, storage);
+      if (future != null && future.cancel(false)) {
+        logger.debug("Block {} future is cancelled", this);
+      }
+      final int numberOfInMemBlockPermits = DataList.this.numberOfInMemBlockPermits.get();
+      if (wait && numberOfInMemBlockPermits == 0) {
+        future = null;
+        storer.run();
+      } else if (numberOfInMemBlockPermits < MAX_COUNT_OF_INMEM_BLOCKS / 2) {
+        future = storageExecutor.submit(storer);
+      } else {
+        future = null;
       }
     }
 
     private boolean canEvict(final int refCount, boolean writer)
     {
-      if (refCount == 0 && storage != null) {
+      if (refCount == 0) {
         if (backPressureEnabled) {
           if (!writer) {
             boolean evict = true;
-            int blocks = 0;
             // Search backwards from current block as opposed to searching forward from first block till current block as
-
-            // it is more likely to find the match quicker. No need to search more than maximum number of in memory
-            // permits.
-            for (Block temp = this.prev; (blocks < (MAX_COUNT_OF_INMEM_BLOCKS - 1)) && (temp != null); temp = temp.prev, ++blocks) {
-              if (temp.refCount.get() != 0) {
-                evict = false;
-                break;
+            // it is more likely to find the match quicker.
+            synchronized (this) {
+              for (Block temp = this.prev; temp != null; temp = temp.prev) {
+                if (temp.refCount.get() != 0) {
+                  evict = false;
+                  break;
+                }
               }
             }
             logger.debug("Block {} evict {}", this, evict);
@@ -862,10 +904,30 @@ public class DataList
         } else {
           return true;
         }
-      } else {
-        logger.debug("Holding {} in memory due to {} references.", this, refCount);
-        return false;
       }
+      logger.debug("Not evicting {} due to {} references.", this, refCount);
+      return false;
+    }
+
+    private boolean isPublisherAheadByMax()
+    {
+      boolean ahead = false;
+      if (backPressureEnabled) {
+        int blocks = MAX_COUNT_OF_INMEM_BLOCKS;
+        synchronized (DataList.this) {
+          Block curr = this.next;
+          // seek till the next block that is in use to determine possible active subscriber
+          while ((curr != null) && (curr.refCount.get() == 0)) {
+            curr = curr.next;
+          }
+          // find if publisher is ahead by max
+          while (!ahead && (curr != null)) {
+            ahead = (--blocks == 0);
+            curr = curr.next;
+          }
+        }
+      }
+      return ahead;
     }
 
     private Runnable getDiscarder()

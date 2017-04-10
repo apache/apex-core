@@ -807,7 +807,7 @@ public class Server extends AbstractServer
 
     private boolean switchToNewBuffer(final byte[] array, final int offset, final int size)
     {
-      if (datalist.isMemoryBlockAvailable()) {
+      if ((datalist.isMemoryBlockAvailable() || ((storage == null)) && !datalist.areSubscribersBehindByMax())) {
         final byte[] newBuffer = datalist.newBuffer(size);
         byteBuffer = ByteBuffer.wrap(newBuffer);
         if (array == null || array.length - offset == 0) {
