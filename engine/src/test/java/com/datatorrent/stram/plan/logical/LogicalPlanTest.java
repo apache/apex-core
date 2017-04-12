@@ -42,6 +42,7 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
@@ -60,6 +61,7 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Module;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Sink;
@@ -85,15 +87,21 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 
 public class LogicalPlanTest
 {
+  private LogicalPlan dag;
+
+  @Before
+  public void setUp()
+  {
+    dag = new LogicalPlan();
+  }
 
   @Test
   public void testCycleDetection()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     //NodeConf operator1 = b.getOrAddNode("operator1");
     GenericTestOperator operator2 = dag.addOperator("operator2", GenericTestOperator.class);
     GenericTestOperator operator3 = dag.addOperator("operator3", GenericTestOperator.class);
@@ -145,8 +153,6 @@ public class LogicalPlanTest
   @Test
   public void testCycleDetectionWithDelay()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     TestGeneratorInputOperator opA = dag.addOperator("A", TestGeneratorInputOperator.class);
     GenericTestOperator opB = dag.addOperator("B", GenericTestOperator.class);
     GenericTestOperator opC = dag.addOperator("C", GenericTestOperator.class);
@@ -192,7 +198,6 @@ public class LogicalPlanTest
   @Test
   public void testLogicalPlanSerialization() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     ValidationOperator validationNode = dag.addOperator("validationNode", ValidationOperator.class);
@@ -231,7 +236,6 @@ public class LogicalPlanTest
   @Test
   public void testDeleteOperator()
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -359,7 +363,6 @@ public class LogicalPlanTest
     Assert.assertEquals("", "intField1", cv.getPropertyPath().toString());
 
     // ensure DAG validation produces matching results
-    LogicalPlan dag = new LogicalPlan();
     bean = dag.addOperator("testOperator", bean);
 
     try {
@@ -435,7 +438,6 @@ public class LogicalPlanTest
   @Test
   public void testValidationForNonInputRootOperator()
   {
-    LogicalPlan dag = new LogicalPlan();
     NoInputPortOperator x = dag.addOperator("x", new NoInputPortOperator());
     try {
       dag.validate();
@@ -463,7 +465,6 @@ public class LogicalPlanTest
   @Test
   public void testOperatorAnnotation()
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input = dag.addOperator("input1", TestGeneratorInputOperator.class);
     TestOperatorAnnotationOperator operator = dag.addOperator("operator1", TestOperatorAnnotationOperator.class);
     dag.addStream("Connection", input.outport, operator.input1);
@@ -502,11 +503,49 @@ public class LogicalPlanTest
     }
   }
 
+  @Test(expected = IllegalArgumentException.class)
+  public void testNullOperatorName()
+  {
+    dag.addOperator(null, BaseOperator.class);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testEmptyOperatorName()
+  {
+    dag.addOperator("", BaseOperator.class);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testNullStreamId()
+  {
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    dag.addStream(null, o1.outport1, o1.inport1, o1.inport2 );
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testEmptyStreamId()
+  {
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    dag.addStream("", o1.outport1, o1.inport1 );
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testEmptyModuleName()
+  {
+    Module testModule = mock(Module.class);
+    dag.addModule("", testModule);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testNullModuleName()
+  {
+    Module testModule = mock(Module.class);
+    dag.addModule(null, testModule);
+  }
+
   @Test
   public void testPortConnectionValidation()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     TestNonOptionalOutportInputOperator input = dag.addOperator("input1", TestNonOptionalOutportInputOperator.class);
 
     try {
@@ -534,8 +573,6 @@ public class LogicalPlanTest
   @Test
   public void testAtMostOnceProcessingModeValidation()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
 
@@ -560,14 +597,11 @@ public class LogicalPlanTest
 
     OperatorMeta outputOperOm = dag.getMeta(outputOper);
     Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.getValue(OperatorContext.PROCESSING_MODE));
-
   }
 
   @Test
   public void testExactlyOnceProcessingModeValidation()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
 
@@ -604,8 +638,6 @@ public class LogicalPlanTest
   @Test
   public void testLocalityValidation()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     StreamMeta s1 = dag.addStream("input1.outport", input1.outport, o1.inport1).setLocality(Locality.THREAD_LOCAL);
@@ -668,7 +700,6 @@ public class LogicalPlanTest
   @Test
   public void testOutputPortAnnotation()
   {
-    LogicalPlan dag = new LogicalPlan();
     TestAnnotationsOperator ta1 = dag.addOperator("testAnnotationsOperator", new TestAnnotationsOperator());
 
     try {
@@ -757,7 +788,6 @@ public class LogicalPlanTest
   @Test
   public void testJdkSerializableOperator() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
     dag.addOperator("o1", new JdkSerializableOperator());
 
     ByteArrayOutputStream outStream = new ByteArrayOutputStream();
@@ -772,7 +802,6 @@ public class LogicalPlanTest
   @Test
   public void testAttributeValuesSerializableCheck() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException
   {
-    LogicalPlan dag = new LogicalPlan();
     Attribute<Object> attr = new Attribute<>(new TestAttributeValue(), new Object2String());
     Field nameField = Attribute.class.getDeclaredField("name");
     nameField.setAccessible(true);
@@ -892,7 +921,6 @@ public class LogicalPlanTest
   /*
   @Test
   public void testStreamCodec() throws Exception {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input = dag.addOperator("input", TestGeneratorInputOperator.class);
     GenericTestOperator gto1 = dag.addOperator("gto1", GenericTestOperator.class);
     StreamMeta stream1 = dag.addStream("s1", input.outport, gto1.inport1);
@@ -946,7 +974,6 @@ public class LogicalPlanTest
   @Test
   public void testCheckpointableWithinAppWindowAnnotation()
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
     dag.addStream("Stream1", input1.outport, x.inport1);
@@ -998,7 +1025,6 @@ public class LogicalPlanTest
   @Test
   public void testInputPortHiding()
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     Operator2 operator2 = dag.addOperator("operator2", new Operator2());
     dag.addStream("Stream1", input1.outport, operator2.input);
@@ -1008,7 +1034,6 @@ public class LogicalPlanTest
   @Test
   public void testInvalidInputPortConnection()
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     Operator1 operator1 = dag.addOperator("operator3", new Operator3());
     dag.addStream("Stream1", input1.outport, operator1.input);
@@ -1024,7 +1049,6 @@ public class LogicalPlanTest
   @Test
   public void testAffinityRulesDagValidation()
   {
-    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator o1 = dag.addOperator("O1", new TestGeneratorInputOperator());
     GenericTestOperator o2 = dag.addOperator("O2", new GenericTestOperator());
     GenericTestOperator o3 = dag.addOperator("O3", new GenericTestOperator());
@@ -1183,7 +1207,6 @@ public class LogicalPlanTest
   @Test
   public void testOutputPortHiding()
   {
-    LogicalPlan dag = new LogicalPlan();
     Operator5 operator5 = dag.addOperator("input", new Operator5());
     Operator2 operator2 = dag.addOperator("operator2", new Operator2());
     dag.addStream("Stream1", operator5.output, operator2.input);
@@ -1193,7 +1216,6 @@ public class LogicalPlanTest
   @Test(expected = ValidationException.class)
   public void testInvalidOutputPortConnection()
   {
-    LogicalPlan dag = new LogicalPlan();
     Operator4 operator4 = dag.addOperator("input", new Operator5());
     Operator3 operator3 = dag.addOperator("operator3", new Operator3());
     dag.addStream("Stream1", operator4.output, operator3.input);
@@ -1245,8 +1267,6 @@ public class LogicalPlanTest
   @Test
   public void testInvalidInputOperatorDeclaration()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     TestGeneratorInputOperator.InvalidInputOperator inputOperator = dag.addOperator("input", new TestGeneratorInputOperator.InvalidInputOperator());
     GenericTestOperator operator2 = dag.addOperator("operator2", GenericTestOperator.class);
 
@@ -1264,8 +1284,6 @@ public class LogicalPlanTest
   @Test
   public void testValidInputOperatorDeclaration()
   {
-    LogicalPlan dag = new LogicalPlan();
-
     TestGeneratorInputOperator.ValidGenericOperator operator1 = dag.addOperator("input", new TestGeneratorInputOperator.ValidGenericOperator());
     GenericTestOperator operator2 = dag.addOperator("operator2", GenericTestOperator.class);
 

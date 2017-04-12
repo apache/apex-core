@@ -51,6 +51,7 @@ import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nonnull;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import javax.validation.Validation;
@@ -104,6 +105,9 @@ import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.Slider;
 
 import static com.datatorrent.api.Context.PortContext.STREAM_CODEC;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Strings.isNullOrEmpty;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -1233,7 +1237,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public <T extends Operator> T addOperator(String name, Class<T> clazz)
+  public <T extends Operator> T addOperator(@Nonnull String name, Class<T> clazz)
   {
     T instance;
     try {
@@ -1246,18 +1250,20 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public <T extends Operator> T addOperator(String name, T operator)
+  public <T extends Operator> T addOperator(@Nonnull String name, T operator)
   {
+    checkArgument(!isNullOrEmpty(name), "operator name is null or empty");
+
     if (operators.containsKey(name)) {
       if (operators.get(name).operator == operator) {
         return operator;
       }
-      throw new IllegalArgumentException("duplicate operator id: " + operators.get(name));
+      throw new IllegalArgumentException("duplicate operator name: " + operators.get(name));
     }
 
     // Avoid name conflict with module.
     if (modules.containsKey(name)) {
-      throw new IllegalArgumentException("duplicate operator id: " + operators.get(name));
+      throw new IllegalArgumentException("duplicate operator name: " + operators.get(name));
     }
     OperatorMeta decl = new OperatorMeta(name, operator);
     rootOperators.add(decl); // will be removed when a sink is added to an input port for this operator
@@ -1347,16 +1353,18 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public <T extends Module> T addModule(String name, T module)
+  public <T extends Module> T addModule(@Nonnull String name, T module)
   {
+    checkArgument(!isNullOrEmpty(name), "module name is null or empty");
+
     if (modules.containsKey(name)) {
       if (modules.get(name).module == module) {
         return module;
       }
-      throw new IllegalArgumentException("duplicate module is: " + modules.get(name));
+      throw new IllegalArgumentException("duplicate module name: " + modules.get(name));
     }
     if (operators.containsKey(name)) {
-      throw new IllegalArgumentException("duplicate module is: " + modules.get(name));
+      throw new IllegalArgumentException("duplicate module name: " + modules.get(name));
     }
 
     ModuleMeta meta = new ModuleMeta(name, module);
@@ -1365,7 +1373,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public <T extends Module> T addModule(String name, Class<T> clazz)
+  public <T extends Module> T addModule(@Nonnull String name, Class<T> clazz)
   {
     T instance;
     try {
@@ -1399,8 +1407,9 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public StreamMeta addStream(String id)
+  public StreamMeta addStream(@Nonnull String id)
   {
+    checkArgument(!isNullOrEmpty(id),"stream id is null or empty");
     StreamMeta s = new StreamMeta(id);
     StreamMeta o = streams.put(id, s);
     if (o == null) {
@@ -1412,7 +1421,7 @@ public class LogicalPlan implements Serializable, DAG
 
   @Override
   @SuppressWarnings("unchecked")
-  public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
+  public <T> StreamMeta addStream(@Nonnull String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {
     StreamMeta s = addStream(id);
     s.setSource(source);

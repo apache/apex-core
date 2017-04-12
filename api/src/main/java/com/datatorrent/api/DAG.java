@@ -22,6 +22,8 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.Map;
 
+import javax.annotation.Nonnull;
+
 import org.apache.hadoop.classification.InterfaceStability;
 
 import com.datatorrent.api.Context.DAGContext;
@@ -216,7 +218,7 @@ public interface DAG extends DAGContext, Serializable
    * @param clazz Concrete class with default constructor so that instance of it can be initialized and added to the DAG.
    * @return Instance of the operator that has been added to the DAG.
    */
-  <T extends Operator> T addOperator(String name, Class<T> clazz);
+  <T extends Operator> T addOperator(@Nonnull String name, Class<T> clazz);
 
   /**
    * <p>addOperator.</p>
@@ -225,20 +227,20 @@ public interface DAG extends DAGContext, Serializable
    * @param operator Instance of the operator that needs to be added to the DAG
    * @return Instance of the operator that has been added to the DAG.
    */
-  <T extends Operator> T addOperator(String name, T operator);
+  <T extends Operator> T addOperator(@Nonnull String name, T operator);
 
   @InterfaceStability.Evolving
-  <T extends Module> T addModule(String name, Class<T> moduleClass);
+  <T extends Module> T addModule(@Nonnull String name, Class<T> moduleClass);
 
   @InterfaceStability.Evolving
-  <T extends Module> T addModule(String name, T module);
+  <T extends Module> T addModule(@Nonnull String name, T module);
 
   /**
    * <p>addStream.</p>
    * @param id Identifier of the stream that will be used to identify stream in DAG
    * @return
    */
-  StreamMeta addStream(String id);
+  StreamMeta addStream(@Nonnull String id);
 
   /**
    * Add identified stream for given source and sinks. Multiple sinks can be
@@ -256,7 +258,7 @@ public interface DAG extends DAGContext, Serializable
    * @param sinks
    * @return StreamMeta
    */
-  <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks);
+  <T> StreamMeta addStream(@Nonnull String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks);
 
   /**
    * Overload varargs version to avoid generic array type safety warnings in calling code.
@@ -269,12 +271,12 @@ public interface DAG extends DAGContext, Serializable
    * @param sink1
    * @return StreamMeta
    */
-  <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1);
+  <T> StreamMeta addStream(@Nonnull String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1);
 
   /**
    * <p>addStream.</p>
    */
-  <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2);
+  <T> StreamMeta addStream(@Nonnull String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2);
 
   /**
    * <p>setAttribute.</p>
