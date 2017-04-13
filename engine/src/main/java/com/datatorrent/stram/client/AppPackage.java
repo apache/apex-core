@@ -35,9 +35,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.jar.Attributes;
-import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 
 import org.codehaus.jackson.JsonGenerator;
@@ -47,6 +45,8 @@ import org.codehaus.jackson.map.SerializerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -212,48 +212,49 @@ public class AppPackage implements Closeable
    */
   public AppPackage(InputStream input, File contentFolder, boolean processAppDirectory) throws IOException
   {
-    final JarInputStream jarInputStream = new JarInputStream(input);
+    try (final ZipArchiveInputStream zipArchiveInputStream =
+        new ZipArchiveInputStream(input, "UTF8", true, true)) {
 
-    if (contentFolder != null) {
-      FileUtils.forceMkdir(contentFolder);
-      cleanOnClose = false;
-    } else {
-      cleanOnClose = true;
-      contentFolder = Files.createTempDirectory("dt-appPackage-").toFile();
-    }
-    directory = contentFolder;
+      if (contentFolder != null) {
+        FileUtils.forceMkdir(contentFolder);
+        cleanOnClose = false;
+      } else {
+        cleanOnClose = true;
+        contentFolder = Files.createTempDirectory("dt-appPackage-").toFile();
+      }
+      directory = contentFolder;
 
-    Manifest manifest = jarInputStream.getManifest();
-    if (manifest == null) {
-      throw new IOException("Not a valid app package. MANIFEST.MF is not present.");
-    }
-    Attributes attr = manifest.getMainAttributes();
-    appPackageName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_NAME);
-    appPackageVersion = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_VERSION);
-    appPackageGroupId = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_GROUP_ID);
-    dtEngineVersion = attr.getValue(ATTRIBUTE_DT_ENGINE_VERSION);
-    appPackageDisplayName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DISPLAY_NAME);
-    appPackageDescription = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DESCRIPTION);
-    String classPathString = attr.getValue(ATTRIBUTE_CLASS_PATH);
-    if (appPackageName == null || appPackageVersion == null || classPathString == null) {
-      throw new IOException("Not a valid app package.  App Package Name or Version or Class-Path is missing from MANIFEST.MF");
-    }
-    classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
-    extractToDirectory(directory, jarInputStream);
+      Manifest manifest = extractToDirectory(directory, zipArchiveInputStream);
+      if (manifest == null) {
+        throw new IOException("Not a valid app package. MANIFEST.MF is not present.");
+      }
+      Attributes attr = manifest.getMainAttributes();
+      appPackageName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_NAME);
+      appPackageVersion = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_VERSION);
+      appPackageGroupId = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_GROUP_ID);
+      dtEngineVersion = attr.getValue(ATTRIBUTE_DT_ENGINE_VERSION);
+      appPackageDisplayName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DISPLAY_NAME);
+      appPackageDescription = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DESCRIPTION);
+      String classPathString = attr.getValue(ATTRIBUTE_CLASS_PATH);
+      if (appPackageName == null || appPackageVersion == null || classPathString == null) {
+        throw new IOException("Not a valid app package.  App Package Name or Version or Class-Path is missing from MANIFEST.MF");
+      }
+      classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
 
-    File confDirectory = new File(directory, "conf");
-    if (confDirectory.exists()) {
-      processConfDirectory(confDirectory);
-    }
-    resourcesDirectory = new File(directory, "resources");
+      File confDirectory = new File(directory, "conf");
+      if (confDirectory.exists()) {
+        processConfDirectory(confDirectory);
+      }
+      resourcesDirectory = new File(directory, "resources");
 
-    File propertiesXml = new File(directory, "META-INF/properties.xml");
-    if (propertiesXml.exists()) {
-      processPropertiesXml(propertiesXml, null);
-    }
+      File propertiesXml = new File(directory, "META-INF/properties.xml");
+      if (propertiesXml.exists()) {
+        processPropertiesXml(propertiesXml, null);
+      }
 
-    if (processAppDirectory) {
-      processAppDirectory(false);
+      if (processAppDirectory) {
+        processAppDirectory(false);
+      }
     }
   }
 
@@ -307,30 +308,35 @@ public class AppPackage implements Closeable
 
   public static void extractToDirectory(File directory, File appPackageFile) throws IOException
   {
-    extractToDirectory(directory, new JarInputStream(new FileInputStream(appPackageFile)));
+    extractToDirectory(directory, new ZipArchiveInputStream(new FileInputStream(appPackageFile), "UTF-8", true, true));
   }
 
-  private static void extractToDirectory(File directory, JarInputStream input) throws IOException
+  private static Manifest extractToDirectory(File directory, ZipArchiveInputStream input) throws IOException
   {
+    Manifest manifest = null;
     File manifestFile = new File(directory, JarFile.MANIFEST_NAME);
     manifestFile.getParentFile().mkdirs();
-    try (FileOutputStream output = new FileOutputStream(manifestFile)) {
-      input.getManifest().write(output);
-    }
 
-    JarEntry entry = input.getNextJarEntry();
+    ZipArchiveEntry entry = input.getNextZipEntry();
     while (entry != null) {
       File newFile = new File(directory, entry.getName());
       if (entry.isDirectory()) {
         newFile.mkdirs();
       } else {
-        try (FileOutputStream output = new FileOutputStream(newFile)) {
-          IOUtils.copy(input, output);
+        if (JarFile.MANIFEST_NAME.equals(entry.getName())) {
+          manifest = new Manifest(input);
+          try (FileOutputStream output = new FileOutputStream(newFile)) {
+            manifest.write(output);
+          }
+        } else {
+          try (FileOutputStream output = new FileOutputStream(newFile)) {
+            IOUtils.copy(input, output);
+          }
         }
       }
-      input.closeEntry();
-      entry = input.getNextJarEntry();
+      entry = input.getNextZipEntry();
     }
+    return manifest;
   }
 
   public static void createAppPackageFile(File fileToBeCreated, File directory) throws ZipException
