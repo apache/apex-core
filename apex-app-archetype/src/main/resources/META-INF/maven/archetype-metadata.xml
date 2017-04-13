@@ -31,7 +31,7 @@
       <defaultValue>${project.version}</defaultValue>
     </requiredProperty>
     <requiredProperty key="apexMalharVersion">
-      <defaultValue>3.6.0</defaultValue>
+      <defaultValue>3.7.0</defaultValue>
     </requiredProperty>
   </requiredProperties>
   <fileSets>
