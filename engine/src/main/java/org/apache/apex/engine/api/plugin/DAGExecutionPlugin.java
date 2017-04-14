@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.apex.engine.api;
+package org.apache.apex.engine.api.plugin;
 
+import org.apache.apex.api.plugin.Plugin;
 import org.apache.hadoop.classification.InterfaceStability;
-
-import com.datatorrent.api.Component;
 
 /**
  * An Apex plugin is a user code which runs inside Stram. The interaction
@@ -39,6 +38,6 @@ import com.datatorrent.api.Component;
  * such as helper threads and open files.
  */
 @InterfaceStability.Evolving
-public interface DAGExecutionPlugin extends Component<DAGExecutionPluginContext>
+public interface DAGExecutionPlugin extends Plugin<DAGExecutionPluginContext>
 {
 }

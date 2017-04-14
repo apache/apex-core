@@ -16,22 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.apex.engine.api;
+package org.apache.apex.engine.api.plugin;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
+import org.apache.apex.api.plugin.PluginContext;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 
-import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.LogicalOperatorInfo;
 
@@ -52,7 +53,7 @@ import com.datatorrent.stram.webapp.LogicalOperatorInfo;
  * such as helper threads and open files.
  */
 @InterfaceStability.Evolving
-public interface DAGExecutionPluginContext extends Context
+public interface DAGExecutionPluginContext extends PluginContext
 {
   class RegistrationType<T>
   {
@@ -68,6 +69,8 @@ public interface DAGExecutionPluginContext extends Context
   {
     void handle(T data);
   }
+
+  VersionInfo getEngineVersion();
 
   StramAppContext getApplicationContext();
 

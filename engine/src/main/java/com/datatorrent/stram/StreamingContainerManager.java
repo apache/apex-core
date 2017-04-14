@@ -178,9 +178,9 @@ import com.datatorrent.stram.webapp.StreamInfo;
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 
-import static org.apache.apex.engine.api.DAGExecutionPluginContext.COMMIT_EVENT;
-import static org.apache.apex.engine.api.DAGExecutionPluginContext.HEARTBEAT;
-import static org.apache.apex.engine.api.DAGExecutionPluginContext.STRAM_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.COMMIT_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.HEARTBEAT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.STRAM_EVENT;
 
 /**
  * Tracks topology provisioning/allocation to containers<p>

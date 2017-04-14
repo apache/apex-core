@@ -18,7 +18,7 @@
  */
 package org.apache.apex.engine.plugin;
 
-import org.apache.apex.engine.api.DAGExecutionPluginContext.RegistrationType;
+import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.RegistrationType;
 import org.apache.hadoop.service.Service;
 
 public interface ApexPluginDispatcher extends Service

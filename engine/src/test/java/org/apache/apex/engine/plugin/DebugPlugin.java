@@ -22,16 +22,16 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.apex.engine.api.DAGExecutionPlugin;
-import org.apache.apex.engine.api.DAGExecutionPluginContext;
-import org.apache.apex.engine.api.DAGExecutionPluginContext.Handler;
+import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
+import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext;
+import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.Handler;
 
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 
-import static org.apache.apex.engine.api.DAGExecutionPluginContext.COMMIT_EVENT;
-import static org.apache.apex.engine.api.DAGExecutionPluginContext.HEARTBEAT;
-import static org.apache.apex.engine.api.DAGExecutionPluginContext.STRAM_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.COMMIT_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.HEARTBEAT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.STRAM_EVENT;
 
 public class DebugPlugin implements DAGExecutionPlugin
 {

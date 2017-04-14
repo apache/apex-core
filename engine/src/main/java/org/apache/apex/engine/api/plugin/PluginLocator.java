@@ -16,14 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.apex.api;
+package org.apache.apex.engine.api.plugin;
 
-import com.datatorrent.api.Component;
+import java.util.Collection;
+
+import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.conf.Configuration;
 
 /**
- * Marker interface for ApexPlugins.
- * @param <T>
+ * Interface to discover plugins during Apex Master initialization. This should return collection of
+ * objects implementing an interface of type T.
  */
-public interface ApexPlugin<T extends ApexPluginContext> extends Component<T>
+@InterfaceStability.Evolving
+public interface PluginLocator<T>
 {
+  /**
+   * Discover list of apex plugins.
+   *
+   * @return list of apex plugins.
+   */
+  Collection<T> discoverPlugins(Configuration conf);
 }

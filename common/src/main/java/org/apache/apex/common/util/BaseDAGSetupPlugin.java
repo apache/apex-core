@@ -16,14 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.datatorrent.common.util;
+package org.apache.apex.common.util;
 
-import org.apache.apex.api.DAGSetupPlugin;
+import org.apache.apex.api.plugin.DAGSetupPlugin;
+import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * Base class for DAGSetupPlugin implementations that provides empty implementations
  * for all interface methods.
  */
+@InterfaceStability.Evolving
 public class BaseDAGSetupPlugin implements DAGSetupPlugin
 {
   @Override

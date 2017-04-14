@@ -21,8 +21,8 @@ package org.apache.apex.engine.plugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.apex.engine.api.DAGExecutionPlugin;
-import org.apache.apex.engine.api.DAGExecutionPluginContext;
+import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
+import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext;
 
 public class NoOpPlugin implements DAGExecutionPlugin
 {

@@ -27,7 +27,7 @@ import javax.validation.ValidationException;
 
 import org.slf4j.Logger;
 
-import org.apache.apex.api.DAGSetupPlugin;
+import org.apache.apex.api.plugin.DAGSetupPlugin;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;

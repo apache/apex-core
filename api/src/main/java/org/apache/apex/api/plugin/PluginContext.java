@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.apex.api;
+package org.apache.apex.api.plugin;
+
+import org.apache.hadoop.classification.InterfaceStability;
 
 import com.datatorrent.api.Context;
 
@@ -24,6 +26,7 @@ import com.datatorrent.api.Context;
  * Marker interface for Context used by ApexPlugins. Plugin interfaces with
  * the Apex through the context.
  */
-public interface ApexPluginContext extends Context
+@InterfaceStability.Evolving
+public interface PluginContext extends Context
 {
 }

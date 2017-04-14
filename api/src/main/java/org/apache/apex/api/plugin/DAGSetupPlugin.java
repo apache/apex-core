@@ -16,9 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.apex.api;
+package org.apache.apex.api.plugin;
 
-import java.io.Serializable;
 import java.util.Collection;
 
 import org.apache.hadoop.classification.InterfaceStability;
@@ -41,7 +40,7 @@ import com.datatorrent.api.DAG;
  * </ul>
  */
 @InterfaceStability.Evolving
-public interface DAGSetupPlugin extends ApexPlugin<DAGSetupPlugin.DAGSetupPluginContext>, Serializable
+public interface DAGSetupPlugin extends Plugin<DAGSetupPlugin.DAGSetupPluginContext>
 {
 
   /**
@@ -87,7 +86,7 @@ public interface DAGSetupPlugin extends ApexPlugin<DAGSetupPlugin.DAGSetupPlugin
    */
   void postValidateDAG();
 
-  class DAGSetupPluginContext implements ApexPluginContext
+  class DAGSetupPluginContext implements PluginContext
   {
     private final DAG dag;
     private final Configuration conf;

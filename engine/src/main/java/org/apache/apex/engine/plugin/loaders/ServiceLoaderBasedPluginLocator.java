@@ -23,7 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.ServiceLoader;
 
-import org.apache.apex.engine.api.PluginLocator;
+import org.apache.apex.engine.api.plugin.PluginLocator;
 import org.apache.hadoop.conf.Configuration;
 
 public class ServiceLoaderBasedPluginLocator<T> implements PluginLocator<T>

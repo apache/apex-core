@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.apache.apex.engine.api.DAGExecutionPlugin;
+import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
 import org.apache.apex.engine.plugin.loaders.ChainedPluginLocator;
 import org.apache.apex.engine.plugin.loaders.ServiceLoaderBasedPluginLocator;
 import org.apache.apex.engine.plugin.loaders.StaticPluginLocator;
@@ -35,9 +35,9 @@ import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.support.StramTestSupport;
 
-import static org.apache.apex.engine.api.DAGExecutionPluginContext.COMMIT_EVENT;
-import static org.apache.apex.engine.api.DAGExecutionPluginContext.HEARTBEAT;
-import static org.apache.apex.engine.api.DAGExecutionPluginContext.STRAM_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.COMMIT_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.HEARTBEAT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.STRAM_EVENT;
 
 public class PluginTests
 {

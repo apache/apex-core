@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
-import org.apache.apex.engine.api.DAGExecutionPluginContext;
+import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.Attribute;
@@ -33,6 +33,7 @@ import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.LogicalOperatorInfo;
 
@@ -77,6 +78,12 @@ public abstract class AbstractDAGExecutionPluginContext implements DAGExecutionP
       return ptOperator.getName();
     }
     return null;
+  }
+
+  @Override
+  public VersionInfo getEngineVersion()
+  {
+    return VersionInfo.APEX_VERSION;
   }
 
   @Override

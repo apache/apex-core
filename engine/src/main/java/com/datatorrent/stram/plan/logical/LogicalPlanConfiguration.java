@@ -48,7 +48,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.apex.api.DAGSetupPlugin.DAGSetupPluginContext;
+import org.apache.apex.api.plugin.DAGSetupPlugin.DAGSetupPluginContext;
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.CollectionUtils;

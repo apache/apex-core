@@ -23,7 +23,7 @@ import java.util.List;
 
 import org.slf4j.Logger;
 
-import org.apache.apex.api.DAGSetupPlugin;
+import org.apache.apex.api.plugin.DAGSetupPlugin;
 import org.apache.apex.engine.plugin.loaders.PropertyBasedPluginLocator;
 import org.apache.hadoop.conf.Configuration;
 
