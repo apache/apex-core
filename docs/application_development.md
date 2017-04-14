@@ -693,7 +693,7 @@ submitted to the Hadoop cluster and executes as a  multi-processapplication on 
 
 
 Before you start deploying, testing and troubleshooting your
-application on a cluster, you should ensure that Hadoop (version 2.2.0
+application on a cluster, you should ensure that Hadoop (version 2.6.0
 or later) is properly installed and
 you have basic skills for working with it.
 
@@ -917,8 +917,8 @@ educate the reader on Hadoop, but just get the reader acquainted with
 the terms. We strongly advise readers to learn Hadoop from other
 sources.
 
-A streaming application runs as a native Hadoop 2.2 application.
-Hadoop 2.2 does not differentiate between a map-reduce job and other
+A streaming application runs as a native Hadoop 2.x application.
+Hadoop 2.x does not differentiate between a map-reduce job and other
 applications, and hence as far as Hadoop is concerned, the streaming
 application is just another job. This means that your application
 leverages all the bells and whistles Hadoop provides and is fully
@@ -937,9 +937,9 @@ Hadoop.
 ### YARN
 
 [YARN](http://hadoop.apache.org/docs/current/hadoop-yarn/hadoop-yarn-site)is
-the core library of Hadoop 2.2 that is tasked with resource management
+the core library of Hadoop 2.x that is tasked with resource management
 and works as a distributed application framework. In this section we
-will walk through Yarn's components. In Hadoop 2.2, the old jobTracker
+will walk through Yarn's components. In Hadoop 2.x, the old jobTracker
 has been replaced by a combination of ResourceManager (RM) and
 ApplicationMaster (AM).
 
@@ -962,8 +962,8 @@ interacting with NodeManagers to get the allocated containers started.
 The AM is the starting point of your application and is considered user
 code (not system Hadoop code). The AM itself runs in one container. All
 resource management within the application are managed by the AM. This
-is a critical feature for Hadoop 2.2 where tasks done by jobTracker in
-Hadoop 1.0 have been distributed allowing Hadoop 2.2 to scale much
+is a critical feature for Hadoop 2.x where tasks done by jobTracker in
+Hadoop 1.0 have been distributed allowing Hadoop 2.x to scale much
 beyond Hadoop 1.0. STRAM is a native YARN ApplicationManager.
 
 #### Node Managers (NM)

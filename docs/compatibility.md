@@ -103,7 +103,7 @@ The artifacts that contain the classes that form the public API as specified abo
 
 ###Hardware/Software Requirements
 
-Apex depends on Apache Hadoop. The community intends to support all major Hadoop distros and current versions. Apex currently supports Hadoop 2.2.0 and higher and Java 7 and higher. Apex is written in Java and has been tested on Linux based Hadoop clusters. There are no additional restrictions on the hardware architecture.  
+Apex depends on Apache Hadoop. The community intends to support all major Hadoop distros and current versions. Apex currently supports Hadoop 2.6.0 and higher and Java 7 and higher. Apex is written in Java and has been tested on Linux based Hadoop clusters. There are no additional restrictions on the hardware architecture.
 
 To keep up with the latest advances in hardware, operating systems, JVMs, Hadoop and other software, new Apex releases may require higher versions. Upgrading Apex may require upgrading other dependent software components.
 
