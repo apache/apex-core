@@ -124,6 +124,7 @@ import com.datatorrent.stram.plan.logical.requests.SetPortAttributeRequest;
 import com.datatorrent.stram.plan.logical.requests.SetStreamAttributeRequest;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.JSONSerializationProvider;
+import com.datatorrent.stram.util.LoggerUtil;
 import com.datatorrent.stram.util.SecurityUtils;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
@@ -4128,6 +4129,7 @@ public class ApexCli
 
   public static void main(final String[] args) throws Exception
   {
+    LoggerUtil.addAppenders();
     final ApexCli shell = new ApexCli();
     shell.preImpersonationInit(args);
     String hadoopUserName = System.getenv("HADOOP_USER_NAME");

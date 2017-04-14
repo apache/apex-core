@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import org.apache.log4j.Appender;
 import org.apache.log4j.RollingFileAppender;
 
+import com.datatorrent.stram.util.LoggerUtil;
+
 /**
  * <p>StdOutErrLog class.</p>
  *
@@ -52,6 +54,7 @@ public class StdOutErrLog
       logger.warn("found appender {} instead of RollingFileAppender", appender);
     }
 
+    LoggerUtil.addAppenders();
     System.setOut(createLoggingProxy(System.out));
     System.setErr(createLoggingProxy(System.err));
   }

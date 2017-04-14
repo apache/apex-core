@@ -29,6 +29,8 @@ import java.util.Set;
 
 import com.google.common.base.Throwables;
 
+import static com.datatorrent.api.StreamingApplication.APEX_PREFIX;
+
 /**
  * Attribute represents the attribute which can be set on various components in the system.
  *
@@ -86,6 +88,11 @@ public class Attribute<T> implements Serializable
   public String getName()
   {
     return "attr" + name.substring(name.lastIndexOf('.'));
+  }
+
+  public String getLongName()
+  {
+    return APEX_PREFIX + getSimpleName().replaceAll("_",".").toLowerCase();
   }
 
   public String getSimpleName()

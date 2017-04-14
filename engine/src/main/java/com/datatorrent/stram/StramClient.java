@@ -576,6 +576,11 @@ public class StramClient
         vargs.add("-Dlog4j.debug=true");
       }
 
+      String loggerAppender = dag.getValue(LogicalPlan.LOGGER_APPENDER);
+      if (loggerAppender != null) {
+        vargs.add(String.format("-D%s=\"%s\"", LogicalPlan.LOGGER_APPENDER.getLongName(), loggerAppender));
+      }
+
       String loggersLevel = conf.get(StramUtils.DT_LOGGERS_LEVEL);
       if (loggersLevel != null) {
         vargs.add(String.format("-D%s=%s", StramUtils.DT_LOGGERS_LEVEL, loggersLevel));

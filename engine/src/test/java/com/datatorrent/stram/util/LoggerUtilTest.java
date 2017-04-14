@@ -26,14 +26,20 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.slf4j.LoggerFactory;
 
+import org.apache.log4j.Appender;
 import org.apache.log4j.Category;
+import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
+import org.apache.log4j.spi.LoggingEvent;
 
 import com.google.common.collect.Maps;
 
+import com.datatorrent.api.Context;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -164,5 +170,67 @@ public class LoggerUtilTest
       parent = parent.getParent();
     }
     assertSame(log4jLogger.getEffectiveLevel(), parent.getLevel());
+  }
+
+  @Test
+  public void testAppender()
+  {
+    logger.info("Running Appender Test");
+    String appenderName = "testAppender";
+    String appenderName1 = "testAppender1";
+    String args = "log4j.appender.testAppender=com.datatorrent.stram.util.LoggerUtilTest$TestAppender"
+        + ",log4j.appender.testAppender.layout=org.apache.log4j.PatternLayout"
+        + ",log4j.appender.testAppender.layout.ConversionPattern=%d %d{Z} [%t] %-5p (%F:%L) - %m%n"
+        + ",log4j.appender.testAppender1=org.apache.log4j.ConsoleAppender"
+        + ",log4j.appender.testAppender1.layout=org.apache.log4j.PatternLayout"
+        + ",log4j.appender.testAppender1.layout.ConversionPattern=%d %d{Z} [%t] %-5p (%F:%L) - %m%n";
+
+    assertTrue(LoggerUtil.addAppenders(new String[] {appenderName }, args, ","));
+    TestAppender appender = (TestAppender)LogManager.getRootLogger().getAppender(appenderName);
+
+    logger.info(args);
+    assertEquals(args, appender.lastMessage);
+    assertEquals(appender.level, Level.INFO);
+
+    logger.warn(appenderName1);
+    assertEquals(appenderName1, appender.lastMessage);
+    assertEquals(appender.level, Level.WARN);
+
+    // don't allow to add an appender with the same name
+    assertFalse(LoggerUtil.addAppenders(new String[] {appenderName }, args, ","));
+    logger.info("Test Appender is added: " + LoggerUtil.getAppendersNames());
+    testAndRemoveAppender(appenderName);
+    logger.info("Test Appender is removed: " + LoggerUtil.getAppendersNames());
+
+    System.setProperty(Context.DAGContext.LOGGER_APPENDER.getLongName(), appenderName + "," + appenderName1 + ";" + args);
+    assertTrue(LoggerUtil.addAppenders());
+    logger.info("Test Appenders are added: " + LoggerUtil.getAppendersNames());
+
+    testAndRemoveAppender(appenderName);
+    testAndRemoveAppender(appenderName1);
+    logger.info("Test Appenders are removed: " + LoggerUtil.getAppendersNames());
+  }
+
+  private static void testAndRemoveAppender(String name)
+  {
+    Appender appender = org.apache.log4j.Logger.getRootLogger().getAppender(name);
+    assertNotNull(appender);
+    assertTrue(LoggerUtil.getAppendersNames().contains(name));
+    LoggerUtil.removeAppender(name);
+    assertNull(org.apache.log4j.Logger.getRootLogger().getAppender(name));
+  }
+
+  public static class TestAppender extends ConsoleAppender
+  {
+    private String lastMessage = null;
+    private Level level;
+
+    @Override
+    public void append(LoggingEvent event)
+    {
+      lastMessage = event.getRenderedMessage();
+      level = event.getLevel();
+      super.append(event);
+    }
   }
 }

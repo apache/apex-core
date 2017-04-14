@@ -19,9 +19,15 @@
 package com.datatorrent.stram.util;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.StringReader;
+import java.lang.reflect.Method;
 import java.util.Enumeration;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
@@ -35,6 +41,7 @@ import org.apache.log4j.FileAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.spi.DefaultRepositorySelector;
 import org.apache.log4j.spi.HierarchyEventListener;
 import org.apache.log4j.spi.LoggerFactory;
@@ -44,6 +51,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+
+import static com.datatorrent.api.Context.DAGContext.LOGGER_APPENDER;
 
 /**
  * @since 3.5.0
@@ -187,8 +196,6 @@ public class LoggerUtil
     }
   }
 
-  private static FileAppender fileAppender;
-  private static boolean shouldFetchLogFileInfo;
   static {
     logger.debug("initializing LoggerUtil");
     initializeLogger();
@@ -198,8 +205,6 @@ public class LoggerUtil
   static void initializeLogger()
   {
     LogManager.setRepositorySelector(new DefaultRepositorySelector(new DelegatingLoggerRepository(LogManager.getLoggerRepository())), null);
-    fileAppender = getFileAppender();
-    shouldFetchLogFileInfo = shouldFetchLogFileInformation();
   }
 
   private static synchronized Level getLevelFor(String name)
@@ -300,7 +305,8 @@ public class LoggerUtil
    */
   public static LogFileInformation getLogFileInformation()
   {
-    if (shouldFetchLogFileInfo) {
+    FileAppender fileAppender = getFileAppender();
+    if (shouldFetchLogFileInformation(fileAppender)) {
       File logFile = new File(fileAppender.getFile());
       LogFileInformation logFileInfo = new LogFileInformation(fileAppender.getFile(), logFile.length());
       return logFileInfo;
@@ -331,9 +337,9 @@ public class LoggerUtil
    * we have single file Appender, the logging level of appender is set to level Error or above and immediateFlush is set to true.
    * In future we should be able to enhance this feature to support multiple file appenders.
    */
-  private static boolean shouldFetchLogFileInformation()
+  private static boolean shouldFetchLogFileInformation(FileAppender fileAppender)
   {
-    if (fileAppender != null && isErrorLevelEnable() && fileAppender.getImmediateFlush()) {
+    if (fileAppender != null && isErrorLevelEnable(fileAppender) && fileAppender.getImmediateFlush()) {
       return true;
     }
     logger.warn(
@@ -341,7 +347,7 @@ public class LoggerUtil
     return false;
   }
 
-  private static boolean isErrorLevelEnable()
+  private static boolean isErrorLevelEnable(FileAppender fileAppender)
   {
     if (fileAppender != null) {
       Level p = (Level)fileAppender.getThreshold();
@@ -355,4 +361,107 @@ public class LoggerUtil
     return false;
   }
 
+  /**
+   * Adds Logger Appender
+   * @param name Appender name
+   * @param properties Appender properties
+   * @return True if the appender has been added successfully
+   */
+  public static boolean addAppender(String name, Properties properties)
+  {
+    if (getAppendersNames().contains(name)) {
+      logger.warn("A logger appender with the name '{}' exists. Cannot add a new logger appender with the same name", name);
+    } else {
+      try {
+        Method method = PropertyConfigurator.class.getDeclaredMethod("parseAppender", Properties.class, String.class);
+        method.setAccessible(true);
+        Appender appender = (Appender)method.invoke(new PropertyConfigurator(), properties, name);
+        if (appender == null) {
+          logger.warn("Cannot add a new logger appender. Name: {}, Properties: {}", name, properties);
+        } else {
+          LogManager.getRootLogger().addAppender(appender);
+          return true;
+        }
+      } catch (Exception ex) {
+        logger.warn("Cannot add a new logger appender. Name: {}, Properties: {}", name, properties, ex);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Adds Logger Appenders
+   * @param names Names of appender
+   * @param args Args with properties
+   * @param propertySeparator Property separator
+   * @return True if all of the appenders have been added successfully
+   */
+  public static boolean addAppenders(String[] names, String args, String propertySeparator)
+  {
+    if (names == null || args == null || names.length == 0 || propertySeparator == null) {
+      throw new IllegalArgumentException("Incorrect appender parametrs");
+    }
+    boolean status = true;
+    try {
+      Properties properties = new Properties();
+      properties.load(new StringReader(args.replaceAll(propertySeparator, "\n")));
+      for (String name : names) {
+        if (!addAppender(name, properties)) {
+          status = false;
+        }
+      }
+    } catch (IOException ex) {
+      ;
+    }
+    return status;
+  }
+
+  /**
+   * Adds Default Logger Appenders
+   * Syntax of a value of the default appender parameters: {appender-names};{string-with-properties}
+   * Comma is a separator between appender names and properties
+   * @return True if all of the appenders have been added successfully
+   */
+  public static boolean addAppenders()
+  {
+    String appenderParameters = System.getProperty(LOGGER_APPENDER.getLongName());
+    if (appenderParameters != null) {
+      String[] splits = appenderParameters.split(";", 2);
+      if (splits.length != 2) {
+        return false;
+      }
+      return addAppenders(splits[0].split(","), splits[1], ",");
+    }
+    return false;
+  }
+
+  /**
+   * Removes Logger Appender
+   * @param name Appender name
+   * @return True if the appender has been removed successfully
+   */
+  public static boolean removeAppender(String name)
+  {
+    try {
+      LogManager.getRootLogger().removeAppender(name);
+    } catch (Exception ex) {
+      logger.error("Cannot remove the logger appender: {}", name, ex);
+      return false;
+    }
+    return false;
+  }
+
+  /**
+   * Returns a list names of the appenders
+   * @return Names of the appenders
+   */
+  public static List<String> getAppendersNames()
+  {
+    Enumeration enumeration = LogManager.getRootLogger().getAllAppenders();
+    List<String> names = new LinkedList<>();
+    while (enumeration.hasMoreElements()) {
+      names.add(((Appender)enumeration.nextElement()).getName());
+    }
+    return names;
+  }
 }

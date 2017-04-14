@@ -393,6 +393,10 @@ public interface Context
      */
     Attribute<String> CONTAINER_JVM_OPTIONS = new Attribute<>(String2String.getInstance());
     /**
+     * The options of dynamic apex logger appender
+     */
+    Attribute<String> LOGGER_APPENDER = new Attribute<>(String2String.getInstance());
+    /**
      * The amount of memory to be requested for the application master. Not used in local mode.
      * Default value is 1GB.
      */

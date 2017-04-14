@@ -230,6 +230,11 @@ public class LaunchContainerRunnable implements Runnable
       }
     }
 
+    String loggerAppender = dag.getValue(LogicalPlan.LOGGER_APPENDER);
+    if (loggerAppender != null) {
+      vargs.add(String.format("-D%s=\"%s\"", LogicalPlan.LOGGER_APPENDER.getLongName(), loggerAppender));
+    }
+
     List<DAG.OperatorMeta> operatorMetaList = Lists.newArrayList();
     int bufferServerMemory = 0;
     for (PTOperator operator : sca.getContainer().getOperators()) {
