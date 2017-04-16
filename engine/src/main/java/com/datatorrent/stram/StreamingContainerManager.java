@@ -1378,6 +1378,7 @@ public class StreamingContainerManager implements PlanContext
                 }
                 deactivatedOpers.add(oper);
               }
+              oper.setState(State.INACTIVE);
               sca.undeployOpers.add(oper.getId());
               slowestUpstreamOp.remove(oper);
               // record operator stop event

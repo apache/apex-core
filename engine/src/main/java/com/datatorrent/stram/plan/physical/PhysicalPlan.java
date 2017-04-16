@@ -1440,7 +1440,7 @@ public class PhysicalPlan implements Serializable
 
   void removePTOperator(PTOperator oper)
   {
-    LOG.debug("Removing operator " + oper);
+    LOG.debug("Removing operator {}", oper);
 
     // per partition merge operators
     if (!oper.upstreamMerge.isEmpty()) {
