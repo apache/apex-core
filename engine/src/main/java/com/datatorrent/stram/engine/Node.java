@@ -539,7 +539,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
                 checkpointStats = null;
                 return;
               } else {
-                asyncStorageAgent.finalize(id, windowId);
+                asyncStorageAgent.flush(id, windowId);
               }
             }
           }
@@ -688,7 +688,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     @Override
     public Stats.CheckpointStats call() throws Exception
     {
-      agent.finalize(id, windowId);
+      agent.flush(id, windowId);
       stats.checkpointTime = System.currentTimeMillis() - stats.checkpointStartTime;
       return stats;
     }

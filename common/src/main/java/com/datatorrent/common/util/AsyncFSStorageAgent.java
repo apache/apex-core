@@ -147,7 +147,7 @@ public class AsyncFSStorageAgent extends FSStorageAgent implements AsyncStorageA
   }
 
   @Override
-  public void finalize(int operatorId, long windowId) throws IOException
+  public void flush(int operatorId, long windowId) throws IOException
   {
     // Checkpoint already present in HDFS during save, when syncCheckpoint is true.
     if (isSyncCheckpoint()) {

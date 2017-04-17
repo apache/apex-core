@@ -468,16 +468,6 @@ public class StreamingContainerManagerTest
     long[] windowsIds = sa.getWindowIds(1);
     Arrays.sort(windowsIds);
     Assert.assertArrayEquals("Saved windowIds", windowIds, windowsIds);
-
-    for (long windowId : windowIds) {
-      sa.delete(1, windowId);
-    }
-    try {
-      sa.getWindowIds(1);
-      Assert.fail("There should not be any most recently saved windowId!");
-    } catch (IOException io) {
-      Assert.assertTrue("No State Saved", true);
-    }
   }
 
   @Test
@@ -495,16 +485,6 @@ public class StreamingContainerManagerTest
     long[] windowsIds = sa.getWindowIds(1);
     Arrays.sort(windowsIds);
     Assert.assertArrayEquals("Saved windowIds", windowIds, windowsIds);
-
-    for (long windowId : windowIds) {
-      sa.delete(1, windowId);
-    }
-    try {
-      sa.getWindowIds(1);
-      Assert.fail("There should not be any most recently saved windowId!");
-    } catch (IOException io) {
-      Assert.assertTrue("No State Saved", true);
-    }
   }
 
   @Test

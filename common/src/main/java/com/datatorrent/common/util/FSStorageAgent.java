@@ -41,6 +41,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.permission.FsPermission;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -157,27 +158,23 @@ public class FSStorageAgent implements StorageAgent, Serializable
     try {
       FileStatus status = fileContext.getFileStatus(lPath);
       if (!status.isDirectory()) {
-        throw new IOException("Checkpoint location is not a directory ");
+        throw new RuntimeException("Checkpoint location is not a directory");
       }
     } catch (FileNotFoundException ex) {
-      // During initialization this directory may not exists.
-      // return an empty array.
-      return new long[0];
+      // During initialization checkpoint directory may not exists.
+      fileContext.mkdir(lPath, FsPermission.getDirDefault(), true);
     }
 
     RemoteIterator<FileStatus> fileStatusRemoteIterator = fileContext.listStatus(lPath);
-    if (!fileStatusRemoteIterator.hasNext()) {
-      throw new IOException("Storage Agent has not saved anything yet!");
-    }
     List<Long> lwindows = new ArrayList<>();
-    do {
+    while (fileStatusRemoteIterator.hasNext()) {
       FileStatus fileStatus = fileStatusRemoteIterator.next();
       String name = fileStatus.getPath().getName();
       if (name.equals(TMP_FILE)) {
         continue;
       }
       lwindows.add(STATELESS_CHECKPOINT_WINDOW_ID.equals(name) ? Stateless.WINDOW_ID : Long.parseLong(name, 16));
-    } while (fileStatusRemoteIterator.hasNext());
+    }
     long[] windowIds = new long[lwindows.size()];
     for (int i = 0; i < windowIds.length; i++) {
       windowIds[i] = lwindows.get(i);

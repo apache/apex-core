@@ -16,16 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.apex.common.util;
+package org.apache.apex.engine.util;
 
 import java.io.IOException;
-import java.io.ObjectStreamException;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.apex.common.util.AsyncStorageAgent;
+import org.apache.hadoop.classification.InterfaceStability;
 
 import com.google.common.collect.Maps;
 
@@ -39,12 +42,14 @@ import com.datatorrent.api.StorageAgent;
  * restart to avoiding copying checkpoints from old application directory to improve application
  * restart time.
  */
+@InterfaceStability.Evolving
 public class CascadeStorageAgent implements StorageAgent, AsyncStorageAgent, Serializable
 {
+  private static final long serialVersionUID = 985557590735264920L;
   private static final Logger logger = LoggerFactory.getLogger(CascadeStorageAgent.class);
   private final StorageAgent parent;
   private final StorageAgent current;
-  private final transient Map<Integer, long[]> oldOperatorToWindowIdsMap;
+  private transient Map<Integer, long[]> oldOperatorToWindowIdsMap;
 
   public CascadeStorageAgent(StorageAgent parent, StorageAgent current)
   {
@@ -169,10 +174,10 @@ public class CascadeStorageAgent implements StorageAgent, AsyncStorageAgent, Ser
   }
 
   @Override
-  public void finalize(int operatorId, long windowId) throws IOException
+  public void flush(int operatorId, long windowId) throws IOException
   {
     if (current instanceof AsyncStorageAgent) {
-      ((AsyncStorageAgent)current).finalize(operatorId, windowId);
+      ((AsyncStorageAgent)current).flush(operatorId, windowId);
     }
   }
 
@@ -185,9 +190,10 @@ public class CascadeStorageAgent implements StorageAgent, AsyncStorageAgent, Ser
     return true;
   }
 
-  public Object readResolve() throws ObjectStreamException
+  private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException
   {
-    return new CascadeStorageAgent(parent, current);
+    input.defaultReadObject();
+    oldOperatorToWindowIdsMap = Maps.newConcurrentMap();
   }
 
   public StorageAgent getCurrentStorageAgent()

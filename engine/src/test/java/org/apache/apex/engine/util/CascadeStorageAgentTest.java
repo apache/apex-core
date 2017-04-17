@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.datatorrent.common.util;
+package org.apache.apex.engine.util;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,13 +27,13 @@ import org.junit.Test;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
-import org.apache.apex.common.util.CascadeStorageAgent;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.DAG;
+import com.datatorrent.common.util.FSStorageAgent;
 
 public class CascadeStorageAgentTest
 {
