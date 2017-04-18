@@ -18,26 +18,66 @@
  */
 package org.apache.apex.engine.api.plugin;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+
 import org.apache.apex.api.plugin.Plugin;
-import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.conf.Configuration;
+
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
+import com.datatorrent.common.util.Pair;
+import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.util.VersionInfo;
+import com.datatorrent.stram.webapp.AppInfo;
+import com.datatorrent.stram.webapp.LogicalOperatorInfo;
 
 /**
- * An Apex plugin is a user code which runs inside Stram. The interaction
- * between plugin and Stram is managed by DAGExecutionPluginContext. Plugin can register to handle event in interest
- * with callback handler using ${@link DAGExecutionPluginContext#register(DAGExecutionPluginContext.RegistrationType, DAGExecutionPluginContext.Handler)}
+ * DAGExecutionPlugin allows user provided code to respond to various events during the application runtime.
  *
  * Following events are supported
  * <ul>
- *   <li>{@see DAGExecutionPluginContext.HEARTBEAT} The heartbeat from a container is delivered to the plugin after it has been handled by stram</li>
- *   <li>{@see DAGExecutionPluginContext.STRAM_EVENT} All the Stram event generated in Stram will be delivered to the plugin</li>
- *   <li>{@see DAGExecutionPluginContext.COMMIT_EVENT} When committedWindowId changes in the platform an event will be delivered to the plugin</li>
+ *   <li>{@see Context.HEARTBEAT} The heartbeat from a container is delivered to the plugin after it has been handled by stram</li>
+ *   <li>{@see Context.STRAM_EVENT} All the Stram event generated in Stram will be delivered to the plugin</li>
+ *   <li>{@see Context.COMMIT_EVENT} When committedWindowId changes in the platform an event will be delivered to the plugin</li>
  * </ul>
  *
- * A plugin should register a single handler for an event, In case multiple handlers are registered for an event,
- * then the last registered handler will be used. Plugin should cleanup additional resources created by it during shutdown
- * such as helper threads and open files.
  */
-@InterfaceStability.Evolving
-public interface DAGExecutionPlugin extends Plugin<DAGExecutionPluginContext>
+public interface DAGExecutionPlugin<T extends DAGExecutionPlugin.Context> extends Plugin<T>
 {
+
+  /**
+   * The context for the execution plugins.
+   *
+   * Following events are supported
+   * <ul>
+   *   <li>{@see Context.HEARTBEAT} The heartbeat from a container is delivered to the plugin after it has been handled by stram</li>
+   *   <li>{@see Context.STRAM_EVENT} All the Stram event generated in Stram will be delivered to the plugin</li>
+   *   <li>{@see Context.COMMIT_EVENT} When committedWindowId changes in the platform an event will be delivered to the plugin</li>
+   * </ul>
+   *
+   */
+  interface Context<E extends DAGExecutionEvent> extends PluginContext<DAGExecutionEvent.Type, E>
+  {
+    VersionInfo getEngineVersion();
+
+    StramAppContext getApplicationContext();
+
+    AppInfo.AppStats getApplicationStats();
+
+    Configuration getLaunchConfig();
+
+    DAG getDAG();
+
+    String getOperatorName(int id);
+
+    BatchedOperatorStats getPhysicalOperatorStats(int id);
+
+    List<LogicalOperatorInfo> getLogicalOperatorInfoList();
+
+    Queue<Pair<Long, Map<String, Object>>> getWindowMetrics(String operatorName);
+
+    long windowIdToMillis(long windowId);
+  }
 }

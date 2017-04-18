@@ -65,6 +65,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.engine.api.plugin.DAGExecutionEvent;
 import org.apache.apex.engine.plugin.ApexPluginDispatcher;
 import org.apache.apex.engine.plugin.NoOpApexPluginDispatcher;
 import org.apache.apex.engine.util.CascadeStorageAgent;
@@ -177,11 +178,6 @@ import com.datatorrent.stram.webapp.StreamInfo;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
-
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.COMMIT_EVENT;
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.HEARTBEAT;
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.STRAM_EVENT;
-import static org.apache.apex.engine.plugin.ApexPluginDispatcher.DAG_CHANGE_EVENT;
 
 /**
  * Tracks topology provisioning/allocation to containers<p>
@@ -818,7 +814,7 @@ public class StreamingContainerManager implements PlanContext
 
     committedWindowId = updateCheckpoints(waitForRecovery);
     if (lastCommittedWindowId != committedWindowId) {
-      apexPluginDispatcher.dispatch(COMMIT_EVENT, committedWindowId);
+      apexPluginDispatcher.dispatch(new DAGExecutionEvent.CommitExecutionEvent(committedWindowId));
       lastCommittedWindowId = committedWindowId;
     }
     calculateEndWindowStats();
@@ -1817,7 +1813,7 @@ public class StreamingContainerManager implements PlanContext
     rsp.stackTraceRequired = sca.stackTraceRequested;
     sca.stackTraceRequested = false;
 
-    apexPluginDispatcher.dispatch(HEARTBEAT, heartbeat);
+    apexPluginDispatcher.dispatch(new DAGExecutionEvent.HeartbeatExecutionEvent(heartbeat));
     return rsp;
   }
 
@@ -2449,7 +2445,7 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public void recordEventAsync(StramEvent ev)
   {
-    apexPluginDispatcher.dispatch(STRAM_EVENT, ev);
+    apexPluginDispatcher.dispatch(new DAGExecutionEvent.StramExecutionEvent(ev));
     if (eventBus != null) {
       eventBus.publishAsync(ev);
     }
@@ -3083,7 +3079,7 @@ public class StreamingContainerManager implements PlanContext
         recordEventAsync(new StramEvent.ChangeLogicalPlanEvent(request));
       }
       pm.applyChanges(StreamingContainerManager.this);
-      apexPluginDispatcher.dispatch(DAG_CHANGE_EVENT, plan.getLogicalPlan());
+      apexPluginDispatcher.dispatch(new ApexPluginDispatcher.DAGChangeEvent(plan.getLogicalPlan()));
       LOG.info("Plan changes applied: {}", requests);
       return null;
     }

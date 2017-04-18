@@ -28,8 +28,9 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.Handler;
-import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.RegistrationType;
+import org.apache.apex.api.plugin.Event;
+import org.apache.apex.api.plugin.Plugin.EventHandler;
+import org.apache.apex.engine.api.plugin.DAGExecutionEvent;
 import org.apache.apex.engine.api.plugin.PluginLocator;
 import org.apache.hadoop.conf.Configuration;
 
@@ -56,10 +57,10 @@ public class DefaultApexPluginDispatcher extends AbstractApexPluginDispatcher
   }
 
   @Override
-  protected <T> void dispatchEvent(RegistrationType<T> registrationType, T data)
+  protected void dispatchExecutionEvent(DAGExecutionEvent event)
   {
     if (executorService != null) {
-      executorService.submit(new ProcessEventTask<>(registrationType, data));
+      executorService.submit(new ProcessEventTask<>(event));
     }
   }
 
@@ -98,24 +99,25 @@ public class DefaultApexPluginDispatcher extends AbstractApexPluginDispatcher
     executorService = null;
   }
 
-  private class ProcessEventTask<T> implements Runnable
+  private class ProcessEventTask<T extends DAGExecutionEvent.Type> implements Runnable
   {
-    private final RegistrationType<T> registrationType;
-    private final T data;
+    private final Event<T> event;
 
-    public ProcessEventTask(RegistrationType<T> type, T data)
+    public ProcessEventTask(Event<T> event)
     {
-      this.registrationType = type;
-      this.data = data;
+      this.event = event;
     }
 
     @Override
     public void run()
     {
-      for (final PluginInfo pInfo : pluginInfoMap.values()) {
-        final Handler<T> handler = pInfo.get(registrationType);
-        if (handler != null) {
-          handler.handle(data);
+      synchronized (table) {
+        for (EventHandler handler : table.row(event.getType()).values()) {
+          try {
+            handler.handle(event);
+          } catch (RuntimeException e) {
+            LOG.warn("Event {} caused exception in handler {}", event, handler, e);
+          }
         }
       }
     }

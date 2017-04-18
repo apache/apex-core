@@ -115,7 +115,6 @@ import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
 
 import static java.lang.Thread.sleep;
-import static org.apache.apex.engine.plugin.ApexPluginDispatcher.DAG_CHANGE_EVENT;
 
 /**
  * Streaming Application Master
@@ -600,7 +599,7 @@ public class StreamingAppMasterService extends CompositeService
     apexPluginDispatcher = new DefaultApexPluginDispatcher(locator, appContext, dnmgr, stats);
     dnmgr.apexPluginDispatcher = apexPluginDispatcher;
     addService(apexPluginDispatcher);
-    apexPluginDispatcher.dispatch(DAG_CHANGE_EVENT, dnmgr.getLogicalPlan());
+    apexPluginDispatcher.dispatch(new ApexPluginDispatcher.DAGChangeEvent(dnmgr.getLogicalPlan()));
   }
 
   @Override

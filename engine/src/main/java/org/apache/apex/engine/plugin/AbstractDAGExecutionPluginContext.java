@@ -23,7 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
-import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext;
+import org.apache.apex.engine.api.plugin.DAGExecutionEvent;
+import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.Attribute;
@@ -37,7 +38,7 @@ import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.LogicalOperatorInfo;
 
-public abstract class AbstractDAGExecutionPluginContext implements DAGExecutionPluginContext
+public abstract class AbstractDAGExecutionPluginContext<E extends DAGExecutionEvent> implements DAGExecutionPlugin.Context<E>
 {
   private final StreamingContainerManager dnmgr;
   private final Configuration launchConf;

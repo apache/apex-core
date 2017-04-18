@@ -18,15 +18,42 @@
  */
 package org.apache.apex.api.plugin;
 
-import org.apache.hadoop.classification.InterfaceStability;
-
-import com.datatorrent.api.Context;
+import org.apache.apex.api.plugin.Event.Type;
+import org.apache.hadoop.classification.InterfaceStability.Evolving;
 
 /**
- * Marker interface for Context used by ApexPlugins. Plugin interfaces with
- * the Apex through the context.
+ * The class represents a plugin event that is delivered to plugins to notify them of important system events.
+ *
+ * Plugins express interest in receiving events by registering handlers for the event type and their handlers receive
+ * the events.
+ * @param <T> event type
  */
-@InterfaceStability.Evolving
-public interface PluginContext extends Context
+@Evolving
+public interface Event<T extends Type>
 {
+  /**
+   * Marker interface for plugin event type.
+   */
+  @Evolving
+  interface Type
+  {
+  }
+
+  T getType();
+
+  @Evolving
+  class BaseEvent<T extends Type> implements Event<T>
+  {
+    private T type;
+
+    protected BaseEvent(T type)
+    {
+      this.type = type;
+    }
+
+    public T getType()
+    {
+      return type;
+    }
+  }
 }

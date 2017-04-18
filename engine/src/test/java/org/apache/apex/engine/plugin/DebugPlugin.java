@@ -21,52 +21,56 @@ package org.apache.apex.engine.plugin;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.apex.engine.api.plugin.DAGExecutionEvent;
 import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
-import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext;
-import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.Handler;
 
-import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import static org.apache.apex.engine.api.plugin.DAGExecutionEvent.Type.COMMIT_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionEvent.Type.HEARTBEAT_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionEvent.Type.STRAM_EVENT;
 
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.COMMIT_EVENT;
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.HEARTBEAT;
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.STRAM_EVENT;
-
-public class DebugPlugin implements DAGExecutionPlugin
+public class DebugPlugin implements DAGExecutionPlugin<DAGExecutionPlugin.Context>
 {
+  private static final Logger logger = LoggerFactory.getLogger(DebugPlugin.class);
+
   private int eventCount = 0;
   private int heartbeatCount = 0;
   private int commitCount = 0;
   CountDownLatch latch = new CountDownLatch(3);
 
   @Override
-  public void setup(DAGExecutionPluginContext context)
+  public void setup(DAGExecutionPlugin.Context context)
   {
-    context.register(STRAM_EVENT, new Handler<StramEvent>()
+    context.register(STRAM_EVENT, new EventHandler<DAGExecutionEvent.StramExecutionEvent>()
     {
       @Override
-      public void handle(StramEvent stramEvent)
+      public void handle(DAGExecutionEvent.StramExecutionEvent event)
       {
+        logger.debug("Stram Event {}", event.getStramEvent());
         eventCount++;
         latch.countDown();
       }
     });
 
-    context.register(HEARTBEAT, new Handler<StreamingContainerUmbilicalProtocol.ContainerHeartbeat>()
+    context.register(HEARTBEAT_EVENT, new EventHandler<DAGExecutionEvent.HeartbeatExecutionEvent>()
     {
       @Override
-      public void handle(StreamingContainerUmbilicalProtocol.ContainerHeartbeat heartbeat)
+      public void handle(DAGExecutionEvent.HeartbeatExecutionEvent event)
       {
+        logger.debug("Heartbeat {}", event.getHeartbeat());
         heartbeatCount++;
         latch.countDown();
       }
     });
 
-    context.register(COMMIT_EVENT, new Handler<Long>()
+    context.register(COMMIT_EVENT, new EventHandler<DAGExecutionEvent.CommitExecutionEvent>()
     {
       @Override
-      public void handle(Long aLong)
+      public void handle(DAGExecutionEvent.CommitExecutionEvent event)
       {
+        logger.debug("Commit window id {}", event.getCommitWindow());
         commitCount++;
         latch.countDown();
       }

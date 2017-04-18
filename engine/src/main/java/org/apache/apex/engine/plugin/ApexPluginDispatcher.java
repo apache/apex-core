@@ -18,7 +18,7 @@
  */
 package org.apache.apex.engine.plugin;
 
-import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.RegistrationType;
+import org.apache.apex.api.plugin.Event;
 import org.apache.hadoop.service.Service;
 
 import com.datatorrent.api.DAG;
@@ -29,7 +29,18 @@ public interface ApexPluginDispatcher extends Service
   /**
    * This is internal event, which is not delivered to the plugins.
    */
-  RegistrationType<DAG> DAG_CHANGE_EVENT = new RegistrationType<>();
+  Event.Type DAG_CHANGE = new Event.Type(){};
 
-  <T> void dispatch(RegistrationType<T> registrationType, T data);
+  class DAGChangeEvent extends Event.BaseEvent<Event.Type>
+  {
+    final DAG dag;
+
+    public DAGChangeEvent(DAG dag)
+    {
+      super(DAG_CHANGE);
+      this.dag = dag;
+    }
+  }
+
+  void dispatch(Event e);
 }

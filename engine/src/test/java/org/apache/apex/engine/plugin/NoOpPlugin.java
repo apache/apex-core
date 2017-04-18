@@ -22,14 +22,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
-import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext;
 
-public class NoOpPlugin implements DAGExecutionPlugin
+public class NoOpPlugin implements DAGExecutionPlugin<DAGExecutionPlugin.Context>
 {
   private static final Logger LOG = LoggerFactory.getLogger(NoOpPlugin.class);
 
   @Override
-  public void setup(DAGExecutionPluginContext context)
+  public void setup(DAGExecutionPlugin.Context context)
   {
     LOG.info("NoOpPlugin plugin called init ");
   }

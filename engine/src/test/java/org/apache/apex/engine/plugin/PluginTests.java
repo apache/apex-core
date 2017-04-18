@@ -23,6 +23,7 @@ import java.util.Collection;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.apex.engine.api.plugin.DAGExecutionEvent;
 import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
 import org.apache.apex.engine.plugin.loaders.ChainedPluginLocator;
 import org.apache.apex.engine.plugin.loaders.ServiceLoaderBasedPluginLocator;
@@ -33,10 +34,6 @@ import com.datatorrent.api.Attribute;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.support.StramTestSupport;
-
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.COMMIT_EVENT;
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.HEARTBEAT;
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.STRAM_EVENT;
 
 public class PluginTests
 {
@@ -86,16 +83,16 @@ public class PluginTests
     ApexPluginDispatcher pluginManager = new DefaultApexPluginDispatcher(locator,
         new StramTestSupport.TestAppContext(new Attribute.AttributeMap.DefaultAttributeMap()), null, null);
     pluginManager.init(new Configuration());
-    pluginManager.dispatch(STRAM_EVENT, new StramEvent(StramEvent.LogLevel.DEBUG)
+    pluginManager.dispatch(new DAGExecutionEvent.StramExecutionEvent(new StramEvent(StramEvent.LogLevel.DEBUG)
     {
       @Override
       public String getType()
       {
         return "TestEvent";
       }
-    });
-    pluginManager.dispatch(COMMIT_EVENT, new Long(1234));
-    pluginManager.dispatch(HEARTBEAT, new StreamingContainerUmbilicalProtocol.ContainerHeartbeat());
+    }));
+    pluginManager.dispatch(new DAGExecutionEvent.CommitExecutionEvent(1234));
+    pluginManager.dispatch(new DAGExecutionEvent.HeartbeatExecutionEvent(new StreamingContainerUmbilicalProtocol.ContainerHeartbeat()));
     debugPlugin.waitForEventDelivery(10);
     pluginManager.stop();
 
