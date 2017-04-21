@@ -181,6 +181,7 @@ import net.engio.mbassy.bus.config.BusConfiguration;
 import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.COMMIT_EVENT;
 import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.HEARTBEAT;
 import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.STRAM_EVENT;
+import static org.apache.apex.engine.plugin.ApexPluginDispatcher.DAG_CHANGE_EVENT;
 
 /**
  * Tracks topology provisioning/allocation to containers<p>
@@ -3081,6 +3082,7 @@ public class StreamingContainerManager implements PlanContext
         recordEventAsync(new StramEvent.ChangeLogicalPlanEvent(request));
       }
       pm.applyChanges(StreamingContainerManager.this);
+      apexPluginDispatcher.dispatch(DAG_CHANGE_EVENT, plan.getLogicalPlan());
       LOG.info("Plan changes applied: {}", requests);
       return null;
     }

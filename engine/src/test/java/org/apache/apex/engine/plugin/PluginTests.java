@@ -19,7 +19,6 @@
 package org.apache.apex.engine.plugin;
 
 import java.util.Collection;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -87,7 +86,6 @@ public class PluginTests
     ApexPluginDispatcher pluginManager = new DefaultApexPluginDispatcher(locator,
         new StramTestSupport.TestAppContext(new Attribute.AttributeMap.DefaultAttributeMap()), null, null);
     pluginManager.init(new Configuration());
-    int count = debugPlugin.getEventCount();
     pluginManager.dispatch(STRAM_EVENT, new StramEvent(StramEvent.LogLevel.DEBUG)
     {
       @Override
@@ -96,30 +94,9 @@ public class PluginTests
         return "TestEvent";
       }
     });
-
-    debugPlugin.lock();
-    while (debugPlugin.getEventCount() == count) {
-      debugPlugin.events.await(5, TimeUnit.SECONDS);
-    }
-    debugPlugin.unlock();
-
-    Assert.assertEquals("Total stram event received ", debugPlugin.getEventCount(), 1);
-
-    count = debugPlugin.getCommitCount();
     pluginManager.dispatch(COMMIT_EVENT, new Long(1234));
-    debugPlugin.lock();
-    while (debugPlugin.getCommitCount() == count) {
-      debugPlugin.events.await(5, TimeUnit.SECONDS);
-    }
-    debugPlugin.unlock();
-
-    count = debugPlugin.getHeartbeatCount();
     pluginManager.dispatch(HEARTBEAT, new StreamingContainerUmbilicalProtocol.ContainerHeartbeat());
-    debugPlugin.lock();
-    while (debugPlugin.getHeartbeatCount() == count) {
-      debugPlugin.events.await(5, TimeUnit.SECONDS);
-    }
-    debugPlugin.unlock();
+    debugPlugin.waitForEventDelivery(10);
     pluginManager.stop();
 
     Assert.assertEquals(1, debugPlugin.getEventCount());
