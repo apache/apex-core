@@ -531,6 +531,13 @@ public interface Context
      */
     Attribute<String> LIBRARY_JARS = new Attribute<>(String2String.getInstance());
 
+    /**
+     * This configuration file can be used to over-ride the default Yarn configuration.
+     * For example, this can be used to provide custom SSL parameters in the configuration.
+     * Note that this file needs to be present on the node.
+     */
+    Attribute<String> STRAM_HTTP_CUSTOM_CONFIG = new Attribute<>(String2String.getInstance());
+
     @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(DAGContext.class);
   }

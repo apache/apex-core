@@ -53,6 +53,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.Credentials;
@@ -630,6 +631,10 @@ public class StreamingAppMasterService extends CompositeService
       if (SecurityUtils.isStramWebSecurityEnabled()) {
         config = new Configuration(config);
         config.set("hadoop.http.filter.initializers", StramWSFilterInitializer.class.getCanonicalName());
+      }
+      String customSSLConfig = dag.getValue(LogicalPlan.STRAM_HTTP_CUSTOM_CONFIG);
+      if (StringUtils.isNotEmpty(customSSLConfig)) {
+        config.addResource(new Path(customSSLConfig));
       }
       WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(config).start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
