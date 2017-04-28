@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.common.util.AsyncStorageAgent;
-import org.apache.hadoop.classification.InterfaceStability;
 
 import com.google.common.collect.Maps;
 
@@ -42,7 +41,6 @@ import com.datatorrent.api.StorageAgent;
  * restart to avoiding copying checkpoints from old application directory to improve application
  * restart time.
  */
-@InterfaceStability.Evolving
 public class CascadeStorageAgent implements StorageAgent, AsyncStorageAgent, Serializable
 {
   private static final long serialVersionUID = 985557590735264920L;

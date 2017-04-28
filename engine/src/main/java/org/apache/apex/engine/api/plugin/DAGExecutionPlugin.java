@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Queue;
 
 import org.apache.apex.api.plugin.Plugin;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.DAG;
@@ -45,7 +44,6 @@ import com.datatorrent.stram.webapp.LogicalOperatorInfo;
  * </ul>
  *
  */
-@InterfaceStability.Evolving
 public interface DAGExecutionPlugin<T extends DAGExecutionPlugin.Context> extends Plugin<T>
 {
 
@@ -60,7 +58,6 @@ public interface DAGExecutionPlugin<T extends DAGExecutionPlugin.Context> extend
    * </ul>
    *
    */
-  @InterfaceStability.Evolving
   interface Context<E extends DAGExecutionEvent> extends PluginContext<DAGExecutionEvent.Type, E>
   {
     VersionInfo getEngineVersion();

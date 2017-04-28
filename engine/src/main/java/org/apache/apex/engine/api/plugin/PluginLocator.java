@@ -20,14 +20,12 @@ package org.apache.apex.engine.api.plugin;
 
 import java.util.Collection;
 
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 
 /**
  * Interface to discover plugins during Apex Master initialization. This should return collection of
  * objects implementing an interface of type T.
  */
-@InterfaceStability.Evolving
 public interface PluginLocator<T>
 {
   /**
