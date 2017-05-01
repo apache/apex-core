@@ -27,6 +27,8 @@ import com.datatorrent.api.DefaultInputPort;
 /**
  * Default abstract implementation for an input port which is capable of processing
  * @{@link UserDefinedControlTuple}
+ *
+ * @since 3.6.0
  */
 @InterfaceStability.Evolving
 public abstract class ControlAwareDefaultInputPort<T> extends DefaultInputPort<T> implements ControlTupleEnabledSink<T>

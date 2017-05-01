@@ -20,6 +20,8 @@ package com.datatorrent.bufferserver.packet;
 
 /**
  * Custom Control Tuple class
+ *
+ * @since 3.6.0
  */
 public class CustomControlTuple extends DataTuple
 {

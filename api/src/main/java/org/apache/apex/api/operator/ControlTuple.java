@@ -22,6 +22,8 @@ import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * Any user generated control tuple must implement {@link ControlTuple} interface
+ *
+ * @since 3.6.0
  */
 @InterfaceStability.Evolving
 public interface ControlTuple

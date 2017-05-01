@@ -23,6 +23,9 @@ import org.apache.hadoop.service.Service;
 
 import com.datatorrent.api.DAG;
 
+/**
+ * @since 3.6.0
+ */
 public interface ApexPluginDispatcher extends Service
 {
 

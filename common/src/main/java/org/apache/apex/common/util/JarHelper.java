@@ -46,6 +46,9 @@ import org.apache.hadoop.classification.InterfaceStability;
 
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
+/**
+ * @since 3.6.0
+ */
 public class JarHelper
 {
   private static final Logger logger = LoggerFactory.getLogger(JarHelper.class);

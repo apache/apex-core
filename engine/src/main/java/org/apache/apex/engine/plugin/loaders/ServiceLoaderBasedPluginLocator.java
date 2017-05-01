@@ -26,6 +26,9 @@ import java.util.ServiceLoader;
 import org.apache.apex.engine.api.plugin.PluginLocator;
 import org.apache.hadoop.conf.Configuration;
 
+/**
+ * @since 3.6.0
+ */
 public class ServiceLoaderBasedPluginLocator<T> implements PluginLocator<T>
 {
   private final Class<T> klass;

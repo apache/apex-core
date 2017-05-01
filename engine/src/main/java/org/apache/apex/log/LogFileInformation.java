@@ -20,6 +20,9 @@ package org.apache.apex.log;
 
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
+/**
+ * @since 3.6.0
+ */
 public class LogFileInformation extends AbstractWritableAdapter
 {
 

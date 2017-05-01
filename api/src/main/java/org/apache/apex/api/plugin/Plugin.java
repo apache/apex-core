@@ -30,6 +30,8 @@ import com.datatorrent.api.Context;
  * initialization method. They should also cleanup any additional resources created during shutdown such as helper
  * threads and open files in the {@link Component#teardown()} method.
  * @param <T> plugin context type
+ *
+ * @since 3.6.0
  */
 @Evolving
 public interface Plugin<T extends Plugin.PluginContext> extends Component<T>

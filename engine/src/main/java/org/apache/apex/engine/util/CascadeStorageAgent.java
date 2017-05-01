@@ -40,6 +40,8 @@ import com.datatorrent.api.StorageAgent;
  * large impacting application restart time. This storage-agent is used during application
  * restart to avoiding copying checkpoints from old application directory to improve application
  * restart time.
+ *
+ * @since 3.6.0
  */
 public class CascadeStorageAgent implements StorageAgent, AsyncStorageAgent, Serializable
 {

@@ -28,6 +28,8 @@ import com.datatorrent.api.Sink;
 /**
  * Default implementation for an output port which can emit a @{@link ControlTuple}.
  * The {@link #emitControl(ControlTuple)} method can be used to emit control tuples onto this output port
+ *
+ * @since 3.6.0
  */
 @InterfaceStability.Evolving
 public class ControlAwareDefaultOutputPort<T> extends DefaultOutputPort<T>

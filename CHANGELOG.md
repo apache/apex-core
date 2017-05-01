@@ -1,6 +1,94 @@
 Apex Changelog
 ========================================================================================================================
 
+Version 3.6.0 - 2017-05-04
+------------------------------------------------------------------------------------------------------------------------
+
+### Bug
+* [APEXCORE-471] - Requests for container allocation are not resubmitted
+* [APEXCORE-504] - Possible race condition in StreamingContainerAgent.getStreamCodec()
+* [APEXCORE-558] - Do not use yellow color to display command strings in help output
+* [APEXCORE-583] - Buffer Server LogicalNode should not be reused by Subscribers
+* [APEXCORE-585] - Latency should be calculated only after the first window has been complete
+* [APEXCORE-590] - Failed to restart application on MapR
+* [APEXCORE-591] - SubscribeRequestTuple has wrong buffer size when mask is zero
+* [APEXCORE-593] - apex cli get-app-package-info could not retrieve properties defined in properties.xml
+* [APEXCORE-595] - Master incorrectly updates committedWindowId when all partitions are terminated.
+* [APEXCORE-596] - Committed method on operators not called when stream locality is THREAD_LOCAL
+* [APEXCORE-597] - BufferServer needs to shutdown all created execution services
+* [APEXCORE-598] - Embedded mode execution does not use APPLICATION_PATH for checkpointing
+* [APEXCORE-608] - Streaming Containers use stale RPC proxy after connection is closed
+* [APEXCORE-610] - Avoid multiple getBytes() calls in Tuple.writeString
+* [APEXCORE-616] - Application fails to start Kerberised cluster
+* [APEXCORE-617] - InputNodeTest intermittently fails with ConcurrentModificationException
+* [APEXCORE-624] - Shutdown does not work because of incorrect logic in the AppMaster
+* [APEXCORE-627] - Unit test AtMostOnceTest intermittently fails
+* [APEXCORE-634] - Unifier attributes are not set for modules in DAG
+* [APEXCORE-636] - Ability to refresh tokens using user's own kerberos credentials in a managed environment
+* [APEXCORE-641] - Subscribers/DataListeners may not be scheduled to execute even when they have data to process
+* [APEXCORE-644] - get-app-package-operators with parent option does not work
+* [APEXCORE-645] - StramLocalCluster does not wait for master thread termination
+* [APEXCORE-648] - Unnecessary byte array copy in DefaultStatefulStreamCodec.toDataStatePair()
+* [APEXCORE-654] - Recovery window is not updated when Delay Operator is used along with Partitioned Operators
+* [APEXCORE-663] - Application restart not working.
+* [APEXCORE-671] - DTConfiguration utility class ValueEntry access level was changed
+* [APEXCORE-678] - Shutdown of application should start from input nodes
+* [APEXCORE-686] - AppPackage fails when .apa contains zero length stored entry
+* [APEXCORE-690] - Embedded app launcher does not apply HEARTBEAT_MONITORING setting
+* [APEXCORE-703] - Window processing timeout for finished/undeployed container
+* [APEXCORE-709] - Refactor changes done through APEXCORE-575
+
+### Dependency upgrade
+* [APEXCORE-656] - Upgrade org.apache.httpcomponents.httpclient to  4.3.6 version
+
+### Documentation
+* [APEXCORE-687] - Update docs, change supported Hadoop version to 2.6
+* [APEXCORE-692] - Apex Dev Setup doc should reference download page
+
+### Improvement
+* [APEXCORE-294] - Graceful application shutdown
+* [APEXCORE-426] - Support work preserving AM recovery
+* [APEXCORE-456] - Explicitly limit Server.Subscriber to one way communication
+* [APEXCORE-511] - DAG.addOperator, addStream and addModule should check for null and empty names
+* [APEXCORE-522] - Promote singleton usage pattern for String2String, Long2String and other StringCodecs
+* [APEXCORE-570] - Prevent upstream operators from getting too far ahead when downstream operators are slow
+* [APEXCORE-572] - Remove dependency on hadoop-common test.jar
+* [APEXCORE-575] - Improve application relaunch time.
+* [APEXCORE-592] - Returning description field in defaultProperties during apex cli call get-app-package-info
+* [APEXCORE-605] - Suppress bootstrap compiler warning
+* [APEXCORE-611] - Stram Event Log Levels
+* [APEXCORE-655] - Support RELEASE as archetype version when creating a project
+* [APEXCORE-676] - Show description for DefaultProperties only when user requests it
+* [APEXCORE-677] - Avoid starting StramLocalCluster in StreamingContainerManagerTest.testAppDataSources
+* [APEXCORE-683] - Apex client should support application packages on HDFS
+* [APEXCORE-715] - Remove unnecessary @Evolving annotation in engine
+
+### New Feature
+* [APEXCORE-563] - Have a pointer to log file name and offset in container/operator failure events
+* [APEXCORE-579] - Custom control tuple support
+* [APEXCORE-594] - Plugin support in Apex
+
+### Task
+* [APEXCORE-480] - Change the container log name from dt.log to apex.log
+* [APEXCORE-658] - Replace dt. prefix with apex. for configuration keys
+* [APEXCORE-662] - Raise StramEvent for heartbeat miss
+* [APEXCORE-691] - Use type inference for generic instance creation
+* [APEXCORE-695] - Remove unnecessary interface modifiers
+* [APEXCORE-701] - Upgrade Malhar version in archetype to 3.7.0
+
+### Sub-task
+* [APEXCORE-577] - Plugin support to inspect DAG before launch.
+* [APEXCORE-580] - Interface for processing and emitting control tuples
+* [APEXCORE-581] - Delivery of Custom Control Tuples
+* [APEXCORE-604] - Extend DAG API to allow accessing DAG objects.
+* [APEXCORE-649] - Infrastructure for user define stram event listeners.
+* [APEXCORE-660] - Documentation for Control tuple support changes
+* [APEXCORE-674] - Change access specifier of DTConfiguration.ValueEntry to private
+* [APEXCORE-680] - Review container heartbeat timeout log level messages
+* [APEXCORE-700] - Make the plugin registration interface uniform
+* [APEXCORE-702] - Mark ApexPlugin as Evolving
+
+
 Version 3.5.0 - 2016-12-09
 ------------------------------------------------------------------------------------------------------------------------
 

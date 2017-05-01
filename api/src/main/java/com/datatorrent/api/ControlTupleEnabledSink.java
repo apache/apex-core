@@ -23,6 +23,8 @@ import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * A {@link Sink} which supports adding control tuples
+ *
+ * @since 3.6.0
  */
 @InterfaceStability.Evolving
 public interface ControlTupleEnabledSink<T> extends Sink<T>
