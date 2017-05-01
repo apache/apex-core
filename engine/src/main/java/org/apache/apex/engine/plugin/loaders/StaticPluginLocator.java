@@ -27,6 +27,9 @@ import org.slf4j.LoggerFactory;
 import org.apache.apex.engine.api.plugin.PluginLocator;
 import org.apache.hadoop.conf.Configuration;
 
+/**
+ * @since 3.6.0
+ */
 public class StaticPluginLocator<T> implements PluginLocator<T>
 {
   private static final Logger LOG = LoggerFactory.getLogger(StaticPluginLocator.class);

@@ -30,6 +30,9 @@ import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.stram.StramUtils;
 
+/**
+ * @since 3.6.0
+ */
 public class PropertyBasedPluginLocator<T> implements PluginLocator<T>
 {
   private static final Logger LOG = LoggerFactory.getLogger(PropertyBasedPluginLocator.class);

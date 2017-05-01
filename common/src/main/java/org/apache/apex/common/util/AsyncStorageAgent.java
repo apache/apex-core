@@ -29,6 +29,8 @@ import com.datatorrent.api.StorageAgent;
  * An AsyncStorageAgent enables quick checkpoints by taking local snapshot of an operator
  * and unblocking the operator to process more data, while storage engine is pushing local snapshot to
  * the distributed or globally accessible location for recovery.
+ *
+ * @since 3.6.0
  */
 @InterfaceStability.Evolving
 public interface AsyncStorageAgent extends StorageAgent

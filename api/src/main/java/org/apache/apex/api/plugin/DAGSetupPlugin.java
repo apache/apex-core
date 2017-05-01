@@ -35,6 +35,8 @@ import com.datatorrent.api.DAG;
  *   <li>Before dag is validated</li>
  *   <li>After dag is validated</li>
  * </ul>
+ *
+ * @since 3.6.0
  */
 @Evolving
 public interface DAGSetupPlugin<T extends DAGSetupPlugin.Context> extends Plugin<T>

@@ -27,6 +27,9 @@ import static org.apache.apex.engine.api.plugin.DAGExecutionEvent.Type.COMMIT_EV
 import static org.apache.apex.engine.api.plugin.DAGExecutionEvent.Type.HEARTBEAT_EVENT;
 import static org.apache.apex.engine.api.plugin.DAGExecutionEvent.Type.STRAM_EVENT;
 
+/**
+ * @since 3.6.0
+ */
 public class DAGExecutionEvent extends Event.BaseEvent<DAGExecutionEvent.Type>
 {
   public enum Type implements Event.Type

@@ -21,6 +21,9 @@ package org.apache.apex.engine.plugin;
 import org.apache.apex.api.plugin.Event;
 import org.apache.hadoop.service.AbstractService;
 
+/**
+ * @since 3.6.0
+ */
 public class NoOpApexPluginDispatcher extends AbstractService implements ApexPluginDispatcher
 {
   public NoOpApexPluginDispatcher()

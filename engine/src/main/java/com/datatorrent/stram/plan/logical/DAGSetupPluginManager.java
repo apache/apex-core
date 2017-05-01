@@ -38,6 +38,9 @@ import com.datatorrent.api.DAG;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
+/**
+ * @since 3.6.0
+ */
 public class DAGSetupPluginManager
 {
   private static final Logger LOG = getLogger(DAGSetupPluginManager.class);

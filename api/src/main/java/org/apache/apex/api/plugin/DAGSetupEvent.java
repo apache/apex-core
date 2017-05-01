@@ -24,6 +24,9 @@ import org.apache.hadoop.conf.Configuration;
 import com.datatorrent.api.DAG;
 
 @Evolving
+/**
+ * @since 3.6.0
+ */
 public class DAGSetupEvent extends Event.BaseEvent<DAGSetupEvent.Type>
 {
   @Evolving

@@ -43,6 +43,8 @@ import com.datatorrent.stram.webapp.LogicalOperatorInfo;
  *   <li>{@see Context.COMMIT_EVENT} When committedWindowId changes in the platform an event will be delivered to the plugin</li>
  * </ul>
  *
+ *
+ * @since 3.6.0
  */
 public interface DAGExecutionPlugin<T extends DAGExecutionPlugin.Context> extends Plugin<T>
 {

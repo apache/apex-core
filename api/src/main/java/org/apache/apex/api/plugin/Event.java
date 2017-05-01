@@ -27,6 +27,8 @@ import org.apache.hadoop.classification.InterfaceStability.Evolving;
  * Plugins express interest in receiving events by registering handlers for the event type and their handlers receive
  * the events.
  * @param <T> event type
+ *
+ * @since 3.6.0
  */
 @Evolving
 public interface Event<T extends Type>

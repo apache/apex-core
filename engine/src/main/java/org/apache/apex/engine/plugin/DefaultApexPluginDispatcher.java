@@ -43,6 +43,8 @@ import com.datatorrent.stram.webapp.AppInfo;
  * Handle dispatching of events from Stram to Plugins. This implementation creates an executor
  * service to process the event asynchronously. A separate task {@link DefaultApexPluginDispatcher.ProcessEventTask}
  * is created to process an event and then submitted to the executor for execution.
+ *
+ * @since 3.6.0
  */
 public class DefaultApexPluginDispatcher extends AbstractApexPluginDispatcher
 {

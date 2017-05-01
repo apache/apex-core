@@ -53,6 +53,8 @@ import com.datatorrent.stram.webapp.AppInfo;
 /**
  * A default implementation for ApexPluginDispatcher. It handles common tasks, such as handler
  * registrations. Actual dispatching is left for classes extending from it.
+ *
+ * @since 3.6.0
  */
 public abstract class AbstractApexPluginDispatcher extends AbstractService implements ApexPluginDispatcher
 {

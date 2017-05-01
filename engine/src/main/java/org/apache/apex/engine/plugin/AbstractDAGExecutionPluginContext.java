@@ -38,6 +38,9 @@ import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.LogicalOperatorInfo;
 
+/**
+ * @since 3.6.0
+ */
 public abstract class AbstractDAGExecutionPluginContext<E extends DAGExecutionEvent> implements DAGExecutionPlugin.Context<E>
 {
   private final StreamingContainerManager dnmgr;
