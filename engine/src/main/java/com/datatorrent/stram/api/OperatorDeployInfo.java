@@ -27,6 +27,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang3.Range;
 
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap;
@@ -157,8 +158,8 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
-    public Set<Integer> partitionKeys;
-    public int partitionMask;
+    public Set<Range<Integer>> partitionKeys;
+    public Range<Integer> acceptableRange;
     /**
      * Context attributes for input port
      */
@@ -173,7 +174,7 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
           .append("sourceNodeId", this.sourceNodeId)
           .append("sourcePortName", this.sourcePortName)
           .append("locality", this.locality)
-          .append("partitionMask", this.partitionMask)
+          .append("acceptableRange", this.acceptableRange)
           .append("partitionKeys", this.partitionKeys)
           .toString();
     }

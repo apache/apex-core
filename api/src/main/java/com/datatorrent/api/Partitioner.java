@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.Range;
+
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 
@@ -67,20 +69,35 @@ public interface Partitioner<T>
   class PartitionKeys implements java.io.Serializable
   {
     private static final long serialVersionUID = 201312271835L;
-    public final int mask;
-    public final Set<Integer> partitions;
+    public final Set<Range<Integer>> partitions;
 
-    public PartitionKeys(int mask, Set<Integer> partitions)
+    public PartitionKeys(Set<Range<Integer>> partitions)
     {
-      this.mask = mask;
       this.partitions = partitions;
+    }
+
+    public boolean contains(int val) {
+      return contains(partitions, val);
+    }
+
+    public static boolean contains(Set<Range<Integer>> partitions, int val) {
+      if (partitions == null) {
+        return false;
+      }
+
+      for (Range<Integer> r : partitions) {
+        if (r.contains(val)) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
     @Override
     public int hashCode()
     {
       int hash = 7;
-      hash = 79 * hash + this.mask;
       hash = 79 * hash + (this.partitions != null ? this.partitions.hashCode() : 0);
       return hash;
     }
@@ -95,16 +112,20 @@ public interface Partitioner<T>
         return false;
       }
       final PartitionKeys other = (PartitionKeys)obj;
-      if (this.mask != other.mask) {
-        return false;
-      }
       return this.partitions == other.partitions || (this.partitions != null && this.partitions.equals(other.partitions));
     }
 
     @Override
     public String toString()
     {
-      return "[" + mask + "," + partitions + "]";
+      StringBuilder sb = new StringBuilder();
+      sb.append("[");
+      for (Range r : partitions) {
+        sb.append("[" + r.toString() + "]");
+        sb.append(" ");
+      }
+
+      return sb.toString().trim() + "]";
     }
 
   }

@@ -269,8 +269,7 @@ public class StreamingContainerAgent
 
         inputInfo.sourceNodeId = sourceOutput.source.getId();
         inputInfo.sourcePortName = sourceOutput.portName;
-        if (in.partitions != null && in.partitions.mask != 0) {
-          inputInfo.partitionMask = in.partitions.mask;
+        if (in.partitions != null) {
           inputInfo.partitionKeys = in.partitions.partitions;
         }
 

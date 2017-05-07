@@ -21,6 +21,8 @@ package com.datatorrent.stram.stream;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.commons.lang3.Range;
+
 import com.datatorrent.api.Sink;
 import com.datatorrent.stram.plan.logical.StreamCodecWrapperForPersistance;
 
@@ -33,26 +35,26 @@ public class PartitionAwareSinkForPersistence extends PartitionAwareSink<Object>
 {
   StreamCodecWrapperForPersistance<Object> serdeForPersistence;
 
-  public PartitionAwareSinkForPersistence(StreamCodecWrapperForPersistance<Object> serde, Set<Integer> partitions, int mask, Sink<Object> output)
+  public PartitionAwareSinkForPersistence(StreamCodecWrapperForPersistance<Object> serde,
+      Set<Range<Integer>> partitions, Sink<Object> output)
   {
-    super(serde, partitions, mask, output);
+    super(serde, partitions, output);
     serdeForPersistence = serde;
   }
 
-  public PartitionAwareSinkForPersistence(StreamCodecWrapperForPersistance<Object> serde, int mask, Sink<Object> output)
+  public PartitionAwareSinkForPersistence(StreamCodecWrapperForPersistance<Object> serde,
+      Range<Integer> acceptableRange,
+      Sink<Object> output)
   {
     // If partition keys is null, everything should be passed to sink
-    super(serde, createPartitionKeys(mask), mask, output);
+    super(serde, createPartitionKeys(acceptableRange), output);
     serdeForPersistence = serde;
   }
 
-  private static Set<Integer> createPartitionKeys(int mask)
+  private static Set<Range<Integer>> createPartitionKeys(Range<Integer> acceptableRange)
   {
-    Set<Integer> partitions = new HashSet<>();
-    // Add all entries in mask to partitions keys
-    for (int i = 0; i <= mask; i++) {
-      partitions.add(i);
-    }
+    Set<Range<Integer>> partitions = new HashSet<>();
+    partitions.add(acceptableRange);
     return partitions;
   }
 

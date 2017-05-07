@@ -1054,7 +1054,8 @@ public class StreamingContainer extends YarnContainerMain
                 pair.context.setSinkId(sinkIdentifier.concat(", ").concat(deployBufferServerPublisher.getKey()));
               }
 
-              ((Stream.MultiSinkCapableStream)pair.component).setSink(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue().component);
+              ((Stream.MultiSinkCapableStream)pair.component).setSink(deployBufferServerPublisher
+                  .getKey(), deployBufferServerPublisher.getValue().component);
             }
           }
         }
@@ -1158,7 +1159,7 @@ public class StreamingContainer extends YarnContainerMain
             context.setPortId(nidi.portName);
             context.put(StreamContext.CODEC, streamCodec);
             context.put(StreamContext.EVENT_LOOP, eventloop);
-            context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
+            context.setPartitions(nidi.acceptableRange, nidi.partitionKeys);
             //context.setSourceId(sourceIdentifier);
             context.setSourceId(connIdentifier);
             context.setSinkId(sinkIdentifier);
@@ -1231,16 +1232,19 @@ public class StreamingContainer extends YarnContainerMain
 
               Node<?> sourceNode = nodes.get(nidi.sourceNodeId);
               sourceNode.connectOutputPort(nidi.sourcePortName, muxStream);
-              newStreams.put(sourceIdentifier, pair = new ComponentContextPair<Stream, StreamContext>(muxStream, muxContext));
+              newStreams.put(sourceIdentifier, pair =
+                  new ComponentContextPair<Stream, StreamContext>(muxStream, muxContext));
             }
 
             /* here everything should be multisink capable */
             if (streamCodec instanceof StreamCodecWrapperForPersistance) {
               PartitionAwareSinkForPersistence pas;
               if (nidi.partitionKeys == null) {
-                pas = new PartitionAwareSinkForPersistence((StreamCodecWrapperForPersistance<Object>)streamCodec, nidi.partitionMask, stream);
+                pas = new PartitionAwareSinkForPersistence((StreamCodecWrapperForPersistance<Object>)streamCodec,
+                    nidi.acceptableRange, stream);
               } else {
-                pas = new PartitionAwareSinkForPersistence((StreamCodecWrapperForPersistance<Object>)streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
+                pas = new PartitionAwareSinkForPersistence((StreamCodecWrapperForPersistance<Object>)streamCodec,
+                    nidi.partitionKeys, stream);
               }
               ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             } else if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
@@ -1250,7 +1254,8 @@ public class StreamingContainer extends YarnContainerMain
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              PartitionAwareSink<Object> pas = new PartitionAwareSink<>(streamCodec == null ? nonSerializingStreamCodec : (StreamCodec<Object>)streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
+              PartitionAwareSink<Object> pas = new PartitionAwareSink<>(streamCodec == null ?
+                  nonSerializingStreamCodec : (StreamCodec<Object>)streamCodec, nidi.partitionKeys, stream);
               ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
 
