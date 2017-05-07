@@ -305,6 +305,11 @@ public class StreamMapping implements java.io.Serializable
           } else {
             // MxN partitioning: unifier per downstream partition
             LOG.debug("MxN unifier for {} {} {}", new Object[] {doperEntry.first, doperEntry.second.getPortName(), pks});
+
+            if (pks != null && pks.mask == 0) {
+              pks = null;
+            }
+
             PTOperator unifier = doperEntry.first.upstreamMerge.get(doperEntry.second);
             if (unifier == null) {
               unifier = createUnifier(streamMeta, plan);
