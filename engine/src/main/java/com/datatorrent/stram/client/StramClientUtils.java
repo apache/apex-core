@@ -80,6 +80,8 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.StramUtils;
@@ -870,4 +872,10 @@ public class StramClientUtils
     return appInfo;
   }
 
+  public static void addAttributeToArgs(Attribute<String> attribute, Context context, List<CharSequence> vargs)
+  {
+    if (context.getValue(attribute) != null) {
+      vargs.add(String.format("-D%s=$'%s'", attribute.getLongName(), context.getValue(attribute).replaceAll("['\"$\\\\]", "\\\\$0")));
+    }
+  }
 }

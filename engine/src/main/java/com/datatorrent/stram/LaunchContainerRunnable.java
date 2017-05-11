@@ -253,6 +253,7 @@ public class LaunchContainerRunnable implements Runnable
     vargs.add(String.format("-D%scid=%s", StreamingApplication.DT_PREFIX, jvmID));
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
+    StramClientUtils.addAttributeToArgs(LogicalPlan.APPLICATION_NAME, dag, vargs);
 
     String loggersLevel = System.getProperty(StramUtils.DT_LOGGERS_LEVEL);
     if (loggersLevel != null) {
@@ -333,5 +334,4 @@ public class LaunchContainerRunnable implements Runnable
       throw new RuntimeException("Error generating delegation token", e);
     }
   }
-
 }
