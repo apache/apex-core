@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 import org.apache.apex.engine.api.plugin.DAGExecutionEvent;
 import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
 
+import com.datatorrent.api.DAG;
+
 import static org.apache.apex.engine.api.plugin.DAGExecutionEvent.Type.COMMIT_EVENT;
 import static org.apache.apex.engine.api.plugin.DAGExecutionEvent.Type.HEARTBEAT_EVENT;
 import static org.apache.apex.engine.api.plugin.DAGExecutionEvent.Type.STRAM_EVENT;
@@ -39,10 +41,13 @@ public class DebugPlugin implements DAGExecutionPlugin<DAGExecutionPlugin.Contex
   private int heartbeatCount = 0;
   private int commitCount = 0;
   CountDownLatch latch = new CountDownLatch(3);
+  private Context context;
 
   @Override
   public void setup(DAGExecutionPlugin.Context context)
   {
+    this.context = context;
+
     context.register(STRAM_EVENT, new EventHandler<DAGExecutionEvent.StramExecutionEvent>()
     {
       @Override
@@ -101,5 +106,10 @@ public class DebugPlugin implements DAGExecutionPlugin<DAGExecutionPlugin.Contex
   public void waitForEventDelivery(long timeout) throws InterruptedException
   {
     latch.await(timeout, TimeUnit.SECONDS);
+  }
+
+  public DAG getLogicalPlan()
+  {
+    return context.getDAG();
   }
 }

@@ -33,6 +33,7 @@ import org.apache.hadoop.conf.Configuration;
 import com.datatorrent.api.Attribute;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
 
 public class PluginTests
@@ -93,12 +94,14 @@ public class PluginTests
     }));
     pluginManager.dispatch(new DAGExecutionEvent.CommitExecutionEvent(1234));
     pluginManager.dispatch(new DAGExecutionEvent.HeartbeatExecutionEvent(new StreamingContainerUmbilicalProtocol.ContainerHeartbeat()));
+    LogicalPlan plan = new LogicalPlan();
+    pluginManager.dispatch(new ApexPluginDispatcher.DAGChangeEvent(plan));
     debugPlugin.waitForEventDelivery(10);
     pluginManager.stop();
 
     Assert.assertEquals(1, debugPlugin.getEventCount());
     Assert.assertEquals(1, debugPlugin.getHeartbeatCount());
     Assert.assertEquals(1, debugPlugin.getCommitCount());
+    Assert.assertEquals(plan, debugPlugin.getLogicalPlan());
   }
-
 }
