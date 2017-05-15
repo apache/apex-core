@@ -440,6 +440,9 @@
               <excludes>
                 <exclude>@org.apache.hadoop.classification.InterfaceStability$Evolving</exclude>
                 <exclude>@org.apache.hadoop.classification.InterfaceStability$Unstable</exclude>
+                <!-- TODO This needs to be removed once 3.7.0 is released and old version points to 3.7.0 -->
+                <exclude>com.datatorrent.api.DefaultInputPort</exclude>
+                <exclude>com.datatorrent.api.DefaultOutputPort</exclude>
               </excludes>
             </parameter>
           </configuration>

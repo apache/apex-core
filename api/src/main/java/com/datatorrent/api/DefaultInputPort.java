@@ -18,6 +18,8 @@
  */
 package com.datatorrent.api;
 
+import org.apache.hadoop.classification.InterfaceStability;
+
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.InputPort;
 
@@ -31,8 +33,8 @@ import com.datatorrent.api.Operator.InputPort;
  */
 public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
 {
-  protected int count;
-  protected boolean connected = false;
+  private int count;
+  private boolean connected = false;
 
   /**
    * <p>Constructor for DefaultInputPort.</p>
@@ -109,4 +111,9 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
    */
   public abstract void process(T tuple);
 
+  @InterfaceStability.Evolving
+  protected int incrementCount()
+  {
+    return ++count;
+  }
 }
