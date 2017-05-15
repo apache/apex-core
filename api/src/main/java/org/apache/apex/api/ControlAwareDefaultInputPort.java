@@ -36,7 +36,7 @@ public abstract class ControlAwareDefaultInputPort<T> extends DefaultInputPort<T
   @Override
   public boolean putControl(ControlTuple payload)
   {
-    count++;
+    incrementCount();
     return processControl(payload);
   }
 

@@ -36,7 +36,7 @@ public class ControlAwareDefaultOutputPort<T> extends DefaultOutputPort<T>
 {
   public ControlAwareDefaultOutputPort()
   {
-    sink = ControlTupleEnabledSink.BLACKHOLE;
+    setSink(ControlTupleEnabledSink.BLACKHOLE);
   }
 
   /**
@@ -46,18 +46,18 @@ public class ControlAwareDefaultOutputPort<T> extends DefaultOutputPort<T>
   public void emitControl(ControlTuple tuple)
   {
     verifyOperatorThread();
-    ((ControlTupleEnabledSink)sink).putControl(tuple);
+    ((ControlTupleEnabledSink)getSink()).putControl(tuple);
   }
 
   public boolean isConnected()
   {
-    return sink != ControlTupleEnabledSink.BLACKHOLE;
+    return getSink() != ControlTupleEnabledSink.BLACKHOLE;
   }
 
   @Override
   public void setSink(Sink<Object> s)
   {
-    this.sink = (s == null ? ControlTupleEnabledSink.BLACKHOLE : s);
+    super.setSink(s == null ? ControlTupleEnabledSink.BLACKHOLE : s);
   }
 
 }
