@@ -874,8 +874,10 @@ public class StramClientUtils
 
   public static void addAttributeToArgs(Attribute<String> attribute, Context context, List<CharSequence> vargs)
   {
-    if (context.getValue(attribute) != null) {
-      vargs.add(String.format("-D%s=$'%s'", attribute.getLongName(), context.getValue(attribute).replaceAll("['\"$\\\\]", "\\\\$0")));
+    String value = context.getValue(attribute);
+    if (value != null) {
+      vargs.add(String.format("-D%s=$'%s'", attribute.getLongName(),
+          value.replace("\\", "\\\\\\\\").replaceAll("['\"$]", "\\\\$0")));
     }
   }
 }

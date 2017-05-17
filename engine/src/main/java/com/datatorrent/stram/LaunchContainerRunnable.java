@@ -230,11 +230,6 @@ public class LaunchContainerRunnable implements Runnable
       }
     }
 
-    String loggerAppender = dag.getValue(LogicalPlan.LOGGER_APPENDER);
-    if (loggerAppender != null) {
-      vargs.add(String.format("-D%s=\"%s\"", LogicalPlan.LOGGER_APPENDER.getLongName(), loggerAppender));
-    }
-
     List<DAG.OperatorMeta> operatorMetaList = Lists.newArrayList();
     int bufferServerMemory = 0;
     for (PTOperator operator : sca.getContainer().getOperators()) {
@@ -254,6 +249,7 @@ public class LaunchContainerRunnable implements Runnable
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
     StramClientUtils.addAttributeToArgs(LogicalPlan.APPLICATION_NAME, dag, vargs);
+    StramClientUtils.addAttributeToArgs(LogicalPlan.LOGGER_APPENDER, dag, vargs);
 
     String loggersLevel = System.getProperty(StramUtils.DT_LOGGERS_LEVEL);
     if (loggersLevel != null) {

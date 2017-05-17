@@ -603,4 +603,36 @@ public class StramMiniClusterTest
 
   }
 
+  private static String APP_NAME = "$test\\\"'";
+
+  @Test
+  public void testAddAttributeToArgs() throws Exception
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_NAME, APP_NAME);
+    AddAttributeToArgsOperator operator = dag.addOperator("test", AddAttributeToArgsOperator.class);
+    dag.getContextAttributes(operator).put(OperatorContext.RECOVERY_ATTEMPTS, 0);
+
+    StramClient client = new StramClient(conf, dag);
+    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
+      client.javaCmd = "java";
+    }
+    try {
+      client.start();
+      client.startApplication();
+      Assert.assertTrue(client.monitorApplication());
+    } finally {
+      client.stop();
+    }
+  }
+
+  public static class AddAttributeToArgsOperator extends BaseOperator implements InputOperator
+  {
+    @Override
+    public void emitTuples()
+    {
+      throw APP_NAME.equals(System.getProperty(LogicalPlan.APPLICATION_NAME.getLongName()))
+          ? new ShutdownException() : new RuntimeException();
+    }
+  }
 }

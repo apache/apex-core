@@ -573,13 +573,9 @@ public class StramClient
       vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
       vargs.add(String.format("-D%s=%s", StreamingContainer.PROP_APP_PATH, dag.assertAppPath()));
       StramClientUtils.addAttributeToArgs(LogicalPlan.APPLICATION_NAME, dag, vargs);
+      StramClientUtils.addAttributeToArgs(LogicalPlan.LOGGER_APPENDER, dag, vargs);
       if (dag.isDebug()) {
         vargs.add("-Dlog4j.debug=true");
-      }
-
-      String loggerAppender = dag.getValue(LogicalPlan.LOGGER_APPENDER);
-      if (loggerAppender != null) {
-        vargs.add(String.format("-D%s=\"%s\"", LogicalPlan.LOGGER_APPENDER.getLongName(), loggerAppender));
       }
 
       String loggersLevel = conf.get(StramUtils.DT_LOGGERS_LEVEL);
