@@ -149,7 +149,8 @@ public class StramClient
       org.apache.http.message.BasicHeaderValueParser.class,
       com.esotericsoftware.minlog.Log.class,
       org.apache.xbean.asm5.tree.ClassNode.class,
-      org.jctools.queues.SpscArrayQueue.class
+      org.jctools.queues.SpscArrayQueue.class,
+      com.sun.jersey.client.apache4.ApacheHttpClient4Handler.class
   };
 
   private static final Class<?>[] APEX_SECURITY_SPECIFIC_CLASSES = new Class<?>[]{
