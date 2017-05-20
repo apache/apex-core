@@ -12,7 +12,7 @@ standard way for assembling and sharing an Apache Apex application.
 You will need have the following installed:
 
 1. Apache Maven 3.0 or later (for assembling the App Package)
-2. Apache Apex 3.2.0 or later (for launching the App Package in your cluster)
+2. Apache Apex 3.6.0 or later (for launching the App Package in your cluster)
 
 ## Creating Your First Apex App Package
 
@@ -24,11 +24,13 @@ line, or using your favorite IDE.
 First, change to the directory where you put your projects, and create
 an Apex application project using Maven by running the following
 command.  Replace "com.example", "myapp" and "1.0-SNAPSHOT" with the
-appropriate values (make sure this is all on one line):
+appropriate values (make sure this is all on one line). You can also
+replace "RELEASE" with a specific Apex version number (like "3.6.0")
+if you don't want to use the most recent release:
 
     $ mvn archetype:generate \
      -DarchetypeGroupId=org.apache.apex \
-     -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=3.4.0 \
+     -DarchetypeArtifactId=apex-app-archetype -DarchetypeVersion=RELEASE \
      -DgroupId=com.example -Dpackage=com.example.myapp -DartifactId=myapp \
      -Dversion=1.0-SNAPSHOT
 
@@ -84,7 +86,7 @@ Alternatively you can perform the same steps within your IDE (IDEA IntelliJ, Ecl
 
 Group ID: org.apache.apex
 Artifact ID: apex-app-archetype
-Version: 3.4.0 (or any later version)
+Version: 3.6.0 (or any later version)
 
 ## Writing Your Own App Package
 
@@ -96,7 +98,7 @@ Please refer to the [Application Developer Guide][application_development.md] on
 Under the project, you can add project dependencies in pom.xml, or do it
 through your IDE.  Here’s the section that describes the dependencies in
 the default pom.xml:
-```
+```xml
   <dependencies>
     <!-- add your dependencies here -->
     <dependency>
@@ -173,7 +175,7 @@ attributes, operator attributes and properties, port attributes, stream
 properties and application specific properties. They are all specified
 as name value pairs, in XML format, like the following.
 
-```
+```xml
 <?xml version="1.0"?>
 <configuration>
   <property>
@@ -196,7 +198,7 @@ constant denoting an attribute is being specified and ```<attribute>```
 specifies the name of the attribute. Below is an example snippet setting
 the streaming windows size of the application to be 1000 milliseconds.
 
-```
+```xml
   <property>
      <name>apex.attr.STREAMING_WINDOW_SIZE_MILLIS</name>
      <value>1000</value>
@@ -223,7 +225,7 @@ the addOperator method. An example illustrating the specification is
 shown below. It specifies the number of streaming windows for one
 application window of an operator named “input” to be 10
 
-```
+```xml
 <property>
   <name>apex.operator.input.attr.APPLICATION_WINDOW_COUNT</name>
   <value>10</value>
@@ -247,7 +249,7 @@ that the keyword “prop” is used to denote that it is a property and
 this is specified below. It specifies the property “hostname” of the
 redis server for a “redis” output operator.
 
-```
+```xml
   <property>
     <name>apex.operator.redis.prop.host</name>
     <value>127.0.0.1</value>
@@ -263,6 +265,17 @@ setHost. The method is called using JAVA reflection and the property
 value is passed as an argument. In the above example the method setHost
 will be called on the “redis” operator with “127.0.0.1” as the argument.
 
+Properties that are collection types can also be configured, based on the beanutils
+syntax. For example, the connection properties of the JDBC store can be accessed
+like this:
+
+```xml
+  <property>
+    <name>apex.operator.jdbc.prop.store.connectionProperties(user)</name>
+    <value>your-user-name</value>
+  </property>
+```
+
 ### Port attributes
 Port attributes are used to specify the platform behavior for input and
 output ports. They can be specified using the parameter ```apex.operator.<operator-name>.inputport.<port-name>.attr.<attribute>```
@@ -274,7 +287,7 @@ example illustrating this is specified below. It specifies the queue
 capacity for an input port named “input” of an operator named “range” to
 be 4k.
 
-```
+```xml
 <property>
   <name>apex.operator.range.inputport.input.attr.QUEUE_CAPACITY</name>
   <value>4000</value>
@@ -306,7 +319,7 @@ specification is shown below. It sets the locality of the stream named
 “stream1” to container local indicating that the operators the stream is
 connecting be run in the same container.
 
-```
+```xml
   <property>
     <name>apex.stream.stream1.prop.locality</name>
     <value>CONTAINER_LOCAL</value>
@@ -337,7 +350,7 @@ Wildcards and regular expressions can be used in place of names to
 specify a group for applications, operators, ports or streams. For
 example, to specify an attribute for all ports of an operator it can be
 done as follows
-```
+```xml
 <property>
   <name>apex.operator.range.port.*.attr.QUEUE_CAPACITY</name>
   <value>4000</value>
@@ -357,7 +370,7 @@ a file for ingestion, etc.  You can specify them in
 src/main/resources/META-INF/properties.xml under the App Package
 project. The properties.xml may look like:
 
-```
+```xml
 <?xml version="1.0"?>
 <configuration>
   <property>
@@ -433,9 +446,9 @@ etc), the precedence of sources, from highest to lowest, is as follows:
 In a Apex App Package project, the pom.xml file contains a
 section that looks like:
 
-```
+```xml
 <properties>
-  <apex.version>3.4.0</apex.version>
+  <apex.core.version>3.6.0</apex.core.version>
   <apex.apppackage.classpath\>lib*.jar</apex.apppackage.classpath>
 </properties>
 ```
@@ -535,7 +548,7 @@ package project using Maven by running the following command. Replace "com.examp
 
 ```
 $ mvn archetype:generate -DarchetypeGroupId=org.apache.apex \
-  -DarchetypeArtifactId=apex-conf-archetype -DarchetypeVersion=3.4.0 \
+  -DarchetypeArtifactId=apex-conf-archetype -DarchetypeVersion=RELEASE \
   -DgroupId=com.example -Dpackage=com.example.myconfig -DartifactId=myconfig \
   -Dversion=1.0-SNAPSHOT
 ```
