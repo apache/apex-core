@@ -207,7 +207,7 @@ public class TupleRecorderTest
   }
 
   private static final File testWorkDir = new File("target", TupleRecorderTest.class.getName());
-  private static final int testTupleCount = 10;
+  private static final long testTupleCount = 10;
 
   @Test
   public void testRecordingFlow() throws Exception
