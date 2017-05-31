@@ -30,6 +30,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.engine.security.ACLManager;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.hadoop.fs.FileStatus;
@@ -38,6 +40,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
+import org.apache.hadoop.security.HadoopKerberosName;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
@@ -150,6 +153,28 @@ public class LaunchContainerRunnable implements Runnable
     ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
 
     setClasspath(containerEnv);
+
+    // Setup ACLs for the impersonating user
+    try {
+      String launchPrincipal = System.getenv("HADOOP_USER_NAME");
+      LOG.debug("Launch principal {}", launchPrincipal);
+      if (launchPrincipal != null) {
+        String launchUserName = launchPrincipal;
+        if (UserGroupInformation.isSecurityEnabled()) {
+          try {
+            launchUserName = new HadoopKerberosName(launchPrincipal).getShortName();
+          } catch (Exception ex) {
+            LOG.warn("Error resolving kerberos principal {}", launchPrincipal, ex);
+          }
+        }
+        LOG.debug("ACL launch user {} current user {}", launchUserName, UserGroupInformation.getCurrentUser().getShortUserName());
+        if (!UserGroupInformation.getCurrentUser().getShortUserName().equals(launchUserName)) {
+          ACLManager.setupUserACLs(ctx, launchUserName, nmClient.getConfig());
+        }
+      }
+    } catch (IOException e) {
+      LOG.warn("Unable to setup user acls for container {}", container.getId(), e);
+    }
     try {
       // propagate to replace node managers user name (effective in non-secure mode)
       containerEnv.put("HADOOP_USER_NAME", UserGroupInformation.getLoginUser().getUserName());
