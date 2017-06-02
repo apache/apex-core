@@ -900,7 +900,7 @@ public class StreamingAppMasterService extends CompositeService
             LOG.info("Releasing {} as resource with priority {} was already assigned", allocatedContainer.getId(), allocatedContainer.getPriority());
             releasedContainers.add(allocatedContainer.getId());
             numReleasedContainers++;
-            numRequestedContainers--;
+            numRequestedContainers++;    // undo the decrement above for this allocated container
             continue;
           }
           if (csr != null) {
