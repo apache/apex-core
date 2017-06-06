@@ -331,12 +331,8 @@ public class StramAgent extends FSAgent
 
   private StramWebServicesInfo retrieveWebServicesInfo(String appId)
   {
-    YarnClient yarnClient = YarnClient.createYarnClient();
     String url;
-    try {
-      yarnClient.init(conf);
-      yarnClient.start();
-
+    try (YarnClient yarnClient = StramClientUtils.createYarnClient(conf)) {
       ApplicationReport ar = yarnClient.getApplicationReport(ConverterUtils.toApplicationId(appId));
       if (ar == null) {
         LOG.warn("YARN does not have record for this application {}", appId);
@@ -364,8 +360,6 @@ public class StramAgent extends FSAgent
     } catch (Exception ex) {
       LOG.error("Cannot retrieve web services info", ex);
       return null;
-    } finally {
-      yarnClient.stop();
     }
 
     WebServicesClient webServicesClient = new WebServicesClient();

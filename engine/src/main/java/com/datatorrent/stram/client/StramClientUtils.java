@@ -317,6 +317,14 @@ public class StramClientUtils
 
   }
 
+  public static YarnClient createYarnClient(Configuration conf)
+  {
+    YarnClient client = YarnClient.createYarnClient();
+    client.init(conf);
+    client.start();
+    return client;
+  }
+
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
 
   public static String getHostName()
