@@ -169,7 +169,7 @@ public class ApexCli
   protected Configuration conf;
   private FileSystem fs;
   private StramAgent stramAgent;
-  private final YarnClient yarnClient = YarnClient.createYarnClient();
+  private YarnClient yarnClient = null;
   private ApplicationReport currentApp = null;
   private boolean consolePresent;
   private String[] commandsToExecute;
@@ -1208,8 +1208,7 @@ public class ApexCli
     fs = StramClientUtils.newFileSystemInstance(conf);
     stramAgent = new StramAgent(fs, conf);
 
-    yarnClient.init(conf);
-    yarnClient.start();
+    yarnClient = StramClientUtils.createYarnClient(conf);
     LOG.debug("Yarn Client initialized and started");
     String socks = conf.get(CommonConfigurationKeysPublic.HADOOP_SOCKS_SERVER_KEY);
     if (socks != null) {
@@ -2402,6 +2401,7 @@ public class ApexCli
           LOG.warn("Cannot flush command history");
         }
       }
+      yarnClient.stop();
       System.exit(0);
     }
 

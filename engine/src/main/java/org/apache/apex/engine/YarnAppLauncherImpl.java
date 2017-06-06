@@ -24,7 +24,6 @@ import java.util.Map;
 
 import org.apache.apex.api.YarnAppLauncher;
 import org.apache.apex.engine.util.StreamingAppFactory;
-import org.apache.bval.jsr303.util.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
@@ -37,6 +36,7 @@ import com.google.common.base.Throwables;
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.client.StramAppLauncher;
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
@@ -80,7 +80,7 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
         }
       };
       ApplicationId appId = appLauncher.launchApp(appFactory);
-      return new YarnAppHandleImpl(appId);
+      return new YarnAppHandleImpl(appId, conf);
     } catch (Exception ex) {
       throw new LauncherException(ex);
     }
@@ -89,18 +89,15 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
   protected void shutdownApp(YarnAppHandleImpl app, ShutdownMode shutdownMode) throws LauncherException
   {
     if (shutdownMode == ShutdownMode.KILL) {
-      YarnClient yarnClient = YarnClient.createYarnClient();
       try {
         ApplicationId applicationId = app.appId;
-        ApplicationReport appReport = yarnClient.getApplicationReport(applicationId);
+        ApplicationReport appReport = app.yarnClient.getApplicationReport(applicationId);
         if (appReport == null) {
           throw new LauncherException("Application " + app.getApplicationId() + " not found");
         }
-        yarnClient.killApplication(applicationId);
+        app.yarnClient.killApplication(applicationId);
       } catch (YarnException | IOException e) {
         throw Throwables.propagate(e);
-      } finally {
-        IOUtils.closeQuietly(yarnClient);
       }
     } else {
       throw new UnsupportedOperationException("Orderly shutdown not supported, try kill instead");
@@ -124,13 +121,15 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
     }
   }
 
-  public class YarnAppHandleImpl implements YarnAppLauncher.YarnAppHandle
+  public class YarnAppHandleImpl implements YarnAppLauncher.YarnAppHandle, AutoCloseable
   {
     final ApplicationId appId;
+    private final YarnClient yarnClient;
 
-    public YarnAppHandleImpl(ApplicationId appId)
+    public YarnAppHandleImpl(ApplicationId appId, Configuration conf)
     {
       this.appId = appId;
+      this.yarnClient = StramClientUtils.createYarnClient(conf);
     }
 
     @Override
@@ -142,7 +141,6 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
     @Override
     public boolean isFinished()
     {
-      YarnClient yarnClient = YarnClient.createYarnClient();
       try {
         ApplicationReport appReport = yarnClient.getApplicationReport(appId);
         if (appReport != null) {
@@ -154,8 +152,6 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
         return true;
       } catch (YarnException | IOException e) {
         throw Throwables.propagate(e);
-      } finally {
-        IOUtils.closeQuietly(yarnClient);
       }
     }
 
@@ -164,8 +160,16 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
         throws org.apache.apex.api.Launcher.LauncherException
     {
       shutdownApp(this, shutdownMode);
-
     }
 
+    @Override
+    public void close() throws Exception
+    {
+      // Calling close instead of stop on YarnClient as the current close method would typically have been called as
+      // part of closeable handling by the vm and it would be appropriate to continue this pattern by calling close on
+      // YarnClient. Effectively, this should be the same as calling stop as the documentation of YarnClient close calls
+      // for the close method to be a call to stop.
+      yarnClient.close();
+    }
   }
 }
