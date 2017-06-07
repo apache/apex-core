@@ -4129,7 +4129,7 @@ public class ApexCli
 
   public static void main(final String[] args) throws Exception
   {
-    LoggerUtil.addAppenders();
+    LoggerUtil.setupMDC("client");
     final ApexCli shell = new ApexCli();
     shell.preImpersonationInit(args);
     String hadoopUserName = System.getenv("HADOOP_USER_NAME");

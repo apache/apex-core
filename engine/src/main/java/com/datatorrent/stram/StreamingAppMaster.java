@@ -37,6 +37,7 @@ import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.stram.debug.StdOutErrLog;
+import com.datatorrent.stram.util.LoggerUtil;
 import com.datatorrent.stram.util.VersionInfo;
 
 /**
@@ -56,6 +57,7 @@ public class StreamingAppMaster extends StramUtils.YarnContainerMain
    */
   public static void main(final String[] args) throws Throwable
   {
+    LoggerUtil.setupMDC("master");
     StdOutErrLog.tieSystemOutAndErrToLog();
     LOG.info("Master starting with classpath: {}", System.getProperty("java.class.path"));
 

@@ -36,7 +36,9 @@ import org.apache.log4j.spi.LoggingEvent;
 import com.google.common.collect.Maps;
 
 import com.datatorrent.api.Context;
+import com.datatorrent.stram.client.StramClientUtils;
 
+import static com.datatorrent.api.Context.DAGContext.APPLICATION_NAME;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -220,14 +222,44 @@ public class LoggerUtilTest
     assertNull(org.apache.log4j.Logger.getRootLogger().getAppender(name));
   }
 
+  @Test
+  public void testSetupMDC()
+  {
+    // The test does not test MDC properties that are passed via environment variables
+
+    String appenderName = "mdcTestAppender";
+    String service = "test";
+    String application = "my application";
+    String args = "log4j.appender.mdcTestAppender=com.datatorrent.stram.util.LoggerUtilTest$TestAppender"
+        + ",log4j.appender.mdcTestAppender.layout=org.apache.log4j.PatternLayout"
+        + ",log4j.appender.mdcTestAppender.layout.ConversionPattern=%d %d{Z} [%t] %-5p (%F:%L) - %m%n";
+
+    System.setProperty(APPLICATION_NAME.getLongName(), application);
+    LoggerUtil.setupMDC(service);
+
+    LoggerUtil.addAppenders(new String[] {appenderName }, args, ",");
+    TestAppender appender = (TestAppender)org.apache.log4j.Logger.getRootLogger().getAppender(appenderName);
+
+    logger.info(args);
+    assertEquals(service, appender.mdcProperties.get("apex.service"));
+    String node = StramClientUtils.getHostName();
+    assertEquals(node == null ? "unknown" : node, appender.mdcProperties.get("apex.node"));
+    assertEquals(application, appender.mdcProperties.get("apex.application"));
+
+    LoggerUtil.removeAppender(appenderName);
+  }
+
   public static class TestAppender extends ConsoleAppender
   {
     private String lastMessage = null;
     private Level level;
+    private Map mdcProperties;
 
     @Override
     public void append(LoggingEvent event)
     {
+      event.getMDCCopy();
+      mdcProperties = event.getProperties();
       lastMessage = event.getRenderedMessage();
       level = event.getLevel();
       super.append(event);

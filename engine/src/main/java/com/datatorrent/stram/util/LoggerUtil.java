@@ -35,12 +35,17 @@ import javax.annotation.Nullable;
 
 import org.apache.apex.log.LogFileInformation;
 
+import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.api.records.ContainerId;
+import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Category;
 import org.apache.log4j.FileAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.apache.log4j.MDC;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.spi.DefaultRepositorySelector;
 import org.apache.log4j.spi.HierarchyEventListener;
@@ -52,6 +57,9 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
+import com.datatorrent.stram.client.StramClientUtils;
+
+import static com.datatorrent.api.Context.DAGContext.APPLICATION_NAME;
 import static com.datatorrent.api.Context.DAGContext.LOGGER_APPENDER;
 
 /**
@@ -463,5 +471,34 @@ public class LoggerUtil
       names.add(((Appender)enumeration.nextElement()).getName());
     }
     return names;
+  }
+
+  /**
+   * Makes MDC properties
+   */
+  public static void setupMDC(String service)
+  {
+    MDC.put("apex.service", service);
+
+    String value = StramClientUtils.getHostName();
+    MDC.put("apex.node", value == null ? "unknown" : value);
+
+    value = System.getenv(Environment.USER.key());
+    if (value != null) {
+      MDC.put("apex.user", value);
+    }
+
+    value = System.getenv(Environment.CONTAINER_ID.name());
+    if (value != null) {
+      ContainerId containerId = ConverterUtils.toContainerId(value);
+      ApplicationId applicationId = containerId.getApplicationAttemptId().getApplicationId();
+      MDC.put("apex.containerId", containerId.toString());
+      MDC.put("apex.applicationId", applicationId.toString());
+    }
+
+    value = System.getProperty(APPLICATION_NAME.getLongName());
+    if (value != null) {
+      MDC.put("apex.application", value);
+    }
   }
 }
