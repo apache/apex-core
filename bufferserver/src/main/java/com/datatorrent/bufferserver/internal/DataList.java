@@ -32,6 +32,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.common.util.ToStringStyle;
+import org.apache.commons.lang.builder.ToStringBuilder;
+
 import com.datatorrent.bufferserver.packet.BeginWindowTuple;
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.packet.ResetWindowTuple;
@@ -55,6 +58,8 @@ import static com.google.common.collect.Sets.newHashSet;
  */
 public class DataList
 {
+  private static final Logger logger = LoggerFactory.getLogger(DataList.class);
+
   private final int MAX_COUNT_OF_INMEM_BLOCKS;
   protected final String identifier;
   private final int blockSize;
@@ -291,7 +296,12 @@ public class DataList
 
   public void notifyListeners()
   {
-    listenersNotifier.moreDataAvailable();
+    try {
+      listenersNotifier.moreDataAvailable();
+    } catch (RuntimeException e) {
+      logger.warn("{}", listenersNotifier, e);
+    }
+    logger.debug("{} notified", listenersNotifier);
   }
 
   public void setAutoFlushExecutor(final ExecutorService es)
@@ -359,6 +369,7 @@ public class DataList
 
       set.add(dl);
     }
+    listenersNotifier.run();
   }
 
   public void removeDataListener(DataListener dl)
@@ -536,7 +547,7 @@ public class DataList
   @Override
   public String toString()
   {
-    return getClass().getName() + '@' + Integer.toHexString(hashCode()) + " {" + identifier + '}';
+    return new ToStringBuilder(this, ToStringStyle.DEFAULT).append("identifier", identifier).toString();
   }
 
   /**
@@ -1123,7 +1134,7 @@ public class DataList
       final Future<?> future = this.future;
       if (future == null || future.isDone() || future.isCancelled()) {
         // Do not schedule a new task if there is an existing one that is still running or is waiting in the queue
-        this.future = autoFlushExecutor.submit(listenersNotifier);
+        this.future = autoFlushExecutor.submit(this);
       } else {
         synchronized (this) {
           if (this.future == null) {
@@ -1143,7 +1154,7 @@ public class DataList
         try {
           doesAtLeastOneListenerHaveDataToSend |= dl.addedData(false);
         } catch (RuntimeException e) {
-          logger.error("{}: removing DataListener {} due to exception", DataList.this, dl, e);
+          logger.warn("{} removing {} due to exception", this, dl, e);
           removeDataListener(dl);
           break;
         }
@@ -1159,7 +1170,7 @@ public class DataList
             return true;
           }
         } catch (RuntimeException e) {
-          logger.error("{}: removing DataListener {} due to exception", DataList.this, dl, e);
+          logger.warn("{} removing {} due to exception", this, dl, e);
           removeDataListener(dl);
           return checkIfListenersHaveDataToSendOnly();
         }
@@ -1170,6 +1181,7 @@ public class DataList
     @Override
     public void run()
     {
+      logger.debug("{} entered run", this);
       try {
         if (addedData() || checkIfListenersHaveDataToSendOnly()) {
           future = autoFlushExecutor.submit(this);
@@ -1183,11 +1195,19 @@ public class DataList
             }
           }
         }
-      } catch (Exception e) {
-        logger.error("{}", DataList.this, e);
+      } catch (RuntimeException e) {
+        logger.warn("{}", this, e);
+      } finally {
+        logger.debug("{} exiting run", this);
       }
     }
-  }
 
-  private static final Logger logger = LoggerFactory.getLogger(DataList.class);
+    @Override
+    public String toString()
+    {
+      return new ToStringBuilder(this, ToStringStyle.DEFAULT).append(DataList.this)
+          .append("future", future == null ? null : future.getClass().getSimpleName() + '@' + Integer.toHexString(System.identityHashCode(future)))
+          .append("isMoreDataAvailable", isMoreDataAvailable).toString();
+    }
+  }
 }

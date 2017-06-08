@@ -151,7 +151,7 @@ public class LogicalNode implements DataListener
   /**
    *
    */
-  public void catchUp()
+  private void catchUp()
   {
     caughtup = false;
     if (isReady()) {

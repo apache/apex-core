@@ -648,7 +648,6 @@ public class Server extends AbstractServer
         {
           final DataList dl = publisherBuffers.get(ln.getUpstream());
           if (dl != null) {
-            ln.catchUp();
             dl.addDataListener(ln);
           } else {
             logger.error("Disconnecting {} with no matching data list.", this);
