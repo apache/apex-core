@@ -52,9 +52,13 @@ public class DAGSetupPluginManager
 
   private final Table<DAGSetupEvent.Type, DAGSetupPlugin, EventHandler<DAGSetupEvent>> table = HashBasedTable.create();
 
-  private void loadVisitors(Configuration conf)
+  private DAGSetupPluginManager(Configuration conf)
   {
     this.conf = conf;
+  }
+
+  private void loadVisitors()
+  {
     if (!plugins.isEmpty()) {
       return;
     }
@@ -119,6 +123,7 @@ public class DAGSetupPluginManager
 
   public void setup(DAG dag)
   {
+    loadVisitors();
     for (DAGSetupPlugin plugin : plugins) {
       DAGSetupPlugin.Context context = new DefaultDAGSetupPluginContext(dag, conf, plugin);
       plugin.setup(context);
@@ -145,8 +150,7 @@ public class DAGSetupPluginManager
 
   public static synchronized DAGSetupPluginManager getInstance(Configuration conf)
   {
-    DAGSetupPluginManager manager = new DAGSetupPluginManager();
-    manager.loadVisitors(conf);
+    DAGSetupPluginManager manager = new DAGSetupPluginManager(conf);
     return manager;
   }
 }
