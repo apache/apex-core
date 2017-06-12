@@ -312,7 +312,7 @@ public class StramAgent extends FSAgent
 
   public String getAppsRoot()
   {
-    return (defaultStramRoot == null) ? (StramClientUtils.getDTDFSRootDir(fileSystem, conf) + "/" + StramClientUtils.SUBDIR_APPS) : defaultStramRoot;
+    return (defaultStramRoot == null) ? (StramClientUtils.getApexDFSRootDir(fileSystem, conf) + "/" + StramClientUtils.SUBDIR_APPS) : defaultStramRoot;
   }
 
   public String getAppPath(String appId)

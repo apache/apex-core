@@ -273,7 +273,7 @@ public class StramAppLauncher
     if (originalAppId == null) {
       throw new AssertionError("Need original app id if launching without apa or appjar");
     }
-    Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
+    Path appsBasePath = new Path(StramClientUtils.getApexDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
     Path origAppPath = new Path(appsBasePath, originalAppId);
     StringWriter writer = new StringWriter();
     try (FSDataInputStream in = fs.open(new Path(origAppPath, "meta.json"))) {
@@ -550,7 +550,7 @@ public class StramAppLauncher
       if (keytab != null) {
         Path localKeyTabPath = new Path(keytab);
         try (FileSystem fs = StramClientUtils.newFileSystemInstance(conf)) {
-          Path destPath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), localKeyTabPath.getName());
+          Path destPath = new Path(StramClientUtils.getApexDFSRootDir(fs, conf), localKeyTabPath.getName());
           if (!fs.exists(destPath)) {
             fs.copyFromLocalFile(false, false, localKeyTabPath, destPath);
           }

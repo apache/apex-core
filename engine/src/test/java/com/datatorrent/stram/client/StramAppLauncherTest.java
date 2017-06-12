@@ -60,6 +60,7 @@ public class StramAppLauncherTest
     File workspace;
     File sourceKeytab;
     File dfsDir;
+    File apexDfsDir;
 
     static final String principal = "username/group@domain";
 
@@ -82,6 +83,7 @@ public class StramAppLauncherTest
           throw new RuntimeException(e);
         }
         dfsDir = new File(workspace, "dst");
+        apexDfsDir = new File(workspace, "adst");
         suppress(method(StramAppLauncher.class, "init"));
       }
 
@@ -136,6 +138,41 @@ public class StramAppLauncherTest
       Assert.assertEquals("Token refresh principal", principal, dag.getValue(LogicalPlan.PRINCIPAL));
       Assert.assertEquals("Token refresh keytab path", new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(),
           new File(dfsDir, sourceKeytab.getName()).getAbsolutePath()).toString(), dag.getValue(LogicalPlan.KEY_TAB_FILE));
+    }
+
+    @Test
+    public void testUserLoginTokenRefreshKeytabWithApexDFS() throws Exception
+    {
+      Configuration conf = new Configuration(false);
+      /*
+      spy(StramUserLogin.class);
+      when(StramUserLogin.getPrincipal()).thenReturn(principal);
+      when(StramUserLogin.getKeytab()).thenReturn(sourceKeytab.getPath());
+      */
+      StramUserLogin.authenticate(principal, sourceKeytab.getPath());
+      testDFSTokenPathWithApexDFS(conf);
+    }
+
+    @Test
+    public void testAuthPropTokenRefreshKeytabWithApexDFS() throws Exception
+    {
+      Configuration conf = new Configuration(false);
+      conf.set(StramUserLogin.DT_AUTH_PRINCIPAL, principal);
+      conf.set(StramUserLogin.DT_AUTH_KEYTAB, sourceKeytab.getPath());
+      StramUserLogin.authenticate(conf);
+      testDFSTokenPathWithApexDFS(conf);
+    }
+
+    private void testDFSTokenPathWithApexDFS(Configuration conf) throws Exception
+    {
+      FileSystem fs = FileSystem.newInstance(conf);
+      conf.set(StramClientUtils.DT_DFS_ROOT_DIR, dfsDir.getAbsolutePath());
+      conf.set(StramClientUtils.APEX_APP_DFS_ROOT_DIR, apexDfsDir.getAbsolutePath());
+      conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, true); // needs to be true for APEX_APP_DFS_ROOT_DIR to be honored
+      LogicalPlan dag = applyTokenRefreshKeytab(fs, conf);
+      Assert.assertEquals("Token refresh principal", principal, dag.getValue(LogicalPlan.PRINCIPAL));
+      Assert.assertEquals("Token refresh keytab path", new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(),
+          new File(apexDfsDir, sourceKeytab.getName()).getAbsolutePath()).toString(), dag.getValue(LogicalPlan.KEY_TAB_FILE));
     }
 
     private LogicalPlan applyTokenRefreshKeytab(FileSystem fs, Configuration conf) throws Exception

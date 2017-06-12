@@ -51,6 +51,7 @@ public class StramUserLogin
   public static final String DT_AUTH_PREFIX = StreamingApplication.DT_PREFIX + "authentication.";
   public static final String DT_AUTH_PRINCIPAL = DT_AUTH_PREFIX + "principal";
   public static final String DT_AUTH_KEYTAB = DT_AUTH_PREFIX + "keytab";
+  public static final String DT_APP_PATH_IMPERSONATED = DT_AUTH_PREFIX + "impersonation.path.enable";
   private static String principal;
   private static String keytab;
 

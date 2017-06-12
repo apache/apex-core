@@ -103,6 +103,7 @@ public class StramClientUtils
 {
   public static final String DT_VERSION = StreamingApplication.DT_PREFIX + "version";
   public static final String DT_DFS_ROOT_DIR = StreamingApplication.DT_PREFIX + "dfsRootDirectory";
+  public static final String APEX_APP_DFS_ROOT_DIR = StreamingApplication.APEX_PREFIX + "app.dfsRootDirectory";
   public static final String DT_DFS_USER_NAME = "%USER_NAME%";
   public static final String DT_CONFIG_STATUS = StreamingApplication.DT_PREFIX + "configStatus";
   public static final String SUBDIR_APPS = "apps";
@@ -519,28 +520,94 @@ public class StramClientUtils
     }
   }
 
+  /**
+   * Helper function used by both getApexDFSRootDir and getDTDFSRootDir to process dfsRootDir
+   *
+   * @param fs   FileSystem object for HDFS file system
+   * @param conf  Configuration object
+   * @param dfsRootDir  value of dt.dfsRootDir or apex.app.dfsRootDir
+   * @param userShortName  current user short name (either login user or current user depending on impersonation settings)
+   * @param prependHomeDir  prepend user's home dir if dfsRootDir is relative path
+
+   * @return
+   */
+  private static Path evalDFSRootDir(FileSystem fs, Configuration conf, String dfsRootDir, String userShortName,
+      boolean prependHomeDir)
+  {
+    try {
+      if (userShortName != null && dfsRootDir.contains(DT_DFS_USER_NAME)) {
+        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, userShortName);
+        conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
+      }
+      URI uri = new URI(dfsRootDir);
+      if (uri.isAbsolute()) {
+        return new Path(uri);
+      }
+      if (userShortName != null && prependHomeDir && dfsRootDir.startsWith("/") == false) {
+        dfsRootDir = "/user/" + userShortName + "/" + dfsRootDir;
+      }
+    } catch (URISyntaxException ex) {
+      LOG.warn("{} is not a valid URI. Using the default filesystem to construct the path", dfsRootDir, ex);
+    }
+    return new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), dfsRootDir);
+  }
+
+  private static String getDefaultRootFolder()
+  {
+    return "datatorrent";
+  }
+
+  /**
+   * This gets the DFS Root dir to be used at runtime by Apex applications as per the following logic:
+   * Value of apex.app.dfsRootDirectory is referred to as Apex-root-dir below.
+   * A "user" refers to either impersonating or impersonated user:
+   *    If apex.application.path.impersonated is true then use impersonated user else impersonating user.
+   *
+   * <ul>
+   * <li> if Apex-root-dir is blank then just call getDTDFSRootDir to get the old behavior
+   * <li> if Apex-root-dir value has %USER_NAME% in the string then replace it with the user's name, else use the absolute path as is.
+   * <li> if Apex-root-dir value is a relative path then append it to the user's home directory.
+   * </ul>
+   *
+   * @param fs FileSystem object for HDFS file system
+   * @param conf  Configuration object
+   * @return
+   * @throws IOException
+   */
+  public static Path getApexDFSRootDir(FileSystem fs, Configuration conf)
+  {
+    String apexDfsRootDir = conf.get(APEX_APP_DFS_ROOT_DIR);
+    boolean useImpersonated = conf.getBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, false);
+    String userShortName = null;
+    if (useImpersonated) {
+      try {
+        userShortName = UserGroupInformation.getCurrentUser().getShortUserName();
+      } catch (IOException ex) {
+        LOG.warn("Error getting current/login user name {}", apexDfsRootDir, ex);
+      }
+    }
+    if (!useImpersonated || userShortName == null) {
+      return getDTDFSRootDir(fs, conf);
+    }
+    if (StringUtils.isBlank(apexDfsRootDir)) {
+      apexDfsRootDir = getDefaultRootFolder();
+    }
+    return evalDFSRootDir(fs, conf, apexDfsRootDir, userShortName, true);
+  }
+
   public static Path getDTDFSRootDir(FileSystem fs, Configuration conf)
   {
     String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
     if (StringUtils.isBlank(dfsRootDir)) {
-      return new Path(fs.getHomeDirectory(), "datatorrent");
-    } else {
-      try {
-        if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
-          dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
-          conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
-        }
-        URI uri = new URI(dfsRootDir);
-        if (uri.isAbsolute()) {
-          return new Path(uri);
-        }
-      } catch (IOException ex) {
-        LOG.warn("Error getting user login name {}", dfsRootDir, ex);
-      } catch (URISyntaxException ex) {
-        LOG.warn("{} is not a valid URI. Using the default filesystem to construct the path", dfsRootDir, ex);
-      }
-      return new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), dfsRootDir);
+      return new Path(fs.getHomeDirectory(), getDefaultRootFolder());
     }
+    String userShortName = null;
+    try {
+      userShortName = UserGroupInformation.getLoginUser().getShortUserName();
+    } catch (IOException ex) {
+      LOG.warn("Error getting user login name {}", dfsRootDir, ex);
+    }
+    return evalDFSRootDir(fs, conf, dfsRootDir, userShortName, false);
   }
 
   public static Path getDTDFSConfigDir(FileSystem fs, Configuration conf)
@@ -828,7 +895,7 @@ public class StramClientUtils
     List<ApplicationReport> result = new ArrayList<>();
     List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE, StramClient.YARN_APPLICATION_TYPE_DEPRECATED),
         EnumSet.of(YarnApplicationState.FAILED, YarnApplicationState.FINISHED, YarnApplicationState.KILLED));
-    Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
+    Path appsBasePath = new Path(StramClientUtils.getApexDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
     for (ApplicationReport ar : applications) {
       long finishTime = ar.getFinishTime();
       if (finishTime < finishedBefore) {

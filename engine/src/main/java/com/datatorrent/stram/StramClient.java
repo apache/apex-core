@@ -446,7 +446,7 @@ public class StramClient
 
     // copy required jar files to dfs, to be localized for containers
     try (FileSystem fs = StramClientUtils.newFileSystemInstance(conf)) {
-      Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
+      Path appsBasePath = new Path(StramClientUtils.getApexDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
       Path appPath;
       String configuredAppPath = dag.getValue(LogicalPlan.APPLICATION_PATH);
       if (configuredAppPath == null) {
