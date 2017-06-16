@@ -455,6 +455,16 @@ public class StramClient
       }
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[]{}));
 
+      String customKeystoreConfig = conf.get(StramClientUtils.CUSTOM_SSL_KEYSTORE_CONFIG, null);
+      String customKeystorePath = conf.get(StramClientUtils.CUSTOM_SSL_KEYSTORE_PATH, null);
+      if (customKeystoreConfig != null && customKeystorePath != null) {
+        String[] customSSLConfArr = {customKeystoreConfig, customKeystorePath};
+        String customSSLFileConf = copyFromLocal(fs, appPath, customSSLConfArr);
+        String configFileName = (new java.io.File(customKeystoreConfig)).getName();
+        dag.getAttributes().put(Context.DAGContext.STRAM_HTTP_CUSTOM_CONFIG, configFileName);
+        LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, customSSLFileConf, localResources, fs);
+      }
+
       LOG.info("libjars: {}", libJarsCsv);
       dag.getAttributes().put(Context.DAGContext.LIBRARY_JARS, libJarsCsv);
       LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, libJarsCsv, localResources, fs);
