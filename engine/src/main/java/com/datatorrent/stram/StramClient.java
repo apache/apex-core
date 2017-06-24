@@ -126,6 +126,8 @@ public class StramClient
   private String files;
   private LinkedHashSet<String> resources;
   private Set<String> tags = new HashSet<>();
+  private String customKeystoreConfig;
+  private String customKeystorePath;
 
   // platform dependencies that are not part of Hadoop and need to be deployed,
   // entry below will cause containing jar file from client to be copied to cluster
@@ -455,6 +457,14 @@ public class StramClient
       }
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[]{}));
 
+      if (UserGroupInformation.isSecurityEnabled() && customKeystoreConfig != null && customKeystorePath != null) {
+        String[] customSSLConfArr = {customKeystoreConfig, customKeystorePath};
+        String customSSLFileConf = copyFromLocal(fs, appPath, customSSLConfArr);
+        String configFileName = (new java.io.File(customKeystoreConfig)).getName();
+        dag.getAttributes().put(Context.DAGContext.STRAM_HTTP_CUSTOM_CONFIG, configFileName);
+        LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, customSSLFileConf, localResources, fs);
+      }
+
       LOG.info("libjars: {}", libJarsCsv);
       dag.getAttributes().put(Context.DAGContext.LIBRARY_JARS, libJarsCsv);
       LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, libJarsCsv, localResources, fs);
@@ -725,5 +735,15 @@ public class StramClient
   public void setFiles(String files)
   {
     this.files = files;
+  }
+
+  public void setCustomKeystoreConfig(String customKeystoreConfig)
+  {
+    this.customKeystoreConfig = customKeystoreConfig;
+  }
+
+  public void setCustomKeystorePath(String customKeystorePath)
+  {
+    this.customKeystorePath = customKeystorePath;
   }
 }
