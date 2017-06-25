@@ -79,6 +79,7 @@ import com.google.common.collect.Lists;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.SSLConfig;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.BasicContainerOptConfigurator;
@@ -454,6 +455,7 @@ public class StramClient
         appPath = new Path(configuredAppPath);
       }
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[]{}));
+      setupSSLResources(dag.getValue(Context.DAGContext.SSL_CONFIG), fs, appPath, localResources);
 
       LOG.info("libjars: {}", libJarsCsv);
       dag.getAttributes().put(Context.DAGContext.LIBRARY_JARS, libJarsCsv);
@@ -641,6 +643,37 @@ public class StramClient
         //LOG.info("Full submission context: " + appContext);
       }
       yarnClient.submitApplication(appContext);
+    }
+  }
+
+  /**
+   * Process SSLConfig object to set up SSL resources
+   *
+   * @param sslConfig  SSLConfig object derived from SSL_CONFIG attribute
+   * @param fs    HDFS file system object
+   * @param appPath    application path for the current application
+   * @param localResources  Local resources to modify
+   * @throws IOException
+   */
+  private void setupSSLResources(SSLConfig sslConfig, FileSystem fs, Path appPath, Map<String, LocalResource> localResources) throws IOException
+  {
+    if (sslConfig != null) {
+      String nodeLocalConfig = sslConfig.getConfigPath();
+
+      if (StringUtils.isNotEmpty(nodeLocalConfig)) {
+        // all others should be empty
+        if (StringUtils.isNotEmpty(sslConfig.getKeyStorePath()) || StringUtils.isNotEmpty(sslConfig.getKeyStorePassword())
+            || StringUtils.isNotEmpty(sslConfig.getKeyStoreKeyPassword())) {
+          throw new IllegalArgumentException("Cannot specify both nodeLocalConfigPath and other parameters in " + sslConfig);
+        }
+        // pass thru: Stram will implement reading the node local SSL config file
+      } else {
+        // need to package and copy the keyStore file
+        String keystorePath = sslConfig.getKeyStorePath();
+        String[] sslFileArray = {keystorePath};
+        String sslFileNames = copyFromLocal(fs, appPath, sslFileArray);
+        LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, sslFileNames, localResources, fs);
+      }
     }
   }
 

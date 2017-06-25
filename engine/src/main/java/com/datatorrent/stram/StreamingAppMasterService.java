@@ -85,13 +85,16 @@ import org.apache.hadoop.yarn.util.Records;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
+import org.apache.hadoop.yarn.webapp.util.WebAppUtils;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.AutoMetric;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.DAGContext;
+import com.datatorrent.api.Context.SSLConfig;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StringCodec;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
@@ -130,6 +133,11 @@ public class StreamingAppMasterService extends CompositeService
   private static final long DELEGATION_TOKEN_RENEW_INTERVAL = Long.MAX_VALUE / 2;
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
   private static final int UPDATE_NODE_REPORTS_INTERVAL = 10 * 60 * 1000;
+  /**
+   * Config property name for the SSL keystore location used by Hadoop webapps.
+   * This should be replaced when a constant is defined there
+   */
+  private static final String SSL_SERVER_KEYSTORE_LOCATION = "ssl.server.keystore.location";
   private AMRMClient<ContainerRequest> amRmClient;
   private NMClientAsync nmClient;
   private LogicalPlan dag;
@@ -632,10 +640,8 @@ public class StreamingAppMasterService extends CompositeService
         config = new Configuration(config);
         config.set("hadoop.http.filter.initializers", StramWSFilterInitializer.class.getCanonicalName());
       }
-      String customSSLConfig = dag.getValue(LogicalPlan.STRAM_HTTP_CUSTOM_CONFIG);
-      if (StringUtils.isNotEmpty(customSSLConfig)) {
-        config.addResource(new Path(customSSLConfig));
-      }
+      // update config with appropriate SSL params if passed via the dag attribute SSL_CONFIG
+      addSSLConfigResource(config);
       WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(config).start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
       appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
@@ -646,6 +652,31 @@ public class StreamingAppMasterService extends CompositeService
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);
     } catch (Exception e) {
       LOG.error("Webapps failed to start. Ignoring for now:", e);
+    }
+  }
+
+  /**
+   * Modify config object by adding SSL related parameters into a resource for WebApp's use
+   *
+   * @param config  Configuration to be modified
+   */
+  private void addSSLConfigResource(Configuration config)
+  {
+    SSLConfig sslConfig = dag.getValue(Context.DAGContext.SSL_CONFIG);
+    if (sslConfig != null) {
+      String nodeLocalConfig = sslConfig.getConfigPath();
+      if (StringUtils.isNotEmpty(nodeLocalConfig)) {
+        config.addResource(new Path(nodeLocalConfig));
+      } else {
+        // create a configuration object and add it as a resource
+        Configuration sslConfigResource = new Configuration(false);
+
+        final String SSL_CONFIG_LONG_NAME = Context.DAGContext.SSL_CONFIG.getLongName();
+        sslConfigResource.set(SSL_SERVER_KEYSTORE_LOCATION, new Path(sslConfig.getKeyStorePath()).getName(), SSL_CONFIG_LONG_NAME);
+        sslConfigResource.set(WebAppUtils.WEB_APP_KEYSTORE_PASSWORD_KEY, sslConfig.getKeyStorePassword(), SSL_CONFIG_LONG_NAME);
+        sslConfigResource.set(WebAppUtils.WEB_APP_KEY_PASSWORD_KEY, sslConfig.getKeyStoreKeyPassword(), SSL_CONFIG_LONG_NAME);
+        config.addResource(sslConfigResource);
+      }
     }
   }
 

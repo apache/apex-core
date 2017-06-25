@@ -23,6 +23,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.classification.InterfaceStability.Evolving;
+
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StringCodec.Class2String;
@@ -536,14 +538,89 @@ public interface Context
     Attribute<String> LIBRARY_JARS = new Attribute<>(String2String.getInstance());
 
     /**
-     * This configuration file can be used to over-ride the default Yarn configuration.
-     * For example, this can be used to provide custom SSL parameters in the configuration.
-     * Note that this file needs to be present on the node.
+     * SSL configuration string property. This is used to specify SSL parameters for
+     * the Stram's Web services.
      */
-    Attribute<String> STRAM_HTTP_CUSTOM_CONFIG = new Attribute<>(String2String.getInstance());
+    Attribute<SSLConfig> SSL_CONFIG = new Attribute<>(JsonStringCodec.getInstance(SSLConfig.class));
 
     @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeMap.AttributeInitializer.initialize(DAGContext.class);
+  }
+
+  @Evolving
+  /**
+   * Wrapper class to store SSL configuration parameters specified using the SSL-CONFIG attribute.
+   */
+  public static class SSLConfig implements Serializable
+  {
+
+    private static final long serialVersionUID = -3491488868092056793L;
+
+    /**
+     * Full path of the SSL keystore file on the client machine
+     */
+    private String keyStorePath;
+
+    /**
+     * Password for the keystore file
+     */
+    private String keyStorePassword;
+
+    /**
+     * Key password for the key in the keystore file
+     */
+    private String keyStoreKeyPassword;
+
+    /**
+     * Full path of SSL configuration file on the target node if all SSL files are already present there
+     */
+    private String configPath;
+
+    public String getKeyStorePath()
+    {
+      return keyStorePath;
+    }
+
+    public void setKeyStorePath(String keyStorePath)
+    {
+      this.keyStorePath = keyStorePath;
+    }
+
+    public String getKeyStorePassword()
+    {
+      return keyStorePassword;
+    }
+
+    public void setKeyStorePassword(String keyStorePassword)
+    {
+      this.keyStorePassword = keyStorePassword;
+    }
+
+    public String getKeyStoreKeyPassword()
+    {
+      return keyStoreKeyPassword;
+    }
+
+    public void setKeyStoreKeyPassword(String keyStoreKeyPassword)
+    {
+      this.keyStoreKeyPassword = keyStoreKeyPassword;
+    }
+
+    public String getConfigPath()
+    {
+      return configPath;
+    }
+
+    public void setConfigPath(String nodeLocalPath)
+    {
+      this.configPath = nodeLocalPath;
+    }
+
+    @Override
+    public String toString()
+    {
+      return "SSLConfig [keyStorePath=" + keyStorePath + ", configPath=" + configPath + "]";
+    }
   }
 
   long serialVersionUID = AttributeMap.AttributeInitializer.initialize(Context.class);
