@@ -1,19 +1,21 @@
 Security
 ==========
 
-Applications built on Apex run as native YARN applications on Hadoop. The security framework and apparatus in Hadoop apply to the applications. The default security mechanism in Hadoop is Kerberos.
+Applications built on Apex run as native YARN applications on Hadoop. The security framework and apparatus in Hadoop apply to the applications. Both authentication and SSL aspects of the security framework are covered here.
 
-Kerberos Authentication
------------------------
+# Authentication
+
+The default authentication mechanism in Hadoop is Kerberos.
+
+## Kerberos Authentication
 
 Kerberos is a ticket based authentication system that provides authentication in a distributed environment where authentication is needed between multiple users, hosts and services. It is the de-facto authentication mechanism supported in Hadoop. To use Kerberos authentication, the Hadoop installation must first be configured for secure mode with Kerberos. Please refer to the administration guide of your Hadoop distribution on how to do that. Once Hadoop is configured, some configuration is needed on the Apex side as well.
 
-Configuring security
----------------------
+## Configuring Kerberos
 
 The Apex command line interface (CLI) program, `apex`, is used to launch applications on the Hadoop cluster along with performing various other operations and administrative tasks on the applications. In a secure cluster additional configuration is needed for the CLI program `apex`.
 
-###CLI Configuration
+### CLI Configuration
 
 When Kerberos security is enabled in Hadoop, a Kerberos ticket granting ticket (TGT) or the Kerberos credentials of the user are needed by the CLI program `apex` to authenticate with Hadoop for any operation. Kerberos credentials are composed of a principal and either a _keytab_ or a password. For security and operational reasons only keytabs are supported in Hadoop and by extension in Apex platform. When user credentials are specified, all operations including launching application are performed as that user.
 
@@ -281,7 +283,58 @@ How does the client get the web service token in the first place? The client wil
 
 ![](images/security/image03.png)
 
-Conclusion
------------
+# SSL Configuration
 
-We looked at the different security configuration options that are available in Apex, saw the different security requirements for distributed applications in a secure Hadoop environment in detail and looked at how the various security mechanisms in Apex solves this.
+The STRAM Web services component described above can be configured with SSL to enable HTTPS. To achieve this you need to enable SSL in YARN as described [here](http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SecureMode.html#Data_Encryption_on_HTTP), specifically set `yarn.http.policy` to `HTTPS_ONLY` in `yarn-site.xml`. You also need to make keystore and other SSL material available to the Web services component for HTTPS to work. There are 3 approaches to achieve this:
+
+#### Approach 1: Using Default Hadoop-YARN SSL
+If the default Hadoop-YARN SSL material is uniformly available in the local file system of each node in your Hadoop cluster, STRAM can use it provided the STRAM process has access to the files. Use your Hadoop/YARN configuration procedures to enable SSL in YARN to use this approach, so all YARN applications including Apex applications will be SSL-enabled. However if the SSL material is not present, or not accessible to the STRAM process (for example, if STRAM is not running as `root`), then you will have to use one of the following two approaches.
+
+#### Approach 2: Pre-installing SSL Files on Hadoop Cluster Nodes
+With this approach, your own SSL files are pre-installed on each node in the Hadoop cluster, so the STRAM can access them regardless of the node it runs on. Each node will have 2 files: `ssl-server.xml` is the master SSL configuration file and the SSL keystore file (a JKS file) whose name and location are specified in `ssl-server.xml`. Decide on a location for each of these files and follow the steps below.
+
+- Create an SSL keystore as described [here](http://docs.oracle.com/cd/E19509-01/820-3503/ggfen/index.html). Assume this file is named `myapex-keystore.jks` and will reside at `/opt/apex/keystore/` on each Hadoop node and the keystore password is `storepass1` and the keystore key-password is `keypass2`. 
+
+- Create the SSL configuration file with the following content. Typically the file is called `ssl-server.xml` but you can use any other name.
+
+```
+<configuration>
+  <property>
+    <name>ssl.server.keystore.location</name>
+    <value>/opt/apex/keystore/myapex-keystore.jks</value>
+    <description></description>
+  </property>
+  <property>
+    <name>ssl.server.keystore.keypassword</name>
+    <value>keypass2</value>
+    <description></description>
+  </property>
+  <property>
+    <name>ssl.server.keystore.password</name>
+    <value>storepass1</value>
+    <description></description>
+  </property>
+</configuration>
+```
+
+Let's assume this file will reside on each node as `/opt/apex/sslConfig/my-apex-ssl-server.xml` .
+
+- Copy the keystore file and the SSL configuration file on each Hadoop node to their designated locations and make sure they are readable by your Apex application.
+
+- Using the Apex CLI, pass the SSL configuration file location to your Apex application using the SSL_CONFIG attribute as follows:
+```
+launch -Ddt.attr.SSL_CONFIG="{\"configPath\":\"/opt/apex/sslConfig/my-apex-ssl-server.xml\"}"  <apa file>
+```
+
+- Alternatively you can use configuration files to supply the value of `dt.attr.SSL_CONFIG` attribute as described [here](http://apex.apache.org/docs/apex/application_packages/#application-packages)
+
+#### Approach 3: Using Apex CLI to Copy the Keystore
+If you cannot pre-install the SSL files on all your cluster nodes, you can use the SSL_CONFIG attribute in such a way that Apex CLI copies the keystore file from the client node to the server node and also passes on the keystore password values to the STRAM. The keystore file needs to be accessible on the Apex CLI machine so Apex CLI can copy it. Let's assume this location is `/opt/apexCli/ssl/myapex-keystore.jks`. Use the Apex CLI launch command as follows:
+```
+launch -Ddt.attr.SSL_CONFIG="{\"keyStorePath\":\"/opt/apexCli/ssl/myapex-keystore.jks\",\"keyStorePassword\":\"storepass1\",\"keyStoreKeyPassword\":\"keypass2\"}"  <apa file>
+```
+
+Apec CLI will copy the keystore file `/opt/apexCli/ssl/myapex-keystore.jks` to the destination STRAM node and also pass on the keystore password values to the STRAM. As mentioned above, you can also use configuration files to supply the value of `dt.attr.SSL_CONFIG`.
+
+#### Dependencies
+The use of the attribute `dt.attr.SSL_CONFIG` described in the last 2 approaches is dependent on enhancements made in YARN (https://issues.apache.org/jira/browse/YARN-6457) and Apex (https://issues.apache.org/jira/browse/APEXCORE-712) so make sure your Hadoop and Apex versions have those enhancements included.
