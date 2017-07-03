@@ -209,6 +209,38 @@ For this feature to work, additional configuration settings are needed in Hadoop
 </property>
 ```
 
+####Application Root Directory under HDFS
+
+A running Apex application uses a 'root' directory under HDFS where runtime artifacts are saved or read from. For example, with default configuration an Apex application 
+would use the HDFS path `/user/dtadmin/datatorrent` as the application root directory. If the application's Hadoop assigned application ID is `application_1487803614053_10222` 
+then the full HDFS path for saving and reading application package contents,  events, checkpoint and recovery data is 
+`/user/dtadmin/datatorrent/apps/application_1487803614053_10222`.
+
+This root directory determination involves using the 'current' user, and in case of impersonation Apex treats either the impersonating user or the impersonated 
+user as the 'current' user depending on the value of the configuration propery `dt.authentication.impersonation.path.enable`. You should set its value to `true` to 
+treat the impersonated user as the current user, or `false` (the default value) to treat the impersonating user as the current user.
+
+Apex also uses the configuration property `apex.app.dfsRootDirectory` to determine the application root directory when `dt.authentication.impersonation.path.enable`
+is set to `true` i.e. treating the impersonated user as the 'current' user. When `dt.authentication.impersonation.path.enable` is set to `false`, Apex will use
+the configuration property `dt.dfsRootDirectory` to determine the application root directory.
+
+As an example, let's assume the following values:
+
+- `apex.app.dfsRootDirectory` is set to `/user/%USER_NAME%/apex`.
+
+- `dt.dfsRootDirectory` is set to `/user/%USER_NAME%/datatorrent`.
+
+
+Also assume the impersonating user is `apexadmin` and the impersonated user is `peter` when the application is launched. In this scenario, when
+`dt.authentication.impersonation.path.enable` is set to `true`, the application root directory is `/user/peter/apex`. When it is set to `false`, the application
+root directory is `/user/apexadmin/datatorrent`. As you can see, Apex replaces the string `%USER_NAME%` with the 'current' user as described above. If you do not use
+an absolute path (i.e. path starting with `/`) as the value of `apex.app.dfsRootDirectory` then the evaluated path is prepended with the current user's home directory.
+For example, when the value of `apex.app.dfsRootDirectory` is set to `apex/%USER_NAME%/myDir` and `dt.authentication.impersonation.path.enable` is set to `true` then
+the application root directory in the above example is `/user/peter/apex/peter/myDir`.
+
+All of the configuration properties mentioned above can be set using any one of the methods mentioned [here](application_packages/#adding-configuration-properties).
+For example, you can use the `dt-site.xml` file, or use the `-D` option in the Apex CLI launch command as described [here](application_packages/#launching-an-application-package).
+
 Security architecture
 ----------------------
 
@@ -323,18 +355,18 @@ Let's assume this file will reside on each node as `/opt/apex/sslConfig/my-apex-
 
 - Using the Apex CLI, pass the SSL configuration file location to your Apex application using the SSL_CONFIG attribute as follows:
 ```
-launch -Ddt.attr.SSL_CONFIG="{\"configPath\":\"/opt/apex/sslConfig/my-apex-ssl-server.xml\"}"  <apa file>
+launch -Dapex.attr.SSL_CONFIG="{\"configPath\":\"/opt/apex/sslConfig/my-apex-ssl-server.xml\"}"  <apa file>
 ```
 
-- Alternatively you can use configuration files to supply the value of `dt.attr.SSL_CONFIG` attribute as described [here](http://apex.apache.org/docs/apex/application_packages/#application-packages)
+- Alternatively you can use configuration files to supply the value of `apex.attr.SSL_CONFIG` attribute as described [here](http://apex.apache.org/docs/apex/application_packages/#application-packages)
 
 #### Approach 3: Using Apex CLI to Copy the Keystore
 If you cannot pre-install the SSL files on all your cluster nodes, you can use the SSL_CONFIG attribute in such a way that Apex CLI copies the keystore file from the client node to the server node and also passes on the keystore password values to the STRAM. The keystore file needs to be accessible on the Apex CLI machine so Apex CLI can copy it. Let's assume this location is `/opt/apexCli/ssl/myapex-keystore.jks`. Use the Apex CLI launch command as follows:
 ```
-launch -Ddt.attr.SSL_CONFIG="{\"keyStorePath\":\"/opt/apexCli/ssl/myapex-keystore.jks\",\"keyStorePassword\":\"storepass1\",\"keyStoreKeyPassword\":\"keypass2\"}"  <apa file>
+launch -Dapex.attr.SSL_CONFIG="{\"keyStorePath\":\"/opt/apexCli/ssl/myapex-keystore.jks\",\"keyStorePassword\":\"storepass1\",\"keyStoreKeyPassword\":\"keypass2\"}"  <apa file>
 ```
 
-Apec CLI will copy the keystore file `/opt/apexCli/ssl/myapex-keystore.jks` to the destination STRAM node and also pass on the keystore password values to the STRAM. As mentioned above, you can also use configuration files to supply the value of `dt.attr.SSL_CONFIG`.
+Apec CLI will copy the keystore file `/opt/apexCli/ssl/myapex-keystore.jks` to the destination STRAM node and also pass on the keystore password values to the STRAM. As mentioned above, you can also use configuration files to supply the value of `apex.attr.SSL_CONFIG`.
 
 #### Dependencies
-The use of the attribute `dt.attr.SSL_CONFIG` described in the last 2 approaches is dependent on enhancements made in YARN (https://issues.apache.org/jira/browse/YARN-6457) and Apex (https://issues.apache.org/jira/browse/APEXCORE-712) so make sure your Hadoop and Apex versions have those enhancements included.
+The use of the attribute `apex.attr.SSL_CONFIG` described in the last 2 approaches is dependent on an enhancement made in YARN (https://issues.apache.org/jira/browse/YARN-6457), so make sure your Hadoop version has the enhancement included.
