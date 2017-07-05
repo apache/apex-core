@@ -26,6 +26,7 @@
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
     <version>18</version>
+    <relativePath/>
   </parent>
 
   <groupId>org.apache.apex</groupId>
@@ -48,6 +49,54 @@
       <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
     </license>
   </licenses>
+
+  <scm>
+    <connection>scm:git:https://github.com/apache/apex-core.git</connection>
+    <developerConnection>scm:git:[fetch=]https://github.com/apache/apex-core.git[push=]https://git-wip-us.apache.org/repos/asf/apex-core.git</developerConnection>
+    <url>https://github.com/apache/apex-core.git</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <issueManagement>
+    <system>jira</system>
+    <url>https://issues.apache.org/jira/projects/APEXCORE</url>
+  </issueManagement>
+
+  <mailingLists>
+    <mailingList>
+      <name>Apex Dev</name>
+      <subscribe>dev-subscribe@apex.apache.org</subscribe>
+      <unsubscribe>dev-unsubscribe@apex.apache.org</unsubscribe>
+      <post>dev@apex.apache.org</post>
+      <archive>https://lists.apache.org/list.html?dev@apex.apache.org</archive>
+      <otherArchives>
+        <otherArchive>https://s.apache.org/apex-dev</otherArchive>
+        <otherArchive>https://mail-archives.apache.org/mod_mbox/apex-dev/</otherArchive>
+      </otherArchives>
+    </mailingList>
+    <mailingList>
+      <name>Apex User</name>
+      <subscribe>users-subscribe@apex.apache.org</subscribe>
+      <unsubscribe>users-unsubscribe@apex.apache.org</unsubscribe>
+      <post>users@apex.apache.org</post>
+      <archive>https://lists.apache.org/list.html?users@apex.apache.org</archive>
+      <otherArchives>
+        <otherArchive>https://s.apache.org/apex-users</otherArchive>
+        <otherArchive>https://mail-archives.apache.org/mod_mbox/apex-users/</otherArchive>
+      </otherArchives>
+    </mailingList>
+    <mailingList>
+      <name>Apex Commits</name>
+      <subscribe>commits-subscribe@apex.apache.org</subscribe>
+      <unsubscribe>commits-unsubscribe@apex.apache.org</unsubscribe>
+      <post>commits@apex.apache.org</post>
+      <archive>https://lists.apache.org/list.html?commits@apex.apache.org</archive>
+      <otherArchives>
+        <otherArchive>https://s.apache.org/apex-commits</otherArchive>
+        <otherArchive>https://mail-archives.apache.org/mod_mbox/apex-commits/</otherArchive>
+      </otherArchives>
+    </mailingList>
+  </mailingLists>
 
   <prerequisites>
     <maven>3.0.5</maven>
