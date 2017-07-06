@@ -27,11 +27,14 @@ import java.net.URL;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.CodeSource;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
@@ -41,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 
@@ -52,6 +56,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 public class JarHelper
 {
   private static final Logger logger = LoggerFactory.getLogger(JarHelper.class);
+  private static final String APEX_DEPENDENCIES = "apex-dependencies";
 
   private final Map<URL, String> sourceToJar = new HashMap<>();
 
@@ -68,7 +73,7 @@ public class JarHelper
     return temp.getAbsolutePath();
   }
 
-  public String getJar(Class<?> jarClass)
+  public String getJar(Class<?> jarClass, boolean makeJarFromFolder)
   {
     String jar = null;
     final CodeSource codeSource = jarClass.getProtectionDomain().getCodeSource();
@@ -88,6 +93,9 @@ public class JarHelper
           jar = location.getFile();
           final File dir = new File(jar);
           if (dir.isDirectory()) {
+            if (!makeJarFromFolder) {
+              throw new AssertionError("Cannot resolve jar file for " + jarClass + ". URL " + location);
+            }
             try {
               jar = createJar("apex-", dir, false);
             } catch (IOException e) {
@@ -105,6 +113,72 @@ public class JarHelper
       }
     }
     return jar;
+  }
+
+  public String getJar(Class<?> jarClass)
+  {
+    return getJar(jarClass, true);
+  }
+
+  /**
+   * Returns a full path to the jar-file that contains the given class and all full paths to dependent jar-files
+   * that are defined in the property "apex-dependencies" of the manifest of the root jar-file.
+   * If the class is an independent file the method makes jar file from the folder that contains the class
+   * @param jarClass Class
+   * @param makeJarFromFolder True if the method should make jar from folder that contains the independent class
+   * @param addJarDependencies True if the method should include dependent jar files
+   * @return Set of names of the jar-files
+   */
+  public Set<String> getJars(Class<?> jarClass, boolean makeJarFromFolder, boolean addJarDependencies)
+  {
+    String jar = getJar(jarClass, makeJarFromFolder);
+    Set<String> set = new HashSet<>();
+    if (jar != null) {
+      set.add(jar);
+      if (addJarDependencies) {
+        try {
+          getDependentJarsFromManifest(new JarFile(jar), set);
+        } catch (IOException ex) {
+          logger.warn("Cannot open Jar-file {}", jar);
+        }
+      }
+    }
+    return set;
+  }
+
+  /**
+   * Returns a full path to the jar-file that contains the given class and all full paths to dependent jar-files
+   * that are defined in the property "apex-dependencies" of the manifest of the root jar-file.
+   * If the class is an independent file the method makes jar file from the folder that contains the class
+   * @param jarClass Class
+   * @return Set of names of the jar-files
+   */
+  public Set<String> getJars(Class<?> jarClass)
+  {
+    return getJars(jarClass, true, true);
+  }
+
+  /**
+   * Adds dependent jar-files from manifest to the target list of jar-files
+   * @param jarFile Jar file
+   * @param set Set of target jar-files
+   * @throws IOException
+   */
+  public void getDependentJarsFromManifest(JarFile jarFile, Set<String> set) throws IOException
+  {
+    String value = jarFile.getManifest().getMainAttributes().getValue(APEX_DEPENDENCIES);
+    if (!StringUtils.isEmpty(value)) {
+      Path folderPath = Paths.get(jarFile.getName()).getParent();
+      for (String jar : value.split(",")) {
+        File file = folderPath.resolve(jar).toFile();
+        if (file.exists()) {
+          set.add(file.getPath());
+          logger.debug("The file {} was added as a dependent of the jar {}", file.getPath(), jarFile.getName());
+        } else {
+          logger.warn("The dependent file {} of the jar {} does not exist", file.getPath(), jarFile.getName());
+        }
+      }
+    }
   }
 
   private static class JarCreator
