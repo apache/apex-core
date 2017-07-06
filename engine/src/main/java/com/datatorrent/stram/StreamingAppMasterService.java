@@ -604,6 +604,8 @@ public class StreamingAppMasterService extends CompositeService
   }
 
   public static final String PLUGINS_CONF_KEY = "apex.plugin.stram.plugins";
+  public static final String PLUGINS_CONF_SEP = ",";
+
   private void initApexPluginDispatcher()
   {
     PluginLocator<DAGExecutionPlugin> locator = new ChainedPluginLocator<>(new ServiceLoaderBasedPluginLocator<>(DAGExecutionPlugin.class),

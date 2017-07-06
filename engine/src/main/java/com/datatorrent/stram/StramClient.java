@@ -179,7 +179,7 @@ public class StramClient
     yarnClient.stop();
   }
 
-  public static LinkedHashSet<String> findJars(LogicalPlan dag, Class<?>[] defaultClasses)
+  public LinkedHashSet<String> findJars(Class<?>[] defaultClasses)
   {
     List<Class<?>> jarClasses = new ArrayList<>();
 
@@ -211,10 +211,7 @@ public class StramClient
     JarHelper jarHelper = new JarHelper();
 
     for (Class<?> jarClass : jarClasses) {
-      String jar = jarHelper.getJar(jarClass);
-      if (jar != null) {
-        localJarFiles.add(jar);
-      }
+      localJarFiles.addAll(jarHelper.getJars(jarClass));
     }
 
     String libJarsPath = dag.getValue(Context.DAGContext.LIBRARY_JARS);
@@ -223,7 +220,18 @@ public class StramClient
       localJarFiles.addAll(Arrays.asList(libJars));
     }
 
-    LOG.info("Local jar file dependencies: " + localJarFiles);
+    String pluginClassesPaths = conf.get(StreamingAppMasterService.PLUGINS_CONF_KEY);
+    if (!StringUtils.isEmpty(pluginClassesPaths)) {
+      for (String pluginClassPath : StringUtils.splitByWholeSeparator(pluginClassesPaths, StreamingAppMasterService.PLUGINS_CONF_SEP)) {
+        try {
+          localJarFiles.addAll(jarHelper.getJars(Thread.currentThread().getContextClassLoader().loadClass(pluginClassPath)));
+        } catch (ClassNotFoundException ex) {
+          LOG.error("Cannot find the class {}", pluginClassPath, ex);
+        }
+      }
+    }
+
+    LOG.info("Local jar file dependencies: {}", localJarFiles);
 
     return localJarFiles;
   }
@@ -338,7 +346,7 @@ public class StramClient
       throw new IllegalStateException(applicationType + " is not a valid application type.");
     }
 
-    LinkedHashSet<String> localJarFiles = findJars(dag, defaultClasses);
+    LinkedHashSet<String> localJarFiles = findJars(defaultClasses);
 
     if (resources != null) {
       localJarFiles.addAll(resources);
