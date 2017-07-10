@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.apex.stram;
+package org.apache.apex.engine.events.grouping;
 
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -126,6 +126,15 @@ public class GroupingRequest
   public void addAffectedContainer(String containerId)
   {
     affectedContainers.add(containerId);
+  }
+
+  /**
+   * Checks if request is processed
+   * @return isProcessed
+   */
+  public boolean isProcessed()
+  {
+    return (getOperatorsToDeploy().isEmpty() && getOperatorsToUndeploy().isEmpty());
   }
 
   /**

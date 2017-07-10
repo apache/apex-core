@@ -16,13 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apach.apex.stram;
+package org.apache.apex.engine.events.grouping;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import org.apache.apex.stram.GroupingRequest;
 
 public class GroupingRequestTest
 {

@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.apex.stram;
+package org.apache.apex.engine.events.grouping;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -25,7 +26,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.apex.stram.GroupingRequest.EventGroupId;
+import org.apache.apex.engine.events.grouping.GroupingRequest.EventGroupId;
 
 import com.google.common.collect.Maps;
 
@@ -62,7 +63,10 @@ public class GroupingManager
    */
   public GroupingRequest getGroupingRequest(String containerId)
   {
-    return groupingRequests.get(containerId);
+    if (containerId != null) {
+      return groupingRequests.get(containerId);
+    }
+    return null;
   }
 
   /**
@@ -75,7 +79,7 @@ public class GroupingManager
   public EventGroupId getEventGroupIdForContainer(String containerId)
   {
     EventGroupId groupId = null;
-    if (groupingRequests.get(containerId) != null) {
+    if (containerId != null && groupingRequests.get(containerId) != null) {
       groupId = groupingRequests.get(containerId).getEventGroupId();
     }
     return groupId;
@@ -153,14 +157,14 @@ public class GroupingManager
    */
   public void removeProcessedGroupingRequests()
   {
-    for (Entry<String, GroupingRequest> request : groupingRequests.entrySet()) {
-      if (request.getValue().getOperatorsToDeploy().size() == 0
-          && request.getValue().getOperatorsToUndeploy().size() == 0) {
-        LOG.info("Removing for :" + request.getKey());
-        groupingRequests.remove(request.getKey());
+    Iterator<Entry<String, GroupingRequest>> itr = groupingRequests.entrySet().iterator();
+    while (itr.hasNext()) {
+      Entry<String, GroupingRequest> entry = itr.next();
+      if (entry.getValue().isProcessed()) {
+        LOG.debug("Removing Grouping request for : {}", entry.getKey());
+        itr.remove();
       }
     }
-
   }
 
   /**

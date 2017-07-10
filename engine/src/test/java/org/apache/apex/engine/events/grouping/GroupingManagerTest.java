@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apach.apex.stram;
+package org.apache.apex.engine.events.grouping;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -24,9 +24,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import org.apache.apex.stram.GroupingManager;
-import org.apache.apex.stram.GroupingRequest;
 
 import com.google.common.collect.ImmutableSet;
 
