@@ -25,10 +25,10 @@ import java.util.Collections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.engine.events.grouping.GroupingManager;
+import org.apache.apex.engine.events.grouping.GroupingRequest;
+import org.apache.apex.engine.events.grouping.GroupingRequest.EventGroupId;
 import org.apache.apex.log.LogFileInformation;
-import org.apache.apex.stram.GroupingManager;
-import org.apache.apex.stram.GroupingRequest;
-import org.apache.apex.stram.GroupingRequest.EventGroupId;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.ipc.ProtocolSignature;

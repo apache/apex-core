@@ -20,8 +20,8 @@ package com.datatorrent.stram.api;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.apex.engine.events.grouping.GroupingRequest.EventGroupId;
 import org.apache.apex.log.LogFileInformation;
-import org.apache.apex.stram.GroupingRequest.EventGroupId;
 
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 

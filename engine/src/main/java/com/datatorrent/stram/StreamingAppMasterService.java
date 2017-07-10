@@ -44,13 +44,13 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
 import org.apache.apex.engine.api.plugin.PluginLocator;
+import org.apache.apex.engine.events.grouping.GroupingManager;
+import org.apache.apex.engine.events.grouping.GroupingRequest.EventGroupId;
 import org.apache.apex.engine.plugin.ApexPluginDispatcher;
 import org.apache.apex.engine.plugin.DefaultApexPluginDispatcher;
 import org.apache.apex.engine.plugin.loaders.ChainedPluginLocator;
 import org.apache.apex.engine.plugin.loaders.PropertyBasedPluginLocator;
 import org.apache.apex.engine.plugin.loaders.ServiceLoaderBasedPluginLocator;
-import org.apache.apex.stram.GroupingManager;
-import org.apache.apex.stram.GroupingRequest.EventGroupId;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
