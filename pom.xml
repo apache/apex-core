@@ -52,7 +52,7 @@
 
   <scm>
     <connection>scm:git:https://github.com/apache/apex-core.git</connection>
-    <developerConnection>scm:git:[fetch=]https://github.com/apache/apex-core.git[push=]https://git-wip-us.apache.org/repos/asf/apex-core.git</developerConnection>
+    <developerConnection>scm:git:https://github.com/apache/apex-core.git</developerConnection>
     <url>https://github.com/apache/apex-core.git</url>
     <tag>HEAD</tag>
   </scm>
