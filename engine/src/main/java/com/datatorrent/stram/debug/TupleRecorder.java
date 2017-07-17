@@ -36,6 +36,8 @@ import org.codehaus.jackson.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.common.util.PropertiesHelper;
+
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.Stats;
@@ -83,26 +85,8 @@ public class TupleRecorder
   // If there are errors processing tuples, don't log an error for every tuple as it could overwhelm the logs.
   // The property specifies the minumum number of tuples between two consecutive error log statements. Set it to zero to
   // log every tuple error
-  private static long ERROR_LOG_GAP;
+  private static long ERROR_LOG_GAP = PropertiesHelper.getLong("org.apache.apex.stram.tupleRecorder.errorLogGap", 10000L, 0, Long.MAX_VALUE);
   long lastLog = -1;
-
-  static {
-    ERROR_LOG_GAP = 10000L;
-    String property = System.getProperty("org.apache.apex.stram.tupleRecorder.errorLogGap");
-    if (property != null) {
-      try {
-        long value = Long.decode(property);
-        if (value < 0 ) {
-          logger.warn("Log gap should be greater than or equal to 0, setting to default");
-        } else {
-          ERROR_LOG_GAP = value;
-        }
-      } catch (Exception ex) {
-        logger.warn("Unable to parse the log gap property, setting to default", ex);
-      }
-    }
-    logger.debug("Log gap is {}", ERROR_LOG_GAP);
-  }
 
   private final FSPartFileCollection storage = new FSPartFileCollection()
   {
