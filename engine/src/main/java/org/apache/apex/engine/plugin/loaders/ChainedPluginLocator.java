@@ -18,41 +18,58 @@
  */
 package org.apache.apex.engine.plugin.loaders;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.api.plugin.Plugin;
 import org.apache.apex.engine.api.plugin.PluginLocator;
 import org.apache.hadoop.conf.Configuration;
 
 /**
  * @since 3.6.0
  */
-public class ChainedPluginLocator<T> implements PluginLocator<T>
+public class ChainedPluginLocator<T extends Plugin> implements PluginLocator<T>
 {
   private static final Logger LOG = LoggerFactory.getLogger(ChainedPluginLocator.class);
-  List<PluginLocator> locators = new ArrayList<>();
+
+  private final Set<PluginLocator<T>> locators;
 
   public ChainedPluginLocator(PluginLocator<T>... locators)
   {
-    for (PluginLocator locator : locators) {
-      this.locators.add(locator);
+    Collections.addAll(this.locators = new LinkedHashSet(locators.length), locators);
+  }
+
+  private static <T extends Plugin> Set<T> merge(Set<T> to, Set<T> from)
+  {
+    if (from == null || from.isEmpty()) {
+      return to;
     }
+
+    if (to == null || to.isEmpty()) {
+      if (from instanceof LinkedHashSet) {
+        return from;
+      } else {
+        to = new LinkedHashSet<>(from.size());
+      }
+    }
+    to.addAll(from);
+    return to;
   }
 
   @Override
-  public Collection<T> discoverPlugins(Configuration conf)
+  public Set<T> discoverPlugins(Configuration conf)
   {
-    List<T> plugins = new ArrayList<>();
+    Set<T> plugins = Collections.emptySet();
 
     for (PluginLocator<T> locator : locators) {
-      Collection<T> currentPlugins = locator.discoverPlugins(conf);
-      if (currentPlugins != null) {
-        LOG.info("Loader {} detected {} plugins ", locator.getClass().getName(), currentPlugins.size());
-        plugins.addAll(currentPlugins);
+      Set<T> currentPlugins = locator.discoverPlugins(conf);
+      if (!currentPlugins.isEmpty()) {
+        LOG.info("Plugin locator {} detected {} plugins", locator.getClass().getSimpleName(), currentPlugins.size());
+        plugins = merge(plugins, currentPlugins);
       }
     }
 

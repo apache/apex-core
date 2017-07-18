@@ -18,22 +18,26 @@
  */
 package org.apache.apex.engine.api.plugin;
 
-import java.util.Collection;
+import java.util.Set;
 
+import javax.annotation.Nonnull;
+
+import org.apache.apex.api.plugin.Plugin;
 import org.apache.hadoop.conf.Configuration;
 
 /**
- * Interface to discover plugins during Apex Master initialization. This should return collection of
+ * Interface to discover plugins during Apex Master initialization. This should return set of
  * objects implementing an interface of type T.
  *
  * @since 3.6.0
  */
-public interface PluginLocator<T>
+public interface PluginLocator<T extends Plugin>
 {
   /**
-   * Discover list of apex plugins.
+   * Discover apex plugins.
    *
-   * @return list of apex plugins.
+   * @return set of apex plugins.
    */
-  Collection<T> discoverPlugins(Configuration conf);
+  @Nonnull
+  Set<T> discoverPlugins(Configuration conf);
 }

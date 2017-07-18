@@ -62,21 +62,21 @@ public abstract class AbstractApexPluginDispatcher extends AbstractService imple
   protected final Collection<DAGExecutionPlugin> plugins = Lists.newArrayList();
   protected final StramAppContext appContext;
   protected final StreamingContainerManager dmgr;
-  private final PluginLocator locator;
+  private final PluginLocator<DAGExecutionPlugin> locator;
   private final AppInfo.AppStats stats;
   protected Configuration launchConfig;
   protected FileContext fileContext;
   protected final Table<DAGExecutionEvent.Type, DAGExecutionPlugin, EventHandler<DAGExecutionEvent>> table = HashBasedTable.create();
   private volatile DAG clonedDAG = null;
 
-  public AbstractApexPluginDispatcher(PluginLocator locator, StramAppContext context, StreamingContainerManager dmgr, AppInfo.AppStats stats)
+  protected AbstractApexPluginDispatcher(String name, PluginLocator<DAGExecutionPlugin> locator, StramAppContext context, StreamingContainerManager dmgr, AppInfo.AppStats stats)
   {
-    super(AbstractApexPluginDispatcher.class.getName());
+    super(name);
     this.locator = locator;
     this.appContext = context;
     this.dmgr = dmgr;
     this.stats = stats;
-    LOG.debug("Creating apex service ");
+    LOG.debug("Creating Plugin Dispatcher service {}", name);
   }
 
   private Configuration readLaunchConfiguration() throws IOException
@@ -122,7 +122,11 @@ public abstract class AbstractApexPluginDispatcher extends AbstractService imple
   protected void serviceStop() throws Exception
   {
     for (DAGExecutionPlugin plugin : plugins) {
-      plugin.teardown();
+      try {
+        plugin.teardown();
+      } catch (Exception e) {
+        LOG.warn("Exception during {} teardown", plugin, e);
+      }
     }
     super.serviceStop();
   }

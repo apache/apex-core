@@ -49,13 +49,15 @@ import com.datatorrent.stram.webapp.AppInfo;
 public class DefaultApexPluginDispatcher extends AbstractApexPluginDispatcher
 {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultApexPluginDispatcher.class);
-  private int qsize = 4098;
+  private static final int TIMEOUT = 10;
+  private static final int QUEUE_SIZE = 4098;
+
   private ArrayBlockingQueue<Runnable> blockingQueue;
   private ExecutorService executorService;
 
   public DefaultApexPluginDispatcher(PluginLocator locator, StramAppContext context, StreamingContainerManager dmgr, AppInfo.AppStats stats)
   {
-    super(locator, context, dmgr, stats);
+    super(DefaultApexPluginDispatcher.class.getName(), locator, context, dmgr, stats);
   }
 
   @Override
@@ -70,8 +72,8 @@ public class DefaultApexPluginDispatcher extends AbstractApexPluginDispatcher
   protected void serviceInit(Configuration conf) throws Exception
   {
     super.serviceInit(conf);
-    LOG.debug("Creating plugin dispatch queue with size {}", qsize);
-    blockingQueue = new ArrayBlockingQueue<>(qsize);
+    LOG.debug("Creating plugin dispatch queue with size {}", QUEUE_SIZE);
+    blockingQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
     RejectedExecutionHandler rejectionHandler = new RejectedExecutionHandler()
     {
       @Override
@@ -87,18 +89,25 @@ public class DefaultApexPluginDispatcher extends AbstractApexPluginDispatcher
     };
 
     executorService = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
-        blockingQueue, new NameableThreadFactory("PluginExecutorThread"), rejectionHandler);
+        blockingQueue, new NameableThreadFactory("PluginExecutorThread", true), rejectionHandler);
   }
 
   @Override
   protected void serviceStop() throws Exception
   {
-    executorService.shutdownNow();
-    executorService.awaitTermination(10, TimeUnit.SECONDS);
-    if (!executorService.isTerminated()) {
-      LOG.warn("Executor service still active for plugins");
+    if (executorService != null) {
+      executorService.shutdown();
+      boolean terminated = false;
+      try {
+        terminated = executorService.awaitTermination(TIMEOUT, TimeUnit.SECONDS);
+      } finally {
+        if (!terminated) {
+          LOG.warn("{} executor service {} failed to terminate withing {} seconds", getClass().getSimpleName(), executorService, TIMEOUT);
+        }
+        executorService = null;
+        super.serviceStop();
+      }
     }
-    executorService = null;
   }
 
   private class ProcessEventTask<T extends DAGExecutionEvent.Type> implements Runnable
