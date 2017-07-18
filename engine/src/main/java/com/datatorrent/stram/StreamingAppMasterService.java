@@ -634,8 +634,15 @@ public class StreamingAppMasterService extends CompositeService
       Configuration config = SecurityUtils.configureWebAppSecurity(getConfig(), dag.getValue(Context.DAGContext.SSL_CONFIG));
       WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(config).start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
-      appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
-
+      // best effort to produce FQDN for the client to connect with
+      // (when SSL is enabled, it may be required to match the certificate)
+      connectAddress = NetUtils.getConnectAddress(webApp.getListenerAddress());
+      String hostname = connectAddress.getAddress().getCanonicalHostName();
+      if (hostname.equals(connectAddress.getAddress().getHostAddress())) {
+        // lookup didn't yield a name
+        hostname = connectAddress.getHostName();
+      }
+      appMasterTrackingUrl = hostname + ":" + webApp.port();
       if (ConfigUtils.isSSLEnabled(config)) {
         appMasterTrackingUrl = "https://" + appMasterTrackingUrl;
       }
