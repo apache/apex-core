@@ -18,14 +18,16 @@
  */
 package org.apache.apex.engine.plugin.loaders;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.api.plugin.Plugin;
 import org.apache.apex.engine.api.plugin.PluginLocator;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.stram.StramUtils;
@@ -33,7 +35,7 @@ import com.datatorrent.stram.StramUtils;
 /**
  * @since 3.6.0
  */
-public class PropertyBasedPluginLocator<T> implements PluginLocator<T>
+public class PropertyBasedPluginLocator<T extends Plugin> implements PluginLocator<T>
 {
   private static final Logger LOG = LoggerFactory.getLogger(PropertyBasedPluginLocator.class);
   private final Class<T> klass;
@@ -46,21 +48,26 @@ public class PropertyBasedPluginLocator<T> implements PluginLocator<T>
   }
 
   @Override
-  public Collection<T> discoverPlugins(Configuration conf)
+  public Set<T> discoverPlugins(Configuration conf)
   {
-    List<T> detectedPlugins = new ArrayList<>();
+    Set<T> detectedPlugins = new LinkedHashSet<>();
     String classNamesStr = conf.get(this.propertyName);
-    if (classNamesStr == null) {
+    if (StringUtils.isBlank(classNamesStr)) {
       return detectedPlugins;
     }
 
-    String[] classNames = classNamesStr.split(",");
+    Set<String> classNames = new LinkedHashSet<>();
+    Collections.addAll(classNames, classNamesStr.split(","));
     for (String className : classNames) {
       try {
-        Class<? extends T> plugin = StramUtils.classForName(className, this.klass);
-        detectedPlugins.add(StramUtils.newInstance(plugin));
+        Class<?> plugin = StramUtils.classForName(className, Object.class);
+        if (klass.isAssignableFrom(plugin)) {
+          detectedPlugins.add(StramUtils.newInstance(plugin.asSubclass(klass)));
+        } else {
+          LOG.info("Skipping loading {} incompatible with {}", className, klass);
+        }
       } catch (IllegalArgumentException e) {
-        LOG.warn("Could not load plugin {}", className);
+        LOG.warn("Could not load plugin {}", className, e);
       }
     }
     return detectedPlugins;

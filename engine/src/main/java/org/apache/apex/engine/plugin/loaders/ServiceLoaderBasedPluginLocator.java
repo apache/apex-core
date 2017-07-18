@@ -18,18 +18,18 @@
  */
 package org.apache.apex.engine.plugin.loaders;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.ServiceLoader;
+import java.util.Set;
 
+import org.apache.apex.api.plugin.Plugin;
 import org.apache.apex.engine.api.plugin.PluginLocator;
 import org.apache.hadoop.conf.Configuration;
 
 /**
  * @since 3.6.0
  */
-public class ServiceLoaderBasedPluginLocator<T> implements PluginLocator<T>
+public class ServiceLoaderBasedPluginLocator<T extends Plugin> implements PluginLocator<T>
 {
   private final Class<T> klass;
 
@@ -39,10 +39,10 @@ public class ServiceLoaderBasedPluginLocator<T> implements PluginLocator<T>
   }
 
   @Override
-  public Collection<T> discoverPlugins(Configuration conf)
+  public Set<T> discoverPlugins(Configuration conf)
   {
-    List<T> discovered = new ArrayList<>();
     ServiceLoader<T> loader = ServiceLoader.load(this.klass);
+    Set<T> discovered = new LinkedHashSet<>();
     for (T plugin : loader) {
       discovered.add(plugin);
     }

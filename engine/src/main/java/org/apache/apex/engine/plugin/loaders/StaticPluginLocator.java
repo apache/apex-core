@@ -18,32 +18,35 @@
  */
 package org.apache.apex.engine.plugin.loaders;
 
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.api.plugin.Plugin;
 import org.apache.apex.engine.api.plugin.PluginLocator;
 import org.apache.hadoop.conf.Configuration;
 
 /**
  * @since 3.6.0
  */
-public class StaticPluginLocator<T> implements PluginLocator<T>
+public class StaticPluginLocator<T extends Plugin> implements PluginLocator<T>
 {
   private static final Logger LOG = LoggerFactory.getLogger(StaticPluginLocator.class);
 
-  private final T[] plugins;
+  private final Set<T> plugins;
 
   public StaticPluginLocator(T... plugins)
   {
-    this.plugins = plugins;
+    this.plugins = new LinkedHashSet<>(plugins.length);
+    Collections.addAll(this.plugins, plugins);
   }
 
   @Override
-  public Collection<T> discoverPlugins(Configuration conf)
+  public Set<T> discoverPlugins(Configuration conf)
   {
-    return Arrays.asList(plugins);
+    return plugins;
   }
 }
