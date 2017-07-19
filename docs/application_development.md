@@ -2077,7 +2077,7 @@ approaches can be used in combination.
 The platform does not make assumptions about the tuple
 type, it could be any Java object. The operator developer knows what
 tuple type an input port expects and is capable of processing. Each
-input port has a stream codec  associated thatdefines how data is serialized when transmitted over a socket
+input port has a stream codec  associated that defines how data is serialized when transmitted over a socket
 stream; it also defines another
 function that computes the partition hash key for the tuple. The engine
 uses that key to determine which physical instance(s)  (for a
