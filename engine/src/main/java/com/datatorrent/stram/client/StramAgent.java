@@ -417,11 +417,22 @@ public class StramAgent extends FSAgent
       String appPath = response.getString("appPath");
       String user = response.getString("user");
       JSONObject permissionsInfo = null;
-      try (FSDataInputStream is = fileSystem.open(new Path(appPath, "permissions.json"))) {
-        permissionsInfo = new JSONObject(IOUtils.toString(is));
+      Path permissionsPath = new Path(appPath, "permissions.json");
+      LOG.debug("Checking for permission information in file {}", permissionsPath);
+      try {
+        if (fileSystem.exists(permissionsPath)) {
+          LOG.info("Loading permission information");
+          try (FSDataInputStream is = fileSystem.open(permissionsPath)) {
+            permissionsInfo = new JSONObject(IOUtils.toString(is));
+          }
+          LOG.debug("Loaded permission file successfully");
+        } else {
+          // ignore and log messages if file is not found
+          LOG.info("Permission information is not available as the application is not configured with it");
+        }
       } catch (IOException ex) {
-        // ignore if file is not found
-        LOG.info("Exception in accessing permissions.json", ex);
+        // ignore and log message when unable to read the file
+        LOG.info("Permission information is not available", ex);
       }
       return new StramWebServicesInfo(appMasterUrl, version, appPath, user, secToken, permissionsInfo);
     } catch (Exception ex) {
