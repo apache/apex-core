@@ -34,11 +34,13 @@ import java.net.URLEncoder;
 import java.security.PrivilegedExceptionAction;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -632,9 +634,9 @@ public class ApexCli
         new Arg[]{new FileArg("jar-file/json-file/properties-file/app-package-file-path/app-package-file-uri"), new Arg("matching-app-name")},
         "Launch an app", LAUNCH_OPTIONS.options));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
-        new Arg[]{new Arg("app-id")},
-        new Arg[]{new VarArg("app-id")},
-        "Shutdown an app"));
+        new Arg[]{new Arg("app-id/app-name")},
+        new Arg[]{new VarArg("app-id/app-name")},
+        "Shutdown application(s) by id or name"));
     globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(),
         null,
         new Arg[]{new Arg("pattern")},
@@ -738,7 +740,7 @@ public class ApexCli
         "Kill a container"));
     connectedCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
         null,
-        new Arg[]{new VarArg("app-id")},
+        new Arg[]{new VarArg("app-id/app-name")},
         "Shutdown an app"));
     connectedCommands.put("kill-app", new CommandSpec(new KillAppCommand(),
         null,
@@ -1462,7 +1464,7 @@ public class ApexCli
     return s.substring(i);
   }
 
-  private void processLine(String line, final ConsoleReader reader, boolean expandMacroAlias)
+  protected void processLine(String line, final ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
       // clear interrupt flag
@@ -2182,49 +2184,85 @@ public class ApexCli
 
   }
 
+  private ApplicationReport findApplicationReportFromAppNameOrId(String appNameOrId)
+  {
+    ApplicationReport app = getApplication(appNameOrId);
+    if (app == null) {
+      app = getApplicationByName(appNameOrId);
+    }
+    return app;
+  }
+
   private class ShutdownAppCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      ApplicationReport[] apps;
+      Map<String, ApplicationReport> appIdReports = new LinkedHashMap<>();
+
       if (args.length == 1) {
         if (currentApp == null) {
           throw new CliException("No application selected");
         } else {
-          apps = new ApplicationReport[]{currentApp};
+          appIdReports.put(currentApp.getApplicationId().toString(), currentApp);
         }
       } else {
-        apps = new ApplicationReport[args.length - 1];
-        for (int i = 1; i < args.length; i++) {
-          apps[i - 1] = getApplication(args[i]);
-          if (apps[i - 1] == null) {
-            throw new CliException("Streaming application with id " + args[i] + " is not found.");
-          }
+        String[] appNamesOrIds = Arrays.copyOfRange(args, 1, args.length);
+
+        for (String appNameOrId : appNamesOrIds) {
+          ApplicationReport ap = findApplicationReportFromAppNameOrId(appNameOrId);
+          appIdReports.put(appNameOrId, ap);
         }
       }
 
-      for (ApplicationReport app : apps) {
-        try {
-          JSONObject response = getResource(new StramAgent.StramUriSpec().path(StramWebServices.PATH_SHUTDOWN), app, new WebServicesClient.WebServicesHandler<JSONObject>()
-          {
-            @Override
-            public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-            {
-              return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
-            }
+      for (Map.Entry<String, ApplicationReport> entry : appIdReports.entrySet()) {
+        String appNameOrId = entry.getKey();
+        ApplicationReport app = entry.getValue();
 
-          });
-          if (consolePresent) {
-            System.out.println("Shutdown requested: " + response);
-          }
-          currentApp = null;
-        } catch (Exception e) {
-          throw new CliException("Failed to request shutdown for appid " + app.getApplicationId().toString(), e);
-        }
+        shutdownApp(appNameOrId, app);
       }
     }
 
+    private void shutdownApp(String appNameOrId, ApplicationReport app)
+    {
+      if (app == null) {
+        String errMessage = "Failed to request shutdown for app %s: Application with id or name %s not found%n";
+        System.err.printf(errMessage, appNameOrId, appNameOrId);
+        return;
+      }
+
+      try {
+        JSONObject response = sendShutdownRequest(app);
+        if (consolePresent) {
+          System.out.printf("Shutdown of app %s requested: %s%n", app.getApplicationId().toString(), response);
+        }
+      } catch (Exception e) {
+        String errMessage = "Failed to request shutdown for app %s: %s%n";
+        System.err.printf(errMessage, app.getApplicationId().toString(), e.getMessage());
+      } finally {
+        if (currentApp != null) {
+          if (app.getApplicationId().equals(currentApp.getApplicationId())) {
+            currentApp = null;
+          }
+        }
+      }
+    }
+  }
+
+  protected JSONObject sendShutdownRequest(ApplicationReport app)
+  {
+    StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec().path(StramWebServices.PATH_SHUTDOWN);
+
+    WebServicesClient.WebServicesHandler<JSONObject> handler = new WebServicesClient.WebServicesHandler<JSONObject>()
+    {
+      @Override
+      public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+      {
+        return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
+      }
+    };
+
+    return getResource(uriSpec, app, handler);
   }
 
   private class ListAppsCommand implements Command
@@ -2328,17 +2366,11 @@ public class ApexCli
       int i = 0;
       try {
         while (++i < args.length) {
-          app = getApplication(args[i]);
+          app = findApplicationReportFromAppNameOrId(args[i]);
           if (app == null) {
-
-            /*
-             * try once again with application name type.
-             */
-            app = getApplicationByName(args[i]);
-            if (app == null) {
-              throw new CliException("Streaming application with id or name " + args[i] + " is not found.");
-            }
+            throw new CliException("Streaming application with id or name " + args[i] + " is not found.");
           }
+
           yarnClient.killApplication(app.getApplicationId());
           if (app == currentApp) {
             currentApp = null;
