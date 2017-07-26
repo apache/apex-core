@@ -810,6 +810,10 @@ public class ApexCli
         null,
         new Arg[]{new Arg("container-id")},
         "Get the stack trace for the container"));
+    connectedCommands.put("set-log-level", new CommandSpec(new SetLogLevelCommand(),
+        new Arg[]{new Arg("target"), new Arg("logLevel")},
+        null,
+        "Set the logging level of any package or class of the connected app instance"));
 
     //
     // Logical plan change command specification starts here
@@ -3985,6 +3989,50 @@ public class ApexCli
       }
       result.put("applications", appArray);
       printJson(result);
+    }
+  }
+
+  private class SetLogLevelCommand implements Command
+  {
+
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      ApplicationReport appReport = currentApp;
+      String target = args[1];
+      String logLevel = args[2];
+
+      StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+      uriSpec = uriSpec.path(StramWebServices.PATH_LOGGERS);
+      final JSONObject request = buildRequest(target, logLevel);
+
+      JSONObject response = getResource(uriSpec, appReport, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
+        @Override
+        public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+        {
+          return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+        }
+
+      });
+
+      printJson(response);
+    }
+
+    private JSONObject buildRequest(String target, String logLevel) throws JSONException
+    {
+      JSONObject request = new JSONObject();
+      JSONArray loggers = new JSONArray();
+      JSONObject targetAndLevelPair = new JSONObject();
+
+      targetAndLevelPair.put("target", target);
+      targetAndLevelPair.put("logLevel", logLevel);
+
+      loggers.put(targetAndLevelPair);
+
+      request.put("loggers", loggers);
+
+      return request;
     }
   }
 
