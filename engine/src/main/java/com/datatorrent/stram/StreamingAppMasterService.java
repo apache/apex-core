@@ -73,6 +73,7 @@ import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.ContainerState;
 import org.apache.hadoop.yarn.api.records.ContainerStatus;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
+import org.apache.hadoop.yarn.api.records.NodeId;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.client.api.YarnClient;
@@ -966,7 +967,7 @@ public class StreamingAppMasterService extends CompositeService
               numFailedContainers.incrementAndGet();
               if (exitStatus != 1 && maxConsecutiveContainerFailures != Integer.MAX_VALUE) {
                 // If container failure due to framework
-                String hostname = allocatedContainer.container.getNodeId().getHost();
+                String hostname = allocatedContainer.host;
                 if (!failedBlackListedNodes.contains(hostname)) {
                   // Blacklist the node if not already blacklisted
                   if (failedContainerNodesMap.containsKey(hostname)) {
@@ -1011,7 +1012,7 @@ public class StreamingAppMasterService extends CompositeService
             numCompletedContainers.incrementAndGet();
             LOG.info("Container completed successfully." + ", containerId=" + containerStatus.getContainerId());
             // Reset counter for node failure, if exists
-            String hostname = allocatedContainer.container.getNodeId().getHost();
+            String hostname = allocatedContainer.host;
             NodeFailureStats stats = failedContainerNodesMap.get(hostname);
             if (stats != null) {
               stats.failureCount = 0;
@@ -1172,7 +1173,7 @@ public class StreamingAppMasterService extends CompositeService
     for (String containerIdStr : dnmgr.containerStopRequests.values()) {
       AllocatedContainer allocatedContainer = this.allocatedContainers.get(containerIdStr);
       if (allocatedContainer != null && !allocatedContainer.stopRequested) {
-        nmClient.stopContainerAsync(allocatedContainer.container.getId(), allocatedContainer.container.getNodeId());
+        nmClient.stopContainerAsync(allocatedContainer.container.getId(), allocatedContainer.nodeId);
         LOG.info("Requested stop container {}", containerIdStr);
         allocatedContainer.stopRequested = true;
       }
@@ -1253,10 +1254,14 @@ public class StreamingAppMasterService extends CompositeService
     private final Container container;
     private boolean stopRequested;
     private Token<StramDelegationTokenIdentifier> delegationToken;
+    private final NodeId nodeId;
+    private final String host;
 
     private AllocatedContainer(Container c)
     {
       container = c;
+      nodeId = c.getNodeId();
+      host = nodeId.getHost();
     }
   }
 
