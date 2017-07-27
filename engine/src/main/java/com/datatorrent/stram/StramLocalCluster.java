@@ -351,7 +351,7 @@ public class StramLocalCluster implements Runnable, Controller
    *
    * @param c
    */
-  void failContainer(StreamingContainer c)
+  public void failContainer(StreamingContainer c)
   {
     injectShutdown.put(c.getContainerId(), c);
     c.triggerHeartbeat();
@@ -396,7 +396,7 @@ public class StramLocalCluster implements Runnable, Controller
     return null;
   }
 
-  StreamingContainerAgent getContainerAgent(StreamingContainer c)
+  public StreamingContainerAgent getContainerAgent(StreamingContainer c)
   {
     return this.dnmgr.getContainerAgent(c.getContainerId());
   }
