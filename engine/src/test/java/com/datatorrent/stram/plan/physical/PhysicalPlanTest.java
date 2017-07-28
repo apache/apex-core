@@ -30,6 +30,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 import javax.validation.constraints.Min;
 
@@ -48,7 +49,9 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.DefaultPartition;
+import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner;
@@ -58,8 +61,10 @@ import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.common.partitioner.StatelessPartitioner;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
+import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -2245,5 +2250,99 @@ public class PhysicalPlanTest
     dag.addStream("o2.outport1", o2.outport1, o3.inport1);
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 7, plan.getContainers().size());
+  }
+
+  public static class PlaceholderOperator extends BaseOperator implements InputOperator
+  {
+    @Override
+    public void emitTuples()
+    {
+    }
+  }
+
+  public static class AutoShutdownInputOperator extends BaseOperator implements InputOperator
+  {
+    int windowId = 0;
+    boolean shutdown = false;
+
+    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<>();
+
+    @Override
+    public void beginWindow(long windowId)
+    {
+      this.windowId++;
+    }
+
+    @Override
+    public void emitTuples()
+    {
+      if (windowId > 1) {
+        shutdown = true;
+      } else {
+        output.emit(windowId);
+      }
+    }
+
+    @Override
+    public void endWindow()
+    {
+      if (shutdown) {
+        throw new ShutdownException();
+      }
+    }
+  }
+
+  public static class NoOpOutputOperator extends BaseOperator
+  {
+    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+        // Do nothing
+      }
+    };
+  }
+
+  /**
+   * Will test whether the Shutdown of operators once ShutdownException is thrown from an upstream operators.
+   * This tests whether the logical operator is also removed when all physical partitions of that operator are removed.
+   * @throws Exception
+   */
+  @Test
+  public void testPartitionRemoval() throws Exception
+  {
+    final LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    PlaceholderOperator node0 = dag.addOperator("monitor", PlaceholderOperator.class);
+    AutoShutdownInputOperator node1 = dag.addOperator("input", AutoShutdownInputOperator.class);
+    NoOpOutputOperator node2 = dag.addOperator("output", NoOpOutputOperator.class);
+
+    dag.addStream("In to out", node1.output, node2.input);
+    dag.setAttribute(node1, Context.OperatorContext.PARTITIONER, new StatelessPartitioner<AutoShutdownInputOperator>(2));
+    dag.validate();
+
+    final PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+
+    // Initially 3 operators in the DAG. One with 2 partitions
+    // node0
+    // node1 -> node2
+    Assert.assertTrue(dag.getAllOperators().size() == 3);
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+
+    lc.setExitCondition(new Callable<Boolean>()
+    {
+      @Override
+      public Boolean call() throws Exception
+      {
+        return dag.getAllOperators().size() == 1;
+      }
+    });
+    lc.run(5000);
+
+    // Just node0 should remain in the DAG
+    Assert.assertTrue(dag.getAllOperators().size() == 1);
   }
 }

@@ -1296,6 +1296,11 @@ public class PhysicalPlan implements Serializable
       // remove the operator
       removePTOperator(p);
     }
+    if ((currentMapping == null || currentMapping.partitions.size() == 0)
+        && p.getPlan().getLogicalPlan().getAllOperators().contains(p.getOperatorMeta())) {
+      LOG.info("Removing logical operator {}", p.getOperatorMeta().getName());
+      p.getPlan().getLogicalPlan().removeOperator(p.getOperatorMeta().getOperator());
+    }
     // remove orphaned downstream operators
     for (PTOperator dop : downstreamOpers) {
       if (dop.inputs.isEmpty()) {
