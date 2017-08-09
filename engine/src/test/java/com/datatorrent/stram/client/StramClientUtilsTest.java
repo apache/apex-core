@@ -18,9 +18,9 @@
  */
 package com.datatorrent.stram.client;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.UnknownHostException;
 import java.security.PrivilegedExceptionAction;
 import java.util.List;
@@ -28,6 +28,9 @@ import java.util.Properties;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
@@ -39,10 +42,14 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.ConfigUtils;
 
+import static org.powermock.api.mockito.PowerMockito.doReturn;
+import static org.powermock.api.mockito.PowerMockito.spy;
 
 /**
  * Unit tests for StramClientUtils
  */
+@PrepareForTest(UserGroupInformation.class)
+@RunWith(PowerMockRunner.class)
 public class StramClientUtilsTest
 {
 
@@ -161,76 +168,100 @@ public class StramClientUtilsTest
   }
 
   /**
+   * With static spying for UserGroupInformation, we need to set up a test login user
+   * for FileSystem.newInstance() etc to work.
+   *
+   * @throws Exception
+   */
+  private void setupLoginTestUser() throws Exception
+  {
+    UserGroupInformation testUser = UserGroupInformation.createUserForTesting("testUser1", new String[]{""});
+    spy(UserGroupInformation.class);
+    doReturn(testUser).when(UserGroupInformation.class, "getLoginUser");
+  }
+
+  /**
    * apex.dfsRootDirectory not set: legacy behavior of getDTDFSRootDir()
-   * @throws IOException
+   * @throws Exception
    *
    */
   @Test
-  public void getApexDFSRootDirLegacy() throws IOException
+  public void getApexDFSRootDirLegacy() throws Exception
   {
-    Configuration conf = new YarnConfiguration(new Configuration(false));
+    Configuration conf = new Configuration(false);
     conf.set(StramClientUtils.DT_DFS_ROOT_DIR, "/a/b/c");
     conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, false);
+
+    setupLoginTestUser();
 
     FileSystem fs = FileSystem.newInstance(conf);
     Path path = StramClientUtils.getApexDFSRootDir(fs, conf);
     Assert.assertEquals("file:/a/b/c", path.toString());
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertEquals("/a/b/c", conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertNull(conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
   }
 
   /**
    * apex.dfsRootDirectory set: absolute path e.g. /x/y/z
-   * @throws IOException
+   * @throws Exception
    *
    */
   @Test
-  public void getApexDFSRootDirAbsPath() throws IOException
+  public void getApexDFSRootDirAbsPath() throws Exception
   {
-    Configuration conf = new YarnConfiguration(new Configuration(false));
+    Configuration conf = new Configuration(false);
     conf.set(StramClientUtils.APEX_APP_DFS_ROOT_DIR, "/x/y/z");
     conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, false);
 
+    setupLoginTestUser();
+
     FileSystem fs = FileSystem.newInstance(conf);
-    UserGroupInformation testUser = UserGroupInformation.createUserForTesting("testUser1", new String[]{""});
-    UserGroupInformation.setLoginUser(testUser);
     Path path = StramClientUtils.getApexDFSRootDir(fs, conf);
     Assert.assertEquals(fs.getHomeDirectory() + "/datatorrent", path.toString());
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertEquals("/x/y/z", conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
   }
 
   /**
    * apex.dfsRootDirectory set: absolute path with scheme e.g. file:/p/q/r
-   * @throws IOException
+   * @throws Exception
    *
    */
   @Test
-  public void getApexDFSRootDirScheme() throws IOException
+  public void getApexDFSRootDirScheme() throws Exception
   {
-    Configuration conf = new YarnConfiguration(new Configuration(false));
+    Configuration conf = new Configuration(false);
     conf.set(StramClientUtils.APEX_APP_DFS_ROOT_DIR, "file:/p/q/r");
     conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, false);
 
+    setupLoginTestUser();
+
     FileSystem fs = FileSystem.newInstance(conf);
-    UserGroupInformation testUser = UserGroupInformation.createUserForTesting("testUser1", new String[]{""});
-    UserGroupInformation.setLoginUser(testUser);
     Path path = StramClientUtils.getApexDFSRootDir(fs, conf);
     Assert.assertEquals(fs.getHomeDirectory() + "/datatorrent", path.toString());
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertEquals("file:/p/q/r", conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
   }
 
   /**
    * apex.dfsRootDirectory set: absolute path with variable %USER_NAME%
-   * @throws IOException
-   * @throws InterruptedException
+   * @throws Exception
    *
    */
   @Test
-  public void getApexDFSRootDirWithVar() throws IOException, InterruptedException
+  public void getApexDFSRootDirWithVar() throws Exception
   {
-    final Configuration conf = new YarnConfiguration(new Configuration(false));
+    final Configuration conf = new Configuration(false);
     conf.set(StramClientUtils.APEX_APP_DFS_ROOT_DIR, "/x/%USER_NAME%/z");
     conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, false);
 
+    setupLoginTestUser();
+
     final FileSystem fs = FileSystem.newInstance(conf);
-    UserGroupInformation testUser = UserGroupInformation.createUserForTesting("testUser1", new String[]{""});
-    UserGroupInformation.setLoginUser(testUser);
+
     UserGroupInformation doAsUser = UserGroupInformation.createUserForTesting("impersonated", new String[]{""});
 
     doAsUser.doAs(new PrivilegedExceptionAction<Void>()
@@ -243,24 +274,27 @@ public class StramClientUtilsTest
         return null;
       }
     });
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertEquals("/x/%USER_NAME%/z", conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
   }
 
   /**
    * apex.dfsRootDirectory set: absolute path with %USER_NAME% and scheme e.g. file:/x/%USER_NAME%/z
-   * @throws IOException
-   * @throws InterruptedException
+   * @throws Exception
    *
    */
   @Test
-  public void getApexDFSRootDirWithSchemeAndVar() throws IOException, InterruptedException
+  public void getApexDFSRootDirWithSchemeAndVar() throws Exception
   {
-    final Configuration conf = new YarnConfiguration(new Configuration(false));
+    final Configuration conf = new Configuration(false);
     conf.set(StramClientUtils.APEX_APP_DFS_ROOT_DIR, "file:/x/%USER_NAME%/z");
     conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, true);
 
+    setupLoginTestUser();
+
     final FileSystem fs = FileSystem.newInstance(conf);
-    UserGroupInformation testUser = UserGroupInformation.createUserForTesting("testUser1", new String[]{""});
-    UserGroupInformation.setLoginUser(testUser);
+
     UserGroupInformation doAsUser = UserGroupInformation.createUserForTesting("impersonated", new String[]{""});
 
     doAsUser.doAs(new PrivilegedExceptionAction<Void>()
@@ -273,24 +307,27 @@ public class StramClientUtilsTest
         return null;
       }
     });
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertEquals("file:/x/%USER_NAME%/z", conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
   }
 
   /**
    * apex.dfsRootDirectory set: relative path
-   * @throws IOException
-   * @throws InterruptedException
+   * @throws Exception
    *
    */
   @Test
-  public void getApexDFSRootDirRelPath() throws IOException, InterruptedException
+  public void getApexDFSRootDirRelPath() throws Exception
   {
-    final Configuration conf = new YarnConfiguration(new Configuration(false));
+    final Configuration conf = new Configuration(false);
     conf.set(StramClientUtils.APEX_APP_DFS_ROOT_DIR, "apex");
     conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, false);
 
+    setupLoginTestUser();
+
     final FileSystem fs = FileSystem.newInstance(conf);
-    UserGroupInformation testUser = UserGroupInformation.createUserForTesting("testUser1", new String[]{""});
-    UserGroupInformation.setLoginUser(testUser);
+
     UserGroupInformation doAsUser = UserGroupInformation.createUserForTesting("impersonated", new String[]{""});
 
     doAsUser.doAs(new PrivilegedExceptionAction<Void>()
@@ -303,24 +340,27 @@ public class StramClientUtilsTest
         return null;
       }
     });
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertEquals("apex", conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
   }
 
   /**
    * apex.dfsRootDirectory set: absolute path with %USER_NAME% and impersonation enabled
-   * @throws IOException
-   * @throws InterruptedException
+   * @throws Exception
    *
    */
   @Test
-  public void getApexDFSRootDirAbsPathAndVar() throws IOException, InterruptedException
+  public void getApexDFSRootDirAbsPathAndVar() throws Exception
   {
-    final Configuration conf = new YarnConfiguration(new Configuration(false));
+    final Configuration conf = new Configuration(false);
     conf.set(StramClientUtils.APEX_APP_DFS_ROOT_DIR, "/x/%USER_NAME%/z");
     conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, true);
 
+    setupLoginTestUser();
+
     final FileSystem fs = FileSystem.newInstance(conf);
-    UserGroupInformation testUser = UserGroupInformation.createUserForTesting("testUser1", new String[]{""});
-    UserGroupInformation.setLoginUser(testUser);
+
     UserGroupInformation doAsUser = UserGroupInformation.createUserForTesting("impersonated", new String[]{""});
 
     doAsUser.doAs(new PrivilegedExceptionAction<Void>()
@@ -333,24 +373,27 @@ public class StramClientUtilsTest
         return null;
       }
     });
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertEquals("/x/%USER_NAME%/z", conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
   }
 
   /**
    * apex.dfsRootDirectory set: relative path and impersonation enabled and doAS
-   * @throws IOException
-   * @throws InterruptedException
+   * @throws Exception
    *
    */
   @Test
-  public void getApexDFSRootDirRelPathAndImpersonation() throws IOException, InterruptedException
+  public void getApexDFSRootDirRelPathAndImpersonation() throws Exception
   {
-    final Configuration conf = new YarnConfiguration(new Configuration(false));
+    final Configuration conf = new Configuration(false);
     conf.set(StramClientUtils.APEX_APP_DFS_ROOT_DIR, "apex");
     conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, true);
 
+    setupLoginTestUser();
+
     final FileSystem fs = FileSystem.newInstance(conf);
-    UserGroupInformation testUser = UserGroupInformation.createUserForTesting("testUser1", new String[]{""});
-    UserGroupInformation.setLoginUser(testUser);
+
     UserGroupInformation doAsUser = UserGroupInformation.createUserForTesting("testUser2", new String[]{""});
 
     doAsUser.doAs(new PrivilegedExceptionAction<Void>()
@@ -363,23 +406,26 @@ public class StramClientUtilsTest
         return null;
       }
     });
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertEquals("apex", conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
   }
 
   /**
    * apex.dfsRootDirectory set: relative path blank and impersonation enabled and doAS
-   * @throws IOException
-   * @throws InterruptedException
+   * @throws Exception
    *
    */
   @Test
-  public void getApexDFSRootDirBlankPathAndImpersonation() throws IOException, InterruptedException
+  public void getApexDFSRootDirBlankPathAndImpersonation() throws Exception
   {
-    final Configuration conf = new YarnConfiguration(new Configuration(false));
+    final Configuration conf = new Configuration(false);
     conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, true);
 
+    setupLoginTestUser();
+
     final FileSystem fs = FileSystem.newInstance(conf);
-    UserGroupInformation testUser = UserGroupInformation.createUserForTesting("testUser1", new String[]{""});
-    UserGroupInformation.setLoginUser(testUser);
+
     UserGroupInformation doAsUser = UserGroupInformation.createUserForTesting("testUser2", new String[]{""});
 
     doAsUser.doAs(new PrivilegedExceptionAction<Void>()
@@ -392,25 +438,28 @@ public class StramClientUtilsTest
         return null;
       }
     });
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertNull(conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
   }
 
   /**
    * apex.dfsRootDirectory set: relative path having %USER_NAME% and impersonation enabled and doAS
    * Make sure currentUser appears twice
-   * @throws IOException
-   * @throws InterruptedException
+   * @throws Exception
    *
    */
   @Test
-  public void getApexDFSRootDirRelPathVarAndImpersonation() throws IOException, InterruptedException
+  public void getApexDFSRootDirRelPathVarAndImpersonation() throws Exception
   {
-    final Configuration conf = new YarnConfiguration(new Configuration(false));
+    final Configuration conf = new Configuration(false);
     conf.set(StramClientUtils.APEX_APP_DFS_ROOT_DIR, "apex/%USER_NAME%/xyz");
     conf.setBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, true);
 
+    setupLoginTestUser();
+
     final FileSystem fs = FileSystem.newInstance(conf);
-    UserGroupInformation testUser = UserGroupInformation.createUserForTesting("testUser1", new String[]{""});
-    UserGroupInformation.setLoginUser(testUser);
+
     UserGroupInformation doAsUser = UserGroupInformation.createUserForTesting("testUser2", new String[]{""});
 
     doAsUser.doAs(new PrivilegedExceptionAction<Void>()
@@ -423,5 +472,133 @@ public class StramClientUtilsTest
         return null;
       }
     });
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertEquals("apex/%USER_NAME%/xyz", conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
   }
+
+  /**
+   * dt.dfsRootDirectory is blank: return homeDir/datatorrent
+   * @throws Exception
+   *
+   */
+  @Test
+  public void getDTDFSRootDirBlankPath() throws Exception
+  {
+    final Configuration conf = new Configuration(false);
+
+    setupLoginTestUser();
+    FileSystem fs = spy(FileSystem.newInstance(conf));
+
+    Path testPath = new Path("/foo");
+    doReturn(testPath).when(fs).getHomeDirectory();
+
+    Path path = StramClientUtils.getDTDFSRootDir(fs, conf);
+    Assert.assertEquals("/foo/datatorrent", path.toString());
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertNull(conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
+  }
+
+  /**
+   * dt.dfsRootDirectory is non-blank: return full path (URI + value of dt.dfsRootDirectory after replacing %USER_NAME%)
+   * @throws Exception
+   *
+   */
+  @Test
+  public void getDTDFSRootDirNonBlankPath() throws Exception
+  {
+    final Configuration conf = new Configuration(false);
+    conf.set(StramClientUtils.DT_DFS_ROOT_DIR, "/dt/%USER_NAME%/xyz");
+    setupLoginTestUser();
+    final FileSystem fs = spy(FileSystem.newInstance(conf));
+
+    URI uri = new URI("hdfs://host1:1020");
+    doReturn(uri).when(fs).getUri();
+
+    UserGroupInformation doAsUser = UserGroupInformation.createUserForTesting("testUser2", new String[]{""});
+
+    doAsUser.doAs(new PrivilegedExceptionAction<Void>()
+    {
+      @Override
+      public Void run() throws Exception
+      {
+        Path path = StramClientUtils.getDTDFSRootDir(fs, conf);
+        Assert.assertEquals("hdfs://host1:1020/dt/testUser1/xyz", path.toString());
+        return null;
+      }
+    });
+    // verify conf properties for DT_DFS_ROOT_DIR and APEX_APP_DFS_ROOT_DIR
+    Assert.assertEquals("/dt/testUser1/xyz", conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    Assert.assertNull(conf.get(StramClientUtils.APEX_APP_DFS_ROOT_DIR));
+  }
+
+  /**
+   * dt.dfsRootDirectory is blank: FileSystem is "file:///"
+   * @throws Exception
+   *
+   *
+   */
+  @Test
+  public void newFileSystemInstanceBlankPath() throws Exception
+  {
+    final Configuration conf = new Configuration(false);
+
+    setupLoginTestUser();
+    FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
+    Assert.assertEquals("file:///", fs.getUri().toString());
+    // verify conf properties for DT_DFS_ROOT_DIR
+    Assert.assertNull(conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+  }
+
+  /**
+   * dt.dfsRootDirectory is non-blank: use value to get FS
+   * @throws Exception
+   *
+   *
+   */
+  @Test
+  public void newFileSystemInstanceNonBlankPath() throws Exception
+  {
+    final Configuration conf = new Configuration(false);
+    conf.set(StramClientUtils.DT_DFS_ROOT_DIR, "/dt/testUser1/xyz");
+
+    setupLoginTestUser();
+    FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
+    Assert.assertEquals("file:///", fs.getUri().toString());
+    // verify conf properties for DT_DFS_ROOT_DIR
+    Assert.assertEquals("/dt/testUser1/xyz", conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+  }
+
+  /**
+   * dt.dfsRootDirectory is non-blank and has %USER_NAME%: use value to get FS
+   * @throws Exception
+   *
+   *
+   */
+  @Test
+  public void newFileSystemInstanceNonBlankPathAndVar() throws Exception
+  {
+    final Configuration conf = new Configuration(false);
+    conf.set(StramClientUtils.DT_DFS_ROOT_DIR, "/dt/%USER_NAME%/xyz");
+
+    setupLoginTestUser();
+
+    UserGroupInformation doAsUser = UserGroupInformation.createUserForTesting("testUser2", new String[]{""});
+
+    doAsUser.doAs(new PrivilegedExceptionAction<Void>()
+    {
+      @Override
+      public Void run() throws Exception
+      {
+        FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
+        Assert.assertEquals("file:///", fs.getUri().toString());
+        return null;
+      }
+    });
+
+    // verify conf properties for DT_DFS_ROOT_DIR
+    Assert.assertEquals("/dt/testUser1/xyz", conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+  }
+
 }
