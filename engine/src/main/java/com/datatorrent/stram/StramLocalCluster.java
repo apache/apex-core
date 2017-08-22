@@ -453,6 +453,17 @@ public class StramLocalCluster implements Runnable, Controller
     this.exitCondition = exitCondition;
   }
 
+  public void run(Callable<Boolean> exitCondition)
+  {
+    run(exitCondition, 0);
+  }
+
+  public void run(Callable<Boolean> exitCondition, long runMillis)
+  {
+    setExitCondition(exitCondition);
+    run(runMillis);
+  }
+
   @Override
   public void run()
   {
@@ -519,6 +530,7 @@ public class StramLocalCluster implements Runnable, Controller
 
         try {
           if (exitCondition != null && exitCondition.call()) {
+            LOG.info("Stopping on exit condition");
             appDone = true;
           }
         } catch (Exception ex) {
