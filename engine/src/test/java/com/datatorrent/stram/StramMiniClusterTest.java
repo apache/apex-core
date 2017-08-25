@@ -227,11 +227,15 @@ public class StramMiniClusterTest
     LogicalPlan dag = createDAG(tb);
     Configuration yarnConf = new Configuration(yarnCluster.getConfig());
     StramClient client = new StramClient(yarnConf, dag);
+    client.javaCmd = System.getProperty("java.home") + "/bin/java";
+    LOG.info("{}", client.javaCmd);
     try {
       client.start();
+      /*
       if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
         client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
       }
+      */
       LOG.info("Running client");
       client.startApplication();
       boolean result = client.monitorApplication();
@@ -275,9 +279,7 @@ public class StramMiniClusterTest
     tb.addFromProperties(props, null);
 
     StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
-    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
-      client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
-    }
+    client.javaCmd = System.getProperty("java.home") + "/bin/java";
     try {
       client.start();
       client.startApplication();
@@ -382,9 +384,7 @@ public class StramMiniClusterTest
 
     LOG.info("Initializing Client");
     StramClient client = new StramClient(conf, dag);
-    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
-      client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
-    }
+    client.javaCmd = System.getProperty("java.home") + "/bin/java"; // JAVA_HOME not set in the yarn mini cluster
     try {
       client.start();
       client.startApplication();
@@ -614,9 +614,8 @@ public class StramMiniClusterTest
     dag.getContextAttributes(operator).put(OperatorContext.RECOVERY_ATTEMPTS, 0);
 
     StramClient client = new StramClient(conf, dag);
-    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
-      client.javaCmd = "java";
-    }
+    LOG.info("JAVA_HOME {}, java.home", System.getenv("JAVA_HOME"), System.getProperty("java.home"));
+    client.javaCmd = System.getProperty("java.home")+ "/bin/java";
     try {
       client.start();
       client.startApplication();
