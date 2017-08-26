@@ -44,7 +44,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.common.util.JarHelper;
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
@@ -125,19 +124,10 @@ public class StramMiniClusterTest
     conf = StramClientUtils.addDTDefaultResources(conf);
     conf.setInt(YarnConfiguration.RM_SCHEDULER_MINIMUM_ALLOCATION_MB, 64);
     conf.setInt("yarn.nodemanager.vmem-pmem-ratio", 20); // workaround to avoid containers being killed because java allocated too much vmem
-    conf.setStrings("yarn.scheduler.capacity.root.queues", "default");
-    conf.setStrings("yarn.scheduler.capacity.root.default.capacity", "100");
-
-    StringBuilder adminEnv = new StringBuilder(1024);
-    if (System.getenv("JAVA_HOME") == null) {
-      adminEnv.append("JAVA_HOME=").append(System.getProperty("java.home"));
-      adminEnv.append(",");
-    }
-    adminEnv.append("MALLOC_ARENA_MAX=4"); // see MAPREDUCE-3068, MAPREDUCE-3065
-    adminEnv.append(",");
-    adminEnv.append("CLASSPATH=").append(getTestRuntimeClasspath());
-
-    conf.set(YarnConfiguration.NM_ADMIN_USER_ENV, adminEnv.toString());
+    conf.set("yarn.scheduler.capacity.root.queues", "default");
+    conf.set("yarn.scheduler.capacity.root.default.capacity", "100");
+    conf.set(YarnConfiguration.NM_ADMIN_USER_ENV, String.format("JAVA_HOME=%s,CLASSPATH=%s", System.getProperty("java.home"), getTestRuntimeClasspath()));
+    conf.set(YarnConfiguration.NM_ENV_WHITELIST, YarnConfiguration.DEFAULT_NM_ENV_WHITELIST.replaceAll("JAVA_HOME,*", ""));
 
     if (yarnCluster == null) {
       yarnCluster = new MiniYARNCluster(StramMiniClusterTest.class.getName(),
@@ -229,9 +219,6 @@ public class StramMiniClusterTest
     StramClient client = new StramClient(yarnConf, dag);
     try {
       client.start();
-      if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
-        client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
-      }
       LOG.info("Running client");
       client.startApplication();
       boolean result = client.monitorApplication();
@@ -275,9 +262,6 @@ public class StramMiniClusterTest
     tb.addFromProperties(props, null);
 
     StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
-    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
-      client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
-    }
     try {
       client.start();
       client.startApplication();
@@ -382,9 +366,6 @@ public class StramMiniClusterTest
 
     LOG.info("Initializing Client");
     StramClient client = new StramClient(conf, dag);
-    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
-      client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
-    }
     try {
       client.start();
       client.startApplication();
@@ -614,9 +595,6 @@ public class StramMiniClusterTest
     dag.getContextAttributes(operator).put(OperatorContext.RECOVERY_ATTEMPTS, 0);
 
     StramClient client = new StramClient(conf, dag);
-    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
-      client.javaCmd = "java";
-    }
     try {
       client.start();
       client.startApplication();
