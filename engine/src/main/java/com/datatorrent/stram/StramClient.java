@@ -103,6 +103,8 @@ public class StramClient
   @Deprecated
   public static final String YARN_APPLICATION_TYPE_DEPRECATED = "DataTorrent";
 
+  private static final String javaCmd = "${JAVA_HOME}" + "/bin/java";
+
   public static final String LIB_JARS_SEP = ",";
 
   // Configuration
@@ -114,7 +116,6 @@ public class StramClient
   private final int amPriority = 0;
   private ApplicationId appId;
   private final LogicalPlan dag;
-  public String javaCmd = "${JAVA_HOME}" + "/bin/java";
   // log4j.properties file
   // if available, add to local resources and set into classpath
   private final String log4jPropFile = "";
