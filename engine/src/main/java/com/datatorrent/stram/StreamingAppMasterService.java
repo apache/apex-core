@@ -693,7 +693,9 @@ public class StreamingAppMasterService extends CompositeService
   private void execute() throws YarnException, IOException
   {
     LOG.info("Starting ApplicationMaster");
-    final Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
+    final UserGroupInformation currentUser = UserGroupInformation.getCurrentUser();
+    LOG.info("Current user {}", currentUser.getShortUserName());
+    final Credentials credentials = currentUser.getCredentials();
     LOG.info("number of tokens: {}", credentials.getAllTokens().size());
     Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
     while (iter.hasNext()) {
