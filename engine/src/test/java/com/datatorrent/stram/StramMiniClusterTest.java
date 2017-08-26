@@ -44,7 +44,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.common.util.JarHelper;
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
@@ -614,8 +613,8 @@ public class StramMiniClusterTest
     dag.getContextAttributes(operator).put(OperatorContext.RECOVERY_ATTEMPTS, 0);
 
     StramClient client = new StramClient(conf, dag);
-    LOG.info("JAVA_HOME {}, java.home", System.getenv("JAVA_HOME"), System.getProperty("java.home"));
-    client.javaCmd = System.getProperty("java.home")+ "/bin/java";
+    LOG.info("JAVA_HOME {}, java.home {}", System.getenv("JAVA_HOME"), System.getProperty("java.home"));
+    client.javaCmd = System.getProperty("java.home") + "/bin/java";
     try {
       client.start();
       client.startApplication();
