@@ -163,7 +163,7 @@
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <argLine>-Xmx2048m -XX:MaxPermSize=128m</argLine>
+          <argLine>-Xms1024m -Xmx2048m -XX:MaxPermSize=128m</argLine>
           <systemPropertyVariables>
             <maven.home>${maven.home}</maven.home>
             <maven.multiModuleProjectDirectory>${maven.home}</maven.multiModuleProjectDirectory>
