@@ -163,9 +163,9 @@
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <argLine>-Xms1024m -Xmx2048m -XX:MaxPermSize=128m</argLine>
-          <threadCount>4</threadCount>
-      <!--     <forkCount>3</forkCount>
+          <argLine>-Xms1024m -Xmx2048m -XX:MaxPermSize=128m -XX:-UseLoopPredicate</argLine>
+      <!--    <threadCount>4</threadCount>
+           <forkCount>3</forkCount>
            <reuseForks>true</reuseForks>  -->
           <systemPropertyVariables>
             <maven.home>${maven.home}</maven.home>
