@@ -15,6 +15,9 @@
 
 language: java
 
+jdk:
+  - openjdk7
+
 script: mvn apache-rat:check verify -Dlicense.skip=false -Dtravis=true
 
 notifications:
