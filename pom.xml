@@ -169,6 +169,7 @@
             <exclude>**/*.importorder</exclude>
             <exclude>**/archetype-resources/**</exclude>
             <exclude>misc/ide-templates/**</exclude>
+            <exclude>.mvn/jvm.config</exclude>
           </excludes>
           <mapping>
             <apex>SCRIPT_STYLE</apex>
@@ -247,6 +248,7 @@
             <exclude>**/*.importorder</exclude>
             <exclude>misc/ide-templates/**</exclude>
             <exclude>**/NOTICE.vm</exclude>
+            <exclude>.mvn/jvm.config</exclude>
           </excludes>
         </configuration>
       </plugin>
