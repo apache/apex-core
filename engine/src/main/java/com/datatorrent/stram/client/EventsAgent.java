@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -69,6 +70,11 @@ public final class EventsAgent extends FSPartFileAgent
     public Map<String, String> data;
   }
 
+  public static class EventInfoWithAnalysis extends EventInfo
+  {
+    public Set<String> analysis;
+  }
+
   public EventsAgent(StramAgent stramAgent)
   {
     super(stramAgent);
@@ -106,9 +112,9 @@ public final class EventsAgent extends FSPartFileAgent
     return info;
   }
 
-  public List<EventInfo> getLatestEvents(String appId, int limit)
+  public List<EventInfoWithAnalysis> getLatestEvents(String appId, int limit)
   {
-    LinkedList<EventInfo> result = new LinkedList<>();
+    LinkedList<EventInfoWithAnalysis> result = new LinkedList<>();
     String dir = getEventsDirectory(appId);
     if (dir == null) {
       return null;
@@ -168,9 +174,9 @@ public final class EventsAgent extends FSPartFileAgent
     return result;
   }
 
-  public List<EventInfo> getEvents(String appId, Long fromTime, Long toTime, long offset, int limit)
+  public List<EventInfoWithAnalysis> getEvents(String appId, Long fromTime, Long toTime, long offset, int limit)
   {
-    List<EventInfo> result = new ArrayList<>();
+    List<EventInfoWithAnalysis> result = new ArrayList<>();
     String dir = getEventsDirectory(appId);
     if (dir == null) {
       return null;
@@ -221,11 +227,11 @@ public final class EventsAgent extends FSPartFileAgent
   }
 
   @SuppressWarnings("unchecked")
-  private long processPartFile(BufferedReader partBr, Long fromTime, Long toTime, long offset, int limit, List<EventInfo> result) throws IOException
+  private long processPartFile(BufferedReader partBr, Long fromTime, Long toTime, long offset, int limit, List<EventInfoWithAnalysis> result) throws IOException
   {
     String partLine;
     while ((partLine = partBr.readLine()) != null) {
-      EventInfo ev = new EventInfo();
+      EventInfoWithAnalysis ev = new EventInfoWithAnalysis();
       int cursor = 0;
       int cursor2;
       cursor2 = partLine.indexOf(':', cursor);

@@ -166,7 +166,7 @@ public class FSEventRecorder implements EventRecorder
     storage.writeDataItem(bos.toByteArray(), true);
     if (numSubscribers > 0) {
       LOG.debug("Publishing event {} through websocket to gateway", event.getType());
-      EventsAgent.EventInfo eventInfo = new EventsAgent.EventInfo();
+      EventsAgent.EventInfoWithAnalysis eventInfo = new EventsAgent.EventInfoWithAnalysis();
       eventInfo.id = event.getId();
       eventInfo.timestamp = event.getTimestamp();
       eventInfo.type = event.getType();
