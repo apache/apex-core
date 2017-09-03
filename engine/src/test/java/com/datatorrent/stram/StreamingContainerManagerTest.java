@@ -708,7 +708,7 @@ public class StreamingContainerManagerTest
     return sca.getDeployInfoList(sca.container.getOperators());
   }
 
-  private static OperatorDeployInfo getNodeDeployInfo(List<OperatorDeployInfo> di, OperatorMeta nodeConf)
+  static OperatorDeployInfo getNodeDeployInfo(List<OperatorDeployInfo> di, OperatorMeta nodeConf)
   {
     for (OperatorDeployInfo ndi : di) {
       if (nodeConf.getName().equals(ndi.name)) {

@@ -39,7 +39,7 @@ import com.datatorrent.api.DAG;
 
 public class FSStorageAgentTest
 {
-  private static class TestMeta extends TestWatcher
+  protected static class TestMeta extends TestWatcher
   {
     String applicationPath;
     FSStorageAgent storageAgent;

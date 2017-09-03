@@ -145,8 +145,11 @@ public class CheckpointTest
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     dag.setOperatorAttribute(o2, OperatorContext.STATELESS, true);
 
-    dag.addStream("o1.outport", o1.outport, o2.inport1).setLocality(Locality.CONTAINER_LOCAL);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+    dag.setOperatorAttribute(o3, OperatorContext.STATELESS, true);
 
+    dag.addStream("o1.outport", o1.outport, o2.inport1).setLocality(Locality.CONTAINER_LOCAL);
+    dag.addStream("o2.outport", o2.outport1, o3.inport1).setLocality(Locality.CONTAINER_LOCAL);
     StramLocalCluster sc = new StramLocalCluster(dag);
     sc.setHeartbeatMonitoringEnabled(false);
     sc.run();
@@ -170,6 +173,14 @@ public class CheckpointTest
     }
     Assert.assertEquals("number checkpoints " + checkpoints, 1, checkpoints.size());
     Assert.assertEquals("checkpoints " + o2p1, Sets.newHashSet(Stateless.WINDOW_ID), checkpoints);
+
+    PTOperator o3p1 = plan.getOperators(dag.getMeta(o3)).get(0);
+    checkpoints = Sets.newHashSet();
+    for (long windowId : storageAgent.getWindowIds(o3p1.getId())) {
+      checkpoints.add(windowId);
+    }
+    Assert.assertEquals("number checkpoints " + checkpoints, 3, checkpoints.size());
+    Assert.assertTrue("contains " + checkpoints + " " + Stateless.WINDOW_ID, checkpoints.contains(Stateless.WINDOW_ID));
 
     Assert.assertEquals("checkpoints " + o1p1 + " " + o1p1.checkpoints, 2, o1p1.checkpoints.size());
     Assert.assertNotNull("checkpoint not null for statefull operator " + o1p1, o1p1.stats.checkpointStats);

@@ -94,6 +94,7 @@ import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.common.experimental.AppData;
 import com.datatorrent.common.metric.MetricsAggregator;
 import com.datatorrent.common.metric.SingleMetricAggregator;
@@ -1062,6 +1063,10 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
 
+    public boolean isLeafOperator()
+    {
+      return leafOperators.contains(this);
+    }
 
     private class PortMapping implements Operators.OperatorDescriptor
     {
@@ -1194,6 +1199,15 @@ public class LogicalPlan implements Serializable, DAG
     public LogicalPlan getDAG()
     {
       return LogicalPlan.this;
+    }
+
+    public boolean isStateless()
+    {
+      if (getDAG().getValue(OperatorContext.STATELESS) || getValue(OperatorContext.STATELESS)) {
+        return true;
+      }
+
+      return getOperator().getClass().isAnnotationPresent(Stateless.class);
     }
 
     @Override

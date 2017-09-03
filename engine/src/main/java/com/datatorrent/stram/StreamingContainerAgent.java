@@ -436,7 +436,11 @@ public class StreamingContainerAgent
       throw new RuntimeException("Cannot clone operator attributes", ex);
     }
     if (oper.isOperatorStateLess()) {
-      ndi.contextAttributes.put(OperatorContext.STATELESS, true);
+      if (oper.isLeafOperator()) {
+        ndi.contextAttributes.put(OperatorContext.STATELESS, false);
+      } else {
+        ndi.contextAttributes.put(OperatorContext.STATELESS, true);
+      }
     }
     return ndi;
   }
