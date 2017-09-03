@@ -679,7 +679,11 @@ public class StreamingAppMasterService extends CompositeService
       StreamingContainer.eventloop.start();
       execute();
     } finally {
-      StreamingContainer.eventloop.stop();
+      try {
+        StreamingContainer.eventloop.stop();
+      } catch (Exception ex) {
+        LOG.error("Exception while stopping StreamingContainer.eventloop {}", ex);
+      }
     }
     return status;
   }

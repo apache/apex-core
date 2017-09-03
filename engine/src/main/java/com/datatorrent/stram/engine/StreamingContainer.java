@@ -314,7 +314,13 @@ public class StreamingContainer extends YarnContainerMain
         stramChild.heartbeatLoop();
         exitStatus = 0;
       } finally {
-        stramChild.teardown();
+        try {
+          stramChild.teardown();
+        } catch (Exception ex) {
+          if (exitStatus == 0) {
+            throw ex;
+          }
+        }
       }
     } catch (Error | Exception e) {
       LogFileInformation logFileInfo = LoggerUtil.getLogFileInformation();
