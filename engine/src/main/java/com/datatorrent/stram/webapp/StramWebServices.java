@@ -574,6 +574,21 @@ public class StramWebServices
   }
 
   @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/metrics")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getLogicalOperator(@PathParam("operatorName") String operatorName, @QueryParam("isPartialAggregates") Boolean isPartialAggregates) throws Exception
+  {
+    init();
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (logicalOperator == null) {
+      throw new NotFoundException();
+    }
+
+    LogicalOperatorInfo logicalOperatorInfo = dagManager.getLogicalOperatorInfo(operatorName, isPartialAggregates);
+    return new JSONObject(objectMapper.writeValueAsString(logicalOperatorInfo));
+  }
+
+  @GET
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}")
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getLogicalOperator(@PathParam("operatorName") String operatorName) throws Exception
