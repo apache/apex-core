@@ -66,6 +66,7 @@ import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.StringCodec;
+import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
@@ -162,6 +163,8 @@ public class StreamingContainer extends YarnContainerMain
   HashSet<Component<ContainerContext>> components;
   private RequestFactory requestFactory;
   private TokenRenewer tokenRenewer;
+
+  private Map<Integer, Node<?>> reuseOpNodes = new HashMap<>();
 
   static {
     try {
@@ -518,7 +521,7 @@ public class StreamingContainer extends YarnContainerMain
     }
   }
 
-  private synchronized void undeploy(List<Integer> nodeList)
+  private synchronized Map<Integer, Node<?>> undeploy(List<Integer> nodeList)
   {
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
@@ -565,6 +568,8 @@ public class StreamingContainer extends YarnContainerMain
     for (Integer operatorId : nodeList) {
       nodes.remove(operatorId);
     }
+
+    return toUndeploy;
   }
 
   public void teardown()
@@ -800,7 +805,9 @@ public class StreamingContainer extends YarnContainerMain
     if (rsp.undeployRequest != null) {
       logger.info("Undeploy request: {}", rsp.undeployRequest);
       processNodeRequests(false);
-      undeploy(rsp.undeployRequest);
+      Map<Integer, Node<?>> undeployNodes = undeploy(rsp.undeployRequest);
+      undeployNodes.entrySet().removeIf((entry) -> !isReuseOperator(entry.getValue()));
+      reuseOpNodes.putAll(undeployNodes);
     }
 
     if (rsp.shutdown != null) {
@@ -831,6 +838,19 @@ public class StreamingContainer extends YarnContainerMain
     }
 
     processNodeRequests(true);
+  }
+
+  private boolean isReuseOperator(Node<?> node)
+  {
+    if (node.context.getAttributes().contains(OperatorContext.RECOVERY_MODE)) {
+      return node.context.getValue(OperatorContext.RECOVERY_MODE) == Operator.RecoveryMode.REUSE_INSTANCE;
+    } else {
+      if (node.operator.getClass().isAnnotationPresent(OperatorAnnotation.class)) {
+        return node.operator.getClass().getAnnotation(OperatorAnnotation.class).recoveryMode() == Operator.RecoveryMode.REUSE_INSTANCE;
+      }
+    }
+    logger.debug("Is reuse operator {} {}", node, false);
+    return false;
   }
 
   private void stopInputNodes()
@@ -924,8 +944,16 @@ public class StreamingContainer extends YarnContainerMain
 
       OperatorContext ctx = new OperatorContext(ndi.id, ndi.name, ndi.contextAttributes, parentContext);
       ctx.attributes.put(OperatorContext.ACTIVATION_WINDOW_ID, ndi.checkpoint.windowId);
-      logger.debug("Restoring operator {} to checkpoint {} stateless={}.", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId), ctx.stateless);
-      Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ctx.stateless ? Stateless.WINDOW_ID : ndi.checkpoint.windowId), ctx, ndi.type);
+      Node<?> node = reuseOpNodes.get(ndi.id);
+      if (node == null) {
+        logger.info("Restoring operator {} to checkpoint {} stateless={}.", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId), ctx.stateless);
+        node = Node.retrieveNode(backupAgent.load(ndi.id, ctx.stateless ? Stateless.WINDOW_ID : ndi.checkpoint.windowId), ctx, ndi.type);
+      } else {
+        logger.info("Reusing previous operator instance {}", ndi.id);
+        node = Node.retrieveNode(node.operator, ctx, ndi.type);
+        node.setReuseOperator(true);
+        reuseOpNodes.remove(ndi.id);
+      }
       node.currentWindowId = ndi.checkpoint.windowId;
       node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
       node.firstWindowMillis = firstWindowMillis;

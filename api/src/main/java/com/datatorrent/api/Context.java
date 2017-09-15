@@ -27,6 +27,7 @@ import org.apache.hadoop.classification.InterfaceStability.Evolving;
 
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.Operator.RecoveryMode;
 import com.datatorrent.api.StringCodec.Class2String;
 import com.datatorrent.api.StringCodec.Collection2String;
 import com.datatorrent.api.StringCodec.Integer2String;
@@ -315,6 +316,14 @@ public interface Context
      * by this construct is conveyed to tracker application and influences the aggregations done on it by the tracker.
      */
     Attribute<AutoMetric.DimensionsScheme> METRICS_DIMENSIONS_SCHEME = new Attribute<>(Object2String.<AutoMetric.DimensionsScheme>getInstance());
+
+    /**
+     * Specify how to recover the operator in cases of a failure event. The default is to load from checkpoint. However,
+     * in some cases reusing same instance of the operator from before the failure event may be desired. See
+     * {@link RecoveryMode} The latter is only applicable in cases where the recovery is due to a failure of the
+     * upstream operator and not the operator itself.
+     */
+    Attribute<RecoveryMode> RECOVERY_MODE = new Attribute<RecoveryMode>(RecoveryMode.CHECKPOINT);
 
     /**
      * Return the operator runtime id.

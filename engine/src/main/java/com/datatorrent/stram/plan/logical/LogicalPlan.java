@@ -1166,6 +1166,12 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
+    public OperatorAnnotation getOperatorAnnotation()
+    {
+      return operatorAnnotation;
+    }
+
+    @Override
     public InputPortMeta getMeta(Operator.InputPort<?> port)
     {
       return getPortMapping().inPortMap.get(port);
