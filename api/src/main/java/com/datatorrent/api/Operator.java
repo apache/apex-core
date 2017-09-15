@@ -18,6 +18,8 @@
  */
 package com.datatorrent.api;
 
+import org.apache.hadoop.classification.InterfaceStability.Evolving;
+
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.GenericOperator;
@@ -69,6 +71,25 @@ public interface Operator extends Component<OperatorContext>, GenericOperator
       return mode;
     }
 
+  }
+
+  @Evolving
+  enum RecoveryMode
+  {
+    /**
+     * Recover the operator from checkpoint
+     */
+    CHECKPOINT,
+    /**
+     * Reuse the same instance of the operator from before the failure event.
+     *
+     * This applies to scenarios where the failure is in an upstream operator and the not the operator itself.
+     * Reusing the same instance may not be applicable in all cases as it can lead to incorrect results because the
+     * operator state will not be consistent with the processing position in the stream. This should be used only for
+     * operators that are either invariant to reusing the same state with the stream processing position modified
+     * according to the processing mode or tolerant to it.
+     */
+    REUSE_INSTANCE
   }
 
   /**
@@ -227,7 +248,8 @@ public interface Operator extends Component<OperatorContext>, GenericOperator
   {
     /**
      * Do the operations just before the operator starts processing tasks within the windows.
-     * e.g. establish a network connection.
+     * e.g. establish a network connection. This method is called irrespective of what {@link RecoveryMode}
+     * is being used.
      * @param context - the context in which the operator is executing.
      */
     void activate(CONTEXT context);

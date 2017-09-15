@@ -135,6 +135,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public long firstWindowMillis;
   public long windowWidthMillis;
 
+  protected boolean reuseOperator;
+
   public Node(OPERATOR operator, OperatorContext context)
   {
     this.operator = operator;
@@ -180,12 +182,19 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     return operator;
   }
 
+  public void setReuseOperator(boolean reuseOperator)
+  {
+    this.reuseOperator = reuseOperator;
+  }
+
   @Override
   public void setup(OperatorContext context)
   {
     shutdown = false;
-    logger.debug("Operator Context = {}", context);
-    operator.setup(context);
+    if (!reuseOperator) {
+      logger.debug("Operator Context = {}", context);
+      operator.setup(context);
+    }
 //    this is where the ports should be setup but since the
 //    portcontext is not available here, we are doing it in
 //    StramChild. In future version, we should move that code here

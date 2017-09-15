@@ -24,6 +24,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.datatorrent.api.Operator;
+
 /**
  * Annotation to specify characteristics of an operator.
  *
@@ -49,4 +51,13 @@ public @interface OperatorAnnotation
    * @return whether operator can be checkpointed in middle of an application window.
    */
   boolean checkpointableWithinAppWindow() default true;
+
+  /**
+   * Element specifying the recovery mode for the operator.
+   * By default the operator state is recovered from checkpoint. The operator developer can indicate a preference for
+   * the recovery mode with this element, see {@link Operator.RecoveryMode}. The application developer can override this
+   * by setting the {@link Context.OperatorContext#RECOVERY_MODE} attribute.
+   * @return
+   */
+  Operator.RecoveryMode recoveryMode() default Operator.RecoveryMode.CHECKPOINT;
 }

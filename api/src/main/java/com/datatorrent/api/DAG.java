@@ -27,6 +27,7 @@ import javax.annotation.Nonnull;
 import org.apache.hadoop.classification.InterfaceStability;
 
 import com.datatorrent.api.Context.DAGContext;
+import com.datatorrent.api.annotation.OperatorAnnotation;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -189,6 +190,8 @@ public interface DAG extends DAGContext, Serializable
     InputPortMeta getMeta(Operator.InputPort<?> port);
 
     OutputPortMeta getMeta(Operator.OutputPort<?> port);
+
+    OperatorAnnotation getOperatorAnnotation();
 
     /**
      * Return collection of stream which are connected to this operator's
