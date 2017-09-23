@@ -220,7 +220,7 @@ public class StramMiniClusterTest
     try {
       client.start();
       LOG.info("Running client");
-      client.startApplication();
+      client.startApplication(null, null);
       boolean result = client.monitorApplication();
 
       LOG.info("Client run completed. Result=" + result);
@@ -264,7 +264,7 @@ public class StramMiniClusterTest
     StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
     try {
       client.start();
-      client.startApplication();
+      client.startApplication(null, null);
 
       // attempt web service connection
       ApplicationReport appReport = client.getApplicationReport();
@@ -368,7 +368,7 @@ public class StramMiniClusterTest
     StramClient client = new StramClient(conf, dag);
     try {
       client.start();
-      client.startApplication();
+      client.startApplication(null, null);
       client.setClientTimeout(120000);
 
       boolean result = client.monitorApplication();
@@ -597,7 +597,7 @@ public class StramMiniClusterTest
     StramClient client = new StramClient(conf, dag);
     try {
       client.start();
-      client.startApplication();
+      client.startApplication(null, null);
       Assert.assertTrue(client.monitorApplication());
     } finally {
       client.stop();

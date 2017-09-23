@@ -618,7 +618,7 @@ public class StramAppLauncher
           client.addTag(tag.trim());
         }
       }
-      client.startApplication();
+      client.startApplication("AppMaster.stdout", "AppMaster.stderr");
       return client.getApplicationReport().getApplicationId();
     } finally {
       client.stop();

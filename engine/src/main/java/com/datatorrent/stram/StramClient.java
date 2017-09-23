@@ -332,7 +332,7 @@ public class StramClient
    * @throws YarnException
    * @throws IOException
    */
-  public void startApplication() throws YarnException, IOException
+  public void startApplication(String stdout, String stderr) throws YarnException, IOException
   {
     Class<?>[] defaultClasses;
 
@@ -602,8 +602,12 @@ public class StramClient
         vargs.add(String.format("-D%s=%s", StramUtils.DT_LOGGERS_LEVEL, loggersLevel));
       }
       vargs.add(StreamingAppMaster.class.getName());
-      vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
-      vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
+      if (StringUtils.isNotBlank(stdout)) {
+        vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/" + stdout);
+      }
+      if (StringUtils.isNotBlank(stderr)) {
+        vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/" + stderr);
+      }
 
       // Get final command
       StringBuilder command = new StringBuilder(9 * vargs.size());
