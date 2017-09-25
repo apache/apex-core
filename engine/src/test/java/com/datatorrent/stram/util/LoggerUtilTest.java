@@ -31,6 +31,7 @@ import org.apache.log4j.Category;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.apache.log4j.spi.LoggingEvent;
 
 import com.google.common.collect.Maps;
@@ -237,16 +238,17 @@ public class LoggerUtilTest
     System.setProperty(APPLICATION_NAME.getLongName(), application);
     LoggerUtil.setupMDC(service);
 
-    LoggerUtil.addAppenders(new String[] {appenderName }, args, ",");
-    TestAppender appender = (TestAppender)org.apache.log4j.Logger.getRootLogger().getAppender(appenderName);
+    Logger logger = LogManager.getLogger(LoggerUtilTest.class);
+    LoggerUtil.addAppenders(logger, new String[] {appenderName}, args, ",");
+    TestAppender appender = (TestAppender)logger.getAppender(appenderName);
 
-    logger.info(args);
+    LoggerUtilTest.logger.info(args);
     assertEquals(service, appender.mdcProperties.get("apex.service"));
     String node = StramClientUtils.getHostName();
     assertEquals(node == null ? "unknown" : node, appender.mdcProperties.get("apex.node"));
     assertEquals(application, appender.mdcProperties.get("apex.application"));
 
-    LoggerUtil.removeAppender(appenderName);
+    assertTrue(LoggerUtil.removeAppender(logger, appenderName));
   }
 
   public static class TestAppender extends ConsoleAppender
@@ -258,7 +260,6 @@ public class LoggerUtilTest
     @Override
     public void append(LoggingEvent event)
     {
-      event.getMDCCopy();
       mdcProperties = event.getProperties();
       lastMessage = event.getRenderedMessage();
       level = event.getLevel();
