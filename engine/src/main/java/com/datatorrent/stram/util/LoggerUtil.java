@@ -377,21 +377,36 @@ public class LoggerUtil
    */
   public static boolean addAppender(String name, Properties properties)
   {
+    return addAppender(LogManager.getRootLogger(), name, properties);
+  }
+
+  /**
+   * Adds Logger Appender to a specified logger
+   * @param logger Logger to add appender to, if null, use root logger
+   * @param name Appender name
+   * @param properties Appender properties
+   * @return True if the appender has been added successfully
+   */
+  public static boolean addAppender(Logger logger, String name, Properties properties)
+  {
     if (getAppendersNames().contains(name)) {
-      logger.warn("A logger appender with the name '{}' exists. Cannot add a new logger appender with the same name", name);
+      LoggerUtil.logger.warn("A logger appender with the name '{}' exists. Cannot add a new logger appender with the same name", name);
     } else {
       try {
         Method method = PropertyConfigurator.class.getDeclaredMethod("parseAppender", Properties.class, String.class);
         method.setAccessible(true);
         Appender appender = (Appender)method.invoke(new PropertyConfigurator(), properties, name);
         if (appender == null) {
-          logger.warn("Cannot add a new logger appender. Name: {}, Properties: {}", name, properties);
+          LoggerUtil.logger.warn("Cannot add a new logger appender. Name: {}, Properties: {}", name, properties);
         } else {
-          LogManager.getRootLogger().addAppender(appender);
+          if (logger == null) {
+            logger = LogManager.getRootLogger();
+          }
+          logger.addAppender(appender);
           return true;
         }
       } catch (Exception ex) {
-        logger.warn("Cannot add a new logger appender. Name: {}, Properties: {}", name, properties, ex);
+        LoggerUtil.logger.warn("Cannot add a new logger appender. Name: {}, Properties: {}", name, properties, ex);
       }
     }
     return false;
@@ -406,6 +421,19 @@ public class LoggerUtil
    */
   public static boolean addAppenders(String[] names, String args, String propertySeparator)
   {
+    return addAppenders(LogManager.getRootLogger(), names, args, propertySeparator);
+  }
+
+  /**
+   * Adds Logger Appenders
+   * @param logger Logger to add appender to, if null, use root logger
+   * @param names Names of appender
+   * @param args Args with properties
+   * @param propertySeparator Property separator
+   * @return True if all of the appenders have been added successfully
+   */
+  public static boolean addAppenders(Logger logger, String[] names, String args, String propertySeparator)
+  {
     if (names == null || args == null || names.length == 0 || propertySeparator == null) {
       throw new IllegalArgumentException("Incorrect appender parametrs");
     }
@@ -413,8 +441,11 @@ public class LoggerUtil
     try {
       Properties properties = new Properties();
       properties.load(new StringReader(args.replaceAll(propertySeparator, "\n")));
+      if (logger == null) {
+        logger = LogManager.getRootLogger();
+      }
       for (String name : names) {
-        if (!addAppender(name, properties)) {
+        if (!addAppender(logger, name, properties)) {
           status = false;
         }
       }
@@ -450,13 +481,27 @@ public class LoggerUtil
    */
   public static boolean removeAppender(String name)
   {
+    return removeAppender(LogManager.getRootLogger(), name);
+  }
+
+  /**
+   * Removes Logger Appender
+   * @param logger Logger to remove appender from, if null, use root logger
+   * @param name Appender name
+   * @return True if the appender has been removed successfully
+   */
+  public static boolean removeAppender(Logger logger, String name)
+  {
+    if (logger == null) {
+      logger = LogManager.getRootLogger();
+    }
     try {
-      LogManager.getRootLogger().removeAppender(name);
+      logger.removeAppender(name);
     } catch (Exception ex) {
-      logger.error("Cannot remove the logger appender: {}", name, ex);
+      LoggerUtil.logger.error("Cannot remove the logger appender: {}", name, ex);
       return false;
     }
-    return false;
+    return true;
   }
 
   /**
@@ -465,7 +510,20 @@ public class LoggerUtil
    */
   public static List<String> getAppendersNames()
   {
-    Enumeration enumeration = LogManager.getRootLogger().getAllAppenders();
+    return getAppendersNames(LogManager.getRootLogger());
+  }
+
+  /**
+   * Returns a list names of the appenders
+   * @param logger Logger to list appender for, if null, use root logger
+   * @return Names of the appenders
+   */
+  public static List<String> getAppendersNames(Logger logger)
+  {
+    if (logger == null) {
+      logger = LogManager.getRootLogger();
+    }
+    Enumeration enumeration = logger.getAllAppenders();
     List<String> names = new LinkedList<>();
     while (enumeration.hasMoreElements()) {
       names.add(((Appender)enumeration.nextElement()).getName());
