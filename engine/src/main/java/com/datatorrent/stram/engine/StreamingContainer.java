@@ -143,6 +143,8 @@ public class StreamingContainer extends YarnContainerMain
    * value: list of nodes which are in oio with oio owning thread node
    */
   protected final Map<Integer, ArrayList<Integer>> oioGroups = new ConcurrentHashMap<>();
+  //a simple map which maps the oio node to it's the node which owns the thread.
+  protected final Map<Integer, Integer> oioNodes = new ConcurrentHashMap<>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<>();
   private int heartbeatIntervalMillis = 1000;
@@ -566,6 +568,11 @@ public class StreamingContainer extends YarnContainerMain
 
     for (Integer operatorId : nodeList) {
       nodes.remove(operatorId);
+      Integer sourceNodeId = oioNodes.get(operatorId);
+      if (sourceNodeId != null) {
+        ArrayList<Integer> oioNodeIdList = oioGroups.get(sourceNodeId);
+        oioNodeIdList.remove(Integer.valueOf(operatorId));
+      }
     }
   }
 
@@ -1092,8 +1099,6 @@ public class StreamingContainer extends YarnContainerMain
      */
     ArrayList<OperatorDeployInfo> inputNodes = new ArrayList<>();
     long smallestCheckpointedWindowId = Long.MAX_VALUE;
-    //a simple map which maps the oio node to it's the node which owns the thread.
-    Map<Integer, Integer> oioNodes = new ConcurrentHashMap<>();
 
     /*
      * Hook up all the downstream ports. There are 2 places where we deal with more than 1
@@ -1266,7 +1271,7 @@ public class StreamingContainer extends YarnContainerMain
       }
     }
 
-    setupOiOGroups(oioNodes);
+    setupOiOGroups();
 
     if (!inputNodes.isEmpty()) {
       WindowGenerator windowGenerator = setupWindowGenerator(smallestCheckpointedWindowId);
@@ -1288,7 +1293,7 @@ public class StreamingContainer extends YarnContainerMain
    * Populates oioGroups with owner OIO Node as key and list of corresponding OIO nodes which will run in its thread as value
    * This method assumes that the DAG is valid as per OIO constraints
    */
-  private void setupOiOGroups(Map<Integer, Integer> oioNodes)
+  private void setupOiOGroups()
   {
     for (Integer child : oioNodes.keySet()) {
       Integer oioParent = oioNodes.get(child);
