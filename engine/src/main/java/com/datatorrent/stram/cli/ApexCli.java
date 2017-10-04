@@ -1980,6 +1980,7 @@ public class ApexCli
             if (ap != null) {
               try {
                 if (!commandLineInfo.force) {
+                  checkJdkVersionCompatible(ap);
                   checkPlatformCompatible(ap);
                   checkConfigPackageCompatible(ap, cp);
                 }
@@ -3143,6 +3144,8 @@ public class ApexCli
             }
 
             arr.put(oper);
+          } catch (UnsupportedClassVersionError ex) {
+            throw new CliException("Class build JDK version not compatible with system JDK version", ex);
           } catch (Exception | NoClassDefFoundError ex) {
             // ignore this class
             final String cls = clazz;
@@ -3590,6 +3593,16 @@ public class ApexCli
     VersionInfo actualVersion = VersionInfo.APEX_VERSION;
     if (!VersionInfo.isCompatible(actualVersion.getVersion(), apVersion)) {
       throw new CliException("This App Package is compiled with Apache Apex Core API version " + apVersion + ", which is incompatible with this Apex Core version " + actualVersion.getVersion());
+    }
+  }
+
+  private void checkJdkVersionCompatible(AppPackage ap)
+  {
+    String appBuildJdkVersion = ap.getAppBuildJdkVersion();
+    String systemJdkVersion = System.getProperty("java.version");
+    // App JDK version should be lower than system JDK version
+    if (!VersionInfo.isCompatible(systemJdkVersion, appBuildJdkVersion)) {
+      throw new CliException("Application package build JDK version: " + appBuildJdkVersion + " is not compatible with system JDK version: " + systemJdkVersion);
     }
   }
 
