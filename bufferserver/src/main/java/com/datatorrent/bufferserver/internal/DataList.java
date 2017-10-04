@@ -78,8 +78,9 @@ public class DataList
   private MutableInt nextOffset = new MutableInt();
   private final ListenersNotifier listenersNotifier = new ListenersNotifier();
   private final boolean backPressureEnabled;
+  private final boolean dataFromSocket;
 
-  public DataList(final String identifier, final int blockSize, final int numberOfCacheBlocks, final boolean backPressureEnabled)
+  public DataList(final String identifier, final int blockSize, final int numberOfCacheBlocks, final boolean backPressureEnabled, final boolean dataFromSocket)
   {
     if (numberOfCacheBlocks < 1) {
       throw new IllegalArgumentException("Invalid number of Data List Memory blocks " + numberOfCacheBlocks);
@@ -90,6 +91,9 @@ public class DataList
     this.blockSize = blockSize;
     this.backPressureEnabled = backPressureEnabled;
     first = last = new Block(identifier, blockSize);
+    this.dataFromSocket = dataFromSocket;
+
+    logger.info("Flush from the {} will be used.", (dataFromSocket) ? "socket" : "queue");
   }
 
   public DataList(String identifier)
@@ -98,7 +102,7 @@ public class DataList
      * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block
      * at a time to the filesystem. We will use default value of 8 block sizes to be cached in memory
      */
-    this(identifier, 64 * 1024 * 1024, 8, true);
+    this(identifier, 64 * 1024 * 1024, 8, true, true);
   }
 
   public int getBlockSize()
@@ -106,16 +110,15 @@ public class DataList
     return blockSize;
   }
 
-  public void rewind(final int baseSeconds, final int windowId) throws IOException
+  public void rewind(final long windowId) throws IOException
   {
-    final long longWindowId = (long)baseSeconds << 32 | windowId;
     logger.debug("Rewinding {} from window ID {} to window ID {}", this, Codec.getStringWindowId(last.ending_window),
-        Codec.getStringWindowId(longWindowId));
+        Codec.getStringWindowId(windowId));
 
     int numberOfInMemBlockRewound = 0;
     synchronized (this) {
       for (Block temp = first; temp != null; temp = temp.next) {
-        if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
+        if (temp.starting_window >= windowId || temp.ending_window > windowId) {
           if (temp != last) {
             last.refCount.decrementAndGet();
             last = temp;
@@ -136,7 +139,7 @@ public class DataList
             last.next = null;
             last.acquire(true);
           }
-          this.baseSeconds = last.rewind(longWindowId);
+          this.baseSeconds = last.rewind(windowId);
           processingOffset = last.writingOffset;
           size = 0;
           break;
@@ -204,7 +207,7 @@ public class DataList
         temp.discard(false);
         synchronized (temp) {
           if (temp.refCount.get() != 0) {
-            logger.debug("Discarded block {} has positive reference count. Listeners: {}", temp, all_listeners);
+            logger.warn("Discarded block {} has positive reference count. Listeners: {}", temp, all_listeners);
             throw new IllegalStateException("Discarded block " + temp + " has positive reference count!");
           }
           if (temp.data != null) {
@@ -234,9 +237,19 @@ public class DataList
 
   public void flush(final int writeOffset)
   {
-    //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset,
-    //    nextOffset.integer, writeOffset);
-    flush:
+    if (dataFromSocket) {
+      flushFromSocket(writeOffset);
+    } else {
+      flushInMemoryQueue(writeOffset);
+    }
+
+    last.writingOffset = writeOffset;
+    notifyListeners();
+  }
+
+  private void flushFromSocket(final int writeOffset)
+  {
+  flush:
     do {
       while (size == 0) {
         size = VarInt.read(last.data, processingOffset, writeOffset, nextOffset);
@@ -255,43 +268,61 @@ public class DataList
       processingOffset = nextOffset.integer;
 
       if (processingOffset + size <= writeOffset) {
-        switch (last.data[processingOffset]) {
-          case MessageType.BEGIN_WINDOW_VALUE:
-            Tuple bwt = Tuple.getTuple(last.data, processingOffset, size);
-            if (last.starting_window == -1) {
-              last.starting_window = baseSeconds | bwt.getWindowId();
-              last.ending_window = last.starting_window;
-              //logger.debug("assigned both window id {}", last);
-            } else {
-              last.ending_window = baseSeconds | bwt.getWindowId();
-              //logger.debug("assigned last window id {}", last);
-            }
-            break;
-
-          case MessageType.RESET_WINDOW_VALUE:
-            Tuple rwt = Tuple.getTuple(last.data, processingOffset, size);
-            baseSeconds = (long)rwt.getBaseSeconds() << 32;
-            break;
-
-          default:
-            break;
-        }
-        processingOffset += size;
-        size = 0;
+        processWindowTuple();
       } else {
-        if (writeOffset == last.data.length) {
-          nextOffset.integer = 0;
-          processingOffset = 0;
-          size = 0;
-        }
+        resetAtEndOffset(writeOffset);
         break;
       }
-    } while (true);
+    }
+    while (true);
+  }
 
-    last.writingOffset = writeOffset;
+  private void flushInMemoryQueue(final int writeOffset)
+  {
+    size = VarInt.read(last.data, processingOffset, writeOffset, nextOffset);
+    processingOffset = nextOffset.integer;
 
-    notifyListeners();
+    if (processingOffset + size <= writeOffset) {
+      processWindowTuple();
+    } else {
+      resetAtEndOffset(writeOffset);
+    }
+  }
 
+  private void resetAtEndOffset(final int writeOffset)
+  {
+    if (writeOffset == last.data.length) {
+      nextOffset.integer = 0;
+      processingOffset = 0;
+      size = 0;
+    }
+  }
+
+  private void processWindowTuple()
+  {
+    switch (last.data[processingOffset]) {
+      case MessageType.BEGIN_WINDOW_VALUE:
+        Tuple bwt = Tuple.getTuple(last.data, processingOffset, size);
+        if (last.starting_window == -1) {
+          last.starting_window = baseSeconds | bwt.getWindowId();
+          last.ending_window = last.starting_window;
+          //logger.debug("assigned both window id {}", last);
+        } else {
+          last.ending_window = baseSeconds | bwt.getWindowId();
+          //logger.debug("assigned last window id {}", last);
+        }
+        break;
+
+      case MessageType.RESET_WINDOW_VALUE:
+        Tuple rwt = Tuple.getTuple(last.data, processingOffset, size);
+        baseSeconds = (long)rwt.getBaseSeconds() << 32;
+        break;
+
+      default:
+        break;
+    }
+    processingOffset += size;
+    size = 0;
   }
 
   public void notifyListeners()
