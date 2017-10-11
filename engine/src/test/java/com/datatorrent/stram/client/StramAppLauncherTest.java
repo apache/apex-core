@@ -20,6 +20,8 @@ package com.datatorrent.stram.client;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.util.LinkedHashSet;
 
 import org.junit.Assert;
 import org.junit.Rule;
@@ -52,6 +54,141 @@ public class StramAppLauncherTest
 {
 
   private static final String SET_TOKEN_REFRESH_CREDENTIALS_METHOD = "setTokenRefreshCredentials";
+
+  @PrepareForTest({StramAppLauncher.class})
+  @PowerMockIgnore({"javax.xml.*", "org.w3c.*", "org.apache.hadoop.*", "org.apache.log4j.*"})
+  public static class LoadDependenciesTest
+  {
+
+    @Rule
+    public PowerMockRule rule = new PowerMockRule();
+
+    @Rule
+    public TestWatcher setup = new TestWatcher()
+    {
+      @Override
+      protected void starting(Description description)
+      {
+        super.starting(description);
+        suppress(method(StramAppLauncher.class, "init"));
+      }
+    };
+
+    @Test
+    public void testLoadDependenciesSetsParentClassLoader() throws Exception
+    {
+      // Setup
+      Configuration conf = new Configuration();
+      FileSystem fs = FileSystem.newInstance(conf);
+      StramAppLauncher appLauncher = new StramAppLauncher(fs, conf);
+
+      Whitebox.setInternalState(appLauncher, "launchDependencies", new LinkedHashSet<URL>());
+
+      // Get initial contextClassLoader
+      ClassLoader initialClassLoader = Thread.currentThread().getContextClassLoader();
+
+      appLauncher.loadDependencies();
+
+      // Make sure that new contextClassLoader has initialClassLoader as parent
+      ClassLoader currentClassLoader = Thread.currentThread().getContextClassLoader();
+
+      Assert.assertSame(initialClassLoader, currentClassLoader.getParent());
+    }
+
+    @Test
+    public void testResetContextClassLoaderResetsToInitialClassLoader() throws Exception
+    {
+      // Setup
+      Configuration conf = new Configuration();
+      FileSystem fs = FileSystem.newInstance(conf);
+      StramAppLauncher appLauncher = new StramAppLauncher(fs, conf);
+
+      Whitebox.setInternalState(appLauncher, "launchDependencies", new LinkedHashSet<URL>());
+
+      // Get initial contextClassLoader
+      ClassLoader initialClassLoader = Thread.currentThread().getContextClassLoader();
+
+      appLauncher.loadDependencies();
+      appLauncher.resetContextClassLoader();
+
+      ClassLoader currentClassLoader = Thread.currentThread().getContextClassLoader();
+      Assert.assertSame(initialClassLoader, currentClassLoader);
+    }
+
+    @Test
+    public void testResetContextClassloaderOnlyOnInitialThread() throws Exception
+    {
+      // Setup
+      Configuration conf = new Configuration();
+      FileSystem fs = FileSystem.newInstance(conf);
+      final StramAppLauncher appLauncher = new StramAppLauncher(fs, conf);
+      Whitebox.setInternalState(appLauncher, "launchDependencies", new LinkedHashSet<URL>());
+
+      new AsyncTester(new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          try {
+            appLauncher.loadDependencies();
+          } catch (Exception e) {
+            Assert.fail(e.getMessage());
+          }
+        }
+      }).start().test();
+
+      new AsyncTester(new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          try {
+            appLauncher.resetContextClassLoader();
+            Assert.fail("An exception should be thrown");
+          } catch (RuntimeException e) {
+            // catch as expected
+          }
+        }
+      }).start().test();
+    }
+
+    @Test
+    public void testLoadDependenciesOnlyOnInitialThread() throws Exception
+    {
+      // Setup
+      Configuration conf = new Configuration();
+      FileSystem fs = FileSystem.newInstance(conf);
+      final StramAppLauncher appLauncher = new StramAppLauncher(fs, conf);
+      Whitebox.setInternalState(appLauncher, "launchDependencies", new LinkedHashSet<URL>());
+
+      new AsyncTester(new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          try {
+            appLauncher.loadDependencies();
+          } catch (Exception e) {
+            Assert.fail(e.getMessage());
+          }
+        }
+      }).start().test();
+
+      new AsyncTester(new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          try {
+            appLauncher.loadDependencies();
+            Assert.fail("An exception should be thrown");
+          } catch (RuntimeException e) {
+            // catch as expected
+          }
+        }
+      }).start().test();
+    }
+  }
 
   @PrepareForTest({StramAppLauncher.class})
   @PowerMockIgnore({"javax.xml.*", "org.w3c.*", "org.apache.hadoop.*", "org.apache.log4j.*"})

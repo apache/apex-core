@@ -2151,7 +2151,7 @@ public class ApexCli
         } else {
           System.err.println("No application specified.");
         }
-
+        submitApp.resetContextClassLoader();
       } finally {
         IOUtils.closeQuietly(cp);
       }
@@ -2911,8 +2911,10 @@ public class ApexCli
           submitApp.loadDependencies();
           List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName, commandLineInfo.exactMatch);
           if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
+            submitApp.resetContextClassLoader();
             throw new CliException("No application in jar file matches '" + appName + "'");
           } else if (matchingAppFactories.size() > 1) {
+            submitApp.resetContextClassLoader();
             throw new CliException("More than one application in jar file match '" + appName + "'");
           } else {
             Map<String, Object> map = new HashMap<>();
@@ -2940,6 +2942,7 @@ public class ApexCli
               }
             }
             printJson(map);
+            submitApp.resetContextClassLoader();
           }
         } else {
           if (filename.endsWith(".json")) {
@@ -2971,6 +2974,7 @@ public class ApexCli
               appList.add(m);
             }
             printJson(appList, "applications");
+            submitApp.resetContextClassLoader();
           }
         }
       } else {
@@ -3200,8 +3204,10 @@ public class ApexCli
         submitApp.loadDependencies();
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName, true);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
+          submitApp.resetContextClassLoader();
           throw new CliException("No application in jar file matches '" + appName + "'");
         } else if (matchingAppFactories.size() > 1) {
+          submitApp.resetContextClassLoader();
           throw new CliException("More than one application in jar file match '" + appName + "'");
         } else {
           AppFactory appFactory = matchingAppFactories.get(0);
@@ -3211,6 +3217,7 @@ public class ApexCli
             file.createNewFile();
           }
           LogicalPlanSerializer.convertToProperties(logicalPlan).save(file);
+          submitApp.resetContextClassLoader();
         }
       } else {
         if (currentApp == null) {
