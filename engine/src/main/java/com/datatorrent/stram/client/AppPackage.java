@@ -465,8 +465,9 @@ public class AppPackage implements Closeable
 
       if (entry.getName().endsWith(".jar") && !skipJars) {
         appJars.add(entry.getName());
+        StramAppLauncher stramAppLauncher = null;
         try {
-          StramAppLauncher stramAppLauncher = new StramAppLauncher(entry, config);
+          stramAppLauncher = new StramAppLauncher(entry, config);
           stramAppLauncher.loadDependencies();
           List<AppFactory> appFactories = stramAppLauncher.getBundledTopologies();
           for (AppFactory appFactory : appFactories) {
@@ -486,6 +487,10 @@ public class AppPackage implements Closeable
           }
         } catch (Exception ex) {
           LOG.error("Caught exception trying to process {}", entry.getName(), ex);
+        } finally {
+          if (stramAppLauncher != null) {
+            stramAppLauncher.resetContextClassLoader();
+          }
         }
       }
     }

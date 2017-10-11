@@ -106,6 +106,9 @@ public class StramAppLauncher
   private LinkedHashSet<File> deployJars;
   private final StringWriter mvnBuildClasspathOutput = new StringWriter();
 
+  private ClassLoader initialClassLoader;
+  private Thread loaderThread;
+
   public interface AppFactory
   {
     LogicalPlan createApp(LogicalPlanConfiguration conf);
@@ -219,7 +222,6 @@ public class StramAppLauncher
       return recoveryAppName;
     }
   }
-
 
   public StramAppLauncher(File appJarFile, Configuration conf) throws Exception
   {
@@ -535,10 +537,32 @@ public class StramAppLauncher
 
   public URLClassLoader loadDependencies()
   {
-    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
-    Thread.currentThread().setContextClassLoader(cl);
-    StringCodecs.check();
-    return cl;
+    if (this.loaderThread == null && this.initialClassLoader == null) {
+      this.loaderThread = Thread.currentThread();
+      this.initialClassLoader = Thread.currentThread().getContextClassLoader();
+    }
+
+    if (Thread.currentThread() != this.loaderThread) {
+      throw new RuntimeException("Calls to loadDependencies can only be made on the same thread that loadDependencies was called on for the first time");
+    } else {
+      URL[] dependencies = launchDependencies.toArray(new URL[launchDependencies.size()]);
+
+      ClassLoader currentContextClassLoader = Thread.currentThread().getContextClassLoader();
+      URLClassLoader cl = URLClassLoader.newInstance(dependencies, currentContextClassLoader);
+      Thread.currentThread().setContextClassLoader(cl);
+
+      StringCodecs.check();
+      return cl;
+    }
+  }
+
+  public void resetContextClassLoader()
+  {
+    if (Thread.currentThread() != this.loaderThread) {
+      throw new RuntimeException("Calls to resetContextClassLoader can only be made on the same thread that loadDependencies was called on for the first time");
+    }
+
+    Thread.currentThread().setContextClassLoader(initialClassLoader);
   }
 
   private void setTokenRefreshCredentials(LogicalPlan dag, Configuration conf) throws IOException

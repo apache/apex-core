@@ -80,6 +80,7 @@ public class YarnAppLauncherImpl extends YarnAppLauncher<YarnAppLauncherImpl.Yar
         }
       };
       ApplicationId appId = appLauncher.launchApp(appFactory);
+      appLauncher.resetContextClassLoader();
       return new YarnAppHandleImpl(appId, conf);
     } catch (Exception ex) {
       throw new LauncherException(ex);
