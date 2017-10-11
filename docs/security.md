@@ -119,7 +119,7 @@ Apex applications, at runtime, use delegation tokens to authenticate with Hadoop
 
 To solve this problem one of the two approaches can be used. The first approach is to change the Hadoop configuration itself to extend the token expiry time period. This may not be possible in all environments as it requires a change in the security policy as the tokens will now be valid for a longer period of time and the change also requires administrator privileges to Hadoop. The second approach is to use a feature available in apex to auto-refresh the tokens before they expire. Both the approaches are detailed below and the users can choose the one that works best for them.
 
-####Hadoop configuration approach
+#### Hadoop configuration approach
 
 An Apex application uses delegation tokens to authenticate with Hadoop services, Resource Manager (YARN) and Name Node (HDFS), and these tokens are issued by those services respectively. Since the application is long-running, the tokens can expire while the application is still running. Hadoop uses configuration settings for the maximum lifetime of these tokens. 
 
@@ -144,7 +144,7 @@ hdfs-site.xml and can be specified as follows for a lifetime of 1 year as an exa
  </property>
 ```
 
-####Auto-refresh approach
+#### Auto-refresh approach
 
 In this approach the application, in anticipation of a token expiring, obtains a new token to replace the current one. It keeps repeating the process whenever a token is close to expiry so that the application can continue to run indefinitely.
 
@@ -185,7 +185,7 @@ As explained earlier new tokens are obtained before the old ones expire. How ear
 
 The CLI program `apex` supports Hadoop proxy user impersonation, in allowing applications to be launched and other operations to be performed as a different user than the one specified by the Kerberos credentials. The Kerberos credentials are still used for authentication. This is useful in scenarios where a system using `apex` has to support multiple users but only has a single set of Kerberos credentials, those of a system user.
 
-####Usage
+#### Usage
 
 To use this feature, the following environment variable should be set to the user name of the user being impersonated, before running `apex` and the operations will be performed as that user. For example, if launching an application, the application will run as the specified user and not as the user specified by the Kerberos credentials.
 
@@ -193,7 +193,7 @@ To use this feature, the following environment variable should be set to the use
 HADOOP_USER_NAME=<username>
 ```
 
-####Hadoop Configuration
+#### Hadoop Configuration
 
 For this feature to work, additional configuration settings are needed in Hadoop. These settings would allow a specified user, such as a system user, to impersonate other users. The example snippet below shows these settings. In this example, the specified user can impersonate users belonging to any group and can do so running from any host. Note that the user specified here is different from the user specified above in usage, there it is the user that is being impersonated and here it is the impersonating user such as a system user.
 
@@ -209,7 +209,7 @@ For this feature to work, additional configuration settings are needed in Hadoop
 </property>
 ```
 
-####Application Root Directory under HDFS
+#### Application Root Directory under HDFS
 
 A running Apex application uses a 'root' directory under HDFS where runtime artifacts are saved or read from. For example, with default configuration an Apex application 
 would use the HDFS path `/user/dtadmin/datatorrent` as the application root directory. If the application's Hadoop assigned application ID is `application_1487803614053_10222` 
@@ -246,7 +246,7 @@ Security architecture
 
 In this section we will see how security works for applications built on Apex. We will look at the different methodologies involved in running the applications and in each case we will look into the different components that are involved. We will go into the architecture of these components and look at the different security mechanisms that are in play.
 
-###Application Launch
+### Application Launch
 
 To launch applications in Apache Apex the command line client `apex` can be used. The application artifacts such as binaries and properties are supplied as an application package. The client, during the various steps involved to launch the application needs to communicate with both the Resource Manager and the Name Node. The Resource Manager communication involves the client asking for new resources to run the application master and start the application launch process. The steps along with sample Java code are described in Writing YARN Applications. The Name Node communication includes the application artifacts being copied to HDFS so that they are available across the cluster for launching the different application containers.
 
@@ -270,40 +270,40 @@ Refer to document Operation and Installation Guide section Multi Tenancy and Sec
 
 There is another important functionality that is performed by the client and that is to retrieve what are called delegation tokens from the Resource Manager and Name Node to seed the application master container that is to be launched. This is detailed in the next section. 
 
-###Runtime Security
+### Runtime Security
 
 When the application is completely up and running, there are different components of the application running as separate processes possibly on different nodes in the cluster as it is a distributed application. These components interactwould be interacting with each other and the Hadoop services. In secure mode, all these interactions have to be authenticated before they can be successfully processed. The interactions are illustrated below in a diagram to give a complete overview. Each of them is explained in subsequent sections.
 
 ![](images/security/image00.png)
 
 
-####STRAM and Hadoop
+#### STRAM and Hadoop
 
 Every Apache Apex application has a master process akin to any YARN application. In our case it is called STRAM (Streaming Application Master). It is a master process that runs in its own container and manages the different distributed components of the application. Among other tasks it requests Resource Manager for new resources as they are needed and gives back resources that are no longer needed. STRAM also needs to communicate with Name Node from time-to-time to access the persistent HDFS file system. 
 
 In secure mode, STRAM has to authenticate with both Resource Manager and Name Node before it can send any requests and this is achieved using Delegation Tokens. Since STRAM runs as a managed application master, it runs in a Hadoop container. This container could have been allocated on any node based on what resources were available. Since there is no fixed node where STRAM runs, it does not have Kerberos credentials. Unlike launch client `apex`, it cannot authenticate with Hadoop services Resource Manager and Name Node using Kerberos. Instead, Delegation Tokens are used for authentication.
 
-#####Delegation Tokens
+##### Delegation Tokens
 
 Delegation tokens are tokens that are dynamically issued by the source and clients use them to authenticate with the source. The source stores the delegation tokens it has issued in a cache and checks the delegation token sent by a client against the cache. If a match is found, the authentication is successful else it fails. This is the second mode of authentication in secure Hadoop after Kerberos. More details can be found in the Hadoop security design document. In this case the delegation tokens are issued by Resource Manager and Name Node. STRAM would use these tokens to authenticate with them. But how does it get them in the first place? This is where the launch client `apex` comes in.
 
 The client `apex`, since it possesses Kerberos credentials as explained in the Application Launch section, is able to authenticate with Resource Manager and Name Node using Kerberos. It then requests for delegation tokens over the Kerberos authenticated connection. The servers return the delegation tokens in the response payload. The client in requesting the resource manager for the start of the application master container for STRAM seeds it with these tokens so that when STRAM starts it has these tokens. It can then use these tokens to authenticate with the Hadoop services.
 
-####Streaming Container
+#### Streaming Container
 
 A streaming container is a process that runs a part of the application business logic. It is a container deployed on a node in the cluster. The part of business logic is implemented in what we call an operator. Multiple operators connected together make up the complete application and hence there are multiple streaming containers in an application. The streaming containers have different types of communications going on as illustrated in the diagram above. They are described below.
 
-#####STRAM Delegation Token
+##### STRAM Delegation Token
 
 The streaming containers periodically communicate with the application master STRAM. In the communication they send what are called heartbeats with information such as statistics and receive commands from STRAM such as deployment or un-deployment of operators, changing properties of operators etc. In secure mode, this communication cannot just occur without any authentication. To facilitate this authentication special tokens called STRAM Delegation Tokens are used. These tokens are created and managed by STRAM. When a new streaming container is being started, since STRAM is the one negotiating resources from Resource Manager for the container and requesting to start the container, it seeds the container with the STRAM delegation token necessary to communicate with it. Thus, a streaming container has the STRAM delegation token to successfully authenticate and communicate with STRAM.
 
-#####Buffer Server Token
+##### Buffer Server Token
 
 As mentioned earlier an operator implements a piece of the business logic of the application and multiple operators together complete the application. In creating the application the operators are assembled together in a direct acyclic graph, a pipeline, with output of operators becoming the input for other operators. At runtime the stream containers hosting the operators are connected to each other and sending data to each other. In secure mode these connections should be authenticated too, more importantly than others, as they are involved in transferring application data.
 
 When operators are running there will be effective processing rate differences between them due to intrinsic reasons such as operator logic or external reasons such as different resource availability of CPU, memory, network bandwidth etc. as the operators are running in different containers. To maximize performance and utilization the data flow is handled asynchronous to the regular operator function and a buffer is used to intermediately store the data that is being produced by the operator. This buffered data is served by a buffer server over the network connection to the downstream streaming container containing the operator that is supposed to receive the data from this operator. This connection is secured by a token called the buffer server token. These tokens are also generated and seeded by STRAM when the streaming containers are deployed and started and it uses different tokens for different buffer servers to have better security.
 
-#####NameNode Delegation Token
+##### NameNode Delegation Token
 
 Like STRAM, streaming containers also need to communicate with NameNode to use HDFS persistence for reasons such as saving the state of the operators. In secure mode they also use NameNode delegation tokens for authentication. These tokens are also seeded by STRAM for the streaming containers.
 
@@ -368,5 +368,13 @@ launch -Dapex.attr.SSL_CONFIG="{\"keyStorePath\":\"/opt/apexCli/ssl/myapex-keyst
 
 Apec CLI will copy the keystore file `/opt/apexCli/ssl/myapex-keystore.jks` to the destination STRAM node and also pass on the keystore password values to the STRAM. As mentioned above, you can also use configuration files to supply the value of `apex.attr.SSL_CONFIG`.
 
+#### Updating Trust-store for the App Proxy
+
+You need to ensure that all end-points connecting to the STRAM Web service trust the SSL certificate when SSL is enabled.
+This is especially true for the [Web Application Proxy](https://hadoop.apache.org/docs/current/hadoop-yarn/hadoop-yarn-site/WebApplicationProxy.html) which connects to the STRAM Web service whenever you access the service through the App Master Proxy HTTPS URL. 
+If you use a self-signed or untrusted certificate, you will need to add that certificate to the trust-store used by the RM Web Application Proxy as described [here](https://www.cloudera.com/documentation/enterprise/5-8-x/topics/cm_sg_create_key_trust.html#concept_u35_w2m_l4) and update `ssl-client.xml` to use the trust-store as described [here](http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SecureMode.html#Data_Encryption_on_HTTP)
+
+
 #### Dependencies
-The use of the attribute `apex.attr.SSL_CONFIG` described in the last 2 approaches is dependent on an enhancement made in YARN (https://issues.apache.org/jira/browse/YARN-6457), so make sure your Hadoop version has the enhancement included.
+The use of the attribute `apex.attr.SSL_CONFIG` described in the last 2 approaches is dependent on an [enhancement](https://issues.apache.org/jira/browse/YARN-6457) made in YARN, which is available in the following versions: 
+2.9.0, 2.7.4, 3.0.0-alpha4, 2.8.2. 
