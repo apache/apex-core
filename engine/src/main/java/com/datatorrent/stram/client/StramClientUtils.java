@@ -515,10 +515,7 @@ public class StramClientUtils
     if (StringUtils.isBlank(dfsRootDir)) {
       return FileSystem.newInstance(conf);
     } else {
-      if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
-        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
-        conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
-      }
+      dfsRootDir = replaceDfsUserName(conf, DT_DFS_ROOT_DIR, UserGroupInformation.getLoginUser().getShortUserName(), true, dfsRootDir);
       try {
         return FileSystem.newInstance(new URI(dfsRootDir), conf);
       } catch (URISyntaxException ex) {
@@ -533,31 +530,57 @@ public class StramClientUtils
    *
    * @param fs   FileSystem object for HDFS file system
    * @param conf  Configuration object
-   * @param dfsRootDir  value of dt.dfsRootDir or apex.app.dfsRootDir
+   * @param dfsRootDirProperty  Property name to query (dt.dfsRootDir or apex.app.dfsRootDir)
    * @param userShortName  current user short name (either login user or current user depending on impersonation settings)
-   * @param prependHomeDir  prepend user's home dir if dfsRootDir is relative path
-
+   * @param processRelativePath  prepend user's home dir if dfsRootDir is relative path
+   * @param updateConf update the conf object with the evaluated value
    * @return
    */
-  private static Path evalDFSRootDir(FileSystem fs, Configuration conf, String dfsRootDir, String userShortName,
-      boolean prependHomeDir)
+  private static Path evalDFSRootDir(FileSystem fs, Configuration conf, String dfsRootDirProperty, String userShortName,
+      boolean processRelativePath, boolean updateConf)
   {
-    try {
-      if (userShortName != null && dfsRootDir.contains(DT_DFS_USER_NAME)) {
-        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, userShortName);
-        conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
+    String dfsRootDir = conf.get(dfsRootDirProperty);
+    if (StringUtils.isBlank(dfsRootDir)) {
+      dfsRootDir = getDefaultRootFolder();
+      if (!processRelativePath) {
+        return new Path(fs.getHomeDirectory(), dfsRootDir);
       }
+    }
+    try {
+      dfsRootDir = replaceDfsUserName(conf, dfsRootDirProperty, userShortName, updateConf, dfsRootDir);
       URI uri = new URI(dfsRootDir);
       if (uri.isAbsolute()) {
         return new Path(uri);
       }
-      if (userShortName != null && prependHomeDir && dfsRootDir.startsWith("/") == false) {
+      if (userShortName != null && processRelativePath && dfsRootDir.startsWith("/") == false) {
         dfsRootDir = "/user/" + userShortName + "/" + dfsRootDir;
       }
     } catch (URISyntaxException ex) {
       LOG.warn("{} is not a valid URI. Using the default filesystem to construct the path", dfsRootDir, ex);
     }
     return new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), dfsRootDir);
+  }
+
+  /**
+   * Replace %USER_NAME% in the dfsRootDir and update conf object with the replaced string
+   *
+   * @param conf
+   * @param dfsRootDirProperty
+   * @param userShortName
+   * @param updateConf
+   * @param dfsRootDir
+   * @return
+   */
+  private static String replaceDfsUserName(Configuration conf, String dfsRootDirProperty, String userShortName,
+      boolean updateConf, String dfsRootDir)
+  {
+    if (userShortName != null && dfsRootDir.contains(DT_DFS_USER_NAME)) {
+      dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, userShortName);
+      if (updateConf) {
+        conf.set(dfsRootDirProperty, dfsRootDir);
+      }
+    }
+    return dfsRootDir;
   }
 
   private static String getDefaultRootFolder()
@@ -584,38 +607,30 @@ public class StramClientUtils
    */
   public static Path getApexDFSRootDir(FileSystem fs, Configuration conf)
   {
-    String apexDfsRootDir = conf.get(APEX_APP_DFS_ROOT_DIR);
     boolean useImpersonated = conf.getBoolean(StramUserLogin.DT_APP_PATH_IMPERSONATED, false);
     String userShortName = null;
     if (useImpersonated) {
       try {
         userShortName = UserGroupInformation.getCurrentUser().getShortUserName();
       } catch (IOException ex) {
-        LOG.warn("Error getting current/login user name {}", apexDfsRootDir, ex);
+        LOG.warn("Error getting current/login user name", ex);
       }
     }
     if (!useImpersonated || userShortName == null) {
       return getDTDFSRootDir(fs, conf);
     }
-    if (StringUtils.isBlank(apexDfsRootDir)) {
-      apexDfsRootDir = getDefaultRootFolder();
-    }
-    return evalDFSRootDir(fs, conf, apexDfsRootDir, userShortName, true);
+    return evalDFSRootDir(fs, conf, APEX_APP_DFS_ROOT_DIR, userShortName, true, false);
   }
 
   public static Path getDTDFSRootDir(FileSystem fs, Configuration conf)
   {
-    String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
-    if (StringUtils.isBlank(dfsRootDir)) {
-      return new Path(fs.getHomeDirectory(), getDefaultRootFolder());
-    }
     String userShortName = null;
     try {
       userShortName = UserGroupInformation.getLoginUser().getShortUserName();
     } catch (IOException ex) {
-      LOG.warn("Error getting user login name {}", dfsRootDir, ex);
+      LOG.warn("Error getting user login name", ex);
     }
-    return evalDFSRootDir(fs, conf, dfsRootDir, userShortName, false);
+    return evalDFSRootDir(fs, conf, DT_DFS_ROOT_DIR, userShortName, false, true);
   }
 
   public static Path getDTDFSConfigDir(FileSystem fs, Configuration conf)
