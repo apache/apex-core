@@ -116,7 +116,9 @@
     <license.skip>true</license.skip>
     <findbugs.xmlOutput>true</findbugs.xmlOutput>
     <findbugs.failOnError>false</findbugs.failOnError>
-    <findbugs.skip>false</findbugs.skip>
+    <dependency.check.failBuildOnCVSS>8</dependency.check.failBuildOnCVSS>
+    <dependency.check.showSummary>true</dependency.check.showSummary>
+    <dependency.check.whitelist>${project.basedir}/../dependency-check-whitelist.xml</dependency.check.whitelist>
     <postNoticeText>The initial developer of the original code is&#xA;DataTorrent, Inc. (http://www.datatorrent.com)&#xA;Copyright (c) 2012 - 2015. All Rights Reserved.</postNoticeText>
   </properties>
 
@@ -260,16 +262,23 @@
           <includeTests>true</includeTests>
           <xmlOutput>${findbugs.xmlOutput}</xmlOutput>
           <failOnError>${findbugs.failOnError}</failOnError>
-          <skip>${findbugs.skip}</skip>
         </configuration>
         <executions>
           <execution>
-            <phase></phase>
+            <phase/>
             <goals>
               <goal>check</goal>
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.owasp</groupId>
+        <artifactId>dependency-check-maven</artifactId>
+        <inherited>false</inherited>
+        <configuration>
+          <skip>true</skip>
+        </configuration>
       </plugin>
     </plugins>
     <pluginManagement>
@@ -451,6 +460,28 @@
               <phase>verify</phase>
               <goals>
                 <goal>cmp</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.owasp</groupId>
+          <artifactId>dependency-check-maven</artifactId>
+          <version>3.0.2</version>
+          <configuration>
+            <failBuildOnCVSS>${dependency.check.failBuildOnCVSS}</failBuildOnCVSS>
+            <showSummary>${dependency.check.showSummary}</showSummary>
+            <assemblyAnalyzerEnabled>false</assemblyAnalyzerEnabled>
+            <skipProvidedScope>true</skipProvidedScope>
+            <skipRuntimeScope>true</skipRuntimeScope>
+            <skipSystemScope>true</skipSystemScope>
+            <suppressionFiles>${dependency.check.whitelist}</suppressionFiles>
+          </configuration>
+          <executions>
+            <execution>
+              <phase/>
+              <goals>
+                <goal>check</goal>
               </goals>
             </execution>
           </executions>
