@@ -18,8 +18,11 @@
  */
 package com.datatorrent.stram.util;
 
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
@@ -27,11 +30,13 @@ import org.junit.runners.MethodSorters;
 import org.slf4j.LoggerFactory;
 
 import org.apache.log4j.Appender;
+import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.Category;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.apache.log4j.Priority;
 import org.apache.log4j.spi.LoggingEvent;
 
 import com.google.common.collect.Maps;
@@ -51,6 +56,8 @@ import static org.junit.Assert.assertTrue;
 public class LoggerUtilTest
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(LoggerUtilTest.class);
+  private static final Logger log4jLogger = LogManager.getLogger(LoggerUtilTest.class);
+  private static final Map<AppenderSkeleton, Priority> appenderLevelMap = new HashMap<>();
 
   @BeforeClass
   public static void setup() throws Exception
@@ -58,7 +65,36 @@ public class LoggerUtilTest
     logger.debug("Logger repository before LoggerUtil.changeLoggersLevel() {}", LogManager.getLoggerRepository());
     LoggerUtil.changeLoggersLevel(Maps.<String, String>newHashMap());
     logger.debug("Logger repository after LoggerUtil.changeLoggersLevel() {}", LogManager.getLoggerRepository());
+    log4jLogger.setLevel(Level.TRACE);
+    Category category = log4jLogger;
+    while (category != null) {
+      Enumeration appenders = category.getAllAppenders();
+      while (appenders.hasMoreElements()) {
+        Object o = appenders.nextElement();
+        if (o instanceof AppenderSkeleton) {
+          AppenderSkeleton appender = (AppenderSkeleton)o;
+          if (!appenderLevelMap.containsKey(appender)) {
+            appenderLevelMap.put(appender, appender.getThreshold());
+            appender.setThreshold(Level.INFO);
+          }
+        }
+      }
+      if (category.getAdditivity()) {
+        category = category.getParent();
+      } else {
+        category = null;
+      }
+    }
   }
+
+  @AfterClass
+  public static void teardown()
+  {
+    for (Map.Entry<AppenderSkeleton, Priority> e : appenderLevelMap.entrySet()) {
+      e.getKey().setThreshold(e.getValue());
+    }
+  }
+
 
   @Test
   public void testGetPatternLevels()
@@ -178,7 +214,6 @@ public class LoggerUtilTest
   @Test
   public void testAppender()
   {
-    logger.info("Running Appender Test");
     String appenderName = "testAppender";
     String appenderName1 = "testAppender1";
     String args = "log4j.appender.testAppender=com.datatorrent.stram.util.LoggerUtilTest$TestAppender"
@@ -188,39 +223,45 @@ public class LoggerUtilTest
         + ",log4j.appender.testAppender1.layout=org.apache.log4j.PatternLayout"
         + ",log4j.appender.testAppender1.layout.ConversionPattern=%d %d{Z} [%t] %-5p (%F:%L) - %m%n";
 
-    assertTrue(LoggerUtil.addAppenders(new String[] {appenderName }, args, ","));
-    TestAppender appender = (TestAppender)LogManager.getRootLogger().getAppender(appenderName);
+    assertTrue(LoggerUtil.addAppenders(log4jLogger, new String[] {appenderName}, args, ","));
+    TestAppender appender = (TestAppender)log4jLogger.getAppender(appenderName);
 
-    logger.info(args);
+    LoggerUtilTest.logger.debug(args);
     assertEquals(args, appender.lastMessage);
-    assertEquals(appender.level, Level.INFO);
+    assertEquals(appender.level, Level.DEBUG);
 
-    logger.warn(appenderName1);
+    LoggerUtilTest.logger.trace(appenderName1);
     assertEquals(appenderName1, appender.lastMessage);
-    assertEquals(appender.level, Level.WARN);
+    assertEquals(appender.level, Level.TRACE);
 
     // don't allow to add an appender with the same name
-    assertFalse(LoggerUtil.addAppenders(new String[] {appenderName }, args, ","));
-    logger.info("Test Appender is added: " + LoggerUtil.getAppendersNames());
-    testAndRemoveAppender(appenderName);
-    logger.info("Test Appender is removed: " + LoggerUtil.getAppendersNames());
+    assertFalse(LoggerUtil.addAppenders(log4jLogger, new String[] {appenderName}, args, ","));
+    LoggerUtilTest.logger.debug("Test Appender is added: {}", LoggerUtil.getAppendersNames(log4jLogger));
+    testAndRemoveAppender(log4jLogger, appenderName);
+    LoggerUtilTest.logger.debug("Test Appender is removed: {}", LoggerUtil.getAppendersNames(log4jLogger));
+
+    Logger rootLogger = LogManager.getRootLogger();
+    assertTrue(LoggerUtil.addAppenders(rootLogger, new String[] {appenderName}, args, ","));
+    LoggerUtilTest.logger.debug("Test Appender is added: {}", LoggerUtil.getAppendersNames());
+    testAndRemoveAppender(rootLogger, appenderName);
+    LoggerUtilTest.logger.debug("Test Appender is removed: {}", LoggerUtil.getAppendersNames());
 
     System.setProperty(Context.DAGContext.LOGGER_APPENDER.getLongName(), appenderName + "," + appenderName1 + ";" + args);
     assertTrue(LoggerUtil.addAppenders());
-    logger.info("Test Appenders are added: " + LoggerUtil.getAppendersNames());
+    LoggerUtilTest.logger.debug("Test Appenders are added: {}", LoggerUtil.getAppendersNames());
 
-    testAndRemoveAppender(appenderName);
-    testAndRemoveAppender(appenderName1);
-    logger.info("Test Appenders are removed: " + LoggerUtil.getAppendersNames());
+    testAndRemoveAppender(rootLogger, appenderName);
+    testAndRemoveAppender(rootLogger, appenderName1);
+    LoggerUtilTest.logger.debug("Test Appenders are removed: {}", LoggerUtil.getAppendersNames());
   }
 
-  private static void testAndRemoveAppender(String name)
+  private static void testAndRemoveAppender(Logger logger, String name)
   {
-    Appender appender = org.apache.log4j.Logger.getRootLogger().getAppender(name);
+    Appender appender = logger.getAppender(name);
     assertNotNull(appender);
-    assertTrue(LoggerUtil.getAppendersNames().contains(name));
-    LoggerUtil.removeAppender(name);
-    assertNull(org.apache.log4j.Logger.getRootLogger().getAppender(name));
+    assertTrue(LoggerUtil.getAppendersNames(logger).contains(name));
+    LoggerUtil.removeAppender(logger, name);
+    assertNull(logger.getAppender(name));
   }
 
   @Test
@@ -238,17 +279,16 @@ public class LoggerUtilTest
     System.setProperty(APPLICATION_NAME.getLongName(), application);
     LoggerUtil.setupMDC(service);
 
-    Logger logger = LogManager.getLogger(LoggerUtilTest.class);
-    LoggerUtil.addAppenders(logger, new String[] {appenderName}, args, ",");
-    TestAppender appender = (TestAppender)logger.getAppender(appenderName);
+    LoggerUtil.addAppenders(log4jLogger, new String[] {appenderName}, args, ",");
+    TestAppender appender = (TestAppender)log4jLogger.getAppender(appenderName);
 
-    LoggerUtilTest.logger.info(args);
+    LoggerUtilTest.logger.debug(args);
     assertEquals(service, appender.mdcProperties.get("apex.service"));
     String node = StramClientUtils.getHostName();
     assertEquals(node == null ? "unknown" : node, appender.mdcProperties.get("apex.node"));
     assertEquals(application, appender.mdcProperties.get("apex.application"));
 
-    assertTrue(LoggerUtil.removeAppender(logger, appenderName));
+    assertTrue(LoggerUtil.removeAppender(log4jLogger, appenderName));
   }
 
   public static class TestAppender extends ConsoleAppender
@@ -263,7 +303,6 @@ public class LoggerUtilTest
       mdcProperties = event.getProperties();
       lastMessage = event.getRenderedMessage();
       level = event.getLevel();
-      super.append(event);
     }
   }
 }
