@@ -71,6 +71,7 @@ import org.apache.apex.engine.events.grouping.GroupingRequest.EventGroupId;
 import org.apache.apex.engine.plugin.ApexPluginDispatcher;
 import org.apache.apex.engine.plugin.NoOpApexPluginDispatcher;
 import org.apache.apex.engine.util.CascadeStorageAgent;
+import org.apache.apex.engine.util.PubSubWebSocketClientBuilder;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -197,7 +198,6 @@ import net.engio.mbassy.bus.config.BusConfiguration;
 public class StreamingContainerManager implements PlanContext
 {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
-  public static final String GATEWAY_LOGIN_URL_PATH = "/ws/v2/login";
   public static final String BUILTIN_APPDATA_URL = "builtin";
   public static final String CONTAINERS_INFO_FILENAME_FORMAT = "containers_%d.json";
   public static final String OPERATORS_INFO_FILENAME_FORMAT = "operators_%d.json";
@@ -556,23 +556,12 @@ public class StreamingContainerManager implements PlanContext
 
   private void setupWsClient()
   {
-    String gatewayAddress = plan.getLogicalPlan().getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
-    boolean gatewayUseSsl = plan.getLogicalPlan().getValue(LogicalPlan.GATEWAY_USE_SSL);
-    String gatewayUserName = plan.getLogicalPlan().getValue(LogicalPlan.GATEWAY_USER_NAME);
-    String gatewayPassword = plan.getLogicalPlan().getValue(LogicalPlan.GATEWAY_PASSWORD);
-    int timeout = plan.getLogicalPlan().getValue(LogicalPlan.PUBSUB_CONNECT_TIMEOUT_MILLIS);
-
-    if (gatewayAddress != null) {
+    wsClient = new PubSubWebSocketClientBuilder().setContext(plan.getLogicalPlan()).build();
+    if (wsClient != null) {
       try {
-        wsClient = new SharedPubSubWebSocketClient((gatewayUseSsl ? "wss://" : "ws://") + gatewayAddress + "/pubsub", timeout);
-        if (gatewayUserName != null && gatewayPassword != null) {
-          wsClient.setLoginUrl((gatewayUseSsl ? "https://" : "http://") + gatewayAddress + GATEWAY_LOGIN_URL_PATH);
-          wsClient.setUserName(gatewayUserName);
-          wsClient.setPassword(gatewayPassword);
-        }
-        wsClient.setup();
-      } catch (Exception ex) {
-        LOG.warn("Cannot establish websocket connection to {}", gatewayAddress, ex);
+        wsClient.openConnection();
+      } catch (Exception e) {
+        LOG.warn("Cannot establish websocket connection to uri {}", wsClient.getUri(), e);
       }
     }
   }
