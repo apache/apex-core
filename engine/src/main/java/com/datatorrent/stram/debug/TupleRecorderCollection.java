@@ -26,6 +26,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.engine.util.PubSubWebSocketClientBuilder;
+
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
@@ -39,7 +41,6 @@ import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StatsListener.OperatorRequest;
 import com.datatorrent.api.StringCodec;
-import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
@@ -66,10 +67,6 @@ import net.engio.mbassy.listener.Handler;
 public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>
 {
   private int tupleRecordingPartFileSize;
-  private String gatewayAddress;
-  private boolean gatewayUseSsl = false;
-  private String gatewayUserName;
-  private String gatewayPassword;
   private long tupleRecordingPartFileTimeMillis;
   private String appPath;
   private String appId;
@@ -89,12 +86,10 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     tupleRecordingPartFileSize = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE);
     tupleRecordingPartFileTimeMillis = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS);
     appId = ctx.getValue(LogicalPlan.APPLICATION_ID);
-    gatewayAddress = ctx.getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
-    gatewayUseSsl = ctx.getValue(LogicalPlan.GATEWAY_USE_SSL);
-    gatewayUserName = ctx.getValue(LogicalPlan.GATEWAY_USER_NAME);
-    gatewayPassword = ctx.getValue(LogicalPlan.GATEWAY_PASSWORD);
     appPath = ctx.getValue(LogicalPlan.APPLICATION_PATH);
     codecs = ctx.getAttributes().get(Context.DAGContext.STRING_CODECS);
+
+    wsClient = new PubSubWebSocketClientBuilder().setContext(ctx).build();
 
     RequestDelegateImpl impl = new RequestDelegateImpl();
     RequestFactory rf = ctx.getValue(ContainerContext.REQUEST_FACTORY);
@@ -161,21 +156,11 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     if (!conflict) {
       logger.debug("Executing start recording request for {}", operatorIdPortNamePair);
 
-      if (gatewayAddress != null && wsClient == null) {
-        synchronized (this) {
-          if (wsClient == null) {
-            try {
-              wsClient = new SharedPubSubWebSocketClient((gatewayUseSsl ? "wss://" : "ws://") + gatewayAddress + "/pubsub", 500);
-              if (gatewayUserName != null && gatewayPassword != null) {
-                wsClient.setLoginUrl((gatewayUseSsl ? "https://" : "http://") + gatewayAddress + StreamingContainerManager.GATEWAY_LOGIN_URL_PATH);
-                wsClient.setUserName(gatewayUserName);
-                wsClient.setPassword(gatewayPassword);
-              }
-              wsClient.setup();
-            } catch (Exception ex) {
-              logger.warn("Error initializing websocket", ex);
-            }
-          }
+      if (wsClient != null) {
+        try {
+          wsClient.openConnection();
+        } catch (Exception e) {
+          logger.warn("Cannot establish websocket connection to uri {}", wsClient.getUri(), e);
         }
       }
 

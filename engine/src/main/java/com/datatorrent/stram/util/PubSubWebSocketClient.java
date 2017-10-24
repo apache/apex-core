@@ -138,6 +138,11 @@ public abstract class PubSubWebSocketClient implements Component<Context>
     this.uri = uri;
   }
 
+  public URI getUri()
+  {
+    return uri;
+  }
+
   public void setIoThreadMultiplier(int ioThreadMultiplier)
   {
     this.ioThreadMultiplier = ioThreadMultiplier;
@@ -239,17 +244,18 @@ public abstract class PubSubWebSocketClient implements Component<Context>
     }
   }
 
+  protected boolean isConnectionSetup()
+  {
+    return (connection != null);
+  }
+
   /**
    *
    * @return true if the connection is open; false otherwise.
    */
   public boolean isConnectionOpen()
   {
-    if (connection == null) {
-      return false;
-    }
-
-    return connection.isOpen();
+    return isConnectionSetup() ? connection.isOpen() : false;
   }
 
   /**

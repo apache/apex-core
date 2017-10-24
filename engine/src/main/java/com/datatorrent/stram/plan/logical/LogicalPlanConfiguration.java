@@ -143,6 +143,9 @@ public class LogicalPlanConfiguration
 
   public static final String KEY_APPLICATION_NAME = keyAndDeprecation(Context.DAGContext.APPLICATION_NAME);
   public static final String KEY_GATEWAY_CONNECT_ADDRESS = keyAndDeprecation(Context.DAGContext.GATEWAY_CONNECT_ADDRESS);
+  public static final String KEY_GATEWAY_USE_SSL = keyAndDeprecation(Context.DAGContext.GATEWAY_USE_SSL);
+  public static final String KEY_GATEWAY_USER_NAME = keyAndDeprecation(Context.DAGContext.GATEWAY_USER_NAME);
+  public static final String KEY_GATEWAY_PASSWORD = keyAndDeprecation(Context.DAGContext.GATEWAY_PASSWORD);
 
   private static String keyAndDeprecation(Attribute<?> attr)
   {
@@ -2248,9 +2251,8 @@ public class LogicalPlanConfiguration
    */
   public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name)
   {
-    // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attribute below is used
-    String connectAddress = conf.get(KEY_GATEWAY_CONNECT_ADDRESS);
-    dag.setAttribute(Context.DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null ? conf.get(GATEWAY_LISTEN_ADDRESS) : connectAddress);
+    prepareDAGAttributes(dag);
+
     pluginManager.setup(dag);
     if (app != null) {
       pluginManager.dispatch(PRE_POPULATE_DAG.event);
@@ -2275,6 +2277,25 @@ public class LogicalPlanConfiguration
     setStreamConfiguration(dag, appConfs, appName);
     pluginManager.dispatch(POST_CONFIGURE_DAG.event);
     pluginManager.teardown();
+  }
+
+  private void prepareDAGAttributes(LogicalPlan dag)
+  {
+    // Consider making all attributes available for DAG construction
+    // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attribute below is used
+    String connectAddress = conf.get(KEY_GATEWAY_CONNECT_ADDRESS);
+    dag.setAttribute(DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null ? conf.get(GATEWAY_LISTEN_ADDRESS) : connectAddress);
+    if (conf.getBoolean(KEY_GATEWAY_USE_SSL, DAGContext.GATEWAY_USE_SSL.defaultValue)) {
+      dag.setAttribute(DAGContext.GATEWAY_USE_SSL, true);
+    }
+    String username = conf.get(KEY_GATEWAY_USER_NAME);
+    if (username != null) {
+      dag.setAttribute(DAGContext.GATEWAY_USER_NAME, username);
+    }
+    String password = conf.get(KEY_GATEWAY_PASSWORD);
+    if (password != null) {
+      dag.setAttribute(DAGContext.GATEWAY_PASSWORD, password);
+    }
   }
 
   private void flattenDAG(LogicalPlan dag, Configuration conf)
