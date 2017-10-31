@@ -313,8 +313,21 @@ public class LoggerUtil
    */
   public static LogFileInformation getLogFileInformation()
   {
-    FileAppender fileAppender = getFileAppender();
-    if (shouldFetchLogFileInformation(fileAppender)) {
+    return getLogFileInformation(LogManager.getRootLogger());
+  }
+
+  public static LogFileInformation getLogFileInformation(org.slf4j.Logger logger)
+  {
+    return getLogFileInformation(logger == null ? null : LogManager.getLogger(logger.getName()));
+  }
+
+  public static LogFileInformation getLogFileInformation(Logger logger)
+  {
+    if (logger == null) {
+      logger = LogManager.getRootLogger();
+    }
+    FileAppender fileAppender = getFileAppender(logger);
+    if (fileAppender != null) {
       File logFile = new File(fileAppender.getFile());
       LogFileInformation logFileInfo = new LogFileInformation(fileAppender.getFile(), logFile.length());
       return logFileInfo;
@@ -322,37 +335,33 @@ public class LoggerUtil
     return null;
   }
 
-  private static FileAppender getFileAppender()
+  private static FileAppender getFileAppender(Logger logger)
   {
-    Enumeration<Appender> e = LogManager.getRootLogger().getAllAppenders();
+    Enumeration e = logger.getAllAppenders();
     FileAppender fileAppender = null;
     while (e.hasMoreElements()) {
-      Appender appender = e.nextElement();
+      Object appender = e.nextElement();
       if (appender instanceof FileAppender) {
         if (fileAppender == null) {
           fileAppender = (FileAppender)appender;
         } else {
           //skip fetching log file information if we have multiple file Appenders
-          return null;
+          fileAppender = null;
+          break;
         }
       }
     }
-    return fileAppender;
-  }
-
-  /*
-   * We should return log file information only if,
-   * we have single file Appender, the logging level of appender is set to level Error or above and immediateFlush is set to true.
-   * In future we should be able to enhance this feature to support multiple file appenders.
-   */
-  private static boolean shouldFetchLogFileInformation(FileAppender fileAppender)
-  {
-    if (fileAppender != null && isErrorLevelEnable(fileAppender) && fileAppender.getImmediateFlush()) {
-      return true;
+    /*
+     * We should return log file information only if,
+     * we have single file Appender, the logging level of appender is set to level Error or above and immediateFlush is set to true.
+     * In future we should be able to enhance this feature to support multiple file appenders.
+     */
+    if (fileAppender == null || !fileAppender.getImmediateFlush() || !fileAppender.isAsSevereAsThreshold(Level.ERROR)) {
+      LoggerUtil.logger.warn(
+          "Log information is unavailable. To enable log information log4j/logging should be configured with single FileAppender that has immediateFlush set to true and log level set to ERROR or greater.");
+      return null;
     }
-    logger.warn(
-        "Log information is unavailable. To enable log information log4j/logging should be configured with single FileAppender that has immediateFlush set to true and log level set to ERROR or greater.");
-    return false;
+    return fileAppender;
   }
 
   private static boolean isErrorLevelEnable(FileAppender fileAppender)

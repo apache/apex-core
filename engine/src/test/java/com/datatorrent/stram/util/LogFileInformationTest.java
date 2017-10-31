@@ -22,25 +22,25 @@ import java.io.File;
 import java.io.IOException;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 import org.apache.log4j.RollingFileAppender;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class LogFileInformationTest
 {
   private static final String APPENDER_NAME = "rfa";
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(LogFileInformationTest.class);
+  private static final Logger logger = LogManager.getLogger(LogFileInformationTest.class);
   private static String logFileName;
 
   @BeforeClass
@@ -51,61 +51,56 @@ public class LogFileInformationTest
     RollingFileAppender rfa = new RollingFileAppender(new PatternLayout("%d{ISO8601} [%t] %-5p %c{2} %M - %m%n"),
         logFileName);
     rfa.setName(APPENDER_NAME);
-    Logger.getRootLogger().addAppender(rfa);
-  }
-
-  @Before
-  public void setup()
-  {
-    LoggerUtil.initializeLogger();
+    logger.addAppender(rfa);
   }
 
   @Test
   public void testGetLogFileInformation()
   {
-    long currentLogFileSize = LoggerUtil.getLogFileInformation().fileOffset;
+    long currentLogFileSize = LoggerUtil.getLogFileInformation(logger).fileOffset;
     logger.info("Adding Test log message.");
-    assertEquals(logFileName, LoggerUtil.getLogFileInformation().fileName);
-    assertTrue(LoggerUtil.getLogFileInformation().fileOffset > currentLogFileSize);
+    assertEquals(logFileName, LoggerUtil.getLogFileInformation(logger).fileName);
+    assertTrue(LoggerUtil.getLogFileInformation(logger).fileOffset > currentLogFileSize);
   }
 
   @Test
   public void testImmediateFlushOff()
   {
-    RollingFileAppender rfa = (RollingFileAppender)Logger.getRootLogger().getAppender(APPENDER_NAME);
+    RollingFileAppender rfa = (RollingFileAppender)logger.getAppender(APPENDER_NAME);
+    assertTrue(rfa.getImmediateFlush());
     rfa.setImmediateFlush(false);
-    Logger.getRootLogger().addAppender(rfa);
-    LoggerUtil.initializeLogger();
-
-    Assert.assertNull(LoggerUtil.getLogFileInformation());
+    assertNull(LoggerUtil.getLogFileInformation());
     rfa.setImmediateFlush(true);
   }
 
   @Test
   public void testErrorLevelOff()
   {
-    Level curLogLevel = Logger.getRootLogger().getLevel();
-    Logger.getRootLogger().setLevel(Level.FATAL);
-    LoggerUtil.initializeLogger();
-
-    Assert.assertNull(LoggerUtil.getLogFileInformation());
-    Logger.getRootLogger().setLevel(curLogLevel);
+    RollingFileAppender rfa = (RollingFileAppender)logger.getAppender(APPENDER_NAME);
+    assertNull(rfa.getThreshold());
+    rfa.setThreshold(Level.FATAL);
+    assertNull(LoggerUtil.getLogFileInformation(logger));
+    rfa.setThreshold(null);
   }
 
   @Test
   public void testNoFileAppender()
   {
-    RollingFileAppender rfa = (RollingFileAppender)Logger.getRootLogger().getAppender(APPENDER_NAME);
-    Logger.getRootLogger().removeAppender(APPENDER_NAME);
-    LoggerUtil.initializeLogger();
-    Assert.assertNull(LoggerUtil.getLogFileInformation());
-    Logger.getRootLogger().addAppender(rfa);
+    RollingFileAppender rfa = (RollingFileAppender)logger.getAppender(APPENDER_NAME);
+    logger.removeAppender(APPENDER_NAME);
+    assertNull(LoggerUtil.getLogFileInformation());
+    logger.addAppender(rfa);
+  }
+
+  @Test
+  public void testSlf4Logger()
+  {
+    assertNotNull(LoggerUtil.getLogFileInformation(LoggerFactory.getLogger(LogFileInformationTest.class)));
   }
 
   @AfterClass
   public static void tearDown()
   {
-    Logger.getRootLogger().removeAppender(APPENDER_NAME);
-    FileUtils.deleteQuietly(new File(logFileName).getParentFile());
+    LogManager.getLogger(LogFileInformationTest.class).removeAppender(APPENDER_NAME);
   }
 }
