@@ -63,6 +63,7 @@ import org.apache.hadoop.yarn.api.records.ResourceRequest;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.server.MiniYARNCluster;
 import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
 import org.apache.hadoop.yarn.util.Records;
@@ -90,6 +91,7 @@ import com.datatorrent.stram.webapp.StramWebServices;
 
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * The purpose of this test is to verify basic streaming application deployment
@@ -126,6 +128,7 @@ public class StramMiniClusterTest
     conf.setInt("yarn.nodemanager.vmem-pmem-ratio", 20); // workaround to avoid containers being killed because java allocated too much vmem
     conf.set("yarn.scheduler.capacity.root.queues", "default");
     conf.set("yarn.scheduler.capacity.root.default.capacity", "100");
+    conf.setBoolean(YarnConfiguration.NM_DISK_HEALTH_CHECK_ENABLE, false);
     conf.set(YarnConfiguration.NM_ADMIN_USER_ENV, String.format("JAVA_HOME=%s,CLASSPATH=%s", System.getProperty("java.home"), getTestRuntimeClasspath()));
     conf.set(YarnConfiguration.NM_ENV_WHITELIST, YarnConfiguration.DEFAULT_NM_ENV_WHITELIST.replaceAll("JAVA_HOME,*", ""));
 
@@ -165,22 +168,26 @@ public class StramMiniClusterTest
     }
   }
 
-  @Test
-  public void testSetupShutdown() throws Exception
+  private void checkNodeState() throws YarnException
   {
-    GetClusterNodesRequest request =
-        Records.newRecord(GetClusterNodesRequest.class);
+    GetClusterNodesRequest request = Records.newRecord(GetClusterNodesRequest.class);
     ClientRMService clientRMService = yarnCluster.getResourceManager().getClientRMService();
     GetClusterNodesResponse response = clientRMService.getClusterNodes(request);
     List<NodeReport> nodeReports = response.getNodeReports();
     LOG.info("{}", nodeReports);
 
     for (NodeReport nr: nodeReports) {
-      LOG.info("Node: {}", nr.getNodeId());
-      LOG.info("Total memory: {}", nr.getCapability());
-      LOG.info("Used memory: {}", nr.getUsed());
-      LOG.info("Number containers: {}", nr.getNumContainers());
+      if (!nr.getNodeState().isUnusable()) {
+        return;
+      }
     }
+    fail("Yarn Mini cluster should have at least one usable node.");
+  }
+
+  @Test
+  public void testSetupShutdown() throws Exception
+  {
+    checkNodeState();
 
     JarHelper jarHelper = new JarHelper();
     LOG.info("engine jar: {}", jarHelper.getJar(StreamingAppMaster.class));
