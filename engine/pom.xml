@@ -49,7 +49,7 @@
           </execution>
         </executions>
         <configuration>
-          <excludes>
+          <excludes combine.children="append">
             <!-- never include into jar (used in minicluster test) -->
             <exclude>**/yarn-site.xml</exclude>
           </excludes>
