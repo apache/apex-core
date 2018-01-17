@@ -115,12 +115,7 @@ public class LogicalNode implements DataListener
    */
   public void removeChannel(WriteOnlyClient client)
   {
-    for (PhysicalNode pn : physicalNodes) {
-      if (pn.getClient() == client) {
-        physicalNodes.remove(pn);
-        break;
-      }
-    }
+    physicalNodes.removeIf(node -> (node.getClient().equals(client)));
   }
 
   /**

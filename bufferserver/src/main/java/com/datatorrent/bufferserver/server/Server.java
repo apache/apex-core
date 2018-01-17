@@ -24,9 +24,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Map.Entry;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -117,9 +114,11 @@ public class Server extends AbstractServer
   @Override
   public void unregistered(SelectionKey key)
   {
+    logger.debug("Unregistered {}", this);
     for (LogicalNode ln : subscriberGroups.values()) {
       ln.boot();
     }
+    super.unregistered(key);
     /*
      * There may be un-register tasks scheduled to run on the event loop that use serverHelperExecutor.
      */
@@ -860,41 +859,32 @@ public class Server extends AbstractServer
       }
       torndown = true;
 
-      /*
-       * if the publisher unregistered, all the downstream guys are going to be unregistered anyways
-       * in our world. So it makes sense to kick them out proactively. Otherwise these clients since
-       * are not being written to, just stick around till the next publisher shows up and eat into
-       * the data it's publishing for the new subscribers.
-       */
+      serverHelperExecutor.submit(() ->
+      {
+        /*
+         * if the publisher unregistered, all the downstream guys are going to be unregistered anyways
+         * in our world. So it makes sense to kick them out proactively. Otherwise these clients since
+         * are not being written to, just stick around till the next publisher shows up and eat into
+         * the data it's publishing for the new subscribers.
+         */
 
-      /**
-       * since the publisher server died, the queue which it was using would stop pumping the data unless
-       * a new publisher comes up with the same name. We leave it to the stream to decide when to bring up a new node
-       * with the same identifier as the one which just died.
-       */
-      if (publisherChannels.containsValue(this)) {
-        final Iterator<Entry<String, AbstractLengthPrependerClient>> i = publisherChannels.entrySet().iterator();
-        while (i.hasNext()) {
-          if (i.next().getValue() == this) {
-            i.remove();
-            break;
+        /**
+         * since the publisher server died, the queue which it was using would stop pumping the data unless
+         * a new publisher comes up with the same name. We leave it to the stream to decide when to bring up a new node
+         * with the same identifier as the one which just died.
+         */
+        String publisherIdentifier = datalist.getIdentifier();
+        if (!publisherChannels.remove(publisherIdentifier, Publisher.this)) {
+          logger.warn("{} could not be removed from channels", Publisher.this);
+        }
+
+        subscriberGroups.forEach((type, ln) ->  {
+          if (publisherIdentifier.equals(ln.getUpstream())) {
+            logger.debug("Booting logical node {} from publisher", ln);
+            ln.boot();
           }
-        }
-      }
-
-      ArrayList<LogicalNode> list = new ArrayList<>();
-      String publisherIdentifier = datalist.getIdentifier();
-      Iterator<LogicalNode> iterator = subscriberGroups.values().iterator();
-      while (iterator.hasNext()) {
-        LogicalNode ln = iterator.next();
-        if (publisherIdentifier.equals(ln.getUpstream())) {
-          list.add(ln);
-        }
-      }
-
-      for (LogicalNode ln : list) {
-        ln.boot();
-      }
+        });
+      });
     }
 
   }
