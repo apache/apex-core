@@ -28,7 +28,6 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -52,13 +51,12 @@ import org.apache.apex.engine.plugin.DefaultApexPluginDispatcher;
 import org.apache.apex.engine.plugin.loaders.ChainedPluginLocator;
 import org.apache.apex.engine.plugin.loaders.PropertyBasedPluginLocator;
 import org.apache.apex.engine.plugin.loaders.ServiceLoaderBasedPluginLocator;
-import org.apache.commons.io.FileUtils;
+import org.apache.apex.engine.security.TokenRenewer;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.service.CompositeService;
@@ -111,7 +109,6 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
-import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.util.SecurityUtils;
 import com.datatorrent.stram.webapp.AppInfo;
@@ -166,6 +163,7 @@ public class StreamingAppMasterService extends CompositeService
   private ApexPluginDispatcher apexPluginDispatcher;
   private final GroupingManager groupingManager = GroupingManager.getGroupingManagerInstance();
   private static final long REMOVE_CONTAINER_TIMEOUT = PropertiesHelper.getLong("org.apache.apex.nodemanager.containerKill.timeout", 30 * 1000, 0, Long.MAX_VALUE);
+  private TokenRenewer tokenRenewer;
 
   public StreamingAppMasterService(ApplicationAttemptId appAttemptID)
   {
@@ -693,19 +691,10 @@ public class StreamingAppMasterService extends CompositeService
   private void execute() throws YarnException, IOException
   {
     LOG.info("Starting ApplicationMaster");
-    final Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
-    LOG.info("number of tokens: {}", credentials.getAllTokens().size());
-    Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
-    while (iter.hasNext()) {
-      Token<?> token = iter.next();
-      LOG.debug("token: {}", token);
-    }
     final Configuration conf = getConfig();
-    long tokenLifeTime = (long)(dag.getValue(LogicalPlan.TOKEN_REFRESH_ANTICIPATORY_FACTOR) * Math.min(dag.getValue(LogicalPlan.HDFS_TOKEN_LIFE_TIME), dag.getValue(LogicalPlan.RM_TOKEN_LIFE_TIME)));
-    long expiryTime = System.currentTimeMillis() + tokenLifeTime;
-    LOG.debug(" expiry token time {}", tokenLifeTime);
-    String principal = dag.getValue(LogicalPlan.PRINCIPAL);
-    String hdfsKeyTabFile = dag.getValue(LogicalPlan.KEY_TAB_FILE);
+    if (UserGroupInformation.isSecurityEnabled()) {
+      tokenRenewer = new TokenRenewer(dag, true, conf, appAttemptID.getApplicationId().toString());
+    }
 
     // Register self with ResourceManager
     RegisterApplicationMasterResponse response = amRmClient.registerApplicationMaster(appMasterHostname, 0, appMasterTrackingUrl);
@@ -778,9 +767,8 @@ public class StreamingAppMasterService extends CompositeService
         loopCounter++;
         final long currentTimeMillis = System.currentTimeMillis();
 
-        if (UserGroupInformation.isSecurityEnabled() && currentTimeMillis >= expiryTime && hdfsKeyTabFile != null) {
-          String applicationId = appAttemptID.getApplicationId().toString();
-          expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, FileUtils.getTempDirectoryPath(), applicationId, conf, principal, hdfsKeyTabFile, credentials, rmAddress, true);
+        if (tokenRenewer != null) {
+          tokenRenewer.checkAndRenew();
         }
 
         if (currentTimeMillis > nodeReportUpdateTime) {

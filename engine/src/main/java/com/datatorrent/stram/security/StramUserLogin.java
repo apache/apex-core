@@ -18,27 +18,15 @@
  */
 package com.datatorrent.stram.security;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.security.PrivilegedExceptionAction;
-import java.util.Iterator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.yarn.client.api.YarnClient;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 import com.datatorrent.api.StreamingApplication;
-
-import com.datatorrent.stram.client.StramClientUtils;
-import com.datatorrent.stram.util.FSUtil;
 
 /**
  * <p>StramUserLogin class.</p>
@@ -83,63 +71,6 @@ public class StramUserLogin
         throw ie;
       }
     }
-  }
-
-  public static long refreshTokens(long tokenLifeTime, String destinationDir, String destinationFile, final Configuration conf, String principal, String hdfsKeyTabFile, final Credentials credentials, final InetSocketAddress rmAddress, final boolean renewRMToken) throws IOException
-  {
-    long expiryTime = System.currentTimeMillis() + tokenLifeTime;
-    //renew tokens
-    final String tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL);
-    if (tokenRenewer == null || tokenRenewer.length() == 0) {
-      throw new IOException("Can't get Master Kerberos principal for the RM to use as renewer");
-    }
-
-    File keyTabFile;
-    try (FileSystem fs = FileSystem.newInstance(conf)) {
-      keyTabFile = FSUtil.copyToLocalFileSystem(fs, destinationDir, destinationFile, hdfsKeyTabFile, conf);
-    }
-
-    if (principal == null) {
-      principal = UserGroupInformation.getCurrentUser().getUserName();
-    }
-    UserGroupInformation ugi = UserGroupInformation.loginUserFromKeytabAndReturnUGI(principal, keyTabFile.getAbsolutePath());
-    try {
-      ugi.doAs(new PrivilegedExceptionAction<Object>()
-      {
-        @Override
-        public Object run() throws Exception
-        {
-
-          Credentials creds = new Credentials();
-          try (FileSystem fs1 = FileSystem.newInstance(conf)) {
-            fs1.addDelegationTokens(tokenRenewer, creds);
-          }
-          if (renewRMToken) {
-            try (YarnClient yarnClient = StramClientUtils.createYarnClient(conf)) {
-              new StramClientUtils.ClientRMHelper(yarnClient, conf).addRMDelegationToken(tokenRenewer, creds);
-            }
-          }
-          credentials.addAll(creds);
-
-          return null;
-        }
-      });
-      UserGroupInformation.getCurrentUser().addCredentials(credentials);
-    } catch (InterruptedException e) {
-      LOG.error("Error while renewing tokens ", e);
-      expiryTime = System.currentTimeMillis();
-    } catch (IOException e) {
-      LOG.error("Error while renewing tokens ", e);
-      expiryTime = System.currentTimeMillis();
-    }
-    LOG.debug("number of tokens: {}", credentials.getAllTokens().size());
-    Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
-    while (iter.hasNext()) {
-      Token<?> token = iter.next();
-      LOG.debug("updated token: {}", token);
-    }
-    keyTabFile.delete();
-    return expiryTime;
   }
 
   public static String getPrincipal()
