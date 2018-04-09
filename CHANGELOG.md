@@ -1,6 +1,81 @@
 Apex Changelog
 ========================================================================================================================
 
+
+Version 3.7.0 - 2018-04-18
+------------------------------------------------------------------------------------------------------------------------
+
+### Sub-task
+* [APEXCORE-705] - Prevent publisher from getting ahead of subscriber more than max block count
+
+### Bug
+* [APEXCORE-682] - Not able to view application from a web service when a user specified launch path is provided
+* [APEXCORE-720] - In DAGExecution plugin, Context.getDAG returns null
+* [APEXCORE-722] - Protected data members in DefaultInputPort and DefaultOutputPort may interfere with user code
+* [APEXCORE-723] - Replace double quotes with a single quotes in command line arguments for passing of the logger appender properties
+* [APEXCORE-726] - Impersonating user unable to access application resources when ACLs are enabled
+* [APEXCORE-732] - Container fails where there is a serialization problem in tuple recording
+* [APEXCORE-736] - Unable to fetch application master container report with kerberized web services in STRAM
+* [APEXCORE-737] - AppMaster does not shut down because numRequestedContainers becomes negative
+* [APEXCORE-740] - Setup plugins does not identify operator classes because they're loaded through different classloaders
+* [APEXCORE-742] - Yarn client not being correctly initialized in all cases
+* [APEXCORE-743] - Killed container is shown as running
+* [APEXCORE-745] - Buffer server may stop processing tuples when backpressure is enabled
+* [APEXCORE-756] - Fix ConcurrentModificationException in GroupingManager
+* [APEXCORE-757] - Web authentication DISABLE option not working
+* [APEXCORE-760] - Webapp tracking URL may not include fully qualified hostname
+* [APEXCORE-765] - Exceptions being logged for optional functionality while retrieving stram web service info for web service clients
+* [APEXCORE-766] - Add missing whitespace between words to docs
+* [APEXCORE-767] - Duplicate class loading in CLI for single application launch 
+* [APEXCORE-779] - In unit tests Yarn containers must use the same JVM as the test itself.
+* [APEXCORE-791] - Gateway security settings need to be available in the DAG
+* [APEXCORE-798] - Exclude log4j.properties from engine-test.jar
+
+### Improvement
+* [APEXCORE-602] - Provide a "group-id" in the event object so that events are grouped together by a "root cause".
+* [APEXCORE-626] - shutdown-app should accept application name similar to kill-app command.
+* [APEXCORE-670] - CLI should provide command to set log level
+* [APEXCORE-704] - Add supporting of programmatic logger appender
+* [APEXCORE-711] - Support custom SSL keystore for the Stram REST API web service
+* [APEXCORE-712] - Support distribution of custom SSL material to the Stram node while launch the app
+* [APEXCORE-716] - Add a package level javadoc for engine api about it's intended use
+* [APEXCORE-717] - Remove unnecessary archetypeVersion property
+* [APEXCORE-719] - Pass an application name from stram client to application master and container via command line properties
+* [APEXCORE-733] - Add ability to use impersonated user's HDFS path for storing application resources
+* [APEXCORE-734] - StramLocalCluster may not terminate properly
+* [APEXCORE-738] - Update docs to describe custom SSL support added 
+* [APEXCORE-744] - Populate logging mapped diagnostic contexts
+* [APEXCORE-747] - Provide additional ToStringStyle options
+* [APEXCORE-749] - Fix README.md formatting
+* [APEXCORE-754] - Add plugin class jar with it's dependencies to the list of libraries deployed with an application
+* [APEXCORE-761] - Add a utility class/methods to read the system properties
+* [APEXCORE-764] - Refactor Plugin locator service
+* [APEXCORE-778] - Refactor DelayOperatorTest
+* [APEXCORE-786] - LoggerUtil should allow to add/remove/list appenders for a specified logger
+* [APEXCORE-792] - LoggerUtil should allow to get LogFileInformation for a specified logger	
+* [APEXCORE-800] - Disable the disk health checker service for StramMiniClusterTest
+
+### Task
+* [APEXCORE-496] - Provide Operator name to StatsListener
+* [APEXCORE-753] - Add mailing lists, SCM and issue tracking information to POM
+* [APEXCORE-780] - Travis-CI Build failures to be fixed
+* [APEXCORE-790] - Enforce dependency analysis for CVE in CI builds
+* [APEXCORE-795] - Update NOTICE copyright year
+* [APEXCORE-802] - Upgrade Malhar version in archetype to 3.8.0
+* [APEXCORE-803] - Update archetype version number in setup guide
+
+### Dependency upgrade
+* [APEXCORE-735] - Upgrade maven-dependency-plugin
+* [APEXCORE-741] - Upgrade netlet dependency to 1.3.1
+* [APEXCORE-748] - Upgrade netlet dependency to 1.3.2
+* [APEXCORE-806] - Upgrade org.owasp:dependency-check-maven
+
+### Documentation
+* [APEXCORE-725] - Add example for configuring map properties to app package doc
+* [APEXCORE-752] - Document new impersonation related functionality implemented by APEXCORE-733
+* [APEXCORE-789] - Update security doc to describe the impact of SSL enablement on truststores
+
+
 Version 3.6.0 - 2017-05-04
 ------------------------------------------------------------------------------------------------------------------------
 
