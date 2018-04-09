@@ -23,6 +23,9 @@ import org.slf4j.LoggerFactory;
 import org.apache.hadoop.classification.InterfaceStability.Evolving;
 
 @Evolving
+/**
+ * @since 3.7.0
+ */
 public class PropertiesHelper
 {
   /**

@@ -30,6 +30,9 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.util.PubSubWebSocketClient;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 
+/**
+ * @since 3.7.0
+ */
 public class PubSubWebSocketClientBuilder
 {
   public static final String GATEWAY_LOGIN_URL_PATH = "/ws/v2/login";

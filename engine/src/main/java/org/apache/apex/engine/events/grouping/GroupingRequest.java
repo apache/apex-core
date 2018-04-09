@@ -27,6 +27,8 @@ import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**
  * Grouping request keeps track of operators whose start/stop events should be grouped.
+ *
+ * @since 3.7.0
  */
 public class GroupingRequest
 {

@@ -33,6 +33,8 @@ import com.google.common.collect.Maps;
 
 /**
  *
+ *
+ * @since 3.7.0
  */
 public class ACLManager
 {

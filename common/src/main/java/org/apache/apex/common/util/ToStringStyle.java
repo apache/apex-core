@@ -21,6 +21,9 @@ package org.apache.apex.common.util;
 import org.apache.hadoop.classification.InterfaceStability.Evolving;
 
 @Evolving
+/**
+ * @since 3.7.0
+ */
 public abstract class ToStringStyle extends org.apache.commons.lang.builder.ToStringStyle
 {
   public static final ToStringStyle SHORT_CLASS_NAME_STYLE = new ShortClassNameToStringStyle();
