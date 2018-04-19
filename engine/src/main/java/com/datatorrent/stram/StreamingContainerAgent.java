@@ -221,10 +221,7 @@ public class StreamingContainerAgent
             if (input.target.getContainer() != out.source.getContainer()) {
               final StreamCodec<?> streamCodec = getIdentifyingInputPortMeta(input).getStreamCodec();
               final Integer id = physicalPlan.getStreamCodecIdentifier(streamCodec);
-              // TODO: replace with inputInfo.streamCodecs.putIfAbsent() after support for JDK 1.7 is dropped.
-              if (!portInfo.streamCodecs.containsKey(id)) {
-                portInfo.streamCodecs.put(id, streamCodec);
-              }
+              portInfo.streamCodecs.putIfAbsent(id, streamCodec);
             }
           }
         }

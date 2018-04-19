@@ -190,8 +190,8 @@
         <version>3.3</version>
         <configuration>
           <encoding>UTF-8</encoding>
-          <source>1.7</source>
-          <target>1.7</target>
+          <source>1.8</source>
+          <target>1.8</target>
           <debug>true</debug>
           <optimize>true</optimize>
           <showDeprecation>true</showDeprecation>
@@ -214,7 +214,7 @@
         <configuration>
           <signature>
             <groupId>org.codehaus.mojo.signature</groupId>
-            <artifactId>java17</artifactId>
+            <artifactId>java18</artifactId>
             <version>1.0</version>
           </signature>
           <ignores>
@@ -351,8 +351,8 @@
               <configuration>
                 <rules>
                   <requireJavaVersion>
-                    <version>[1.7.0,)</version>
-                    <message>Build requires Java 1.7 or above.</message>
+                    <version>[1.8.0,)</version>
+                    <message>Build requires Java 1.8 or above.</message>
                   </requireJavaVersion>
                 </rules>
               </configuration>
