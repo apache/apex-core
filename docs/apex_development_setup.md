@@ -11,7 +11,7 @@ There are a few tools that will be helpful when developing Apache Apex applicati
 
 1.  **git** - A revision control system (version 1.7.1 or later). There are multiple git clients available for Windows (<http://git-scm.com/download/win> for example), so download and install a client of your choice.
 
-2.  **java JDK** (not JRE) - Includes the Java Runtime Environment as well as the Java compiler and a variety of tools (version 1.7.0\_79 or later). Can be downloaded from the Oracle website.
+2.  **java JDK** (not JRE) - Includes the Java Runtime Environment as well as the Java compiler and a variety of tools (version 1.8.0 or later). Can be downloaded from the Oracle website.
 
 3.  **maven** - Apache Maven is a build system for Java projects (version 3.0.5 or later). It can be downloaded from <https://maven.apache.org/download.cgi>.
 
@@ -19,7 +19,7 @@ There are a few tools that will be helpful when developing Apache Apex applicati
 
 After installing these tools, make sure that the directories containing the executable files are in your PATH environment variable.
 
-* **Windows** - Open a console window and enter the command `echo %PATH%` to see the value of the `PATH` variable and verify that the above directories for Java, git, and maven executables are present.  JDK executables like _java_ and _javac_, the directory might be something like `C:\Program Files\Java\jdk1.7.0\_80\bin`; for _git_ it might be `C:\Program Files\Git\bin`; and for maven it might be `C:\Users\user\Software\apache-maven-3.3.3\bin`.  If not, you can change its value clicking on the button at _Control Panel_ &#x21e8; _Advanced System Settings_ &#x21e8; _Advanced tab_ &#x21e8; _Environment Variables_.
+* **Windows** - Open a console window and enter the command `echo %PATH%` to see the value of the `PATH` variable and verify that the above directories for Java, git, and maven executables are present.  JDK executables like _java_ and _javac_, the directory might be something like `C:\Program Files\Java\jdk1.8.0_162\bin`; for _git_ it might be `C:\Program Files\Git\bin`; and for maven it might be `C:\Users\user\Software\apache-maven-3.3.3\bin`.  If not, you can change its value clicking on the button at _Control Panel_ &#x21e8; _Advanced System Settings_ &#x21e8; _Advanced tab_ &#x21e8; _Environment Variables_.
 * **Linux and Mac** - Open a console/terminal window and enter the command `echo $PATH` to see the value of the `PATH` variable and verify that the above directories for Java, git, and maven executables are present.  If not, make sure software is downloaded and installed, and optionally PATH reference is added and exported  in a `~/.profile` or `~/.bash_profile`.  For example to add maven located in `/sfw/maven/apache-maven-3.3.3` to PATH add the line: `export PATH=$PATH:/sfw/maven/apache-maven-3.3.3/bin`
 
 
@@ -37,13 +37,13 @@ Confirm by running the following commands and comparing with output that show in
 </tr>
 <tr class="even">
 <td align="left"><p><tt>javac -version</tt></p></td>
-<td align="left"><p>javac 1.7.0_80</p></td>
+<td align="left"><p>javac 1.8.0_162</p></td>
 </tr>
 <tr class="odd">
 <td align="left"><p><tt>java -version</tt></p></td>
-<td align="left"><p>java version &quot;1.7.0_80&quot;</p>
-<p>Java(TM) SE Runtime Environment (build 1.7.0_80-b15)</p>
-<p>Java HotSpot(TM) 64-Bit Server VM (build 24.80-b11, mixed mode)</p></td>
+<td align="left"><p>java version &quot;1.8.0_162&quot;</p>
+<p>Java(TM) SE Runtime Environment (build 1.8.0_162-b12)</p>
+<p>Java HotSpot(TM) 64-Bit Server VM (build 25.162-b12, mixed mode)</p></td>
 </tr>
 <tr class="even">
 <td align="left"><p><tt>git --version</tt></p></td>

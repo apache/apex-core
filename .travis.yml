@@ -16,7 +16,8 @@
 language: java
 
 jdk:
-  - openjdk7
+  - openjdk8
+  - oraclejdk8
 
 script: mvn apache-rat:check verify -Dlicense.skip=false -Dtravis=true && mvn dependency-check:check -Ddependency.check.showSummary=false
 
