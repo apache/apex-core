@@ -500,6 +500,7 @@
     <profile>
       <id>apache-release</id>
       <modules>
+        <module>dist</module>
       </modules>
       <properties>
         <maven.compiler.debug>false</maven.compiler.debug>
