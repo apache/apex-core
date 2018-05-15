@@ -20,4 +20,7 @@
 
 -->
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.1.xsd">
+  <suppress>
+    <cve>CVE-2016-6811</cve>
+  </suppress>
 </suppressions>
