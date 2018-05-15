@@ -695,7 +695,8 @@ submitted to the Hadoop cluster and executes as a  multi-processapplication on 
 Before you start deploying, testing and troubleshooting your
 application on a cluster, you should ensure that Hadoop (version 2.6.0
 or later) is properly installed and
-you have basic skills for working with it.
+you have basic skills for working with it. Due to a known vulnerability in Apache Yarn, Apex community 
+recommends Hadoop version 2.7.4 or later.
 
 ------------------------------------------------------------------------
 
