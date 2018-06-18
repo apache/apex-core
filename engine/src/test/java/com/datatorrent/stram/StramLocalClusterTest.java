@@ -60,7 +60,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.ManualScheduledExecutorService;
 import com.datatorrent.stram.support.StramTestSupport;
-
+import com.datatorrent.stram.util.VersionInfo;
 
 public class StramLocalClusterTest
 {
@@ -381,19 +381,29 @@ public class StramLocalClusterTest
     String sourceDir = "src/test/resources/dynamicJar/";
     String destDir = testMeta.getPath();
 
+    // The compiled java class should be loadable by the current java runtime hence setting the compile target version
+    // to be the same
+    String binLocation = getJavaBinLocation();
+
     Process p = Runtime.getRuntime()
-        .exec(new String[] {"javac", "-d", destDir, sourceDir + pojoClassName + ".java"}, null, null);
+        .exec(new String[] {binLocation + "javac", "-d", destDir, sourceDir + pojoClassName + ".java"}, null, null);
     IOUtils.copy(p.getInputStream(), System.out);
     IOUtils.copy(p.getErrorStream(), System.err);
     Assert.assertEquals(0, p.waitFor());
 
     p = Runtime.getRuntime()
-        .exec(new String[] {"jar", "-cf", pojoClassName + ".jar", pojoClassName + ".class"}, null, new File(destDir));
+        .exec(new String[] {binLocation + "jar", "-cf", pojoClassName + ".jar", pojoClassName + ".class"}, null, new File(destDir));
     IOUtils.copy(p.getInputStream(), System.out);
     IOUtils.copy(p.getErrorStream(), System.err);
     Assert.assertEquals(0, p.waitFor());
 
     return new File(destDir, pojoClassName + ".jar").getAbsolutePath();
+  }
+
+  private String getJavaBinLocation()
+  {
+    String javaHome = System.getProperty("java.home");
+    return VersionInfo.compare(System.getProperty("java.version"), "1.9") < 0 ? javaHome + "/../bin/" : javaHome + "/bin/";
   }
 
   @Test
