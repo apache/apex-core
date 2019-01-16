@@ -124,7 +124,13 @@ public class StramClientUtilsTest
     };
 
     // basic test
-    conf.setBoolean(CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_KEY, false);
+
+    /*
+     * This is far from confirmed as the "correct" fix.  The previous constants HADOOP_SSL_ENABLED_DEFAULT and HADOOP_SSL_ENABLED_KEY have
+     * been deprecated as far back as I can find Hadoop versions (2.4.1 at least), HADOOP_CALLER_CONTEXT_ENABLED_DEFAULT and
+     * HADOOP_CALLER_CONTEXT_ENABLED_KEY are the only two constants in 3.1.0 that seem even remotely related...
+     * */
+    conf.setBoolean(CommonConfigurationKeysPublic.HADOOP_CALLER_CONTEXT_ENABLED_KEY, false);
     conf.set(YarnConfiguration.RM_WEBAPP_ADDRESS, "192.168.1.1:8032");
     conf.set(YarnConfiguration.RM_WEBAPP_HTTPS_ADDRESS, "192.168.1.2:8032");
     Assert.assertEquals(getHostString("192.168.1.1") + ":8032", StramClientUtils.getSocketConnectString(StramClientUtils.getRMWebAddress(conf, null)));
@@ -132,7 +138,7 @@ public class StramClientUtilsTest
     Assert.assertEquals(1, addresses.size());
     Assert.assertEquals(getHostString("192.168.1.1") + ":8032", StramClientUtils.getSocketConnectString(addresses.get(0)));
 
-    conf.setBoolean(CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_KEY, true);
+    conf.setBoolean(CommonConfigurationKeysPublic.HADOOP_CALLER_CONTEXT_ENABLED_KEY, true);
     Assert.assertEquals(getHostString("192.168.1.2") + ":8032", StramClientUtils.getSocketConnectString(StramClientUtils.getRMWebAddress(conf, null)));
     addresses = StramClientUtils.getRMAddresses(conf);
     Assert.assertEquals(1, addresses.size());

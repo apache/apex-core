@@ -119,8 +119,8 @@ public class StramClientUtils
   @Deprecated
   public static final String KEY_TAB_FILE = StramUserLogin.DT_AUTH_PREFIX + "store.keytab";
   public static final String TOKEN_ANTICIPATORY_REFRESH_FACTOR = StramUserLogin.DT_AUTH_PREFIX + "token.refresh.factor";
-  public static final long DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT = 7 * 24 * 60 * 60 * 1000;
-  public static final long DELEGATION_TOKEN_RENEW_INTERVAL_DEFAULT = 24 * 60 * 60 * 1000;
+  public static final long RM_DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT = 7 * 24 * 60 * 60 * 1000;
+  public static final long RM_DELEGATION_TOKEN_RENEW_INTERVAL_DEFAULT = 24 * 60 * 60 * 1000;
   public static final String TOKEN_REFRESH_PRINCIPAL = StramUserLogin.DT_AUTH_PREFIX + "token.refresh.principal";
   public static final String TOKEN_REFRESH_KEYTAB = StramUserLogin.DT_AUTH_PREFIX + "token.refresh.keytab";
   /**
@@ -828,7 +828,12 @@ public class StramClientUtils
 
   public static InetSocketAddress getRMWebAddress(Configuration conf, String rmId)
   {
-    boolean sslEnabled = conf.getBoolean(CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_KEY, CommonConfigurationKeysPublic.HADOOP_SSL_ENABLED_DEFAULT);
+    /*
+     * This is far from confirmed as the "correct" fix.  The previous constants HADOOP_SSL_ENABLED_DEFAULT and HADOOP_SSL_ENABLED_KEY have
+     * been deprecated as far back as I can find Hadoop versions (2.4.1 at least), HADOOP_CALLER_CONTEXT_ENABLED_DEFAULT and
+     * HADOOP_CALLER_CONTEXT_ENABLED_KEY are the only two constants in 3.1.0 that seem even remotely related...
+     * */
+    boolean sslEnabled = conf.getBoolean(CommonConfigurationKeysPublic.HADOOP_CALLER_CONTEXT_ENABLED_KEY, CommonConfigurationKeysPublic.HADOOP_CALLER_CONTEXT_ENABLED_DEFAULT);
     return getRMWebAddress(conf, sslEnabled, rmId);
   }
 
