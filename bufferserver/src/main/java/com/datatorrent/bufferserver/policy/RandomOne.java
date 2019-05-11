@@ -19,6 +19,7 @@
 package com.datatorrent.bufferserver.policy;
 
 import java.util.Set;
+import java.util.Random;
 
 import com.datatorrent.bufferserver.internal.PhysicalNode;
 import com.datatorrent.bufferserver.util.SerializedData;
@@ -53,7 +54,8 @@ public class RandomOne extends AbstractPolicy
   @Override
   public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
-    int count = (int)(Math.random() * nodes.size());
+    Random rand = new Random();
+    int count = (int)(rand.nextDouble() * nodes.size());
     /*
      * Should look at accessing nodes within the Set as array. Will save iteration through all the
      * physical nodes.
